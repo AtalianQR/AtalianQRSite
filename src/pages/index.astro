@@ -1,103 +1,81 @@
 ---
-const assetId = new URLSearchParams(Astro.request.url).get('assetid') ?? '';
+const params = new URLSearchParams(Astro.request.url);
+const spaceId = params.get('id') ?? '';
 ---
 
+<!DOCTYPE html>
 <html lang="nl">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>QR Melding – Atalian</title>
-    <style>
-      body {
-        font-family: sans-serif;
-        padding: 2rem;
-        max-width: 600px;
-        margin: auto;
-      }
-      label {
-        display: block;
-        margin-top: 1rem;
-      }
-      input, textarea {
-        width: 100%;
-        padding: 0.5rem;
-        margin-top: 0.25rem;
-        font-size: 1rem;
-      }
-      button {
-        margin-top: 1.5rem;
-        padding: 0.75rem 1.5rem;
-        background-color: #f07c10;
-        color: white;
-        border: none;
-        font-size: 1rem;
-        cursor: pointer;
-      }
-    </style>
-  </head>
-  <body>
-    <h1>Probleem melden</h1>
-    <p>Gebruik dit formulier om een storing of defect door te geven via QR-code.</p>
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>QR Atalian</title>
+</head>
+<body>
+  <h1>Meld een storing</h1>
 
-    <form method="post" onsubmit="handleSubmit(event)">
-      <label for="email">Uw e-mailadres</label>
-      <input id="email" name="email" type="email" required />
+  <form id="meldingForm">
+    <div>
+      <label for="ruimteBeschrijving">Ruimtebeschrijving</label><br />
+      <input type="text" id="ruimteBeschrijving" name="ruimteBeschrijving" readonly />
+    </div>
 
-      <label for="beschrijving">Probleembeschrijving</label>
-      <textarea id="beschrijving" name="beschrijving" required rows="5"></textarea>
+    <div>
+      <label for="email">Uw e-mailadres</label><br />
+      <input type="email" id="email" name="email" required />
+    </div>
 
-      <label for="assetid">Asset-ID</label>
-      <input id="assetid" name="assetid" type="text" readonly />
+    <div>
+      <label for="beschrijving">Probleembeschrijving</label><br />
+      <textarea id="beschrijving" name="beschrijving" rows="4" required></textarea>
+    </div>
 
-      <button type="submit">Verzend melding</button>
-    </form>
+    <input type="hidden" id="spaceId" name="spaceId" value={spaceId} />
 
-    <script type="text/javascript">
-      window.addEventListener('DOMContentLoaded', () => {
-        const params = new URLSearchParams(window.location.search);
-        const assetId = params.get('assetid');
-        if (assetId) {
-          document.getElementById('assetid').value = assetId;
+    <button type="submit">Verstuur melding</button>
+  </form>
+
+  <script>
+    (async () => {
+      const spaceId = document.getElementById('spaceId').value;
+
+      if (spaceId) {
+        try {
+          const response = await fetch(`/.netlify/functions/Space?spaceId=${spaceId}`);
+          const data = await response.json();
+          document.getElementById('ruimteBeschrijving').value = data.description?.trim() || '(geen beschrijving)';
+        } catch (err) {
+          document.getElementById('ruimteBeschrijving').value = '(fout bij ophalen)';
         }
-      });
+      }
 
-      async function handleSubmit(e) {
+      document.getElementById('meldingForm').addEventListener('submit', async e => {
         e.preventDefault();
         const form = e.target;
 
-        const body = {
+        const payload = {
           JobDescr: form.beschrijving.value,
           ReportText: form.email.value,
-          EquipmentId: "",
+          SpaceId: form.spaceId.value,
+          Provider: "QRConnect",
           ExternalId: "",
-		  Provider: "QRConnect",
           PriorityId: "",
-          ServiceDeskReportTypeId: "601",
-          SpaceId: form.assetid.value
+          ServiceDeskReportTypeId: "601"
         };
 
-        try {
-          const res = await fetch("/.netlify/functions/melding", {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json"
-            },
-            body: JSON.stringify(body)
-          });
+        const res = await fetch('/.netlify/functions/melding', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
 
-          if (res.ok) {
-            alert("✅ Melding succesvol doorgestuurd naar Ultimo!");
-            form.reset();
-          } else {
-            const errorText = await res.text();
-            console.error("API-fout:", errorText);
-            alert("❌ Fout bij verzending:\n" + errorText);
-          }
-        } catch (err) {
-          console.error("Netwerkfout:", err);
-          alert("⚠️ Verbindingsprobleem met backend.");
+        if (res.ok) {
+          alert('Melding succesvol verzonden!');
+          form.reset();
+        } else {
+          alert('Er ging iets mis bij het verzenden.');
         }
-      }
-    </script>
-  </body>
+      });
+    })();
+  </script>
+</body>
 </html>
