@@ -3,160 +3,163 @@
 <!DOCTYPE html>
 <html lang="nl">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Meld een storing</title>
   <style>
-    body {
-      font-family: Arial, sans-serif;
-      max-width: 600px;
-      margin: 2rem auto;
-      padding: 1rem;
-      background: #f7f7f7;
-      color: #333;
-    }
-
-    img.logo {
-      display: block;
-      max-width: 200px;
-      margin: 0 auto 2rem auto;
-    }
-
-    h1 {
-      color: #f07c10;
-      text-align: center;
-    }
-
-    .info, .error, .success {
-      margin-top: 1rem;
-      padding: 1rem;
-      border-radius: 4px;
-    }
-
-    .info   { background: #fff; border: 1px solid #ddd; }
-    .error  { background: #f8d7da; color: #721c24; }
-    .success{ background: #d4edda; color: #155724; font-size: 1.2rem; text-align: center; }
-
-    label {
-      display: block;
-      margin-top: 1.2rem;
-      font-weight: bold;
-    }
-
-    input[type="text"],
-    input[type="email"],
-    textarea {
-      width: 100%;
-      padding: 0.6rem;
-      margin-top: 0.3rem;
-      border: 1px solid #ccc;
-      border-radius: 4px;
-      box-sizing: border-box;
-      background: #fff;
-    }
-
-    textarea { resize: vertical; }
-
-    button {
-      margin-top: 1.5rem;
-      background: #f07c10;
-      color: #fff;
-      padding: 0.8rem 1.5rem;
-      border: none;
-      border-radius: 4px;
-      cursor: pointer;
-      font-weight: bold;
-    }
-
-    button:hover { background: #d96b0e; }
+    body { font-family: sans-serif; padding: 2rem; max-width: 600px; margin: auto; background: #f7f7f7; color:#333; }
+    img.logo { display: block; max-width: 160px; margin: 0 auto 1.5rem; }
+    .lang-switch { text-align: right; margin-bottom: 1rem; }
+    .lang-switch a { text-decoration: none; margin-left: 0.5rem; font-weight: bold; }
+    h1 { text-align: center; color: #f07c10; margin-bottom: 1rem; }
+    .info, .error, .success { margin-top:1rem; padding:1rem; border-radius:4px; }
+    .info { background:#fff; border:1px solid #ddd; }
+    .error { background:#f8d7da; color:#721c24; }
+    .success{ background:#d4edda; color:#155724; text-align:center; font-size:1.1rem; }
+    label { display:block; margin-top:1rem; font-weight:bold; }
+    input, textarea { width:100%; padding:0.5rem; margin-top:0.25rem; font-size:1rem; border:1px solid #ccc; border-radius:4px; }
+    textarea { resize:vertical; }
+    button { margin-top:1.5rem; padding:0.75rem 1.5rem; background:#f07c10; color:#fff; border:none; border-radius:4px; cursor:pointer; font-size:1rem; }
+    button:hover { background:#d96b0e; }
   </style>
 </head>
 <body>
-  <!-- 📌 Voeg hier je logo toe -->
-  <img src="/AtalianLogo.png" alt="Atalian logo" class="logo" />
+  <img src="/AtalianLogo.png" alt="Atalian Logo" class="logo" />
 
-  <h1>Meld een storing</h1>
+ <div class="lang-switch">
+<a id="link-nl">NL</a>&nbsp;|<a id="link-fr">FR</a>
+</div>
 
-  <!-- Ruimtegegevens worden hier opgehaald -->
+<h1 id="pageTitle">Meld een storing</h1>
+<p style="text-align:center; margin-top:-0.5rem;">
+  <a href="tel:+3278152300" style="color:#333; text-decoration:none; font-size:1.1rem;">
+    📞 +32 78 152 300
+  </a>
+</p>
+
   <div id="ruimteInfo" class="info">Laden ruimtegegevens…</div>
 
-  <!-- Formulier -->
-  <form id="meldingForm" style="display: none;">
-    <label for="email">Uw e-mailadres</label>
-    <input type="email" id="email" required />
+  <form id="meldingForm" style="display:none;">
+    <label for="email" id="labelEmail">Uw e-mailadres</label>
+    <input id="email" name="email" type="email" required />
 
-    <label for="beschrijving">Probleembeschrijving</label>
-    <textarea id="beschrijving" rows="4" required></textarea>
+    <label for="beschrijving" id="labelDesc">Probleembeschrijving</label>
+    <textarea id="beschrijving" name="beschrijving" rows="5" required></textarea>
 
-    <button type="submit">Verstuur melding</button>
+    <button type="submit" id="submitBtn">Verzend melding</button>
   </form>
 
-  <!-- Succesbericht -->
-  <div id="succesScherm" class="success" style="display: none;"></div>
+  <div id="statusBericht" style="display:none;"></div>
 
   <script>
     document.addEventListener('DOMContentLoaded', async () => {
       const params = new URLSearchParams(window.location.search);
       const id = params.get('id');
+      let lang = (params.get('lang') || 'nl').toLowerCase();
+      if (!['nl','fr'].includes(lang)) lang = 'nl';
+
+      // Setup language switch links
+      const base = window.location.pathname;
+      params.set('lang','nl');
+      document.getElementById('link-nl').href = `${base}?${params.toString()}`;
+      params.set('lang','fr');
+      document.getElementById('link-fr').href = `${base}?${params.toString()}`;
+
+      // Text translations
+      const txt = {
+        nl: {
+          title: 'Meld een storing',
+          email: 'Uw e-mailadres',
+          desc: 'Probleembeschrijving',
+          submit: 'Verzend melding',
+          loading: 'Laden ruimtegegevens…',
+          noId: '⚠️ Geen ruimte-ID opgegeven. Voeg ?id=000898 toe.',
+          fetchError: '❌ Fout bij ophalen ruimtegegevens:',
+          success: '✅ Melding succesvol verzonden!',
+          sendError: '❌ Verzenden mislukt:'
+        },
+        fr: {
+          title: 'Signaler un problème',
+          email: 'Votre adresse e-mail',
+          desc: 'Description du problème',
+          submit: 'Envoyer le signalement',
+          loading: 'Chargement…',
+          noId: '⚠️ Aucun ID fourni. Ajoutez ?id=000898.',
+          fetchError: '❌ Erreur lors du chargement :',
+          success: '✅ Signalement envoyé avec succès !',
+          sendError: '❌ Échec de l’envoi :'        }
+      }[lang];
+
+      // Apply translations
+      document.getElementById('pageTitle').textContent = txt.title;
+      document.getElementById('labelEmail').textContent = txt.email;
+      document.getElementById('labelDesc').textContent = txt.desc;
+      document.getElementById('submitBtn').textContent = txt.submit;
+      document.getElementById('ruimteInfo').textContent = txt.loading;
+
       const info = document.getElementById('ruimteInfo');
       const form = document.getElementById('meldingForm');
-      const success = document.getElementById('succesScherm');
+      const status = document.getElementById('statusBericht');
 
       if (!id) {
         info.className = 'error';
-        info.textContent = '⚠️ Geen ruimte-ID opgegeven. Gebruik ?id=000898 in de URL.';
+        info.textContent = txt.noId;
         return;
       }
 
-      // Ophaalruimtegegevens
+      // Fetch space info
       try {
         const res = await fetch(`/.netlify/functions/space?id=${encodeURIComponent(id)}`);
-        const json = await res.json();
-        if (json.description) {
+        const data = await res.json();
+        if (data.description) {
           info.className = 'info';
-          info.textContent = `${json.description}`;
+        info.outerHTML = `<div style="text-align:center; font-size:1.25rem; margin-top:1.5rem;"><strong>${data.description}</strong></div>`;
+
         } else {
-          throw new Error('Onbekende ruimte');
+          throw new Error(data.error || 'Onverwacht antwoord');
         }
       } catch (err) {
+        console.error(err);
         info.className = 'error';
-        info.textContent = '❌ Fout bij ophalen ruimtegegevens: ' + err.message;
+        info.textContent = `${txt.fetchError} ${err.message}`;
         return;
       }
 
+      // Show form
       form.style.display = 'block';
 
+      // Handle submit
       form.addEventListener('submit', async e => {
         e.preventDefault();
+        status.style.display = 'none';
 
         const payload = {
           JobDescr: document.getElementById('beschrijving').value,
           ReportText: document.getElementById('email').value,
           SpaceId: id,
-          Provider: "QRConnect",
-          ExternalId: "",
-          PriorityId: "",
-          ServiceDeskReportTypeId: "601"
+          Provider: 'QRConnect',
+          ExternalId: '',
+          PriorityId: '',
+          ServiceDeskReportTypeId: '601'
         };
 
         try {
           const resp = await fetch('/.netlify/functions/melding', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: {'Content-Type':'application/json'},
             body: JSON.stringify(payload)
           });
-
           if (!resp.ok) throw new Error(`Status ${resp.status}`);
-
           form.style.display = 'none';
           info.style.display = 'none';
-          success.innerHTML = `✅ De storing werd succesvol doorgestuurd.<br><br>Dank je wel voor je melding.`;
-          success.style.display = 'block';
-
+          status.className = 'success';
+          status.textContent = txt.success;
         } catch (err) {
-          info.className = 'error';
-          info.textContent = '❌ Verzenden mislukt: ' + err.message;
+          console.error(err);
+          status.className = 'error';
+          status.textContent = `${txt.sendError} ${err.message}`;
         }
+        status.style.display = 'block';
       });
     });
   </script>
