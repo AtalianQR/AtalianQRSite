@@ -5,77 +5,152 @@ const spaceId = params.get('id') ?? '';
 
 <!DOCTYPE html>
 <html lang="nl">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>QR Atalian</title>
-</head>
-<body>
-  <h1>Meld een storing</h1>
-
-  <form id="meldingForm">
-    <div>
-      <label for="ruimteBeschrijving">Ruimtebeschrijving</label><br />
-      <input type="text" id="ruimteBeschrijving" name="ruimteBeschrijving" readonly />
-    </div>
-
-    <div>
-      <label for="email">Uw e-mailadres</label><br />
-      <input type="email" id="email" name="email" required />
-    </div>
-
-    <div>
-      <label for="beschrijving">Probleembeschrijving</label><br />
-      <textarea id="beschrijving" name="beschrijving" rows="4" required></textarea>
-    </div>
-
-    <input type="hidden" id="spaceId" name="spaceId" value={spaceId} />
-
-    <button type="submit">Verstuur melding</button>
-  </form>
-
-  <script>
-    (async () => {
-      const spaceId = document.getElementById('spaceId').value;
-
-      if (spaceId) {
-        try {
-          const response = await fetch(`/.netlify/functions/Space?spaceId=${spaceId}`);
-          const data = await response.json();
-          document.getElementById('ruimteBeschrijving').value = data.description?.trim() || '(geen beschrijving)';
-        } catch (err) {
-          document.getElementById('ruimteBeschrijving').value = '(fout bij ophalen)';
-        }
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Melding ruimte</title>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        max-width: 600px;
+        margin: 2rem auto;
+        padding: 1rem;
+        background-color: #f7f7f7;
+        color: #333;
       }
 
-      document.getElementById('meldingForm').addEventListener('submit', async e => {
-        e.preventDefault();
-        const form = e.target;
+      h1 {
+        color: #f07c10;
+        text-align: center;
+      }
 
-        const payload = {
-          JobDescr: form.beschrijving.value,
-          ReportText: form.email.value,
-          SpaceId: form.spaceId.value,
-          Provider: "QRConnect",
-          ExternalId: "",
-          PriorityId: "",
-          ServiceDeskReportTypeId: "601"
-        };
+      label {
+        display: block;
+        margin-top: 1.2rem;
+        font-weight: bold;
+      }
 
-        const res = await fetch('/.netlify/functions/melding', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(payload)
-        });
+      input[type="text"],
+      input[type="email"],
+      textarea {
+        width: 100%;
+        padding: 0.6rem;
+        margin-top: 0.3rem;
+        border: 1px solid #ccc;
+        border-radius: 4px;
+        box-sizing: border-box;
+        background-color: #fff;
+      }
 
-        if (res.ok) {
-          alert('Melding succesvol verzonden!');
-          form.reset();
-        } else {
-          alert('Er ging iets mis bij het verzenden.');
+      textarea {
+        resize: vertical;
+      }
+
+      button {
+        margin-top: 1.5rem;
+        background-color: #f07c10;
+        color: white;
+        padding: 0.8rem 1.5rem;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+        font-weight: bold;
+      }
+
+      button:hover {
+        background-color: #d96b0e;
+      }
+
+      .message {
+        margin-top: 1.5rem;
+        padding: 1rem;
+        border-radius: 4px;
+        font-weight: bold;
+      }
+
+      .success {
+        background-color: #d4edda;
+        color: #155724;
+      }
+
+      .error {
+        background-color: #f8d7da;
+        color: #721c24;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Meld een storing</h1>
+
+    <form id="meldingForm">
+      <label for="ruimteBeschrijving">Ruimtebeschrijving</label>
+      <input type="text" id="ruimteBeschrijving" readonly />
+
+      <label for="email">Uw e-mailadres</label>
+      <input type="email" id="email" required />
+
+      <label for="beschrijving">Probleembeschrijving</label>
+      <textarea id="beschrijving" rows="4" required></textarea>
+
+      <input type="hidden" id="spaceId" value={spaceId} />
+
+      <button type="submit">Verstuur melding</button>
+    </form>
+
+    <div id="meldingStatus" class="message" style="display: none;"></div>
+
+    <script>
+      (async () => {
+        const spaceId = document.getElementById('spaceId').value;
+
+        if (spaceId) {
+          try {
+            const res = await fetch(`/.netlify/functions/Space?spaceId=${spaceId}`);
+            const data = await res.json();
+            document.getElementById('ruimteBeschrijving').value = data.description?.trim() || '(geen beschrijving)';
+          } catch (err) {
+            document.getElementById('ruimteBeschrijving').value = '(fout bij ophalen)';
+          }
         }
-      });
-    })();
-  </script>
-</body>
+
+        document.getElementById('meldingForm').addEventListener('submit', async e => {
+          e.preventDefault();
+
+          const status = document.getElementById('meldingStatus');
+          status.style.display = 'none';
+
+          const payload = {
+            JobDescr: document.getElementById('beschrijving').value,
+            ReportText: document.getElementById('email').value,
+            SpaceId: document.getElementById('spaceId').value,
+            Provider: "QRConnect",
+            ExternalId: "",
+            PriorityId: "",
+            ServiceDeskReportTypeId: "601"
+          };
+
+          try {
+            const response = await fetch('/.netlify/functions/melding', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(payload)
+            });
+
+            if (response.ok) {
+              status.textContent = '✅ Melding succesvol verzonden!';
+              status.className = 'message success';
+              status.style.display = 'block';
+              document.getElementById('meldingForm').reset();
+            } else {
+              throw new Error('Fout bij verzenden');
+            }
+          } catch (err) {
+            status.textContent = '❌ Er ging iets mis bij het verzenden.';
+            status.className = 'message error';
+            status.style.display = 'block';
+          }
+        });
+      })();
+    </script>
+  </body>
 </html>
