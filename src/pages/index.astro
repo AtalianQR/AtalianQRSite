@@ -1,159 +1,74 @@
 ---
-const params = new URLSearchParams(Astro.request.url);
-const spaceId = params.get('id') ?? '';
----
+const { url } = Astro;
+const id = new URL(url).searchParams.get("id") ?? "";
 
+// Valideer aanwezigheid van `id`
+if (!id) {
+  // Geen ID: we tonen straks een melding
+} 
+
+// Probeer server-side de beschrijving op te halen
+let description: string | null = null;
+if (id) {
+  try {
+    const res = await fetch(`/.netlify/functions/space?id=${id}`);
+    if (res.ok) {
+      const json = await res.json();
+      description = json.description ?? "(geen beschrijving)";
+    } else {
+      description = `(API-fout: ${res.status})`;
+    }
+  } catch (e) {
+    description = "(fout bij ophalen)";
+  }
+}
+---
 <!DOCTYPE html>
 <html lang="nl">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Melding ruimte</title>
-  <style>
-    body {
-      font-family: Arial, sans-serif;
-      max-width: 600px;
-      margin: 2rem auto;
-      padding: 1rem;
-      background-color: #f7f7f7;
-      color: #333;
-    }
-
-    h1 {
-      color: #f07c10;
-      text-align: center;
-    }
-
-    label {
-      display: block;
-      margin-top: 1.2rem;
-      font-weight: bold;
-    }
-
-    input[type="text"],
-    input[type="email"],
-    textarea {
-      width: 100%;
-      padding: 0.6rem;
-      margin-top: 0.3rem;
-      border: 1px solid #ccc;
-      border-radius: 4px;
-      box-sizing: border-box;
-      background-color: #fff;
-    }
-
-    textarea {
-      resize: vertical;
-    }
-
-    button {
-      margin-top: 1.5rem;
-      background-color: #f07c10;
-      color: white;
-      padding: 0.8rem 1.5rem;
-      border: none;
-      border-radius: 4px;
-      cursor: pointer;
-      font-weight: bold;
-    }
-
-    button:hover {
-      background-color: #d96b0e;
-    }
-
-    .message {
-      margin-top: 1.5rem;
-      padding: 1rem;
-      border-radius: 4px;
-      font-weight: bold;
-    }
-
-    .success {
-      background-color: #d4edda;
-      color: #155724;
-    }
-
-    .error {
-      background-color: #f8d7da;
-      color: #721c24;
-    }
-  </style>
-</head>
-<body>
-  <h1>Meld een storing</h1>
-
-  <form id="meldingForm">
-    <label for="ruimteBeschrijving">Ruimtebeschrijving</label>
-    <input type="text" id="ruimteBeschrijving" readonly />
-
-    <label for="email">Uw e-mailadres</label>
-    <input type="email" id="email" required />
-
-    <label for="beschrijving">Probleembeschrijving</label>
-    <textarea id="beschrijving" rows="4" required></textarea>
-
-    <input type="hidden" id="spaceId" value={`${spaceId}`} />
-
-    <button type="submit">Verstuur melding</button>
-  </form>
-
-  <div id="meldingStatus" class="message" style="display: none;"></div>
-
-  <script>
-    document.addEventListener('DOMContentLoaded', async () => {
-      const spaceId = document.getElementById('spaceId').value;
-      console.log("spaceId vanuit URL:", spaceId);
-
-      // Beschrijving ophalen via Netlify Function
-      try {
-        const res = await fetch(`/.netlify/functions/space?spaceId=${spaceId}`);
-        const data = await res.json();
-        console.log("Respons van Space-functie:", data);
-        document.getElementById('ruimteBeschrijving').value = data.description ?? "(geen beschrijving)";
-      } catch (err) {
-        console.error("Fout bij ophalen ruimtebeschrijving:", err);
-        document.getElementById('ruimteBeschrijving').value = "(fout bij ophalen)";
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Ruimtebeschrijving</title>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        max-width: 500px;
+        margin: 2rem auto;
+        padding: 1rem;
+        background: #f7f7f7;
+        color: #333;
       }
+      h1 {
+        text-align: center;
+        color: #f07c10;
+      }
+      .info {
+        background: #fff;
+        padding: 1rem;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+        margin-top: 1rem;
+        font-size: 1.1rem;
+      }
+      .error {
+        color: #721c24;
+        background: #f8d7da;
+        padding: 1rem;
+        border-radius: 4px;
+        margin-top: 1rem;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Ruimtebeschrijving</h1>
 
-      // Formulierverzending
-      document.getElementById('meldingForm').addEventListener('submit', async e => {
-        e.preventDefault();
-
-        const status = document.getElementById('meldingStatus');
-        status.style.display = 'none';
-
-        const payload = {
-          JobDescr: document.getElementById('beschrijving').value,
-          ReportText: document.getElementById('email').value,
-          SpaceId: document.getElementById('spaceId').value,
-          Provider: "QRConnect",
-          ExternalId: "",
-          PriorityId: "",
-          ServiceDeskReportTypeId: "601"
-        };
-
-        try {
-          const response = await fetch('/.netlify/functions/melding', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(payload)
-          });
-
-          if (response.ok) {
-            status.textContent = '✅ Melding succesvol verzonden!';
-            status.className = 'message success';
-            status.style.display = 'block';
-            document.getElementById('meldingForm').reset();
-          } else {
-            throw new Error('Fout bij verzenden');
-          }
-        } catch (err) {
-          status.textContent = '❌ Er ging iets mis bij het verzenden.';
-          status.className = 'message error';
-          status.style.display = 'block';
-        }
-      });
-    });
-  </script>
-</body>
+    { !id ? (
+      <div class="error">⚠️ Geen ruimte-ID opgegeven in de URL.</div>
+    ) : (
+      <div class="info">
+        <strong>Space ID:</strong> {id}<br />
+        <strong>Beschrijving:</strong> {description}
+      </div>
+    ) }
+  </body>
 </html>
