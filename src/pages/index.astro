@@ -1,70 +1,98 @@
 ---
-import { useState, useEffect } from 'react'
 const assetId = new URLSearchParams(Astro.request.url).get('assetid') ?? '';
 ---
 
 <html lang="nl">
   <head>
     <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>QR Melding – Atalian</title>
+    <style>
+      body {
+        font-family: sans-serif;
+        padding: 2rem;
+        max-width: 600px;
+        margin: auto;
+      }
+      label {
+        display: block;
+        margin-top: 1rem;
+      }
+      input, textarea {
+        width: 100%;
+        padding: 0.5rem;
+        margin-top: 0.25rem;
+        font-size: 1rem;
+      }
+      button {
+        margin-top: 1.5rem;
+        padding: 0.75rem 1.5rem;
+        background-color: #f07c10;
+        color: white;
+        border: none;
+        font-size: 1rem;
+        cursor: pointer;
+      }
+    </style>
   </head>
   <body>
-    <main style="max-width: 600px; margin: auto; padding: 2rem; font-family: sans-serif;">
-      <h1>Probleem melden</h1>
-      <p>Gebruik dit formulier om een probleem te melden via QR-code.</p>
+    <h1>Probleem melden</h1>
+    <p>Gebruik dit formulier om een storing of defect door te geven via QR-code.</p>
 
-      <form method="post" action="https://example.com/api/melding" onsubmit="handleSubmit(event)">
-        <label for="email">Uw e-mailadres</label><br />
-        <input id="email" name="email" type="email" required style="width: 100%; margin-bottom: 1rem;" />
+    <form method="post" onsubmit="handleSubmit(event)">
+      <label for="email">Uw e-mailadres</label>
+      <input id="email" name="email" type="email" required />
 
-        <label for="beschrijving">Probleembeschrijving</label><br />
-        <textarea id="beschrijving" name="beschrijving" required rows="5" style="width: 100%; margin-bottom: 1rem;"></textarea>
+      <label for="beschrijving">Probleembeschrijving</label>
+      <textarea id="beschrijving" name="beschrijving" required rows="5"></textarea>
 
-        <label for="assetid">Asset-ID</label><br />
-        <input id="assetid" name="assetid" type="text" value={assetId} readonly style="width: 100%; margin-bottom: 1rem;" />
+      <label for="assetid">Asset-ID</label>
+      <input id="assetid" name="assetid" type="text" value={assetId} readonly />
 
-        <button type="submit">Verzend melding</button>
-      </form>
+      <button type="submit">Verzend melding</button>
+    </form>
 
-<script type="text/javascript">
-  async function handleSubmit(e) {
-    e.preventDefault();
-    const form = e.target;
+    <script type="text/javascript">
+      async function handleSubmit(e) {
+        e.preventDefault();
+        const form = e.target;
 
-    const payload = {
-      JobDescr: form.beschrijving.value,
-      ReportText: form.email.value,
-      SpaceId: form.assetid.value,
-      Provider: "QRConnect",
-      ExternalId: "",
-      PriorityId: "",
-      ServiceDeskReportTypeId: "601"
-    };
+        const payload = {
+          WorkflowName: "_REST_OneAtalianJob",
+          Parameters: {
+            JobDescr: form.beschrijving.value,
+            ReportText: form.email.value,
+            SpaceId: form.assetid.value,
+            Provider: "QRConnect",
+            ExternalId: "",
+            PriorityId: "",
+            ServiceDeskReportTypeId: "601"
+          }
+        };
 
-    try {
-      const res = await fetch("https://atalian-test.ultimo.net/api/v1/workflows/3f92bbfca30445ff875f3a9d956441be/execute", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Ultimo-API-Key": "235A210503214055A27F070DB8748750"
-        },
-        body: JSON.stringify(payload)
-      });
+        try {
+          const res = await fetch("https://atalian-test.ultimo.net/api/v1/workflows/3f92bbfca30445ff875f3a9d956441be/execute", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "Ultimo-API-Key": "235A210503214055A27F070DB8748750"
+            },
+            body: JSON.stringify(payload)
+          });
 
-      if (res.ok) {
-        alert("✅ Melding succesvol doorgestuurd naar Ultimo!");
-        form.reset();
-      } else {
-        const text = await res.text();
-        console.error('API-fout:', text);
-        alert("❌ Fout bij verzending naar Ultimo.");
+          if (res.ok) {
+            alert("✅ Melding succesvol doorgestuurd naar Ultimo!");
+            form.reset();
+          } else {
+            const error = await res.text();
+            console.error('Ultimo-fout:', error);
+            alert("❌ Fout bij verzending naar Ultimo.");
+          }
+        } catch (err) {
+          console.error('Netwerkfout:', err);
+          alert("⚠️ Netwerkprobleem bij contact met Ultimo.");
+        }
       }
-    } catch (err) {
-      console.error('Netwerkfout:', err);
-      alert("⚠️ Netwerkprobleem bij contact met Ultimo.");
-    }
-  }
-</script>
-    </main>
+    </script>
   </body>
 </html>
