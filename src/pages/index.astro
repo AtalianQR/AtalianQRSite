@@ -47,12 +47,20 @@ const assetId = new URLSearchParams(Astro.request.url).get('assetid') ?? '';
       <textarea id="beschrijving" name="beschrijving" required rows="5"></textarea>
 
       <label for="assetid">Asset-ID</label>
-      <input id="assetid" name="assetid" type="text" value={assetId} readonly />
+      <input id="assetid" name="assetid" type="text" readonly />
 
       <button type="submit">Verzend melding</button>
     </form>
 
     <script type="text/javascript">
+      window.addEventListener('DOMContentLoaded', () => {
+        const params = new URLSearchParams(window.location.search);
+        const assetId = params.get('assetid');
+        if (assetId) {
+          document.getElementById('assetid').value = assetId;
+        }
+      });
+
       async function handleSubmit(e) {
         e.preventDefault();
         const form = e.target;
