@@ -37,7 +37,7 @@ const assetId = new URLSearchParams(Astro.request.url).get('assetid') ?? '';
   </head>
   <body>
     <h1>Probleem melden</h1>
-    <p>Gebruik dit formulier om een storing of defect door te geven via QR-codes.</p>
+    <p>Gebruik dit formulier om een storing of defect door te geven via QR-code.</p>
 
     <form method="post" onsubmit="handleSubmit(event)">
       <label for="email">Uw e-mailadres</label>
@@ -52,6 +52,43 @@ const assetId = new URLSearchParams(Astro.request.url).get('assetid') ?? '';
       <button type="submit">Verzend melding</button>
     </form>
 
-  
+    <script type="text/javascript">
+      async function handleSubmit(e) {
+        e.preventDefault();
+        const form = e.target;
+
+        const body = {
+          JobDescr: form.beschrijving.value,
+          ReportText: form.email.value,
+          EquipmentId: "",
+          ExternalId: "",
+          PriorityId: "",
+          ServiceDeskReportTypeId: "601",
+          SpaceId: form.assetid.value
+        };
+
+        try {
+          const res = await fetch("/.netlify/functions/melding", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json"
+            },
+            body: JSON.stringify(body)
+          });
+
+          if (res.ok) {
+            alert("✅ Melding succesvol doorgestuurd naar Ultimo!");
+            form.reset();
+          } else {
+            const errorText = await res.text();
+            console.error("API-fout:", errorText);
+            alert("❌ Fout bij verzending:\n" + errorText);
+          }
+        } catch (err) {
+          console.error("Netwerkfout:", err);
+          alert("⚠️ Verbindingsprobleem met backend.");
+        }
+      }
+    </script>
   </body>
 </html>
