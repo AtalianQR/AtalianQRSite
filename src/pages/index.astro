@@ -1,5 +1,5 @@
 ---
----  
+---
 <!DOCTYPE html>
 <html lang="nl">
 <head>
@@ -15,23 +15,34 @@
       background: #f7f7f7;
       color: #333;
     }
+
+    img.logo {
+      display: block;
+      max-width: 200px;
+      margin: 0 auto 2rem auto;
+    }
+
     h1 {
       color: #f07c10;
       text-align: center;
     }
+
     .info, .error, .success {
       margin-top: 1rem;
       padding: 1rem;
       border-radius: 4px;
     }
+
     .info   { background: #fff; border: 1px solid #ddd; }
     .error  { background: #f8d7da; color: #721c24; }
-    .success{ background: #d4edda; color: #155724; }
+    .success{ background: #d4edda; color: #155724; font-size: 1.2rem; text-align: center; }
+
     label {
       display: block;
       margin-top: 1.2rem;
       font-weight: bold;
     }
+
     input[type="text"],
     input[type="email"],
     textarea {
@@ -43,7 +54,9 @@
       box-sizing: border-box;
       background: #fff;
     }
+
     textarea { resize: vertical; }
+
     button {
       margin-top: 1.5rem;
       background: #f07c10;
@@ -54,16 +67,20 @@
       cursor: pointer;
       font-weight: bold;
     }
+
     button:hover { background: #d96b0e; }
   </style>
 </head>
 <body>
+  <!-- 📌 Voeg hier je logo toe -->
+  <img src="/AtalianLogo.png" alt="Atalian logo" class="logo" />
+
   <h1>Meld een storing</h1>
 
-  <!-- Hier tonen we de ruimtegegevens -->
+  <!-- Ruimtegegevens worden hier opgehaald -->
   <div id="ruimteInfo" class="info">Laden ruimtegegevens…</div>
 
-  <!-- Formulier wordt later zichtbaar gemaakt -->
+  <!-- Formulier -->
   <form id="meldingForm" style="display: none;">
     <label for="email">Uw e-mailadres</label>
     <input type="email" id="email" required />
@@ -74,51 +91,43 @@
     <button type="submit">Verstuur melding</button>
   </form>
 
-  <!-- Hier tonen we fout- of succesbericht -->
-  <div id="statusBericht" style="display: none;"></div>
+  <!-- Succesbericht -->
+  <div id="succesScherm" class="success" style="display: none;"></div>
 
   <script>
     document.addEventListener('DOMContentLoaded', async () => {
       const params = new URLSearchParams(window.location.search);
-      const id     = params.get('id');
-      const info   = document.getElementById('ruimteInfo');
-      const form   = document.getElementById('meldingForm');
-      const status = document.getElementById('statusBericht');
+      const id = params.get('id');
+      const info = document.getElementById('ruimteInfo');
+      const form = document.getElementById('meldingForm');
+      const success = document.getElementById('succesScherm');
 
-      // 1) Controleren of er een ID is
       if (!id) {
         info.className = 'error';
-        info.textContent = '⚠️ Geen ruimte-ID opgegeven. Gebruik ?id=000898 aan het einde van de URL.';
+        info.textContent = '⚠️ Geen ruimte-ID opgegeven. Gebruik ?id=000898 in de URL.';
         return;
       }
 
-      // 2) Ruimtebeschrijving ophalen
+      // Ophaalruimtegegevens
       try {
-        const res  = await fetch(`/.netlify/functions/space?id=${encodeURIComponent(id)}`);
+        const res = await fetch(`/.netlify/functions/space?id=${encodeURIComponent(id)}`);
         const json = await res.json();
         if (json.description) {
           info.className = 'info';
-          info.innerHTML = `<strong>Space ID:</strong> ${id}<br>
-                            <strong>Beschrijving:</strong> ${json.description}`;
-        } else if (json.error) {
-          throw new Error(json.error);
+          info.textContent = `${json.description}`;
         } else {
-          throw new Error('Onverwacht antwoord van server');
+          throw new Error('Onbekende ruimte');
         }
       } catch (err) {
-        console.error('Fetch-error:', err);
         info.className = 'error';
         info.textContent = '❌ Fout bij ophalen ruimtegegevens: ' + err.message;
         return;
       }
 
-      // 3) Formulier tonen
       form.style.display = 'block';
 
-      // 4) Verwerking verzending
       form.addEventListener('submit', async e => {
         e.preventDefault();
-        status.style.display = 'none';
 
         const payload = {
           JobDescr: document.getElementById('beschrijving').value,
@@ -136,15 +145,18 @@
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(payload)
           });
+
           if (!resp.ok) throw new Error(`Status ${resp.status}`);
-          status.className = 'success';
-          status.textContent = '✅ Melding succesvol verzonden!';
+
+          form.style.display = 'none';
+          info.style.display = 'none';
+          success.innerHTML = `✅ De storing werd succesvol doorgestuurd.<br><br>Dank je wel voor je melding.`;
+          success.style.display = 'block';
+
         } catch (err) {
-          console.error('Send-error:', err);
-          status.className = 'error';
-          status.textContent = '❌ Verzenden mislukt: ' + err.message;
+          info.className = 'error';
+          info.textContent = '❌ Verzenden mislukt: ' + err.message;
         }
-        status.style.display = 'block';
       });
     });
   </script>
