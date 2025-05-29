@@ -83,7 +83,7 @@ const spaceId = params.get('id') ?? '';
 	const spaceId = document.getElementById('spaceId').value;
 	console.log("spaceId vanuit URL:", spaceId);
 
-	const res = await fetch(`/.netlify/functions/Space?spaceId=${spaceId}`);
+	const res = await fetch(`/.netlify/functions/space?spaceId=${spaceId}`);
 	const data = await res.json();
 	console.log("Respons van Space-functie:", data);
     </script>
@@ -115,7 +115,7 @@ const spaceId = params.get('id') ?? '';
 
         if (spaceId) {
           try {
-            const res = await fetch(`/.netlify/functions/Space?spaceId=${spaceId}`);
+            const res = await fetch(`/.netlify/functions/space?spaceId=${spaceId}`);
             const data = await res.json();
             console.log("Respons van Space-functie:", data);
             document.getElementById('ruimteBeschrijving').value =
