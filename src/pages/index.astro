@@ -78,6 +78,10 @@ const spaceId = params.get('id') ?? '';
         color: #721c24;
       }
     </style>
+
+    <script>
+      console.log("spaceId vanuit URL:", "{spaceId}");
+    </script>
   </head>
   <body>
     <h1>Meld een storing</h1>
@@ -102,13 +106,17 @@ const spaceId = params.get('id') ?? '';
     <script>
       (async () => {
         const spaceId = document.getElementById('spaceId').value;
+        console.log("spaceId in script:", spaceId);
 
         if (spaceId) {
           try {
             const res = await fetch(`/.netlify/functions/Space?spaceId=${spaceId}`);
             const data = await res.json();
-            document.getElementById('ruimteBeschrijving').value = data.description?.trim() || '(geen beschrijving)';
+            console.log("Respons van Space-functie:", data);
+            document.getElementById('ruimteBeschrijving').value =
+              data.description?.trim() || '(geen beschrijving)';
           } catch (err) {
+            console.error('Fout bij ophalen ruimte:', err);
             document.getElementById('ruimteBeschrijving').value = '(fout bij ophalen)';
           }
         }
