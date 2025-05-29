@@ -116,6 +116,24 @@
       box-shadow: 0 8px 20px rgba(0, 0, 0, 0.2);
       animation: pulse 2s infinite;
     }
+
+    #btnTerug {
+      display: none;
+      background: #ddd;
+      color: #333;
+      font-weight: bold;
+      padding: 0.75rem 1rem;
+      border: none;
+      border-radius: 6px;
+      font-size: 1rem;
+      margin-bottom: 1.5rem;
+      cursor: pointer;
+      width: auto;
+    }
+
+    #btnTerug:hover {
+      background: #ccc;
+    }
   </style>
 </head>
 <body>
@@ -143,13 +161,16 @@
       +32 78 152 300
     </a>
   </div>
-
+  <div id="ruimteInfo" class="info" style="display:none;"></div>
+  
   <div id="startKnoppen" style="text-align:center; margin: 2rem 0;">
     <button id="btnStoring" class="action-button">Storing melden</button>
     <button id="btnInstructies" class="action-button">Instructies</button>
   </div>
 
-  <div id="ruimteInfo" class="info" style="display:none;"></div>
+  <button id="btnTerug" style="margin-top: 1.5rem;">⬅ Terug</button>
+
+
 
   <form id="meldingForm" style="display:none;">
     <label for="email" id="labelEmail">Uw e-mailadres</label>
@@ -163,127 +184,134 @@
 
   <div id="statusBericht" style="display:none;"></div>
 
-  <script>
-    document.addEventListener('DOMContentLoaded', async () => {
-      const params = new URLSearchParams(window.location.search);
-      const id = params.get('id');
-      let lang = (params.get('lang') || 'nl').toLowerCase();
-      if (!['nl', 'fr'].includes(lang)) lang = 'nl';
+<script>
+  document.addEventListener('DOMContentLoaded', async () => {
+    const params = new URLSearchParams(window.location.search);
+    const id = params.get('id');
+    let lang = (params.get('lang') || 'nl').toLowerCase();
+    if (!['nl', 'fr'].includes(lang)) lang = 'nl';
 
-      const txt = {
-        nl: {
-          page: 'Atalian Support',
-          title: 'Dringend? 👇',
-          btnStoring: 'Storing melden',
-          btnInstructies: 'Instructies',
-          email: 'Uw e-mailadres',
-          desc: 'Probleembeschrijving',
-          submit: 'Verzend melding',
-          loading: 'Laden ruimtegegevens…',
-          noId: '⚠️ Geen ruimte-ID opgegeven. Voeg ?id=000898 toe.',
-          fetchError: '❌ Fout bij ophalen ruimtegegevens:',
-          success: '✅ Melding succesvol verzonden!',
-          sendError: '❌ Verzenden mislukt:'
-        },
-        fr: {
-          page: 'Support Atalian',
-          title: 'Urgent? 👇',
-          btnStoring: 'Signaler un problème',
-          btnInstructies: 'Instructions',
-          email: 'Votre adresse e-mail',
-          desc: 'Description du problème',
-          submit: 'Envoyer le signalement',
-          loading: 'Chargement…',
-          noId: '⚠️ Aucun ID fourni. Ajoutez ?id=000898.',
-          fetchError: '❌ Erreur lors du chargement :',
-          success: '✅ Signalement envoyé avec succès !',
-          sendError: '❌ Échec de l’envoi :'
-        }
-      }[lang];
+    const txt = {
+      nl: {
+        page: 'Atalian Support',
+        title: 'Dringend? 👇',
+        btnStoring: 'Storing melden',
+        btnInstructies: 'Instructies',
+        email: 'Uw e-mailadres',
+        desc: 'Probleembeschrijving',
+        submit: 'Verzend melding',
+        loading: 'Laden ruimtegegevens…',
+        noId: '⚠️ Geen ruimte-ID opgegeven. Voeg ?id=000898 toe.',
+        fetchError: '❌ Fout bij ophalen ruimtegegevens:',
+        success: '✅ Melding succesvol verzonden!',
+        sendError: '❌ Verzenden mislukt:',
+        terug: '⬅ Terug'
+      },
+      fr: {
+        page: 'Support Atalian',
+        title: 'Urgent? 👇',
+        btnStoring: 'Signaler un problème',
+        btnInstructies: 'Instructions',
+        email: 'Votre adresse e-mail',
+        desc: 'Description du problème',
+        submit: 'Envoyer le signalement',
+        loading: 'Chargement…',
+        noId: '⚠️ Aucun ID fourni. Ajoutez ?id=000898.',
+        fetchError: '❌ Erreur lors du chargement :',
+        success: '✅ Signalement envoyé avec succès !',
+        sendError: '❌ Échec de l’envoi :',
+        terug: '⬅ Retour'
+      }
+    }[lang];
 
-      document.getElementById('pageTitle').textContent = txt.page;
-      document.getElementById('btnStoring').textContent = txt.btnStoring;
-      document.getElementById('btnInstructies').textContent = txt.btnInstructies;
-      document.getElementById('labelEmail').textContent = txt.email;
-      document.getElementById('labelDesc').textContent = txt.desc;
-      document.getElementById('submitBtn').textContent = txt.submit;
-      document.getElementById('ruimteInfo').textContent = txt.loading;
+    const info = document.getElementById('ruimteInfo');
+    const form = document.getElementById('meldingForm');
+    const status = document.getElementById('statusBericht');
+    const btnTerug = document.getElementById('btnTerug');
 
-      const base = window.location.pathname;
-      params.set('lang', 'nl');
-      document.getElementById('link-nl').href = `${base}?${params.toString()}`;
-      params.set('lang', 'fr');
-      document.getElementById('link-fr').href = `${base}?${params.toString()}`;
+    document.getElementById('pageTitle').textContent = txt.page;
+    document.getElementById('btnStoring').textContent = txt.btnStoring;
+    document.getElementById('btnInstructies').textContent = txt.btnInstructies;
+    document.getElementById('labelEmail').textContent = txt.email;
+    document.getElementById('labelDesc').textContent = txt.desc;
+    document.getElementById('submitBtn').textContent = txt.submit;
+    btnTerug.textContent = txt.terug;
 
-      const info = document.getElementById('ruimteInfo');
-      const form = document.getElementById('meldingForm');
-      const status = document.getElementById('statusBericht');
+    const base = window.location.pathname;
+    params.set('lang', 'nl');
+    document.getElementById('link-nl').href = `${base}?${params.toString()}`;
+    params.set('lang', 'fr');
+    document.getElementById('link-fr').href = `${base}?${params.toString()}`;
 
-      document.getElementById('btnStoring').addEventListener('click', async () => {
-        document.getElementById('startKnoppen').style.display = 'none';
-        document.getElementById('pageTitle').textContent = txt.title;
-
-        if (!id) {
-          info.className = 'error';
-          info.textContent = txt.noId;
+    // ✅ Toon ruimtebeschrijving BOVEN de knoppen bij opstart
+    if (id) {
+      try {
+        const res = await fetch(`/.netlify/functions/space?id=${encodeURIComponent(id)}`);
+        const data = await res.json();
+        if (data.description) {
+          info.className = 'highlight-info';
+          info.innerHTML = `📍 <strong>${data.description}</strong>`;
           info.style.display = 'block';
-          return;
         }
+      } catch (err) {
+        info.className = 'error';
+        info.textContent = `${txt.fetchError} ${err.message}`;
+        info.style.display = 'block';
+      }
+    }
 
-        try {
-          const res = await fetch(`/.netlify/functions/space?id=${encodeURIComponent(id)}`);
-          const data = await res.json();
-          if (data.description) {
-            info.className = 'highlight-info';
-            info.innerHTML = `📍 <strong>${data.description}</strong>`;
-            info.style.display = 'block';
-          } else {
-            throw new Error(data.error || 'Onverwacht antwoord');
-          }
-        } catch (err) {
-          console.error(err);
-          info.className = 'error';
-          info.textContent = `${txt.fetchError} ${err.message}`;
-          info.style.display = 'block';
-          return;
-        }
-
-        form.style.display = 'block';
-      });
-
-      form.addEventListener('submit', async e => {
-        e.preventDefault();
-        status.style.display = 'none';
-
-        const payload = {
-          JobDescr: document.getElementById('beschrijving').value,
-          ReportText: document.getElementById('email').value,
-          SpaceId: id,
-          Provider: 'QRConnect',
-          ExternalId: '',
-          PriorityId: '',
-          ServiceDeskReportTypeId: '601'
-        };
-
-        try {
-          const resp = await fetch('/.netlify/functions/melding', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(payload)
-          });
-          if (!resp.ok) throw new Error(`Status ${resp.status}`);
-          form.style.display = 'none';
-          info.style.display = 'none';
-          status.className = 'success';
-          status.textContent = txt.success;
-        } catch (err) {
-          console.error(err);
-          status.className = 'error';
-          status.textContent = `${txt.sendError} ${err.message}`;
-        }
-        status.style.display = 'block';
-      });
+    // ✅ Klik op storing melden
+    document.getElementById('btnStoring').addEventListener('click', () => {
+      document.getElementById('startKnoppen').style.display = 'none';
+      document.getElementById('pageTitle').textContent = txt.title;
+      btnTerug.style.display = 'inline-block';
+      form.style.display = 'block';
     });
-  </script>
+
+    // ✅ Terugknop
+    btnTerug.addEventListener('click', () => {
+      document.getElementById('startKnoppen').style.display = 'block';
+      document.getElementById('pageTitle').textContent = txt.page;
+      form.style.display = 'none';
+      status.style.display = 'none';
+      btnTerug.style.display = 'none';
+    });
+
+    // ✅ Verzenden
+    form.addEventListener('submit', async e => {
+      e.preventDefault();
+      status.style.display = 'none';
+
+      const payload = {
+        JobDescr: document.getElementById('beschrijving').value,
+        ReportText: document.getElementById('email').value,
+        SpaceId: id,
+        Provider: 'QRConnect',
+        ExternalId: '',
+        PriorityId: '',
+        ServiceDeskReportTypeId: '601'
+      };
+
+      try {
+        const resp = await fetch('/.netlify/functions/melding', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+        if (!resp.ok) throw new Error(`Status ${resp.status}`);
+        form.style.display = 'none';
+        info.style.display = 'none';
+        status.className = 'success';
+        status.textContent = txt.success;
+      } catch (err) {
+        console.error(err);
+        status.className = 'error';
+        status.textContent = `${txt.sendError} ${err.message}`;
+      }
+      status.style.display = 'block';
+    });
+  });
+</script>
+ 
 </body>
 </html>
