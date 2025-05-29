@@ -5,7 +5,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Meld een storing</title>
+  <title>Atalian Assistance</title>
   <style>
     body { font-family: sans-serif; padding: 2rem; max-width: 600px; margin: auto; background: #f7f7f7; color:#333; }
     img.logo { display: block; max-width: 160px; margin: 0 auto 1.5rem; }
@@ -31,11 +31,22 @@
 </div>
 
 <h1 id="pageTitle">Meld een storing</h1>
-<p style="text-align:center; margin-top:-0.5rem;">
-  <a href="tel:+3278152300" style="color:#333; text-decoration:none; font-size:1.1rem;">
-    📞 +32 78 152 300
+<div style="text-align:center; margin-top:-0.5rem;">
+  <a href="tel:+3278152300" style="
+    display:inline-block;
+    background:#f07c10;
+    color:#fff;
+    padding:0.5rem 1rem;
+    margin-top:0.75rem;
+    border-radius:4px;
+    text-decoration:none;
+    font-size:1.1rem;
+    font-weight:bold;
+    transition:background 0.3s;
+  " onmouseover="this.style.background='#d96b0e'" onmouseout="this.style.background='#f07c10'">
+    +32 78 152 300
   </a>
-</p>
+</div>
 
   <div id="ruimteInfo" class="info">Laden ruimtegegevens…</div>
 
@@ -68,7 +79,7 @@
       // Text translations
       const txt = {
         nl: {
-          title: 'Meld een storing',
+          title: 'Dringend? 👇',
           email: 'Uw e-mailadres',
           desc: 'Probleembeschrijving',
           submit: 'Verzend melding',
@@ -79,7 +90,7 @@
           sendError: '❌ Verzenden mislukt:'
         },
         fr: {
-          title: 'Signaler un problème',
+          title: 'Urgent? 👇',
           email: 'Votre adresse e-mail',
           desc: 'Description du problème',
           submit: 'Envoyer le signalement',
