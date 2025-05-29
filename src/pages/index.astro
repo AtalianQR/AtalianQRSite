@@ -1,55 +1,155 @@
----
----
 <!DOCTYPE html>
 <html lang="nl">
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <link rel="icon" type="image/png" href="/AtalianFavicon.png" />
   <title>Atalian Support</title>
   <style>
-    body { font-family: sans-serif; padding: 2rem; max-width: 600px; margin: auto; background: #f7f7f7; color:#333; }
-    img.logo { display: block; max-width: 160px; margin: 0 auto 1.5rem; }
-    .lang-switch { text-align: right; margin-bottom: 1rem; }
-    .lang-switch a { text-decoration: none; margin-left: 0.5rem; font-weight: bold; }
-    h1 { text-align: center; color: #f07c10; margin-bottom: 1rem; }
-    .info, .error, .success { margin-top:1rem; padding:1rem; border-radius:4px; }
-    .info { background:#fff; border:1px solid #ddd; }
-    .error { background:#f8d7da; color:#721c24; }
-    .success{ background:#d4edda; color:#155724; text-align:center; font-size:1.1rem; }
-    label { display:block; margin-top:1rem; font-weight:bold; }
-    input, textarea { width:100%; padding:0.5rem; margin-top:0.25rem; font-size:1rem; border:1px solid #ccc; border-radius:4px; }
-    textarea { resize:vertical; }
-    button { margin-top:1.5rem; padding:0.75rem 1.5rem; background:#f07c10; color:#fff; border:none; border-radius:4px; cursor:pointer; font-size:1rem; }
-    button:hover { background:#d96b0e; }
+    body {
+      font-family: sans-serif;
+      padding: 2rem;
+      max-width: 600px;
+      margin: auto;
+      background: #f7f7f7;
+      color: #333;
+    }
+
+    img.logo {
+      display: block;
+      max-width: 160px;
+      margin: 0 auto 1.5rem;
+    }
+
+    .lang-switch {
+      text-align: right;
+      margin-bottom: 1rem;
+    }
+
+    .lang-switch a {
+      text-decoration: none;
+      margin-left: 0.5rem;
+      font-weight: bold;
+    }
+
+    h1 {
+      text-align: center;
+      color: #f07c10;
+      margin-bottom: 1rem;
+    }
+
+    .info, .error, .success {
+      margin-top: 1rem;
+      padding: 1rem;
+      border-radius: 4px;
+    }
+
+    .info {
+      background: #fff;
+      border: 1px solid #ddd;
+    }
+
+    .error {
+      background: #f8d7da;
+      color: #721c24;
+    }
+
+    .success {
+      background: #d4edda;
+      color: #155724;
+      text-align: center;
+      font-size: 1.1rem;
+    }
+
+    label {
+      display: block;
+      margin-top: 1rem;
+      font-weight: bold;
+    }
+
+    input, textarea {
+      width: 100%;
+      padding: 0.5rem;
+      margin-top: 0.25rem;
+      font-size: 1rem;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+    }
+
+    textarea {
+      resize: vertical;
+    }
+
+    button, .action-button {
+      background: #f07c10;
+      color: white;
+      font-weight: bold;
+      padding: 1rem;
+      width: 100%;
+      border: none;
+      border-radius: 4px;
+      font-size: 1.2rem;
+      margin-bottom: 1rem;
+      cursor: pointer;
+    }
+
+    button:hover, .action-button:hover {
+      background: #d96b0e;
+    }
+
+    @keyframes pulse {
+      0%   { box-shadow: 0 0 0 0 rgba(240, 124, 16, 0.6); }
+      70%  { box-shadow: 0 0 0 15px rgba(240, 124, 16, 0); }
+      100% { box-shadow: 0 0 0 0 rgba(240, 124, 16, 0); }
+    }
+
+    .highlight-info {
+      display: block;
+      background: #f07c10;
+      color: #003366;
+      padding: 1.2rem 1.5rem;
+      border-radius: 10px;
+      font-size: 1.5rem;
+      font-weight: bold;
+      text-align: center;
+      margin-top: 2rem;
+      box-shadow: 0 8px 20px rgba(0, 0, 0, 0.2);
+      animation: pulse 2s infinite;
+    }
   </style>
 </head>
 <body>
   <img src="/AtalianLogo.png" alt="Atalian Logo" class="logo" />
 
- <div class="lang-switch">
-<a id="link-nl">NL</a>&nbsp;|<a id="link-fr">FR</a>
-</div>
+  <div class="lang-switch">
+    <a id="link-nl">NL</a>&nbsp;|<a id="link-fr">FR</a>
+  </div>
 
-<h1 id="pageTitle">Meld een storing</h1>
-<div style="text-align:center; margin-top:-0.5rem;">
-  <a href="tel:+3278152300" style="
-    display:inline-block;
-    background:#f07c10;
-    color:#fff;
-    padding:0.5rem 1rem;
-    margin-top:0.75rem;
-    border-radius:4px;
-    text-decoration:none;
-    font-size:1.1rem;
-    font-weight:bold;
-    transition:background 0.3s;
-  " onmouseover="this.style.background='#d96b0e'" onmouseout="this.style.background='#f07c10'">
-    +32 78 152 300
-  </a>
-</div>
+  <h1 id="pageTitle">Atalian Support</h1>
 
-  <div id="ruimteInfo" class="info">Laden ruimtegegevens…</div>
+  <div style="text-align:center; margin-top:-0.5rem;">
+    <a href="tel:+3278152300" style="
+      display:inline-block;
+      background:#f07c10;
+      color:#fff;
+      padding:0.5rem 1rem;
+      margin-top:0.75rem;
+      border-radius:4px;
+      text-decoration:none;
+      font-size:1.1rem;
+      font-weight:bold;
+      transition:background 0.3s;
+    " onmouseover="this.style.background='#d96b0e'" onmouseout="this.style.background='#f07c10'">
+      +32 78 152 300
+    </a>
+  </div>
+
+  <div id="startKnoppen" style="text-align:center; margin: 2rem 0;">
+    <button id="btnStoring" class="action-button">Storing melden</button>
+    <button id="btnInstructies" class="action-button">Instructies</button>
+  </div>
+
+  <div id="ruimteInfo" class="info" style="display:none;"></div>
 
   <form id="meldingForm" style="display:none;">
     <label for="email" id="labelEmail">Uw e-mailadres</label>
@@ -68,19 +168,14 @@
       const params = new URLSearchParams(window.location.search);
       const id = params.get('id');
       let lang = (params.get('lang') || 'nl').toLowerCase();
-      if (!['nl','fr'].includes(lang)) lang = 'nl';
+      if (!['nl', 'fr'].includes(lang)) lang = 'nl';
 
-      // Setup language switch links
-      const base = window.location.pathname;
-      params.set('lang','nl');
-      document.getElementById('link-nl').href = `${base}?${params.toString()}`;
-      params.set('lang','fr');
-      document.getElementById('link-fr').href = `${base}?${params.toString()}`;
-
-      // Text translations
       const txt = {
         nl: {
+          page: 'Atalian Support',
           title: 'Dringend? 👇',
+          btnStoring: 'Storing melden',
+          btnInstructies: 'Instructies',
           email: 'Uw e-mailadres',
           desc: 'Probleembeschrijving',
           submit: 'Verzend melding',
@@ -91,7 +186,10 @@
           sendError: '❌ Verzenden mislukt:'
         },
         fr: {
+          page: 'Support Atalian',
           title: 'Urgent? 👇',
+          btnStoring: 'Signaler un problème',
+          btnInstructies: 'Instructions',
           email: 'Votre adresse e-mail',
           desc: 'Description du problème',
           submit: 'Envoyer le signalement',
@@ -99,48 +197,60 @@
           noId: '⚠️ Aucun ID fourni. Ajoutez ?id=000898.',
           fetchError: '❌ Erreur lors du chargement :',
           success: '✅ Signalement envoyé avec succès !',
-          sendError: '❌ Échec de l’envoi :'        }
+          sendError: '❌ Échec de l’envoi :'
+        }
       }[lang];
 
-      // Apply translations
-      document.getElementById('pageTitle').textContent = txt.title;
+      document.getElementById('pageTitle').textContent = txt.page;
+      document.getElementById('btnStoring').textContent = txt.btnStoring;
+      document.getElementById('btnInstructies').textContent = txt.btnInstructies;
       document.getElementById('labelEmail').textContent = txt.email;
       document.getElementById('labelDesc').textContent = txt.desc;
       document.getElementById('submitBtn').textContent = txt.submit;
       document.getElementById('ruimteInfo').textContent = txt.loading;
 
+      const base = window.location.pathname;
+      params.set('lang', 'nl');
+      document.getElementById('link-nl').href = `${base}?${params.toString()}`;
+      params.set('lang', 'fr');
+      document.getElementById('link-fr').href = `${base}?${params.toString()}`;
+
       const info = document.getElementById('ruimteInfo');
       const form = document.getElementById('meldingForm');
       const status = document.getElementById('statusBericht');
 
-      if (!id) {
-        info.className = 'error';
-        info.textContent = txt.noId;
-        return;
-      }
+      document.getElementById('btnStoring').addEventListener('click', async () => {
+        document.getElementById('startKnoppen').style.display = 'none';
+        document.getElementById('pageTitle').textContent = txt.title;
 
-      // Fetch space info
-      try {
-        const res = await fetch(`/.netlify/functions/space?id=${encodeURIComponent(id)}`);
-        const data = await res.json();
-        if (data.description) {
-          info.className = 'info';
-        info.outerHTML = `<div style="text-align:center; font-size:1.25rem; margin-top:1.5rem;"><strong>${data.description}</strong></div>`;
-
-        } else {
-          throw new Error(data.error || 'Onverwacht antwoord');
+        if (!id) {
+          info.className = 'error';
+          info.textContent = txt.noId;
+          info.style.display = 'block';
+          return;
         }
-      } catch (err) {
-        console.error(err);
-        info.className = 'error';
-        info.textContent = `${txt.fetchError} ${err.message}`;
-        return;
-      }
 
-      // Show form
-      form.style.display = 'block';
+        try {
+          const res = await fetch(`/.netlify/functions/space?id=${encodeURIComponent(id)}`);
+          const data = await res.json();
+          if (data.description) {
+            info.className = 'highlight-info';
+            info.innerHTML = `📍 <strong>${data.description}</strong>`;
+            info.style.display = 'block';
+          } else {
+            throw new Error(data.error || 'Onverwacht antwoord');
+          }
+        } catch (err) {
+          console.error(err);
+          info.className = 'error';
+          info.textContent = `${txt.fetchError} ${err.message}`;
+          info.style.display = 'block';
+          return;
+        }
 
-      // Handle submit
+        form.style.display = 'block';
+      });
+
       form.addEventListener('submit', async e => {
         e.preventDefault();
         status.style.display = 'none';
@@ -158,7 +268,7 @@
         try {
           const resp = await fetch('/.netlify/functions/melding', {
             method: 'POST',
-            headers: {'Content-Type':'application/json'},
+            headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(payload)
           });
           if (!resp.ok) throw new Error(`Status ${resp.status}`);
