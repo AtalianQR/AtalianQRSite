@@ -1,51 +1,42 @@
 export async function handler(event) {
-  // Haal spaceId op uit querystring
-  const spaceId = event.queryStringParameters.spaceId;
-  console.log("🛠️ Ontvangen spaceId:", spaceId);
+  const spaceId = event.queryStringParameters.id;
 
-  // Controleer of spaceId is meegegeven
-  if (!spaceId || spaceId.trim() === '') {
-    console.error("❌ Geen spaceId opgegeven.");
+  if (!spaceId) {
     return {
       statusCode: 400,
-      body: JSON.stringify({ error: 'Er werd geen spaceId meegegeven in de URL.' })
+      body: JSON.stringify({ error: "Geen geldig ID ontvangen." }),
     };
   }
 
-  const API_KEY = 'E8CE6F5E76BE4925AE352310A6871B95'; // <-- vervang door je echte key
+  const apiKey = "E8CE6F5E76BE4925AE352310A6871B95";
   const url = `https://atalian-test.ultimo.net/api/v1/object/Space('${spaceId}')`;
 
   try {
-    const res = await fetch(url, {
+    const response = await fetch(url, {
       headers: {
-        accept: 'application/json',
-        ApiKey: API_KEY
-      }
+        accept: "application/json",
+        ApiKey: apiKey,
+      },
     });
 
-    const text = await res.text(); // vang ook foutmeldingen op
-    console.log("🛰️ Respons van Ultimo:", text);
-
-    if (!res.ok) {
+    if (!response.ok) {
       return {
-        statusCode: res.status,
-        body: JSON.stringify({ error: text })
+        statusCode: 500,
+        body: JSON.stringify({ error: "Fout bij ophalen van ruimte." }),
       };
     }
 
-    const data = JSON.parse(text);
-
+    const data = await response.json();
     return {
       statusCode: 200,
       body: JSON.stringify({
-        description: data.Description ?? '(geen beschrijving beschikbaar)'
-      })
+        description: data.Description || "Geen beschrijving gevonden.",
+      }),
     };
-  } catch (err) {
-    console.error("💥 Fout in fetch:", err.message);
+  } catch (error) {
     return {
       statusCode: 500,
-      body: JSON.stringify({ error: err.message })
+      body: JSON.stringify({ error: "Serverfout bij ophalen." }),
     };
   }
 }
