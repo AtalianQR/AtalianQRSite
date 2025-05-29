@@ -80,12 +80,12 @@ const spaceId = params.get('id') ?? '';
     </style>
 
     <script>
- const spaceId = document.getElementById('spaceId').value;
-console.log("spaceId vanuit URL:", spaceId);
+	const spaceId = document.getElementById('spaceId').value;
+	console.log("spaceId vanuit URL:", spaceId);
 
-const res = await fetch(`/.netlify/functions/Space?spaceId=${spaceId}`);
-const data = await res.json();
-console.log("Respons van Space-functie:", data);
+	const res = await fetch(`/.netlify/functions/Space?spaceId=${spaceId}`);
+	const data = await res.json();
+	console.log("Respons van Space-functie:", data);
     </script>
   </head>
   <body>
