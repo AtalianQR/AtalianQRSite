@@ -1,74 +1,152 @@
 ---
-const { url } = Astro;
-const id = new URL(url).searchParams.get("id") ?? "";
-
-// Valideer aanwezigheid van `id`
-if (!id) {
-  // Geen ID: we tonen straks een melding
-} 
-
-// Probeer server-side de beschrijving op te halen
-let description: string | null = null;
-if (id) {
-  try {
-    const res = await fetch(`/.netlify/functions/space?id=${id}`);
-    if (res.ok) {
-      const json = await res.json();
-      description = json.description ?? "(geen beschrijving)";
-    } else {
-      description = `(API-fout: ${res.status})`;
-    }
-  } catch (e) {
-    description = "(fout bij ophalen)";
-  }
-}
----
+---  
 <!DOCTYPE html>
 <html lang="nl">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Ruimtebeschrijving</title>
-    <style>
-      body {
-        font-family: Arial, sans-serif;
-        max-width: 500px;
-        margin: 2rem auto;
-        padding: 1rem;
-        background: #f7f7f7;
-        color: #333;
-      }
-      h1 {
-        text-align: center;
-        color: #f07c10;
-      }
-      .info {
-        background: #fff;
-        padding: 1rem;
-        border: 1px solid #ddd;
-        border-radius: 4px;
-        margin-top: 1rem;
-        font-size: 1.1rem;
-      }
-      .error {
-        color: #721c24;
-        background: #f8d7da;
-        padding: 1rem;
-        border-radius: 4px;
-        margin-top: 1rem;
-      }
-    </style>
-  </head>
-  <body>
-    <h1>Ruimtebeschrijving</h1>
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Meld een storing</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      max-width: 600px;
+      margin: 2rem auto;
+      padding: 1rem;
+      background: #f7f7f7;
+      color: #333;
+    }
+    h1 {
+      color: #f07c10;
+      text-align: center;
+    }
+    .info, .error, .success {
+      margin-top: 1rem;
+      padding: 1rem;
+      border-radius: 4px;
+    }
+    .info   { background: #fff; border: 1px solid #ddd; }
+    .error  { background: #f8d7da; color: #721c24; }
+    .success{ background: #d4edda; color: #155724; }
+    label {
+      display: block;
+      margin-top: 1.2rem;
+      font-weight: bold;
+    }
+    input[type="text"],
+    input[type="email"],
+    textarea {
+      width: 100%;
+      padding: 0.6rem;
+      margin-top: 0.3rem;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      box-sizing: border-box;
+      background: #fff;
+    }
+    textarea { resize: vertical; }
+    button {
+      margin-top: 1.5rem;
+      background: #f07c10;
+      color: #fff;
+      padding: 0.8rem 1.5rem;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      font-weight: bold;
+    }
+    button:hover { background: #d96b0e; }
+  </style>
+</head>
+<body>
+  <h1>Meld een storing</h1>
 
-    { !id ? (
-      <div class="error">⚠️ Geen ruimte-ID opgegeven in de URL.</div>
-    ) : (
-      <div class="info">
-        <strong>Space ID:</strong> {id}<br />
-        <strong>Beschrijving:</strong> {description}
-      </div>
-    ) }
-  </body>
+  <!-- Hier tonen we de ruimtegegevens -->
+  <div id="ruimteInfo" class="info">Laden ruimtegegevens…</div>
+
+  <!-- Formulier wordt later zichtbaar gemaakt -->
+  <form id="meldingForm" style="display: none;">
+    <label for="email">Uw e-mailadres</label>
+    <input type="email" id="email" required />
+
+    <label for="beschrijving">Probleembeschrijving</label>
+    <textarea id="beschrijving" rows="4" required></textarea>
+
+    <button type="submit">Verstuur melding</button>
+  </form>
+
+  <!-- Hier tonen we fout- of succesbericht -->
+  <div id="statusBericht" style="display: none;"></div>
+
+  <script>
+    document.addEventListener('DOMContentLoaded', async () => {
+      const params = new URLSearchParams(window.location.search);
+      const id     = params.get('id');
+      const info   = document.getElementById('ruimteInfo');
+      const form   = document.getElementById('meldingForm');
+      const status = document.getElementById('statusBericht');
+
+      // 1) Controleren of er een ID is
+      if (!id) {
+        info.className = 'error';
+        info.textContent = '⚠️ Geen ruimte-ID opgegeven. Gebruik ?id=000898 aan het einde van de URL.';
+        return;
+      }
+
+      // 2) Ruimtebeschrijving ophalen
+      try {
+        const res  = await fetch(`/.netlify/functions/space?id=${encodeURIComponent(id)}`);
+        const json = await res.json();
+        if (json.description) {
+          info.className = 'info';
+          info.innerHTML = `<strong>Space ID:</strong> ${id}<br>
+                            <strong>Beschrijving:</strong> ${json.description}`;
+        } else if (json.error) {
+          throw new Error(json.error);
+        } else {
+          throw new Error('Onverwacht antwoord van server');
+        }
+      } catch (err) {
+        console.error('Fetch-error:', err);
+        info.className = 'error';
+        info.textContent = '❌ Fout bij ophalen ruimtegegevens: ' + err.message;
+        return;
+      }
+
+      // 3) Formulier tonen
+      form.style.display = 'block';
+
+      // 4) Verwerking verzending
+      form.addEventListener('submit', async e => {
+        e.preventDefault();
+        status.style.display = 'none';
+
+        const payload = {
+          JobDescr: document.getElementById('beschrijving').value,
+          ReportText: document.getElementById('email').value,
+          SpaceId: id,
+          Provider: "QRConnect",
+          ExternalId: "",
+          PriorityId: "",
+          ServiceDeskReportTypeId: "601"
+        };
+
+        try {
+          const resp = await fetch('/.netlify/functions/melding', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+          });
+          if (!resp.ok) throw new Error(`Status ${resp.status}`);
+          status.className = 'success';
+          status.textContent = '✅ Melding succesvol verzonden!';
+        } catch (err) {
+          console.error('Send-error:', err);
+          status.className = 'error';
+          status.textContent = '❌ Verzenden mislukt: ' + err.message;
+        }
+        status.style.display = 'block';
+      });
+    });
+  </script>
+</body>
 </html>
