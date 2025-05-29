@@ -26,40 +26,45 @@ const assetId = new URLSearchParams(Astro.request.url).get('assetid') ?? '';
         <button type="submit">Verzend melding</button>
       </form>
 
-      <script type="text/javascript">
-        async function handleSubmit(e) {
-          e.preventDefault();
-          const form = e.target;
-          const payload = {
-            ReportText: "Melder: " + form.email.value,
-            JobDescr: form.beschrijving.value,
-            SpaceId: form.assetid.value,
-            Provider: "QRConnect",
-            ExternalId: "",
-            PriorityId: "",
-            ServiceDeskReportTypeId: "601"
-          };
+<script type="text/javascript">
+  async function handleSubmit(e) {
+    e.preventDefault();
+    const form = e.target;
 
-          try {
-            const res = await fetch(form.action, {
-              method: "POST",
-              headers: {
-                "Content-Type": "application/json"
-              },
-              body: JSON.stringify(payload)
-            });
+    const payload = {
+      JobDescr: form.beschrijving.value,
+      ReportText: form.email.value,
+      SpaceId: form.assetid.value,
+      Provider: "QRConnect",
+      ExternalId: "",
+      PriorityId: "",
+      ServiceDeskReportTypeId: "601"
+    };
 
-            if (res.ok) {
-              alert("Melding succesvol verzonden.");
-              form.reset();
-            } else {
-              alert("Er is iets misgelopen. Probeer later opnieuw.");
-            }
-          } catch (err) {
-            alert("Verbindingsprobleem.");
-          }
-        }
-      </script>
+    try {
+      const res = await fetch("https://atalian-test.ultimo.net/api/v1/workflows/3f92bbfca30445ff875f3a9d956441be/execute", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Ultimo-API-Key": "235A210503214055A27F070DB8748750"
+        },
+        body: JSON.stringify(payload)
+      });
+
+      if (res.ok) {
+        alert("✅ Melding succesvol doorgestuurd naar Ultimo!");
+        form.reset();
+      } else {
+        const text = await res.text();
+        console.error('API-fout:', text);
+        alert("❌ Fout bij verzending naar Ultimo.");
+      }
+    } catch (err) {
+      console.error('Netwerkfout:', err);
+      alert("⚠️ Netwerkprobleem bij contact met Ultimo.");
+    }
+  }
+</script>
     </main>
   </body>
 </html>
