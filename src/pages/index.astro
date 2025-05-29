@@ -57,40 +57,40 @@ const assetId = new URLSearchParams(Astro.request.url).get('assetid') ?? '';
         e.preventDefault();
         const form = e.target;
 
-        const payload = {
-          WorkflowName: "_REST_OneAtalianJob",
-          Parameters: {
-            JobDescr: form.beschrijving.value,
-            ReportText: form.email.value,
-            SpaceId: form.assetid.value,
-            Provider: "QRConnect",
-            ExternalId: "",
-            PriorityId: "",
-            ServiceDeskReportTypeId: "601"
-          }
+        // Bouw platte JSON-body, exact als in je VBA-script
+        const body = {
+          JobDescr: form.beschrijving.value,
+          ReportText: form.email.value,
+          EquipmentId: "",
+          ExternalId: "",
+          PriorityId: "",
+          ServiceDeskReportTypeId: "601",
+          SpaceId: form.assetid.value
         };
 
         try {
-          const res = await fetch("https://atalian-test.ultimo.net/api/v1/workflows/3f92bbfca30445ff875f3a9d956441be/execute", {
+          const res = await fetch("https://atalian-test.ultimo.net/api/v1/action/_REST_OneAtalianJob", {
             method: "POST",
             headers: {
-              "Content-Type": "application/json",
-              "Ultimo-API-Key": "235A210503214055A27F070DB8748750"
+              "accept": "application/json",
+              "ApiKey": "235A210503214055A27F070DB8748750",
+              "ApplicationElementId": "3f92bbfca30445ff875f3a9d956441be",
+              "Content-Type": "application/json"
             },
-            body: JSON.stringify(payload)
+            body: JSON.stringify(body)
           });
 
           if (res.ok) {
             alert("✅ Melding succesvol doorgestuurd naar Ultimo!");
             form.reset();
           } else {
-            const error = await res.text();
-            console.error('Ultimo-fout:', error);
-            alert("❌ Fout bij verzending naar Ultimo.");
+            const errorText = await res.text();
+            console.error("Ultimo API-fout:", errorText);
+            alert("❌ Fout bij verzending naar Ultimo:\n" + errorText);
           }
         } catch (err) {
-          console.error('Netwerkfout:', err);
-          alert("⚠️ Netwerkprobleem bij contact met Ultimo.");
+          console.error("Netwerkfout:", err);
+          alert("⚠️ Verbindingsprobleem bij Ultimo.");
         }
       }
     </script>
