@@ -113,15 +113,15 @@
       transform: translateY(-2px);
     }
   </style>
-  <!-- script blijft ongewijzigd -->
 </head>
 <body>
-  <img src="/AtalianLogo.png" alt="Atalian Logo" class="logo" />
-
   <div class="lang-switch">
     <a href="?lang=nl">NL</a> |
     <a href="?lang=fr">FR</a>
   </div>
+
+  <img src="/AtalianLogo.png" alt="Atalian Logo" class="logo" />
+
 
   <h1>Atalian Support</h1>
 
@@ -133,5 +133,27 @@
 
   <a href="/storing.html" class="main-button">📣 Technisch probleem melden</a>
   <a href="/instructies.html" class="main-button">📘 Raadpleeg uitleg of handleiding</a>
+
+  <script>
+    const urlParams = new URLSearchParams(window.location.search);
+    let lang = urlParams.get("lang");
+
+    if (!lang) {
+      const browserLang = navigator.language || navigator.userLanguage;
+      lang = browserLang.startsWith("fr") ? "fr" : "nl";
+      window.location.search = `?lang=${lang}`;
+    }
+
+    const isFr = lang === "fr";
+
+    document.querySelector("h1").textContent = isFr ? "Support Atalian" : "Atalian Support";
+    document.querySelector(".main-button[href='/storing.html']").textContent =
+      isFr ? "📣 Signaler un problème technique" : "📣 Technisch probleem melden";
+    document.querySelector(".main-button[href='/instructies.html']").textContent =
+      isFr ? "📘 Consulter un manuel ou une explication" : "📘 Raadpleeg uitleg of handleiding";
+
+    document.querySelector("a[href='?lang=nl']").href = "?lang=nl";
+    document.querySelector("a[href='?lang=fr']").href = "?lang=fr";
+  </script>
 </body>
 </html>
