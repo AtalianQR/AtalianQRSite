@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Atalian Storing</title>
+  <link rel="stylesheet" href="/styles.css"> <!-- Optioneel voor centrale styling -->
+  <style>
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      background-color: #f4f6fa;
+      padding: 2rem;
+      max-width: 600px;
+      margin: auto;
+    }
+    h1 {
+      text-align: center;
+      color: #f07c10;
+      margin-bottom: 2rem;
+    }
+    .job-list {
+      background: #fff;
+      border: 1px solid #ddd;
+      border-radius: 8px;
+      padding: 1rem;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+    }
+    .job-item {
+      padding: 0.75rem;
+      border-bottom: 1px solid #eee;
+    }
+    .job-item:last-child {
+      border-bottom: none;
+    }
+    .error {
+      background: #ffe6e6;
+      border: 1px solid #cc0000;
+      color: #cc0000;
+      padding: 1rem;
+      border-radius: 6px;
+      margin-bottom: 1.5rem;
+    }
+  </style>
+</head>
+<body>
+  <h1>Openstaande meldingen</h1>
+
+  <div id="result"></div>
+
+  <script>
+    document.addEventListener('DOMContentLoaded', async () => {
+      const params = new URLSearchParams(window.location.search);
+      const id = params.get('id');
+      const type = params.get('type');
+      const lang = params.get('lang') || 'nl';
+
+      const result = document.getElementById('result');
+
+      if (!id || !type) {
+        result.innerHTML = '<div class="error">❌ Geen geldige parameters opgegeven.</div>';
+        return;
+      }
+
+      try {
+        const res = await fetch(`/.netlify/functions/jobs?type=${type}&id=${id}&lang=${lang}`);
+        const data = await res.json();
+
+        if (!Array.isArray(data) || data.length === 0) {
+          result.innerHTML = '<div class="error">Geen openstaande jobs gevonden.</div>';
+          return;
+        }
+
+        const list = document.createElement('div');
+        list.className = 'job-list';
+
+        data.forEach(job => {
+          const item = document.createElement('div');
+          item.className = 'job-item';
+          item.innerHTML = `<strong>${job.JobDescr || 'Geen beschrijving'}</strong><br><small>${job.JobReportDate || ''}</small>`;
+          list.appendChild(item);
+        });
+
+        result.appendChild(list);
+      } catch (err) {
+        result.innerHTML = `<div class="error">❌ Fout bij ophalen: ${err.message}</div>`;
+      }
+    });
+  </script>
+</body>
+</html>
