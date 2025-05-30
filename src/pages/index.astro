@@ -139,8 +139,8 @@
   <div id="ruimteLabel" class="ruimte-label" style="display:none;"></div>
 
   <div class="button-group">
-    <a href="/storing.html" class="main-button">📣 Technisch probleem melden</a>
-    <a href="/instructies.html" class="main-button">📘 Raadpleeg uitleg of handleiding</a>
+    <a href="/storing.html" class="main-button">📣 Melding</a>
+    <a href="/instructies.html" class="main-button">📘 Info</a>
   </div>
 
   <script>
@@ -160,9 +160,9 @@
 
     document.querySelector("h1").textContent = isFr ? "Support Atalian" : "Atalian Support";
     document.querySelector(".main-button[href='/storing.html']").textContent =
-      isFr ? "📣 Signaler un problème technique" : "📣 Technisch probleem melden";
+      isFr ? "📣 Signalement" : "📣 Melding";
     document.querySelector(".main-button[href='/instructies.html']").textContent =
-      isFr ? "📘 Consulter un manuel ou une explication" : "📘 Raadpleeg uitleg of handleiding";
+      isFr ? "📘 Info" : "📘 Info";
 
     document.querySelector("#lang-nl").href = `?id=${id}&type=${type}&lang=nl`;
     document.querySelector("#lang-fr").href = `?id=${id}&type=${type}&lang=fr`;
@@ -177,7 +177,7 @@
           if (data.description) {
             label.innerHTML = `
           ${data.description}
-          <div class="type">${type === "eq" ? (isFr ? "🔧 Installation" : "🔧 Installatie") : (isFr ? "🏢 Espace" : "🏢 Ruimte")}</div>`;
+          <div class="type" style="font-size: 0.85rem; font-weight: 400;">${type === "eq" ? (isFr ? "🔧 Installation" : "🔧 Installatie") : (isFr ? "🏢 Espace" : "🏢 Ruimte")}</div>`;
             label.style.display = "flex";
           } else {
             label.classList.add("error");
