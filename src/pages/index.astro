@@ -115,13 +115,12 @@
   </style>
 </head>
 <body>
-  <div class="lang-switch">
-    <a href="?lang=nl">NL</a> |
-    <a href="?lang=fr">FR</a>
-  </div>
-
   <img src="/AtalianLogo.png" alt="Atalian Logo" class="logo" />
 
+  <div class="lang-switch">
+    <a href="#" id="lang-nl">NL</a> |
+    <a href="#" id="lang-fr">FR</a>
+  </div>
 
   <h1>Atalian Support</h1>
 
@@ -137,11 +136,14 @@
   <script>
     const urlParams = new URLSearchParams(window.location.search);
     let lang = urlParams.get("lang");
+    const id = urlParams.get("id");
+    const type = urlParams.get("type");
 
     if (!lang) {
       const browserLang = navigator.language || navigator.userLanguage;
       lang = browserLang.startsWith("fr") ? "fr" : "nl";
-      window.location.search = `?lang=${lang}`;
+      urlParams.set("lang", lang);
+      window.location.search = urlParams.toString();
     }
 
     const isFr = lang === "fr";
@@ -152,8 +154,37 @@
     document.querySelector(".main-button[href='/instructies.html']").textContent =
       isFr ? "📘 Consulter un manuel ou une explication" : "📘 Raadpleeg uitleg of handleiding";
 
-    document.querySelector("a[href='?lang=nl']").href = "?lang=nl";
-    document.querySelector("a[href='?lang=fr']").href = "?lang=fr";
+    document.querySelector("#lang-nl").href = `?id=${id}&type=${type}&lang=nl`;
+    document.querySelector("#lang-fr").href = `?id=${id}&type=${type}&lang=fr`;
+
+    // 🟠 Ophalen van beschrijving voor space of equipment
+    const label = document.getElementById("ruimteLabel");
+    if (id && type) {
+      const endpoint = type === "eq" ? "/.netlify/functions/equipment" : "/.netlify/functions/space";
+      fetch(`${endpoint}?id=${encodeURIComponent(id)}`)
+        .then(res => res.json())
+        .then(data => {
+          if (data.description) {
+            label.innerHTML = `
+          ${data.description}
+          <div class="type">${type === "eq" ? (isFr ? "🔧 Installation" : "🔧 Installatie") : (isFr ? "🏢 Espace" : "🏢 Ruimte")}</div>`;
+            label.style.display = "flex";
+          } else {
+            label.classList.add("error");
+            label.textContent = isFr
+              ? "❌ Aucune description trouvée."
+              : "❌ Geen beschrijving gevonden.";
+            label.style.display = "flex";
+          }
+        })
+        .catch(err => {
+          label.classList.add("error");
+          label.textContent = isFr
+            ? `❌ Erreur lors du chargement: ${err.message}`
+            : `❌ Fout bij laden: ${err.message}`;
+          label.style.display = "flex";
+        });
+    }
   </script>
 </body>
 </html>
