@@ -169,9 +169,9 @@
             const item = document.createElement('div');
             item.className = 'job-item';
             item.innerHTML = `
-              <em>${job.Date || ''}</em><br>
-              <strong>${job.Description || (isFr ? "Pas de description" : "Geen beschrijving")}</strong><br>
-              <small><i>${isFr ? "Statut" : "Status"}: ${job.Status || ''}</i></small>
+             <em>${job.Date || ' '}</em>
+			 <strong>${job.Description || 'Geen beschrijving'}</strong><br>
+			 <small>Status: ${job.Status || ''}</small>
             `;
             list.appendChild(item);
           });
