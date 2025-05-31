@@ -35,6 +35,7 @@
       text-align: center;
       color: #f07c10;
       margin-bottom: 1rem;
+	  font-size: 1.5rem; /* Voeg deze regel toe of pas aan */
     }
     .ruimte-label {
       display: flex;
@@ -140,7 +141,7 @@
     const labelTop = document.getElementById('labelTop');
 
     // Dynamische labels
-    document.getElementById("pageTitle").textContent = isFr ? "Signalements ouverts" : "Openstaande meldingen";
+    document.getElementById("pageTitle").textContent = isFr ? "Signalements actifs" : "Actieve meldingen";
     document.getElementById("btn-terug").textContent  = isFr ? "🔙 Retour"          : "🔙 Terug";
     document.getElementById("btn-nieuw").textContent  = isFr ? "➕ Nouveau signalement" : "➕ Nieuwe melding";
 
