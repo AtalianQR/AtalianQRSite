@@ -16,7 +16,9 @@
       padding: 2rem;
       max-width: 600px;
       margin: auto;
-      background-image: linear-gradient(to bottom, rgba(255,255,255,0.75), rgba(255,255,255,0.65)), url('/meldentechnisch.png');
+      background-image:
+        linear-gradient(to bottom, rgba(255,255,255,0.75), rgba(255,255,255,0.65)),
+        url('/meldentechnisch.png');
       background-size: cover;
       background-repeat: no-repeat;
       background-position: center;
@@ -120,47 +122,82 @@
   </div>
 
   <script>
+    // Hulpfunctie om een "DD-MM-YYYY HH:MM:SS" string om te zetten naar een JS Date-object
+    function parseDateDDMMYYYY(dateStr) {
+      // vb: "31-5-2025 14:23:03"
+      const [datePart, timePart] = dateStr.split(' ');
+      const [d, m, y] = datePart.split('-').map(Number);
+      const [h, min, s] = timePart.split(':').map(Number);
+      // let op: maanden in JS Date zijn 0-gebaseerd
+      return new Date(y, m - 1, d, h, min, s);
+    }
+
     const params = new URLSearchParams(window.location.search);
-    const id = params.get('id');
+    const id   = params.get('id');
     const type = params.get('type');
     const lang = params.get('lang') || 'nl';
     const isFr = lang === 'fr';
 
-    const result = document.getElementById('result');
+    const result   = document.getElementById('result');
     const labelTop = document.getElementById('labelTop');
 
-    // Set dynamische labels
+    // Dynamische labels
     document.getElementById("pageTitle").textContent = isFr ? "Signalements ouverts" : "Openstaande meldingen";
-    document.getElementById("btn-terug").textContent = isFr ? "🔙 Retour" : "🔙 Terug";
-    document.getElementById("btn-nieuw").textContent = isFr ? "➕ Nouveau signalement" : "➕ Nieuwe melding";
+    document.getElementById("btn-terug").textContent  = isFr ? "🔙 Retour"          : "🔙 Terug";
+    document.getElementById("btn-nieuw").textContent  = isFr ? "➕ Nouveau signalement" : "➕ Nieuwe melding";
 
-    // locatie bovenaan ophalen
+    // Locatie/informatie bovenaan ophalen
     if (id && type) {
-      const endpoint = type === "eq" ? "/.netlify/functions/equipment" : "/.netlify/functions/space";
+      const endpoint = type === "eq"
+        ? "/.netlify/functions/equipment"
+        : "/.netlify/functions/space";
+
       fetch(`${endpoint}?id=${encodeURIComponent(id)}`)
         .then(res => res.json())
         .then(data => {
           if (data.description) {
             labelTop.innerHTML = `
               ${data.description}
-              <div class="type">${type === "eq" ? (isFr ? "🔧 Installation" : "🔧 Installatie") : (isFr ? "🏢 Espace" : "🏢 Ruimte")}</div>
+              <div class="type">
+                ${type === "eq"
+                  ? (isFr ? "🔧 Installation" : "🔧 Installatie")
+                  : (isFr ? "🏢 Espace"       : "🏢 Ruimte")}
+              </div>
             `;
             labelTop.style.display = "flex";
           }
+        })
+        .catch(() => {
+          // Fallback als locatie niet gevonden wordt
+          labelTop.innerHTML = isFr
+            ? "❌ Aucun emplacement trouvé."
+            : "❌ Geen beschrijving gevonden.";
+          labelTop.style.display = "flex";
         });
     }
 
-    // jobs ophalen
+    // Jobs ophalen en sorteren
     if (!id || !type) {
-      result.innerHTML = `<div class="error">❌ ${isFr ? "Paramètres invalides." : "Geen geldige parameters opgegeven."}</div>`;
+      result.innerHTML = `<div class="error">❌ ${
+        isFr ? "Paramètres invalides." : "Geen geldige parameters opgegeven."
+      }</div>`;
     } else {
       fetch(`/.netlify/functions/jobs?type=${type}&id=${id}&lang=${lang}`)
         .then(res => res.json())
         .then(data => {
           if (!Array.isArray(data) || data.length === 0) {
-            result.innerHTML = `<div class="error">${isFr ? "Aucun signalement trouvé." : "Geen openstaande jobs gevonden."}</div>`;
+            result.innerHTML = `<div class="error">${
+              isFr ? "Aucun signalement trouvé." : "Geen openstaande jobs gevonden."
+            }</div>`;
             return;
           }
+
+          // Sorteer op datum: meest recente eerst
+          data.sort((a, b) => {
+            const dateA = parseDateDDMMYYYY(a.Date || "");
+            const dateB = parseDateDDMMYYYY(b.Date || "");
+            return dateB - dateA; // nieuw -> oud
+          });
 
           const list = document.createElement('div');
           list.className = 'job-list';
@@ -169,9 +206,9 @@
             const item = document.createElement('div');
             item.className = 'job-item';
             item.innerHTML = `
-             <em>${job.Date || ' '}</em>
-			 <strong>${job.Description || 'Geen beschrijving'}</strong><br>
-			 <small>Status: ${job.Status || ''}</small>
+              <em>${job.Date || ''}</em>
+              <strong>${job.Description || (isFr ? "Pas de description" : "Geen beschrijving")}</strong><br>
+              <small><i>${isFr ? "Statut" : "Status"}: ${job.Status || ''}</i></small>
             `;
             list.appendChild(item);
           });
@@ -179,15 +216,17 @@
           result.appendChild(list);
         })
         .catch(err => {
-          result.innerHTML = `<div class="error">❌ ${isFr ? "Erreur lors du chargement: " : "Fout bij ophalen: "} ${err.message}</div>`;
+          result.innerHTML = `<div class="error">❌ ${
+            isFr ? "Erreur lors du chargement: " : "Fout bij ophalen: "
+          }${err.message}</div>`;
         });
     }
 
-    // knoppen onderaan instellen
-    const btnTerug = document.getElementById("btn-terug");
-    const btnNieuw = document.getElementById("btn-nieuw");
-    btnTerug.href = `/index.html?id=${encodeURIComponent(id)}&type=${type}&lang=${lang}`;
-    btnNieuw.href = `/melding.html?id=${encodeURIComponent(id)}&type=${type}&lang=${lang}`;
+    // Knoppen onderaan instellen (links blijven met parameters)
+    document.getElementById("btn-terug").href = 
+      `/index.html?id=${encodeURIComponent(id)}&type=${type}&lang=${lang}`;
+    document.getElementById("btn-nieuw").href = 
+      `/melding.html?id=${encodeURIComponent(id)}&type=${type}&lang=${lang}`;
   </script>
 </body>
 </html>
