@@ -1,22 +1,60 @@
 <!DOCTYPE html>
 <html lang="nl">
 <head>
-  <meta charset="UTF-8">
+  <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Atalian Storing</title>
-  <link rel="stylesheet" href="/styles.css"> <!-- Optioneel voor centrale styling -->
+  <title>Openstaande meldingen</title>
   <style>
+    html, body {
+      height: 100%;
+      margin: 0;
+      padding: 0;
+    }
     body {
       font-family: 'Segoe UI', sans-serif;
       background-color: #f4f6fa;
       padding: 2rem;
       max-width: 600px;
       margin: auto;
+      background-image: linear-gradient(to bottom, rgba(255,255,255,0.75), rgba(255,255,255,0.65)), url('/meldentechnisch.png');
+      background-size: cover;
+      background-repeat: no-repeat;
+      background-position: center;
+    }
+    img.logo {
+      display: block;
+      max-width: 160px;
+      margin: 0 auto 1.5rem;
+      background: rgba(255, 255, 255, 0.85);
+      padding: 0.5rem;
+      border-radius: 12px;
     }
     h1 {
       text-align: center;
       color: #f07c10;
-      margin-bottom: 2rem;
+      margin-bottom: 1rem;
+    }
+    .ruimte-label {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      background: rgba(255, 255, 255, 0.95);
+      color: #1a202c;
+      padding: 1rem 1.5rem;
+      border-radius: 12px;
+      font-size: 1.2rem;
+      font-weight: 600;
+      text-align: center;
+      margin-bottom: 1.5rem;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+      border: 1px solid #ddd;
+    }
+    .ruimte-label .type {
+      font-size: 0.95rem;
+      font-weight: normal;
+      margin-top: 0.4rem;
+      color: #666;
     }
     .job-list {
       background: #fff;
@@ -24,6 +62,9 @@
       border-radius: 8px;
       padding: 1rem;
       box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+      max-height: 400px;
+      overflow-y: auto;
+      margin-bottom: 2rem;
     }
     .job-item {
       padding: 0.75rem;
@@ -40,51 +81,113 @@
       border-radius: 6px;
       margin-bottom: 1.5rem;
     }
+    .button-group {
+      display: flex;
+      justify-content: center;
+      flex-wrap: wrap;
+      gap: 1rem;
+    }
+    .main-button {
+      display: inline-block;
+      width: auto;
+      min-width: 180px;
+      background: #f07c10;
+      color: white;
+      font-weight: bold;
+      padding: 1rem 1.2rem;
+      border-radius: 8px;
+      font-size: 1.05rem;
+      text-align: center;
+      text-decoration: none;
+      transition: background 0.2s ease, transform 0.1s ease;
+    }
+    .main-button:hover {
+      background: #d96b0e;
+      transform: translateY(-2px);
+    }
   </style>
 </head>
 <body>
-  <h1>Openstaande meldingen</h1>
 
+  <img src="/AtalianLogo.png" alt="Atalian Logo" class="logo" />
+  <div id="labelTop" class="ruimte-label" style="display:none;"></div>
+  <h1 id="pageTitle">Openstaande meldingen</h1>
   <div id="result"></div>
 
+  <div class="button-group">
+    <a href="#" class="main-button" id="btn-terug">🔙 Terug</a>
+    <a href="#" class="main-button" id="btn-nieuw">➕ Nieuwe melding</a>
+  </div>
+
   <script>
-    document.addEventListener('DOMContentLoaded', async () => {
-      const params = new URLSearchParams(window.location.search);
-      const id = params.get('id');
-      const type = params.get('type');
-      const lang = params.get('lang') || 'nl';
+    const params = new URLSearchParams(window.location.search);
+    const id = params.get('id');
+    const type = params.get('type');
+    const lang = params.get('lang') || 'nl';
+    const isFr = lang === 'fr';
 
-      const result = document.getElementById('result');
+    const result = document.getElementById('result');
+    const labelTop = document.getElementById('labelTop');
 
-      if (!id || !type) {
-        result.innerHTML = '<div class="error">❌ Geen geldige parameters opgegeven.</div>';
-        return;
-      }
+    // Set dynamische labels
+    document.getElementById("pageTitle").textContent = isFr ? "Signalements ouverts" : "Openstaande meldingen";
+    document.getElementById("btn-terug").textContent = isFr ? "🔙 Retour" : "🔙 Terug";
+    document.getElementById("btn-nieuw").textContent = isFr ? "➕ Nouveau signalement" : "➕ Nieuwe melding";
 
-      try {
-        const res = await fetch(`/.netlify/functions/jobs?type=${type}&id=${id}&lang=${lang}`);
-        const data = await res.json();
-
-        if (!Array.isArray(data) || data.length === 0) {
-          result.innerHTML = '<div class="error">Geen openstaande jobs gevonden.</div>';
-          return;
-        }
-
-        const list = document.createElement('div');
-        list.className = 'job-list';
-
-        data.forEach(job => {
-          const item = document.createElement('div');
-          item.className = 'job-item';
-          item.innerHTML = `<strong>${job.JobDescr || 'Geen beschrijving'}</strong><br><small>${job.JobReportDate || ''}</small>`;
-          list.appendChild(item);
+    // locatie bovenaan ophalen
+    if (id && type) {
+      const endpoint = type === "eq" ? "/.netlify/functions/equipment" : "/.netlify/functions/space";
+      fetch(`${endpoint}?id=${encodeURIComponent(id)}`)
+        .then(res => res.json())
+        .then(data => {
+          if (data.description) {
+            labelTop.innerHTML = `
+              ${data.description}
+              <div class="type">${type === "eq" ? (isFr ? "🔧 Installation" : "🔧 Installatie") : (isFr ? "🏢 Espace" : "🏢 Ruimte")}</div>
+            `;
+            labelTop.style.display = "flex";
+          }
         });
+    }
 
-        result.appendChild(list);
-      } catch (err) {
-        result.innerHTML = `<div class="error">❌ Fout bij ophalen: ${err.message}</div>`;
-      }
-    });
+    // jobs ophalen
+    if (!id || !type) {
+      result.innerHTML = `<div class="error">❌ ${isFr ? "Paramètres invalides." : "Geen geldige parameters opgegeven."}</div>`;
+    } else {
+      fetch(`/.netlify/functions/jobs?type=${type}&id=${id}&lang=${lang}`)
+        .then(res => res.json())
+        .then(data => {
+          if (!Array.isArray(data) || data.length === 0) {
+            result.innerHTML = `<div class="error">${isFr ? "Aucun signalement trouvé." : "Geen openstaande jobs gevonden."}</div>`;
+            return;
+          }
+
+          const list = document.createElement('div');
+          list.className = 'job-list';
+
+          data.forEach(job => {
+            const item = document.createElement('div');
+            item.className = 'job-item';
+            item.innerHTML = `
+              <em>${job.Date || ''}</em><br>
+              <strong>${job.Description || (isFr ? "Pas de description" : "Geen beschrijving")}</strong><br>
+              <small><i>${isFr ? "Statut" : "Status"}: ${job.Status || ''}</i></small>
+            `;
+            list.appendChild(item);
+          });
+
+          result.appendChild(list);
+        })
+        .catch(err => {
+          result.innerHTML = `<div class="error">❌ ${isFr ? "Erreur lors du chargement: " : "Fout bij ophalen: "} ${err.message}</div>`;
+        });
+    }
+
+    // knoppen onderaan instellen
+    const btnTerug = document.getElementById("btn-terug");
+    const btnNieuw = document.getElementById("btn-nieuw");
+    btnTerug.href = `/index.html?id=${encodeURIComponent(id)}&type=${type}&lang=${lang}`;
+    btnNieuw.href = `/melding.html?id=${encodeURIComponent(id)}&type=${type}&lang=${lang}`;
   </script>
 </body>
 </html>
