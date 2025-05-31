@@ -9,15 +9,36 @@
       margin: 0;
       padding: 0;
       height: 100%;
+      font-family: sans-serif;
+      background: #f7f7f7;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      text-align: center;
     }
-    iframe {
-      width: 100%;
-      height: 100%;
+
+    .btn {
+      display: inline-block;
+      background-color: #f07c10;
+      color: white;
+      padding: 1rem 2rem;
+      font-size: 1.2rem;
       border: none;
+      border-radius: 10px;
+      text-decoration: none;
+      transition: background 0.2s ease;
+      margin-top: 1.5rem;
+    }
+
+    .btn:hover {
+      background-color: #d96b0e;
     }
   </style>
 </head>
 <body>
-  <iframe src="ultimo://open?entity=Equipment&id=021077"></iframe>
+  <h1>Open Ultimo Go+</h1>
+  <p>Klik op onderstaande knop om asset <strong>021077</strong> te openen in de Ultimo Go+ app.</p>
+  <a href="ultimo://open?entity=Equipment&id=021077" class="btn">📱 Open in Ultimo Go+</a>
 </body>
 </html>
