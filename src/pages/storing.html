@@ -64,7 +64,7 @@
       border-radius: 8px;
       padding: 1rem;
       box-shadow: 0 2px 8px rgba(0,0,0,0.05);
-      max-height: 400px;
+      max-height: 250px;
       overflow-y: auto;
       margin-bottom: 2rem;
     }
@@ -124,11 +124,9 @@
   <script>
     // Hulpfunctie om een "DD-MM-YYYY HH:MM:SS" string om te zetten naar een JS Date-object
     function parseDateDDMMYYYY(dateStr) {
-      // vb: "31-5-2025 14:23:03"
       const [datePart, timePart] = dateStr.split(' ');
       const [d, m, y] = datePart.split('-').map(Number);
       const [h, min, s] = timePart.split(':').map(Number);
-      // let op: maanden in JS Date zijn 0-gebaseerd
       return new Date(y, m - 1, d, h, min, s);
     }
 
@@ -168,7 +166,6 @@
           }
         })
         .catch(() => {
-          // Fallback als locatie niet gevonden wordt
           labelTop.innerHTML = isFr
             ? "❌ Aucun emplacement trouvé."
             : "❌ Geen beschrijving gevonden.";
@@ -206,7 +203,7 @@
             const item = document.createElement('div');
             item.className = 'job-item';
             item.innerHTML = `
-              <em>${job.Date || ''}</em>
+              <em>${job.Date || ''}</em><br>
               <strong>${job.Description || (isFr ? "Pas de description" : "Geen beschrijving")}</strong><br>
               <small><i>${isFr ? "Statut" : "Status"}: ${job.Status || ''}</i></small>
             `;
