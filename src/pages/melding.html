@@ -213,7 +213,7 @@
 
   setTimeout(() => {
     window.location.href = `/storing.html?id=${id}&type=${type}&lang=${lang}`;
-  }, 2000); // wacht 2 seconden voor redirect
+  }, 500); // wacht 0,5 seconden voor redirect
 } else {
           feedback.innerHTML = `<div class="message error">❌ ${result.error || 'Er is iets misgelopen.'}</div>`;
         }
