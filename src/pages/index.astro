@@ -6,10 +6,7 @@
   <link rel="icon" type="image/png" href="/AtalianFavicon.png" />
   <title>Atalian Support</title>
   <style>
-    html, body {
-      height: 100%;
-      margin: 0;
-    }
+    html, body { height: 100%; margin: 0; }
     body {
       font-family: 'Segoe UI', sans-serif;
       padding: 2rem;
@@ -124,12 +121,12 @@
 </head>
 <body>
 
-    <div class="lang-switch">
+  <div class="lang-switch">
     <a href="#" id="lang-nl">NL</a> |
     <a href="#" id="lang-fr">FR</a>
   </div>
-  <img src="/AtalianLogo.png" alt="Atalian Logo" class="logo" />
 
+  <img src="/AtalianLogo.png" alt="Atalian Logo" class="logo" />
   <h1>Atalian Support</h1>
 
   <div class="tel">
@@ -139,7 +136,7 @@
   <div id="ruimteLabel" class="ruimte-label" style="display:none;"></div>
 
   <div class="button-group">
-    <a href="/storing.html" class="main-button">📣 Melding</a>
+    <a id="btn-storing" class="main-button">📣 Melding</a>
     <a href="/instructies.html" class="main-button">📘 Info</a>
   </div>
 
@@ -158,16 +155,22 @@
 
     const isFr = lang === "fr";
 
+    // dynamische knoppen vertalen
     document.querySelector("h1").textContent = isFr ? "Support Atalian" : "Atalian Support";
-    document.querySelector(".main-button[href='/storing.html']").textContent =
-      isFr ? "📣 Signalement" : "📣 Melding";
-    document.querySelector(".main-button[href='/instructies.html']").textContent =
-      isFr ? "📘 Info" : "📘 Info";
+    const btnStoring = document.getElementById("btn-storing");
+    btnStoring.textContent = isFr ? "📣 Signalement" : "📣 Melding";
+    document.querySelector(".main-button[href='/instructies.html']").textContent = isFr ? "📘 Info" : "📘 Info";
 
+    // taalwissel links
     document.querySelector("#lang-nl").href = `?id=${id}&type=${type}&lang=nl`;
     document.querySelector("#lang-fr").href = `?id=${id}&type=${type}&lang=fr`;
 
-    // 🟠 Ophalen van beschrijving voor space of equipment
+    // knop storing.html dynamisch linken
+    if (btnStoring && id && type && lang) {
+      btnStoring.href = `/storing.html?id=${encodeURIComponent(id)}&type=${type}&lang=${lang}`;
+    }
+
+    // ruimte of installatie ophalen
     const label = document.getElementById("ruimteLabel");
     if (id && type) {
       const endpoint = type === "eq" ? "/.netlify/functions/equipment" : "/.netlify/functions/space";
@@ -176,8 +179,10 @@
         .then(data => {
           if (data.description) {
             label.innerHTML = `
-          ${data.description}
-          <div class="type" style="font-size: 0.85rem; font-weight: 400;">${type === "eq" ? (isFr ? "🔧 Installation" : "🔧 Installatie") : (isFr ? "🏢 Espace" : "🏢 Ruimte")}</div>`;
+              ${data.description}
+              <div class="type" style="font-size: 0.85rem; font-weight: 400;">
+                ${type === "eq" ? (isFr ? "🔧 Installation" : "🔧 Installatie") : (isFr ? "🏢 Espace" : "🏢 Ruimte")}
+              </div>`;
             label.style.display = "flex";
           } else {
             label.classList.add("error");
