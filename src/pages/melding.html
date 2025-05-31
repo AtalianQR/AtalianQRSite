@@ -29,6 +29,7 @@
       text-align: center;
       color: #f07c10;
       margin-bottom: 1rem;
+      font-size: 1.2rem;
     }
 
     img.logo {
@@ -135,18 +136,18 @@
 <body>
 
   <img src="/AtalianLogo.png" alt="Atalian Logo" class="logo" />
-  <h1>Nieuwe melding</h1>
+  <h1 id="formTitle">Nieuwe melding</h1>
   <div id="ruimte" class="ruimte-label" style="display:none;"></div>
 
   <form id="meldingForm">
-    <label for="email">Jouw e-mailadres:</label>
+    <label for="email" id="emailLabel">Jouw e-mailadres:</label>
     <input type="email" id="email" name="email" required />
 
-    <label for="omschrijving">Probleembeschrijving:</label>
+    <label for="omschrijving" id="descLabel">Probleembeschrijving:</label>
     <textarea id="omschrijving" name="omschrijving" required></textarea>
 
     <div class="form-actions">
-      <button type="submit" class="main-button">📨 Versturen</button>
+      <button type="submit" class="main-button" id="sendBtn">📨 Versturen</button>
       <a href="#" id="btn-terug" class="main-button">🔙 Terug</a>
     </div>
   </form>
@@ -158,6 +159,14 @@
     const id = params.get('id');
     const type = params.get('type');
     const lang = params.get('lang') || 'nl';
+    const isFr = lang === 'fr';
+
+    // Teksten dynamisch aanpassen
+    document.getElementById('formTitle').textContent = isFr ? "Nouveau signalement" : "Nieuwe melding";
+    document.getElementById('emailLabel').textContent = isFr ? "Votre adresse e-mail :" : "Jouw e-mailadres:";
+    document.getElementById('descLabel').textContent = isFr ? "Description du problème :" : "Probleembeschrijving:";
+    document.getElementById('sendBtn').textContent = isFr ? "📨 Envoyer" : "📨 Versturen";
+    document.getElementById('btn-terug').textContent = isFr ? "🔙 Retour" : "🔙 Terug";
 
     const ruimte = document.getElementById('ruimte');
     const terugBtn = document.getElementById('btn-terug');
@@ -174,7 +183,7 @@
           if (data.description) {
             ruimte.innerHTML = `
               ${data.description}
-              <div class="type">${type === "eq" ? "🔧 Installatie" : "🏢 Ruimte"}</div>
+              <div class="type">${type === "eq" ? (isFr ? "🔧 Installation" : "🔧 Installatie") : (isFr ? "🏢 Espace" : "🏢 Ruimte")}</div>
             `;
             ruimte.style.display = "block";
           }
@@ -207,18 +216,18 @@
           result = { error: text };
         }
 
-  if (response.ok) {
-  feedback.innerHTML = `<div class="message success">✅ Melding succesvol verzonden. Je wordt zo meteen teruggeleid...</div>`;
-  form.reset();
+        if (response.ok) {
+          feedback.innerHTML = `<div class="message success">✅ ${isFr ? "Signalement envoyé. Redirection..." : "Melding succesvol verzonden. Je wordt zo meteen teruggeleid..."}</div>`;
+          form.reset();
 
-  setTimeout(() => {
-    window.location.href = `/storing.html?id=${id}&type=${type}&lang=${lang}`;
-  }, 500); // wacht 0,5 seconden voor redirect
-} else {
-          feedback.innerHTML = `<div class="message error">❌ ${result.error || 'Er is iets misgelopen.'}</div>`;
+          setTimeout(() => {
+            window.location.href = `/storing.html?id=${id}&type=${type}&lang=${lang}`;
+          }, 500);
+        } else {
+          feedback.innerHTML = `<div class="message error">❌ ${result.error || (isFr ? "Une erreur s’est produite." : "Er is iets misgelopen.")}</div>`;
         }
       } catch (err) {
-        feedback.innerHTML = `<div class="message error">❌ Netwerkfout: ${err.message}</div>`;
+        feedback.innerHTML = `<div class="message error">❌ ${isFr ? "Erreur réseau :" : "Netwerkfout:"} ${err.message}</div>`;
       }
     });
   </script>
