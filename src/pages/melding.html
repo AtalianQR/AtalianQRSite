@@ -24,11 +24,13 @@
       max-width: 600px;
       margin: auto;
     }
+
     h1 {
       text-align: center;
       color: #f07c10;
       margin-bottom: 1rem;
     }
+
     img.logo {
       display: block;
       max-width: 160px;
@@ -37,6 +39,7 @@
       padding: 0.5rem;
       border-radius: 12px;
     }
+
     .ruimte-label {
       background: #fff;
       padding: 1rem;
@@ -46,12 +49,14 @@
       text-align: center;
       font-weight: 600;
     }
+
     .ruimte-label .type {
       font-size: 0.95rem;
       font-weight: normal;
       margin-top: 0.4rem;
       color: #666;
     }
+
     form {
       background: #fff;
       padding: 1rem;
@@ -59,15 +64,28 @@
       border: 1px solid #ddd;
       box-shadow: 0 2px 6px rgba(0,0,0,0.05);
     }
+
+    label {
+      display: block;
+      margin-bottom: 0.3rem;
+      font-weight: 600;
+    }
+
+    input[type="email"],
     textarea {
       width: 100%;
-      height: 120px;
       padding: 0.75rem;
+      margin-bottom: 1rem;
       border-radius: 6px;
       border: 1px solid #ccc;
       font-size: 1rem;
+    }
+
+    textarea {
+      height: 120px;
       resize: vertical;
     }
+
     .form-actions {
       margin-top: 1rem;
       display: flex;
@@ -75,6 +93,7 @@
       gap: 1rem;
       flex-wrap: wrap;
     }
+
     .main-button {
       flex: 1 1 160px;
       max-width: 220px;
@@ -89,19 +108,23 @@
       border: none;
       cursor: pointer;
     }
+
     .main-button:hover {
       background: #d96b0e;
     }
+
     .message {
       margin-top: 1rem;
       padding: 1rem;
       border-radius: 6px;
     }
+
     .message.success {
       background: #e6ffe6;
       border: 1px solid #009900;
       color: #006600;
     }
+
     .message.error {
       background: #ffe6e6;
       border: 1px solid #cc0000;
@@ -112,15 +135,18 @@
 <body>
 
   <img src="/AtalianLogo.png" alt="Atalian Logo" class="logo" />
-  <h1 id="pageTitle">Nieuwe melding</h1>
+  <h1>Nieuwe melding</h1>
   <div id="ruimte" class="ruimte-label" style="display:none;"></div>
 
   <form id="meldingForm">
-    <label id="labelOmschrijving" for="omschrijving">Probleembeschrijving:</label><br />
+    <label for="email">Jouw e-mailadres:</label>
+    <input type="email" id="email" name="email" required />
+
+    <label for="omschrijving">Probleembeschrijving:</label>
     <textarea id="omschrijving" name="omschrijving" required></textarea>
 
     <div class="form-actions">
-      <button type="submit" class="main-button" id="btn-verstuur">📨 Versturen</button>
+      <button type="submit" class="main-button">📨 Versturen</button>
       <a href="#" id="btn-terug" class="main-button">🔙 Terug</a>
     </div>
   </form>
@@ -132,18 +158,11 @@
     const id = params.get('id');
     const type = params.get('type');
     const lang = params.get('lang') || 'nl';
-    const isFr = lang === 'fr';
 
     const ruimte = document.getElementById('ruimte');
     const terugBtn = document.getElementById('btn-terug');
     const form = document.getElementById('meldingForm');
     const feedback = document.getElementById('feedback');
-
-    // Taalgevoelige labels
-    document.getElementById('pageTitle').textContent = isFr ? "Nouveau signalement" : "Nieuwe melding";
-    document.getElementById('labelOmschrijving').textContent = isFr ? "Description du problème :" : "Probleembeschrijving:";
-    document.getElementById('btn-verstuur').textContent = isFr ? "📨 Envoyer" : "📨 Versturen";
-    document.getElementById('btn-terug').textContent = isFr ? "🔙 Retour" : "🔙 Terug";
 
     terugBtn.href = `/storing.html?id=${id}&type=${type}&lang=${lang}`;
 
@@ -155,7 +174,7 @@
           if (data.description) {
             ruimte.innerHTML = `
               ${data.description}
-              <div class="type">${type === "eq" ? (isFr ? "🔧 Installation" : "🔧 Installatie") : (isFr ? "🏢 Espace" : "🏢 Ruimte")}</div>
+              <div class="type">${type === "eq" ? "🔧 Installatie" : "🏢 Ruimte"}</div>
             `;
             ruimte.style.display = "block";
           }
@@ -166,24 +185,40 @@
       e.preventDefault();
       feedback.innerHTML = '';
 
-      const omschrijving = document.getElementById('omschrijving').value;
+      const email = document.getElementById('email').value.trim();
+      const omschrijving = document.getElementById('omschrijving').value.trim();
 
       try {
         const response = await fetch('/.netlify/functions/melding', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ id, type, lang, description: omschrijving })
+          body: JSON.stringify({
+            id, type, lang,
+            JobDescr: omschrijving,
+            ReportText: email
+          })
         });
 
-        const result = await response.json();
-        if (response.ok) {
-          feedback.innerHTML = `<div class="message success">✅ ${isFr ? "Signalement envoyé avec succès." : "Melding succesvol verzonden."}</div>`;
-          form.reset();
-        } else {
-          feedback.innerHTML = `<div class="message error">❌ ${result.error || (isFr ? "Une erreur s'est produite." : "Er is iets misgelopen.")}</div>`;
+        const text = await response.text();
+        let result;
+        try {
+          result = JSON.parse(text);
+        } catch (e) {
+          result = { error: text };
+        }
+
+  if (response.ok) {
+  feedback.innerHTML = `<div class="message success">✅ Melding succesvol verzonden. Je wordt zo meteen teruggeleid...</div>`;
+  form.reset();
+
+  setTimeout(() => {
+    window.location.href = `/storing.html?id=${id}&type=${type}&lang=${lang}`;
+  }, 2000); // wacht 2 seconden voor redirect
+} else {
+          feedback.innerHTML = `<div class="message error">❌ ${result.error || 'Er is iets misgelopen.'}</div>`;
         }
       } catch (err) {
-        feedback.innerHTML = `<div class="message error">❌ ${isFr ? "Erreur réseau :" : "Netwerkfout:"} ${err.message}</div>`;
+        feedback.innerHTML = `<div class="message error">❌ Netwerkfout: ${err.message}</div>`;
       }
     });
   </script>
