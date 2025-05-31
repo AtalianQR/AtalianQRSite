@@ -1,7 +1,5 @@
-// netlify/functions/jobs.js
-
 export async function handler(event) {
-  const { type, id, lang } = event.queryStringParameters || {};
+  const { type, id } = event.queryStringParameters || {};
 
   if (!type || !id) {
     console.error("Missing 'type' or 'id'");
@@ -50,14 +48,24 @@ export async function handler(event) {
       };
     }
 
-    const data = await response.json();
+    const rawData = await response.json();
+    console.log("RECEIVED RAW DATA:", JSON.stringify(rawData, null, 2));
 
-    // The workflow now returns a JsonContainer with a 'jobs' array
     let jobs = [];
-    if (data.Output && Array.isArray(data.Output.jobs)) {
-      jobs = data.Output.jobs;
+
+    const rawString = rawData?.properties?.Output?.object;
+    if (rawString) {
+      try {
+        jobs = JSON.parse(rawString);
+      } catch (parseError) {
+        console.error("Failed to parse Output.object as JSON:", parseError, rawString);
+        return {
+          statusCode: 500,
+          body: JSON.stringify({ error: "Invalid JSON returned by Ultimo.", raw: rawString }),
+        };
+      }
     } else {
-      console.warn("No jobs array in workflow response:", data.Output);
+      console.warn("Output.object was empty or missing:", rawData);
     }
 
     console.log("Jobs returned:", jobs.length);
