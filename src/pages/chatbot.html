@@ -7,22 +7,33 @@
   <link rel="icon" href="/AtalianFavicon.png" />
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/botui/build/botui.min.css">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/botui/build/botui-theme-default.css">
-   <style>
-    html, body {
-      font-family: 'Segoe UI', sans-serif;
-      background-color: #f4f6fa;
-      padding: 2rem;
-      max-width: 600px;
-      margin: auto;
-      background-image:
-        linear-gradient(to bottom, rgba(255,255,255,0.75), rgba(255,255,255,0.65)),
-        url('/building-cleaning.png');
+  <style>
+    html {
+  font-family: 'Segoe UI', sans-serif;
+  background-color: #f4f6fa;
+  padding: 2rem;
+  max-width: 600px;
+  margin: auto;
+  display: flex;
+  flex-direction: column;
+  height: 100dvh;
+  max-height: 100svh;
+  overflow: hidden;
+}
+
+body {
+  background-image: url('/building-cleaning.png');
+  background-size: cover;
+  background-repeat: no-repeat;
+  background-position: center;
+}
       background-size: cover;
       background-repeat: no-repeat;
       background-position: center;
       display: flex;
       flex-direction: column;
       height: 100dvh;
+      max-height: 100svh;
       overflow: hidden;
     }
     @media (min-height: 500px) {
