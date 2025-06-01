@@ -53,7 +53,7 @@
       max-width: 50%;
       margin: 0 ;
       background: rgba(255, 255, 255, 0.85);
-      padding: 0.3rem;
+      padding: 0.1rem;
       border-radius: 12px;
     }
     .ruimte-label {
@@ -114,17 +114,22 @@
 }
 
 .header-flex .logo {
-  flex: 0 0 120px;
-  max-width: 120px;
+  flex: 0 0 100px;
+  max-width: 100px;
   height: auto;
   margin: 0;
 }
 
-.header-flex .ruimte-label {
-  flex: 0 0 300px; /* breder dan logo */
-  max-width: 300px;
-  text-align: center;
-  white-space: normal;
+    .header-flex .ruimte-label {
+      flex: 0 0 calc(100% - 100px);
+      max-width: calc(100% - 100px);
+      text-align: center;
+      white-space: normal;   
+
+    }
+    
+
+
 }
   </style>
   
