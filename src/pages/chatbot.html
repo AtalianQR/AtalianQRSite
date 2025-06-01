@@ -8,56 +8,49 @@
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/botui/build/botui.min.css">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/botui/build/botui-theme-default.css">
   <style>
-    html {
-  font-family: 'Segoe UI', sans-serif;
-  background-color: #f4f6fa;
-  padding: 2rem;
-  max-width: 600px;
-  margin: auto;
-  display: flex;
-  flex-direction: column;
-  height: 100dvh;
-  max-height: 100svh;
-  overflow: hidden;
-}
-
-body {
-  background-image: url('/building-cleaning.png');
-  background-size: cover;
-  background-repeat: no-repeat;
-  background-position: center;
-}
-      background-size: cover;
-      background-repeat: no-repeat;
-      background-position: center;
+    html {
+      width: 100%;
+      box-sizing: border-box;
+      font-family: 'Segoe UI', sans-serif;
+      background-color: #f4f6fa;
+      padding: 0;
+      max-width: 800px;
+      margin: auto;
       display: flex;
       flex-direction: column;
       height: 100dvh;
       max-height: 100svh;
       overflow: hidden;
     }
+
+ body {
+  background-image: url('/building-cleaning.png');
+  background-size: cover;
+  background-repeat: no-repeat;
+  background-position: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;     /* Zorg dat de inhoud in het midden blijft */
+  height: 100dvh;
+  overflow: hidden;
+}
+
     @media (min-height: 500px) {
       body {
         min-height: 100vh;
       }
     }
+
     img.logo {
       display: block;
-      max-width: 160px;
-      margin: 0 auto 1.5rem;
+      max-width: 80%;
+      margin: 0 auto 0.2rem;
       background: rgba(255, 255, 255, 0.85);
       padding: 0.5rem;
       border-radius: 12px;
     }
-    #botui-app {
-      margin-top: 1rem;
-      min-height: 120px;
-      max-height: 400px;
-      overflow-y: auto;
-      flex-grow: 1;
-      transition: min-height 0.3s ease;
-    }
     .ruimte-label {
+	  margin-top: 0rem;  /* geen extra ruimte bovenaan */
       display: flex;
       flex-direction: column;
       align-items: center;
@@ -69,16 +62,29 @@ body {
       font-size: 1rem;
       font-weight: 500;
       text-align: center;
-      margin-bottom: 1rem;
+      margin-bottom: 0rem;
       box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05);
       border: 1px solid #ddd;
     }
+
     .ruimte-label .type {
       font-size: 0.85rem;
       font-weight: normal;
       margin-top: 0.4rem;
       color: #666;
-    }
+    }	
+
+	 #botui-app,
+	.ruimte-label,
+	header {
+	  width: 100%;
+	  max-width: 600px;
+	  margin-top: 0rem;  /* geen extra ruimte bovenaan */
+	  padding: 1rem;
+	}
+
+
+
     .lang-switch a {
       margin: 0 0.5rem;
       text-decoration: none;
@@ -201,9 +207,9 @@ body {
           // Als type sp dan achtergrond aanpassen
           if (type === 'sp') {
             if (res.value === 'technisch') {
-              document.body.style.backgroundImage = "linear-gradient(to bottom, rgba(255,255,255,0.75), rgba(255,255,255,0.65)), url('/meldentechnisch.png')";
+              document.body.style.backgroundImage = "linear-gradient(to bottom, rgba(255,255,255,0), rgba(255,255,255,0)), url('/meldentechnisch.png')";
             } else if (res.value === 'schoonmaak') {
-              document.body.style.backgroundImage = "linear-gradient(to bottom, rgba(255,255,255,0.75), rgba(255,255,255,0.65)), url('/meldenschoonmaak.png')";
+              document.body.style.backgroundImage = "linear-gradient(to bottom, rgba(255,255,255,0), rgba(255,255,255,0)), url('/meldenschoonmaak.png')";
             }
             // Anders: behoud standaard achtergrond
           }
