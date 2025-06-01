@@ -21,7 +21,7 @@
       margin: auto;
       background-image:
         linear-gradient(to bottom, rgba(255,255,255,0.75), rgba(255,255,255,0.65)),
-        url('/meldentechnisch.png');
+        url('/building-cleaning.png');
       background-size: cover;
       background-repeat: no-repeat;
       background-position: center;
@@ -148,7 +148,7 @@
       if (jobs.length > 0) {
         const jobList = jobs.map(j => `✅ ${j.Description}`).join('<br>');
         return botui.message.add({ type: 'html', content: jobList })
-          .then(() => botui.message.add({ content: isFr ? 'Votre problème est-il déjà listé of wens je info?' : 'Staat jouw probleem hierbij of wens je info?' }))
+          .then(() => botui.message.add({ content: isFr ? 'Votre problème est-il déjà listé ou vous désirez de l'infos' : 'Staat jouw probleem hierbij of wens je info?' }))
           .then(() => botui.action.button({ action: [
             { text: isFr ? 'Oui' : 'Ja', value: 'ja' },
             { text: isFr ? 'Non' : 'Nee', value: 'nee' },
@@ -170,37 +170,52 @@
     }
 
     async function askProblemType() {
-      return botui.message.add({ content: isFr ? 'Quel type de problème souhaitez-vous signaler ?' : 'Wat wil je melden?' })
+      // Voor type eq geen keuze voor Technisch/Schoonmaak/Anders, ga direct naar urgentie
+      if (type === 'eq') {
+        return askUrgency('');
+      }
+      return botui.message.add({ content: isFr ? 'Quel type de problème souhaitez-vous signaler?' : 'Wat wil je melden?' })
         .then(() => botui.action.button({ action: [
           { text: isFr ? '🔧 Technique' : '🔧 Technisch', value: 'technisch' },
           { text: isFr ? '🧼 Nettoyage' : '🧼 Schoonmaak', value: 'schoonmaak' },
           { text: isFr ? '❓ Autre' : '❓ Anders', value: 'anders' }
         ] }))
-        .then(res => askUrgency(res.value));
+        .then(res => {
+          // Als type sp dan achtergrond aanpassen
+          if (type === 'sp') {
+            if (res.value === 'technisch') {
+              document.body.style.backgroundImage = "linear-gradient(to bottom, rgba(255,255,255,0.75), rgba(255,255,255,0.65)), url('/meldentechnisch.png')";
+            } else if (res.value === 'schoonmaak') {
+              document.body.style.backgroundImage = "linear-gradient(to bottom, rgba(255,255,255,0.75), rgba(255,255,255,0.65)), url('/meldenschoonmaak.png')";
+            }
+            // Anders: behoud standaard achtergrond
+          }
+          return askUrgency(res.value);
+        });
     }
 
     function askUrgency(selectedType) {
-      return botui.message.add({ content: isFr ? 'Est-ce urgent ?' : 'Is het dringend?' })
+      return botui.message.add({ content: isFr ? 'Est-ce urgent?' : 'Is het dringend?' })
         .then(() => botui.action.button({ action: [
           { text: isFr ? '🚨 Oui' : '🚨 Ja', value: 'ja' },
           { text: isFr ? '⏱ Non' : '⏱ Nee', value: 'nee' }
         ] }))
         .then(res => {
           if (res.value === 'ja') {
-            return botui.message.add({ type: 'html', content: isFr ? `Merci ! Veuillez appeler onmiddellijk ${phoneLink}` : `Bedankt! Gelieve onmiddellijk te bellen naar ${phoneLink}` });
+            return botui.message.add({ type: 'html', content: isFr ? `Merci ! Veuillez appeler onmiddellijk ${phoneLink}` : `Bedankt! Gelieve onmiddellijk te bellen naar ${phoneLink}` });
           }
           return askDescription();
         });
     }
 
     function askDescription() {
-      return botui.message.add({ content: isFr ? 'Quel est le problème exactement ?' : 'Wat is het probleem precies?' })
+      return botui.message.add({ content: isFr ? 'Quel est le problème exactement?' : 'Wat is het probleem precies?' })
         .then(() => botui.action.text({ action: { placeholder: isFr ? 'Beschrijf het probleem' : 'Beschrijf het probleem' } }))
         .then(res => { omschrijving = res.value; return askEmail(); });
     }
 
     function askEmail() {
-      return botui.message.add({ content: isFr ? 'Quelle est votre adresse e-mail ?' : 'Wat is je e-mailadres?' })
+      return botui.message.add({ content: isFr ? 'Quelle est votre adresse e-mail?' : 'Wat is je e-mailadres?' })
         .then(() => botui.action.text({ action: { placeholder: 'jouw@email.com' } }))
         .then(res => {
           const email = res.value;
@@ -216,10 +231,10 @@
           }).then(async apiRes => {
             const text = await apiRes.text();
             if (!apiRes.ok) throw new Error(text);
-            return botui.message.add({ content: isFr ? 'Merci ! Votre signalement a été envoyé.' : 'Bedankt! Jouw melding is verzonden.' });
+            return botui.message.add({ content: isFr ? 'Merci ! Votre signalement a été envoyé.' : 'Bedankt! Jouw melding is verzonden.' });
           }).catch(err => {
             console.error('Fout bij verzenden melding:', err);
-            return botui.message.add({ content: isFr ? 'Erreur lors de l’Envoi de la demande.' : 'Fout bij het verzenden van de melding.' });
+            return botui.message.add({ content: isFr ? 'Erreur lors de l’Envoi de la demande.' : 'Fout bij het verzenden van de melding.' });
           });
         });
     }
