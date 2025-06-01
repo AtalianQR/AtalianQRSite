@@ -33,20 +33,25 @@
 
   .header-flex {
     display: flex;
-    flex-direction: column;  /* onder elkaar */
+    flex-direction: column;
     align-items: center;
     max-width: 600px;
     width: 100%;
     margin: 0 auto;
     padding: 0.5rem 0;
-    gap: 0.5rem;  /* subtiele ruimte tussen logo en label */
+    gap: 0.5rem;
   }
 
-  .header-flex .logo {
-    max-width: 140px;
+  /* ✅ Correct logo selector */
+  img.logo {
+    max-height: 60px;
     height: auto;
+    width: auto;
     display: block;
     margin: 0 auto;
+    background: rgba(255, 255, 255, 0.85);
+    padding: 0.1rem;
+    border-radius: 12px;
   }
 
   .header-flex .ruimte-label {
@@ -65,8 +70,8 @@
     box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05);
     border: 1px solid #ddd;
     width: 100%;
-    max-width: 600px;     /* even breed als chatbot */
-    margin: 0 auto;       /* gecentreerd */
+    max-width: 600px;
+    margin: 0 auto;
   }
 
   .ruimte-label .type {
@@ -74,14 +79,6 @@
     font-weight: normal;
     margin-top: 0.25rem;
     color: #666;
-  }
-
-  img.logo {
-    display: block;
-    margin: 0;
-    background: rgba(255, 255, 255, 0.85);
-    padding: 0.1rem;
-    border-radius: 12px;
   }
 
   .lang-switch {
@@ -120,8 +117,8 @@
       justify-content: center;
     }
 
-    .header-flex .logo,
-    .header-flex .ruimte-label {
+    .header-flex .ruimte-label,
+    img.logo {
       flex: 0 0 90%;
       max-width: 90%;
       text-align: center;
