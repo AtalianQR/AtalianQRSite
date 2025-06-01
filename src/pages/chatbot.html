@@ -23,16 +23,13 @@
       overflow: hidden;
     }
 
- body {
+body {
+  margin: 0;
+  padding: 0;
   background-image: url('/building-cleaning.png');
   background-size: cover;
   background-repeat: no-repeat;
   background-position: center;
-  display: flex;
-  flex-direction: column;
-  align-items: center;     /* Zorg dat de inhoud in het midden blijft */
-  height: 100dvh;
-  overflow: hidden;
 }
 
     @media (min-height: 500px) {
@@ -43,10 +40,10 @@
 
     img.logo {
       display: block;
-      max-width: 80%;
-      margin: 0 auto 0.2rem;
+      max-width: 50%;
+      margin: 0 ;
       background: rgba(255, 255, 255, 0.85);
-      padding: 0.5rem;
+      padding: 0.3rem;
       border-radius: 12px;
     }
     .ruimte-label {
@@ -63,8 +60,10 @@
       font-weight: 500;
       text-align: center;
       margin-bottom: 0rem;
+      margin-right: 20px;
       box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05);
       border: 1px solid #ddd;
+
     }
 
     .ruimte-label .type {
@@ -74,23 +73,51 @@
       color: #666;
     }	
 
-	 #botui-app,
-	.ruimte-label,
-	header {
-	  width: 100%;
-	  max-width: 600px;
-	  margin: auto;
-	  padding: 1rem;
-	}
+    #botui-app {
+      width: 100%;
+      max-width: 600px;
+      margin: 0 auto;
+      padding: 0.5rem 1rem 1rem 1rem;
+    }
 
-
+    .botui-container {
+      background-color: #fffaf0; /* subtiel lichtoranje */
+      border-radius: 12px;
+      padding: 1rem;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.05);
+    }
 
     .lang-switch a {
       margin: 0 0.5rem;
       text-decoration: none;
       font-size: 1.2rem;
     }
+    
+.header-flex {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  max-width: 600px;
+  width: 100%;
+  margin: 0 auto;
+  padding: 0.5rem 0;
+}
+
+.header-flex .logo {
+  flex: 0 0 120px;
+  max-width: 120px;
+  height: auto;
+  margin: 0;
+}
+
+.header-flex .ruimte-label {
+  flex: 0 0 300px; /* breder dan logo */
+  max-width: 300px;
+  text-align: center;
+  white-space: normal;
+}
   </style>
+  
 </head>
 <body>
   <header>
@@ -98,11 +125,11 @@
       <a href="#" id="switch-nl">🇳🇱 NL</a> |
       <a href="#" id="switch-fr">🇫🇷 FR</a>
     </div>
-    <div style="display: flex; flex-direction: column; align-items: center;">
+    <div class="header-flex">
       <img src="/AtalianLogo.png" alt="Atalian Logo" class="logo" />
+      <div id="ruimte-info" class="ruimte-label" style="display:none;"></div>
     </div>
-  </header>
-  <div id="ruimte-info" class="ruimte-label" style="display:none;"></div>
+    </header>
   <div id="botui-app">
     <bot-ui></bot-ui>
   </div>
@@ -164,7 +191,7 @@
 
     async function startChat() {
       fetchLocationDescription();
-      await botui.message.add({ content: isFr ? 'Chargement des signalements en cours...' : 'Openstaande meldingen worden opgehaald...' });
+      await botui.message.add({type: 'html', content: isFr ? 'Bonjour, je suis votre assistant <span style="color: orange; font-weight: bold;">ATALIAN</span>, <br>je recherche pour vous les signalements en cours...' : 'Hallo, ik ben je <span style="color: orange; font-weight: bold;">ATALIAN</span>-assistent,<br>ik haal even de openstaande meldingen voor je op...' });
       const jobs = await fetchOpenJobs(type, id);
       if (jobs === null) {
         return botui.message.add({ content: isFr ? '❌ Erreur lors du chargement des signalements.' : '❌ Fout bij het ophalen van de meldingen.' });
@@ -197,7 +224,7 @@
       if (type === 'eq') {
         return askUrgency('');
       }
-      return botui.message.add({ content: isFr ? 'Quel type de problème souhaitez-vous signaler?' : 'Wat wil je melden?' })
+      return botui.message.add({ content: isFr ? 'Je n\'ai rien retrouvé, quel type de problème souhaitez-vous signaler?' : 'Ik heb niets gevonden, wat wil je melden?' })
         .then(() => botui.action.button({ action: [
           { text: isFr ? '🔧 Technique' : '🔧 Technisch', value: 'technisch' },
           { text: isFr ? '🧼 Nettoyage' : '🧼 Schoonmaak', value: 'schoonmaak' },
@@ -207,9 +234,9 @@
           // Als type sp dan achtergrond aanpassen
           if (type === 'sp') {
             if (res.value === 'technisch') {
-              document.body.style.backgroundImage = "linear-gradient(to bottom, rgba(255,255,255,0.75), rgba(255,255,255,0.65)), url('/meldentechnisch.png')";
+              document.body.style.backgroundImage = "linear-gradient(to bottom, rgba(255,255,255,0), rgba(255,255,255,0)), url('/meldentechnisch.png')";
             } else if (res.value === 'schoonmaak') {
-              document.body.style.backgroundImage = "linear-gradient(to bottom, rgba(255,255,255,0.75), rgba(255,255,255,0.65)), url('/meldenschoonmaak.png')";
+              document.body.style.backgroundImage = "linear-gradient(to bottom, rgba(255,255,255,0), rgba(255,255,255,0)), url('/meldenschoonmaak.png')";
             }
             // Anders: behoud standaard achtergrond
           }
