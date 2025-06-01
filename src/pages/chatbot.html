@@ -23,20 +23,30 @@
       overflow: hidden;
     }
 
-body {
-  margin: 0;
-  padding: 0;
-  background-image: url('/building-cleaning.png');
-  background-size: cover;
-  background-repeat: no-repeat;
-  background-position: center;
-}
+  body {
+    margin: 0;
+    padding: 0;
+    background-image: url('/building-cleaning.png');
+    background-size: cover;
+    background-repeat: no-repeat;
+    background-position: center;
+  }
 
-    @media (min-height: 500px) {
-      body {
-        min-height: 100vh;
-      }
+  @media (max-width: 480px) {
+    .header-flex {
+      flex-direction: column;
+      align-items: center;
+      padding: 0.5rem;
     }
+
+  .header-flex .logo,
+  .header-flex .ruimte-label {
+    flex: none;
+    max-width: 90%;
+    width: auto;
+    margin-bottom: 0.5rem;
+  }
+}
 
     img.logo {
       display: block;
@@ -245,7 +255,7 @@ body {
     }
 
     function askUrgency(selectedType) {
-      return botui.message.add({ content: isFr ? 'Est-ce urgent?' : 'Is het dringend?' })
+      return botui.message.add({ content: isFr ? 'Je n\'ai rien retrouvé, le problème est urgent?' : 'Ik heb niets gevonden, is het dringend?' })
         .then(() => botui.action.button({ action: [
           { text: isFr ? '🚨 Oui' : '🚨 Ja', value: 'ja' },
           { text: isFr ? '⏱ Non' : '⏱ Nee', value: 'nee' }
