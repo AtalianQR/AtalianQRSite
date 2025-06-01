@@ -286,7 +286,7 @@
     }
 
     function askUrgency(selectedType) {
-      return botui.message.add({ content: isFr ? 'Je n\'ai rien retrouvé, le problème est urgent?' : 'Ik heb niets gevonden, is het dringend?' })
+      return botui.message.add({ content: isFr ? 'Le problème est urgent?' : 'Is het dringend?' })
         .then(() => botui.action.button({ action: [
           { text: isFr ? '🚨 Oui' : '🚨 Ja', value: 'ja' },
           { text: isFr ? '⏱ Non' : '⏱ Nee', value: 'nee' }
