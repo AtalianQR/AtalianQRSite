@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Wat wil je melden?</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/botui/build/botui.min.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/botui/build/botui-theme-default.css">
+  <style>
+    body {
+      background-color: #f4f6fa;
+      padding: 1rem;
+      font-family: 'Segoe UI', sans-serif;
+      max-width: 600px;
+      margin: auto;
+    }
+    #botui-app {
+      margin-top: 1rem;
+    }
+    .ruimte-label {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      background: rgba(255, 255, 255, 0.95);
+      color: #1a202c;
+      padding: 0.75rem 1rem;
+      border-radius: 12px;
+      font-size: 1rem;
+      font-weight: 500;
+      text-align: center;
+      margin-bottom: 1rem;
+      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05);
+      border: 1px solid #ddd;
+    }
+    .ruimte-label .type {
+      font-size: 0.85rem;
+      font-weight: normal;
+      margin-top: 0.4rem;
+      color: #666;
+    }
+  </style>
+</head>
+<body>
+  <div id="ruimte-info" class="ruimte-label" style="display:none;"></div>
+  <div id="botui-app">
+    <bot-ui></bot-ui>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/vue@2"></script>
+  <script src="https://cdn.jsdelivr.net/npm/botui/build/botui.min.js"></script>
+  <script>
+    const urlParams = new URLSearchParams(window.location.search);
+    const lang = urlParams.get("lang") ?? "nl";
+    const type = urlParams.get("type") ?? '';
+    const id = urlParams.get("id") ?? '';
+    const isFr = lang === 'fr';
+
+    const botui = new BotUI('botui-app');
+    let selectedType = '';
+    let urgency = '';
+
+    const phoneLink = '<a href="tel:+3278152300">📞 +32 78 152 300</a>';
+
+    function fetchLocationDescription() {
+      const endpoint = type === "eq"
+        ? "/.netlify/functions/equipment"
+        : "/.netlify/functions/space";
+
+      fetch(`${endpoint}?id=${encodeURIComponent(id)}`)
+        .then(res => res.json())
+        .then(data => {
+          const ruimte = document.getElementById("ruimte-info");
+          if (data.description) {
+            ruimte.innerHTML = `
+              ${data.description}
+              <div class="type">
+                ${type === "eq"
+                  ? (isFr ? "🔧 Installation" : "🔧 Installatie")
+                  : (isFr ? "🏢 Espace" : "🏢 Ruimte")}
+              </div>
+            `;
+            ruimte.style.display = "flex";
+          }
+        })
+        .catch(() => {
+          const ruimte = document.getElementById("ruimte-info");
+          ruimte.innerHTML = isFr
+            ? "❌ Aucun emplacement trouvé."
+            : "❌ Geen beschrijving gevonden.";
+          ruimte.style.display = "flex";
+        });
+    }
+
+    async function fetchOpenJobs(type, id) {
+      try {
+        const res = await fetch(`/.netlify/functions/jobs?type=${type}&id=${id}`);
+        if (!res.ok) throw new Error(`Server error ${res.status}`);
+        const jobs = await res.json();
+        return Array.isArray(jobs) ? jobs : [];
+      } catch (e) {
+        console.error("Fout bij ophalen jobs:", e);
+        return null;
+      }
+    }
+
+    fetchLocationDescription();
+
+    botui.message.add({
+      content: isFr ? 'Recherche des signalements existants...' : 'Bezig met ophalen van bestaande meldingen...'
+    }).then(async () => {
+      const jobs = await fetchOpenJobs(type, id);
+
+      if (jobs === null) {
+        return botui.message.add({
+          content: isFr
+            ? "❌ Erreur lors du chargement des signalements."
+            : "❌ Fout bij het ophalen van de meldingen."
+        });
+      }
+
+      if (!jobs.length) {
+        return vervolgFlow();
+      }
+
+      const jobList = jobs.map(j => `✅ ${j.Description}`).join('<br>');
+      return botui.message.add({ type: 'html', content: jobList }).then(() => {
+        return botui.message.add({
+          content: isFr ? 'Votre problème est-il déjà listé ?' : 'Staat jouw probleem hierbij?'
+        });
+      }).then(() => {
+        return botui.action.button({
+          action: [
+            { text: isFr ? 'Oui' : 'Ja', value: 'ja' },
+            { text: isFr ? 'Non' : 'Nee', value: 'nee' }
+          ]
+        });
+      }).then(res => {
+        if (res.value === 'ja') {
+          return botui.message.add({
+            content: isFr
+              ? 'Merci ! Aucun besoin de refaire une déclaration.'
+              : 'Bedankt! Je hoeft geen nieuwe melding te maken.'
+          }).then(() => {
+            setTimeout(() => {
+              try {
+                window.close();
+              } catch (e) {
+                console.warn("Venster kon niet automatisch gesloten worden.");
+              }
+            }, 3000);
+          });
+        } else {
+          return vervolgFlow();
+        }
+      });
+    });
+
+    function vervolgFlow() {
+      if (type === 'eq') {
+        selectedType = 'technisch';
+        return vraagUrgentie();
+      }
+
+      return botui.message.add({
+        content: isFr ? 'Quel type de problème souhaitez-vous signaler ?' : 'Wat wil je melden?'
+      }).then(() => {
+        return botui.action.button({
+          action: [
+            { text: '🔧 Technisch', value: 'technisch' },
+            { text: '🧼 Schoonmaak', value: 'schoonmaak' },
+            { text: '❓ Anders', value: 'anders' }
+          ]
+        });
+      }).then(res => {
+        selectedType = res.value;
+        return vraagUrgentie();
+      });
+    }
+
+    function vraagUrgentie() {
+      return botui.message.add({
+        content: isFr ? 'Est-ce urgent ?' : 'Is het dringend?'
+      }).then(() => {
+        return botui.action.button({
+          action: [
+            { text: '🚨 Ja', value: 'ja' },
+            { text: '⏱ Nee', value: 'nee' }
+          ]
+        });
+      }).then(res => {
+        urgency = res.value;
+
+        if (urgency === 'ja') {
+          return botui.message.add({
+            type: 'html',
+            content: isFr
+              ? `Merci ! Veuillez appeler immédiatement ${phoneLink}`
+              : `Bedankt! Gelieve onmiddellijk te bellen naar ${phoneLink}`
+          });
+        } else {
+          const targetUrl = `/melding.html?lang=${lang}&type=${selectedType}&urgency=${urgency}`;
+          return botui.message.add({
+            content: isFr
+              ? `Merci ! Nous vous redirigeons vers le formulaire...`
+              : `Bedankt! We leiden je nu door naar het formulier...`
+          }).then(() => {
+            setTimeout(() => {
+              window.location.href = targetUrl;
+            }, 2000);
+          });
+        }
+      });
+    }
+  </script>
+</body>
+</html>
