@@ -161,7 +161,20 @@
     <bot-ui></bot-ui>
   </div>
   <script src="https://cdn.jsdelivr.net/npm/vue@2"></script>
-
+   <script>
+    window.addEventListener('load', () => {
+      const interval = setInterval(() => {
+        const botui = document.querySelector('#botui-app');
+        if (botui && botui.offsetTop > 0) {
+          window.scrollTo({
+            top: botui.offsetTop - 500, // 👈 schuift 100px erboven
+            behavior: 'smooth'
+          });
+          clearInterval(interval);
+        }
+      }, 300);
+    });
+  </script>
   <script>
     document.getElementById('switch-nl').addEventListener('click', () => {
       const newUrl = new URL(window.location.href);
