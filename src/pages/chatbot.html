@@ -148,7 +148,7 @@
       if (jobs.length > 0) {
         const jobList = jobs.map(j => `✅ ${j.Description}`).join('<br>');
         return botui.message.add({ type: 'html', content: jobList })
-          .then(() => botui.message.add({ content: isFr ? 'Votre problème est-il déjà listé ou vous désirez de l'infos' : 'Staat jouw probleem hierbij of wens je info?' }))
+          .then(() => botui.message.add({ content: isFr ? 'Votre problème est-il déjà listé ou vous désirez de l\'info?' : 'Staat jouw probleem hierbij of wens je info?' }))
           .then(() => botui.action.button({ action: [
             { text: isFr ? 'Oui' : 'Ja', value: 'ja' },
             { text: isFr ? 'Non' : 'Nee', value: 'nee' },
@@ -156,7 +156,7 @@
           ] }))
           .then(res => {
             if (res.value === 'ja') {
-              return botui.message.add({ content: isFr ? 'Merci ! Aucun behoefte om opnieuw te melden.' : 'Bedankt! Je hoeft geen nieuwe melding te maken.' })
+              return botui.message.add({ content: isFr ? 'Merci ! Aucun nouveau signalement n’est nécessaire.' : 'Bedankt! Je hoeft geen nieuwe melding te maken.' })
                 .then(() => setTimeout(() => { try { window.close(); } catch {} }, 3000));
             }
             if (res.value === 'info') {
