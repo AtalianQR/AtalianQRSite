@@ -27,7 +27,12 @@
       background-position: center;
       display: flex;
       flex-direction: column;
-      min-height: 100vh;
+      min-height: auto;
+    }
+    @media (min-height: 500px) {
+      body {
+        min-height: 100vh;
+      }
     }
     img.logo {
       display: block;
@@ -37,10 +42,14 @@
       padding: 0.5rem;
       border-radius: 12px;
     }
-	#botui-app {
-	  max-height: 300px;
-	  overflow-y: auto;
-	}
+    #botui-app {
+      margin-top: 1rem;
+      min-height: 120px;
+      max-height: 400px;
+      overflow-y: auto;
+      flex-grow: 1;
+      transition: min-height 0.3s ease;
+    }
     .ruimte-label {
       display: flex;
       flex-direction: column;
