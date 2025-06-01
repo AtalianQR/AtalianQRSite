@@ -265,7 +265,7 @@
       if (type === 'eq') {
         return askUrgency('');
       }
-      return botui.message.add({ content: isFr ? 'Je n\'ai rien retrouvé, quel type de problème souhaitez-vous signaler?' : 'Ik heb niets gevonden, wat wil je melden?' })
+      return botui.message.add({ content: isFr ? 'Quel type de problème souhaitez-vous signaler?' : 'Wat wil je melden?' })
         .then(() => botui.action.button({ action: [
           { text: isFr ? '🔧 Technique' : '🔧 Technisch', value: 'technisch' },
           { text: isFr ? '🧼 Nettoyage' : '🧼 Schoonmaak', value: 'schoonmaak' },
