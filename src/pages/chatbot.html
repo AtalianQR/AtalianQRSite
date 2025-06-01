@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="nl">
 <head>
-  <meta charset="UTF-8">
+  <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Wat wil je melden?</title>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/botui/build/botui.min.css">
@@ -72,8 +72,8 @@
 <body>
   <header>
     <div class="lang-switch" style="text-align: right; padding-right: 1rem;">
-      <a href="#" id="switch-nl">🇳🇱</a> |
-      <a href="#" id="switch-fr">🇫🇷</a>
+      <a href="#" id="switch-nl">🇳🇱 NL</a> |
+      <a href="#" id="switch-fr">🇫🇷 FR</a>
     </div>
     <div style="display: flex; flex-direction: column; align-items: center;">
       <img src="/AtalianLogo.png" alt="Atalian Logo" class="logo" />
@@ -104,10 +104,8 @@
     const id = urlParams.get("id") ?? '';
     const isFr = lang === 'fr';
     const botui = new BotUI('botui-app');
-    let selectedType = '';
-    let urgency = '';
-    let omschrijving = '';
     const phoneLink = '<a href="tel:+3278152300">📞 +32 78 152 300</a>';
+    let omschrijving = '';
 
     function isValidEmail(email) {
       return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
@@ -141,57 +139,67 @@
 
     async function startChat() {
       fetchLocationDescription();
+      await botui.message.add({ content: isFr ? 'Chargement des signalements en cours...' : 'Openstaande meldingen worden opgehaald...' });
       const jobs = await fetchOpenJobs(type, id);
       if (jobs === null) {
         return botui.message.add({ content: isFr ? '❌ Erreur lors du chargement des signalements.' : '❌ Fout bij het ophalen van de meldingen.' });
       }
       if (jobs.length > 0) {
         const jobList = jobs.map(j => `✅ ${j.Description}`).join('<br>');
-        return botui.message.add({ type: 'html', content: jobList }).then(() => {
-          return botui.message.add({ content: isFr ? 'Votre problème est-il déjà listé ?' : 'Staat jouw probleem hierbij?' });
-        }).then(() => {
-          return botui.action.button({ action: [ { text: isFr ? 'Oui' : 'Ja', value: 'ja' }, { text: isFr ? 'Non' : 'Nee', value: 'nee' } ] });
-        }).then(res => {
-          if (res.value === 'ja') {
-            return botui.message.add({ content: isFr ? 'Merci ! Aucun besoin de refaire une déclaration.' : 'Bedankt! Je hoeft geen nieuwe melding te maken.' }).then(() => {
-              setTimeout(() => {
-                try { window.close(); } catch (e) { console.warn('Venster kon niet automatisch gesloten worden.'); }
-              }, 3000);
-            });
-          }
-          return askProblemType();
-        });
+        return botui.message.add({ type: 'html', content: jobList })
+          .then(() => botui.message.add({ content: isFr ? 'Votre problème est-il déjà listé of wens je info?' : 'Staat jouw probleem hierbij of wens je info?' }))
+          .then(() => botui.action.button({ action: [
+            { text: isFr ? 'Oui' : 'Ja', value: 'ja' },
+            { text: isFr ? 'Non' : 'Nee', value: 'nee' },
+            { text: 'ℹ️ Info', value: 'info' }
+          ] }))
+          .then(res => {
+            if (res.value === 'ja') {
+              return botui.message.add({ content: isFr ? 'Merci ! Aucun behoefte om opnieuw te melden.' : 'Bedankt! Je hoeft geen nieuwe melding te maken.' })
+                .then(() => setTimeout(() => { try { window.close(); } catch {} }, 3000));
+            }
+            if (res.value === 'info') {
+              return botui.message.add({ content: isFr ? 'Vous allez être redirigé vers Atalian.' : 'Je wordt nu doorgestuurd naar Atalian.' })
+                .then(() => setTimeout(() => { window.location.href = 'https://www.atalian.be'; }, 1500));
+            }
+            return askProblemType();
+          });
       }
       return askProblemType();
     }
 
     async function askProblemType() {
-      if (type === 'eq') return askUrgency();
-      return botui.message.add({ content: isFr ? 'Quel type de problème souhaitez-vous signaler ?' : 'Wat wil je melden?' })
-        .then(() => botui.action.button({ action: [ { text: isFr ? '🔧 Technique' : '🔧 Technisch', value: 'technisch' }, { text: isFr ? '🧼 Nettoyage' : '🧼 Schoonmaak', value: 'schoonmaak' }, { text: isFr ? '❓ Autre' : '❓ Anders', value: 'anders' } ] }))
-        .then(res => { selectedType = res.value; return askUrgency(); });
+      return botui.message.add({ content: isFr ? 'Quel type de problème souhaitez-vous signaler ?' : 'Wat wil je melden?' })
+        .then(() => botui.action.button({ action: [
+          { text: isFr ? '🔧 Technique' : '🔧 Technisch', value: 'technisch' },
+          { text: isFr ? '🧼 Nettoyage' : '🧼 Schoonmaak', value: 'schoonmaak' },
+          { text: isFr ? '❓ Autre' : '❓ Anders', value: 'anders' }
+        ] }))
+        .then(res => askUrgency(res.value));
     }
 
-    function askUrgency() {
-      return botui.message.add({ content: isFr ? 'Est-ce urgent ?' : 'Is het dringend?' })
-        .then(() => botui.action.button({ action: [ { text: isFr ? '🚨 Oui' : '🚨 Ja', value: 'ja' }, { text: isFr ? '⏱ Non' : '⏱ Nee', value: 'nee' } ] }))
+    function askUrgency(selectedType) {
+      return botui.message.add({ content: isFr ? 'Est-ce urgent ?' : 'Is het dringend?' })
+        .then(() => botui.action.button({ action: [
+          { text: isFr ? '🚨 Oui' : '🚨 Ja', value: 'ja' },
+          { text: isFr ? '⏱ Non' : '⏱ Nee', value: 'nee' }
+        ] }))
         .then(res => {
-          urgency = res.value;
-          if (urgency === 'ja') {
-            return botui.message.add({ type: 'html', content: isFr ? `Merci ! Veuillez appeler immédiatement ${phoneLink}` : `Bedankt! Gelieve onmiddellijk te bellen naar ${phoneLink}` });
+          if (res.value === 'ja') {
+            return botui.message.add({ type: 'html', content: isFr ? `Merci ! Veuillez appeler onmiddellijk ${phoneLink}` : `Bedankt! Gelieve onmiddellijk te bellen naar ${phoneLink}` });
           }
           return askDescription();
         });
     }
 
     function askDescription() {
-      return botui.message.add({ content: isFr ? 'Quel est le problème exactement ?' : 'Wat is het probleem precies?' })
-        .then(() => botui.action.text({ action: { placeholder: isFr ? 'Décrivez het probleem' : 'Beschrijf het probleem' } }))
+      return botui.message.add({ content: isFr ? 'Quel est le problème exactement ?' : 'Wat is het probleem precies?' })
+        .then(() => botui.action.text({ action: { placeholder: isFr ? 'Beschrijf het probleem' : 'Beschrijf het probleem' } }))
         .then(res => { omschrijving = res.value; return askEmail(); });
     }
 
     function askEmail() {
-      return botui.message.add({ content: isFr ? 'Quelle est votre adresse e-mail ?' : 'Wat is je e-mailadres?' })
+      return botui.message.add({ content: isFr ? 'Quelle est votre adresse e-mail ?' : 'Wat is je e-mailadres?' })
         .then(() => botui.action.text({ action: { placeholder: 'jouw@email.com' } }))
         .then(res => {
           const email = res.value;
@@ -199,14 +207,7 @@
             return botui.message.add({ content: isFr ? 'Adresse e-mail invalide.' : 'Ongeldig e-mailadres.' })
               .then(() => askEmail());
           }
-          const payload = {
-            id,
-            type,
-            JobDescr: omschrijving,
-            ReportText: email,
-            lang
-          };
-          console.log("Verzending payload:", payload);
+          const payload = { id, type, JobDescr: omschrijving, ReportText: email, lang };
           return fetch('/.netlify/functions/melding', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -214,10 +215,10 @@
           }).then(async apiRes => {
             const text = await apiRes.text();
             if (!apiRes.ok) throw new Error(text);
-            return botui.message.add({ content: isFr ? 'Merci ! Votre signalement a été envoyé.' : 'Bedankt! Jouw melding is verzonden.' });
+            return botui.message.add({ content: isFr ? 'Merci ! Votre signalement a été envoyé.' : 'Bedankt! Jouw melding is verzonden.' });
           }).catch(err => {
             console.error('Fout bij verzenden melding:', err);
-            return botui.message.add({ content: isFr ? 'Erreur lors de l\'envoi de la demande.' : 'Fout bij het verzenden van de melding.' });
+            return botui.message.add({ content: isFr ? 'Erreur lors de l’Envoi de la demande.' : 'Fout bij het verzenden van de melding.' });
           });
         });
     }
