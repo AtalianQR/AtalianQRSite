@@ -7,12 +7,31 @@
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/botui/build/botui.min.css">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/botui/build/botui-theme-default.css">
   <style>
+    html, body {
+      height: 100%;
+      margin: 0;
+      padding: 0;
+    }
     body {
-      background-color: #f4f6fa;
-      padding: 1rem;
       font-family: 'Segoe UI', sans-serif;
+      background-color: #f4f6fa;
+      padding: 2rem;
       max-width: 600px;
       margin: auto;
+      background-image:
+        linear-gradient(to bottom, rgba(255,255,255,0.75), rgba(255,255,255,0.65)),
+        url('/meldentechnisch.png');
+      background-size: cover;
+      background-repeat: no-repeat;
+      background-position: center;
+    }
+    img.logo {
+      display: block;
+      max-width: 160px;
+      margin: 0 auto 1.5rem;
+      background: rgba(255, 255, 255, 0.85);
+      padding: 0.5rem;
+      border-radius: 12px;
     }
     #botui-app {
       margin-top: 1rem;
@@ -41,13 +60,36 @@
     }
   </style>
 </head>
-<body>
-  <div id="ruimte-info" class="ruimte-label" style="display:none;"></div>
-  <div id="botui-app">
+<body style="display: flex; flex-direction: column; min-height: 100vh;">
+  <header style="position: sticky; top: 0; background: rgba(255,255,255,0.95); z-index: 1000; padding-top: 1rem; border-bottom: 1px solid #ddd; box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
+  <div class="lang-switch" style="text-align: right; margin-bottom: 0.5rem; padding-right: 1rem;">
+    <a href="#" id="switch-nl">🇳🇱</a> |
+    <a href="#" id="switch-fr">🇫🇷</a>
+  </div>
+  <div style="display: flex; flex-direction: column; align-items: center;">
+    <img src="/AtalianLogo.png" alt="Atalian Logo" class="logo" />
+    <div id="ruimte-info" class="ruimte-label" style="display:none; margin-top: -0.5rem;"></div>
+  </div>
+</header>
+  
+  <div id="botui-app" style="flex: 1 1 auto;">
     <bot-ui></bot-ui>
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/vue@2"></script>
+<script>
+document.getElementById('switch-nl').addEventListener('click', () => {
+  const newUrl = new URL(window.location.href);
+  newUrl.searchParams.set('lang', 'nl');
+  window.location.href = newUrl.toString();
+});
+
+document.getElementById('switch-fr').addEventListener('click', () => {
+  const newUrl = new URL(window.location.href);
+  newUrl.searchParams.set('lang', 'fr');
+  window.location.href = newUrl.toString();
+});
+</script>
   <script src="https://cdn.jsdelivr.net/npm/botui/build/botui.min.js"></script>
   <script>
     const urlParams = new URLSearchParams(window.location.search);
@@ -147,6 +189,14 @@
                 window.close();
               } catch (e) {
                 console.warn("Venster kon niet automatisch gesloten worden.");
+                botui.action.button({
+                  action: [{
+                    text: isFr ? "Fermer cette fenêtre" : "Sluit dit venster",
+                    value: "close"
+                  }]
+                }).then(() => {
+                  window.close();
+                });
               }
             }, 3000);
           });
