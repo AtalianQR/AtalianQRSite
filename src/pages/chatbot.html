@@ -1,336 +1,388 @@
 <!DOCTYPE html>
 <html lang="nl">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Wat wil je melden?</title>
-  <link rel="icon" href="/AtalianFavicon.png" />
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/botui/build/botui.min.css">
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/botui/build/botui-theme-default.css">
-<style>
-  html, body {
-    height: auto;
-    min-height: 100vh;
-    width: 100%;
-    margin: 0;
-    padding: 0;
-    box-sizing: border-box;
-    font-family: 'Segoe UI', sans-serif;
-    background-color: #f4f6fa;
-    overflow-y: auto;
-  }
-
-  body {
-    background-image: url('/building-cleaning.png');
-    background-size: cover;
-    background-repeat: no-repeat;
-    background-position: center;
-  }
-
-  * {
-    box-sizing: border-box;
-  }
-
-  .header-flex {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    max-width: 600px;
-    width: 100%;
-    margin: 0 auto;
-    padding: 0.5rem 0;
-    gap: 0.5rem;
-  }
-
-  /* ✅ Correct logo selector */
-  img.logo {
-    max-height: 60px;
-    height: auto;
-    width: auto;
-    display: block;
-    margin: 0 auto;
-    background: rgba(255, 255, 255, 0.85);
-    padding: 0.1rem;
-    border-radius: 12px;
-  }
-
-  .header-flex .ruimte-label {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    text-align: center;
-    background: rgba(255, 255, 255, 0.95);
-    color: #1a202c;
-    padding: 0.5rem 1rem;
-    border-radius: 12px;
-    font-size: 1rem;
-    font-weight: 500;
-    white-space: normal;
-    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05);
-    border: 1px solid #ddd;
-    width: 100%;
-    max-width: 600px;
-    margin: 0 auto;
-  }
-
-  .ruimte-label .type {
-    font-size: 0.85rem;
-    font-weight: normal;
-    margin-top: 0.25rem;
-    color: #666;
-  }
-
-  .lang-switch {
-    text-align: right;
-    padding-right: 1rem;
-    margin-top: 1rem;
-  }
-
-  .lang-switch a {
-    margin: 0 0.5rem;
-    text-decoration: none;
-    font-size: 1.2rem;
-  }
-
-  #botui-app {
-    width: 100%;
-    max-width: 600px;
-    margin: 1rem auto 0 auto;
-    padding: 0.5rem 1rem 1rem 1rem;
-  }
-
-  .botui-container {
-    max-width: 600px;
-    width: 100%;
-    margin: 0 auto;
-    background-color: #fffaf0;
-    border-radius: 12px;
-    padding: 1rem;
-    box-sizing: border-box;
-    opacity: 0;
-    animation: fadeIn 3s ease forwards;   
-  }
-  
-  @keyframes fadeIn {
-    to {
-      opacity: 1;
-    }
-  }
-
-  /* 📱 Mobiele weergave */
-  @media (max-width: 480px) {
-    .header-flex {
-      flex-wrap: wrap;
-      justify-content: center;
-    }
-
-    .header-flex .ruimte-label,
-    img.logo {
-      flex: 0 0 90%;
-      max-width: 90%;
-      text-align: center;
-    }
-
-    .header-flex .ruimte-label {
-      font-size: 0.95rem;
-      padding: 0.5rem;
-    }
-
-    .botui-container {
-      padding: 0.75rem;
-      max-width: 95%;
-    }
-  }
-</style>
-
-  
-</head>
-<body>
-  <header>
-    <div class="lang-switch">
-      <a href="#" id="switch-nl">🇳🇱 NL</a> |
-      <a href="#" id="switch-fr">🇫🇷 FR</a>
-    </div>
-    <div class="header-flex">
-      <img src="/AtalianLogo.png" alt="Atalian Logo" class="logo" />
-      <div id="ruimte-info" class="ruimte-label" style="display:none;"></div>
-    </div>
-    </header>
-  <div id="botui-app">
-    <bot-ui></bot-ui>
-  </div>
-  <script src="https://cdn.jsdelivr.net/npm/vue@2"></script>
-   <script>
-    window.addEventListener('load', () => {
-      const interval = setInterval(() => {
-        const botui = document.querySelector('#botui-app');
-        if (botui && botui.offsetTop > 0) {
-          window.scrollTo({
-            top: Math.max(botui.offsetTop - 100, 0), // 👈 schuift 100px erboven
-            behavior: 'smooth'
-          });
-          clearInterval(interval);
-        }
-      }, 300);
-    });
-  </script>
-  <script>
-    document.getElementById('switch-nl').addEventListener('click', () => {
-      const newUrl = new URL(window.location.href);
-      newUrl.searchParams.set('lang', 'nl');
-      window.location.href = newUrl.toString();
-    });
-    document.getElementById('switch-fr').addEventListener('click', () => {
-      const newUrl = new URL(window.location.href);
-      newUrl.searchParams.set('lang', 'fr');
-      window.location.href = newUrl.toString();
-    });
-  </script>
-  <script src="https://cdn.jsdelivr.net/npm/botui/build/botui.min.js"></script>
-  <script>
-    const urlParams = new URLSearchParams(window.location.search);
-    const lang = urlParams.get("lang") ?? "nl";
-    const type = urlParams.get("type") ?? '';
-    const id = urlParams.get("id") ?? '';
-    const isFr = lang === 'fr';
-    const botui = new BotUI('botui-app');
-    const phoneLink = '<a href="tel:+3278152300">📞 +32 78 152 300</a>';
-    let omschrijving = '';
-
-
-
-    function isValidEmail(email) {
-      return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
-    }
-
-    function fetchLocationDescription() {
-      if (!id || !type) return;
-      const endpoint = type === 'eq' ? '/.netlify/functions/equipment' : '/.netlify/functions/space';
-      fetch(`${endpoint}?id=${encodeURIComponent(id)}`)
-        .then(res => res.json())
-        .then(data => {
-          const ruimte = document.getElementById('ruimte-info');
-          if (data.description) {
-            ruimte.innerHTML = `${data.description}<div class="type">${type === 'eq' ? (isFr ? '🔧 Installation' : '🔧 Installatie') : (isFr ? '🏢 Espace' : '🏢 Ruimte')}</div>`;
-            ruimte.style.display = 'flex';
-          }
-        });
-    }
-
-    async function fetchOpenJobs(type, id) {
-      try {
-        const res = await fetch(`/.netlify/functions/jobs?type=${type}&id=${id}`);
-        if (!res.ok) throw new Error(`Server error ${res.status}`);
-        const jobs = await res.json();
-        return Array.isArray(jobs) ? jobs : [];
-      } catch (e) {
-        console.error('Fout bij ophalen jobs:', e);
-        return null;
-      }
-    }
-
-    async function startChat() {
-      fetchLocationDescription();
-      await botui.message.add({type: 'html', content: isFr ? 'Bonjour, je suis votre assistant <span style="color: orange; font-weight: bold;">ATALIAN</span>, <br>je recherche pour vous les signalements en cours...' : 'Hallo, ik ben je <span style="color: orange; font-weight: bold;">ATALIAN</span>-assistent,<br>ik haal even de openstaande meldingen voor je op...' });
-      const jobs = await fetchOpenJobs(type, id);
-      if (jobs === null) {
-        return botui.message.add({ content: isFr ? '❌ Erreur lors du chargement des signalements.' : '❌ Fout bij het ophalen van de meldingen.' });
-      }
-      if (jobs.length > 0) {
-        const jobList = jobs.map(j => `✅ ${j.Description}`).join('<br>');
-        return botui.message.add({ type: 'html', content: jobList })
-          .then(() => botui.message.add({ content: isFr ? 'Votre problème est-il déjà listé?' : 'Staat jouw probleem hierbij?' }))
-          .then(() => botui.action.button({ action: [
-            { text: isFr ? 'Oui' : 'Ja', value: 'ja' },
-            { text: isFr ? 'Non' : 'Nee', value: 'nee' }
-                    ] }))
-          .then(res => {
-            if (res.value === 'ja') {
-              return botui.message.add({ content: isFr ? 'Merci ! Aucun nouveau signalement n’est nécessaire.' : 'Bedankt! Je hoeft geen nieuwe melding te maken.' })
-                .then(() => setTimeout(() => { try { window.close(); } catch {} }, 3000));
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>Wat wil je melden?</title>
+        <link rel="icon" href="/AtalianFavicon.png" />
+        <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/botui/build/botui.min.css" />
+        <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/botui/build/botui-theme-default.css" />
+        <style>
+            html,
+            body {
+                height: auto;
+                min-height: 100vh;
+                width: 100%;
+                margin: 0;
+                padding: 0;
+                box-sizing: border-box;
+                font-family: 'Segoe UI', sans-serif;
+                background-color: #f4f6fa;
+                overflow-y: auto;
             }
-            if (res.value === 'info') {
-              return botui.message.add({ content: isFr ? 'Vous allez être redirigé vers Atalian.' : 'Je wordt nu doorgestuurd naar Atalian.' })
-                .then(() => setTimeout(() => { window.location.href = 'https://www.atalian.be'; }, 1500));
+
+            body {
+                background-image: url('/building-cleaning.png');
+                background-size: cover;
+                background-repeat: no-repeat;
+                background-position: center;
             }
-            return askProblemType();
-          });
-      }
-      return askProblemType();
-    }
 
-    async function askProblemType() {
-      // Voor type eq geen keuze voor Technisch/Schoonmaak/Anders, ga direct naar urgentie
-      if (type === 'eq') {
-        return askUrgency('');
-      }
-      return botui.message.add({ content: isFr ? 'Quel type de problème souhaitez-vous signaler?' : 'Wat wil je melden?' })
-        .then(() => botui.action.button({ action: [
-          { text: isFr ? '🔧 Technique' : '🔧 Technisch', value: 'technisch' },
-          { text: isFr ? '🧼 Nettoyage' : '🧼 Schoonmaak', value: 'schoonmaak' },
-          { text: isFr ? '❓ Autre' : '❓ Anders', value: 'anders' }
-        ] }))
-        .then(res => {
-          // Als type sp dan achtergrond aanpassen
-          if (type === 'sp') {
-            if (res.value === 'technisch') {
-              document.body.style.backgroundImage = "linear-gradient(to bottom, rgba(255,255,255,0), rgba(255,255,255,0)), url('/meldentechnisch.png')";
-            } else if (res.value === 'schoonmaak') {
-              document.body.style.backgroundImage = "linear-gradient(to bottom, rgba(255,255,255,0), rgba(255,255,255,0)), url('/meldenschoonmaak.png')";
+            * {
+                box-sizing: border-box;
             }
-            // Anders: behoud standaard achtergrond
-          }
-          return askUrgency(res.value);
-        });
-    }
 
-    function askUrgency(selectedType) {
-      return botui.message.add({ content: isFr ? 'Le problème est urgent?' : 'Is het dringend?' })
-        .then(() => botui.action.button({ action: [
-          { text: isFr ? '🚨 Oui' : '🚨 Ja', value: 'ja' },
-          { text: isFr ? '⏱ Non' : '⏱ Nee', value: 'nee' }
-        ] }))
-        .then(res => {
-          if (res.value === 'ja') {
-            return botui.message.add({ type: 'html', content: isFr ? `Merci ! Veuillez appeler onmiddellijk ${phoneLink}` : `Bedankt! Gelieve onmiddellijk te bellen naar ${phoneLink}` });
-          }
-          return askDescription();
-        });
-    }
+            .header-flex {
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                max-width: 600px;
+                width: 100%;
+                margin: 0 auto;
+                padding: 0.5rem 0;
+                gap: 0.5rem;
+            }
 
-    function askDescription() {
-      return botui.message.add({ content: isFr ? 'Quel est le problème exactement?' : 'Wat is het probleem precies?' })
-        .then(() => botui.action.text({ action: { placeholder: isFr ? 'Beschrijf het probleem' : 'Beschrijf het probleem' } }))
-        .then(res => { omschrijving = res.value; return askEmail(); });
-    }
+            /* ✅ Correct logo selector */
+            img.logo {
+                max-height: 60px;
+                height: auto;
+                width: auto;
+                display: block;
+                margin: 0 auto;
+                background: rgba(255, 255, 255, 0.85);
+                padding: 0.1rem;
+                border-radius: 12px;
+            }
 
-    function askEmail() {
-      return botui.message.add({ content: isFr ? 'Quelle est votre adresse e-mail?' : 'Wat is je e-mailadres?' })
-        .then(() => botui.action.text({ action: { placeholder: 'jouw@email.com' } }))
-        .then(res => {
-          const email = res.value;
-          if (!isValidEmail(email)) {
-            return botui.message.add({ content: isFr ? 'Adresse e-mail invalide.' : 'Ongeldig e-mailadres.' })
-              .then(() => askEmail());
-          }
-          const payload = { id, type, JobDescr: omschrijving, ReportText: email, lang };
-          return fetch('/.netlify/functions/melding', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(payload)
-          }).then(async apiRes => {
-            const text = await apiRes.text();
-            if (!apiRes.ok) throw new Error(text);
-            return botui.message.add({ content: isFr ? 'Merci ! Votre signalement a été envoyé.' : 'Bedankt! Jouw melding is verzonden.' });
-          }).catch(err => {
-            console.error('Fout bij verzenden melding:', err);
-            return botui.message.add({ content: isFr ? 'Erreur lors de l’Envoi de la demande.' : 'Fout bij het verzenden van de melding.' });
-          });
-        });
-    }
+            .header-flex .ruimte-label {
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                justify-content: center;
+                text-align: center;
+                background: rgba(255, 255, 255, 0.95);
+                color: #1a202c;
+                padding: 0.5rem 1rem;
+                border-radius: 12px;
+                font-size: 1rem;
+                font-weight: 500;
+                white-space: normal;
+                box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05);
+                border: 1px solid #ddd;
+                width: 100%;
+                max-width: 600px;
+                margin: 0 auto;
+            }
 
-    startChat();
-  </script>
-</body>
+            .ruimte-label .type {
+                font-size: 0.85rem;
+                font-weight: normal;
+                margin-top: 0.25rem;
+                color: #666;
+            }
+
+            .lang-switch {
+                text-align: right;
+                padding-right: 1rem;
+                margin-top: 1rem;
+            }
+
+            .lang-switch a {
+                margin: 0 0.5rem;
+                text-decoration: none;
+                font-size: 1.2rem;
+            }
+
+            #botui-app {
+                width: 100%;
+                max-width: 600px;
+                margin: 1rem auto 0 auto;
+                padding: 0.5rem 1rem 1rem 1rem;
+            }
+
+            .botui-container {
+                max-width: 600px;
+                width: 100%;
+                margin: 0 auto;
+                background-color: #fffaf0;
+                border-radius: 12px;
+                padding: 1rem;
+                box-sizing: border-box;
+                opacity: 0;
+                animation: fadeIn 3s ease forwards;
+            }
+
+            @keyframes fadeIn {
+                to {
+                    opacity: 1;
+                }
+            }
+
+            /* 📱 Mobiele weergave */
+            @media (max-width: 480px) {
+                .header-flex {
+                    flex-wrap: wrap;
+                    justify-content: center;
+                }
+
+                .header-flex .ruimte-label,
+                img.logo {
+                    flex: 0 0 90%;
+                    max-width: 90%;
+                    text-align: center;
+                }
+
+                .header-flex .ruimte-label {
+                    font-size: 0.95rem;
+                    padding: 0.5rem;
+                }
+
+                .botui-container {
+                    padding: 0.75rem;
+                    max-width: 95%;
+                }
+            }
+        </style>
+    </head>
+    <body>
+        <header>
+            <div class="lang-switch">
+                <a href="#" id="switch-nl">🇳🇱 NL</a> |
+                <a href="#" id="switch-fr">🇫🇷 FR</a>
+            </div>
+            <div class="header-flex">
+                <img src="/AtalianLogo.png" alt="Atalian Logo" class="logo" />
+                <div id="ruimte-info" class="ruimte-label" style="display: none"></div>
+            </div>
+        </header>
+        <div id="botui-app">
+            <bot-ui></bot-ui>
+        </div>
+        <script src="https://cdn.jsdelivr.net/npm/vue@2"></script>
+        <script>
+            window.addEventListener('load', () => {
+                const interval = setInterval(() => {
+                    const botui = document.querySelector('#botui-app');
+                    if (botui && botui.offsetTop > 0) {
+                        window.scrollTo({
+                            top: Math.max(botui.offsetTop - 100, 0), // 👈 schuift 100px erboven
+                            behavior: 'smooth'
+                        });
+                        clearInterval(interval);
+                    }
+                }, 300);
+            });
+        </script>
+        <script>
+            document.getElementById('switch-nl').addEventListener('click', () => {
+                const newUrl = new URL(window.location.href);
+                newUrl.searchParams.set('lang', 'nl');
+                window.location.href = newUrl.toString();
+            });
+            document.getElementById('switch-fr').addEventListener('click', () => {
+                const newUrl = new URL(window.location.href);
+                newUrl.searchParams.set('lang', 'fr');
+                window.location.href = newUrl.toString();
+            });
+        </script>
+        <script src="https://cdn.jsdelivr.net/npm/botui/build/botui.min.js"></script>
+        <script>
+            const urlParams = new URLSearchParams(window.location.search);
+            const lang = urlParams.get('lang') ?? 'nl';
+            const type = urlParams.get('type') ?? '';
+            const id = urlParams.get('id') ?? '';
+            const isFr = lang === 'fr';
+            const botui = new BotUI('botui-app');
+            const phoneLink = '<a href="tel:+3278152300">📞 +32 78 152 300</a>';
+            let omschrijving = '';
+
+            function isValidEmail(email) {
+                return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+            }
+
+            function fetchLocationDescription() {
+                if (!id || !type) return;
+                const endpoint = type === 'eq' ? '/.netlify/functions/equipment' : '/.netlify/functions/space';
+                fetch(`${endpoint}?id=${encodeURIComponent(id)}`)
+                    .then((res) => res.json())
+                    .then((data) => {
+                        const ruimte = document.getElementById('ruimte-info');
+                        if (data.description) {
+                            ruimte.innerHTML = `${data.description}<div class="type">${
+                                type === 'eq' ? (isFr ? '🔧 Installation' : '🔧 Installatie') : isFr ? '🏢 Espace' : '🏢 Ruimte'
+                            }</div>`;
+                            ruimte.style.display = 'flex';
+                        }
+                    });
+            }
+
+            async function fetchOpenJobs(type, id) {
+                try {
+                    const res = await fetch(`/.netlify/functions/jobs?type=${type}&id=${id}`);
+                    if (!res.ok) throw new Error(`Server error ${res.status}`);
+                    const jobs = await res.json();
+                    return Array.isArray(jobs) ? jobs : [];
+                } catch (e) {
+                    console.error('Fout bij ophalen jobs:', e);
+                    return null;
+                }
+            }
+
+            async function startChat() {
+                fetchLocationDescription();
+                await botui.message.add({
+                    type: 'html',
+                    content: isFr
+                        ? 'Bonjour, je suis votre assistant <span style="color: orange; font-weight: bold;">ATALIAN</span>, <br>je recherche pour vous les signalements en cours...'
+                        : 'Hallo, ik ben je <span style="color: orange; font-weight: bold;">ATALIAN</span>-assistent,<br>ik haal even de openstaande meldingen voor je op...'
+                });
+                const jobs = await fetchOpenJobs(type, id);
+                if (jobs === null) {
+                    return botui.message.add({
+                        content: isFr ? '❌ Erreur lors du chargement des signalements.' : '❌ Fout bij het ophalen van de meldingen.'
+                    });
+                }
+                if (jobs.length > 0) {
+                    const jobList = jobs.map((j) => `✅ ${j.Description}`).join('<br>');
+                    return botui.message
+                        .add({ type: 'html', content: jobList })
+                        .then(() => botui.message.add({ content: isFr ? 'Votre problème est-il déjà listé?' : 'Staat jouw probleem hierbij?' }))
+                        .then(() =>
+                            botui.action.button({
+                                action: [
+                                    { text: isFr ? 'Oui' : 'Ja', value: 'ja' },
+                                    { text: isFr ? 'Non' : 'Nee', value: 'nee' }
+                                ]
+                            })
+                        )
+                        .then((res) => {
+                            if (res.value === 'ja') {
+                                return botui.message
+                                    .add({
+                                        content: isFr
+                                            ? 'Merci ! Aucun nouveau signalement n’est nécessaire.'
+                                            : 'Bedankt! Je hoeft geen nieuwe melding te maken.'
+                                    })
+                                    .then(() =>
+                                        setTimeout(() => {
+                                            try {
+                                                window.close();
+                                            } catch {}
+                                        }, 3000)
+                                    );
+                            }
+                            if (res.value === 'info') {
+                                return botui.message
+                                    .add({ content: isFr ? 'Vous allez être redirigé vers Atalian.' : 'Je wordt nu doorgestuurd naar Atalian.' })
+                                    .then(() =>
+                                        setTimeout(() => {
+                                            window.location.href = 'https://www.atalian.be';
+                                        }, 1500)
+                                    );
+                            }
+                            return askProblemType();
+                        });
+                }
+                return askProblemType();
+            }
+
+            async function askProblemType() {
+                // Voor type eq geen keuze voor Technisch/Schoonmaak/Anders, ga direct naar urgentie
+                if (type === 'eq') {
+                    return askUrgency('');
+                }
+                return botui.message
+                    .add({ content: isFr ? 'Quel type de problème souhaitez-vous signaler?' : 'Wat wil je melden?' })
+                    .then(() =>
+                        botui.action.button({
+                            action: [
+                                { text: isFr ? '🔧 Technique' : '🔧 Technisch', value: 'technisch' },
+                                { text: isFr ? '🧼 Nettoyage' : '🧼 Schoonmaak', value: 'schoonmaak' },
+                                { text: isFr ? '❓ Autre' : '❓ Anders', value: 'anders' }
+                            ]
+                        })
+                    )
+                    .then((res) => {
+                        // Als type sp dan achtergrond aanpassen
+                        if (type === 'sp') {
+                            if (res.value === 'technisch') {
+                                document.body.style.backgroundImage =
+                                    "linear-gradient(to bottom, rgba(255,255,255,0), rgba(255,255,255,0)), url('/meldentechnisch.png')";
+                            } else if (res.value === 'schoonmaak') {
+                                document.body.style.backgroundImage =
+                                    "linear-gradient(to bottom, rgba(255,255,255,0), rgba(255,255,255,0)), url('/meldenschoonmaak.png')";
+                            }
+                            // Anders: behoud standaard achtergrond
+                        }
+                        return askUrgency(res.value);
+                    });
+            }
+
+            function askUrgency(selectedType) {
+                return botui.message
+                    .add({ content: isFr ? 'Le problème est urgent?' : 'Is het dringend?' })
+                    .then(() =>
+                        botui.action.button({
+                            action: [
+                                { text: isFr ? '🚨 Oui' : '🚨 Ja', value: 'ja' },
+                                { text: isFr ? '⏱ Non' : '⏱ Nee', value: 'nee' }
+                            ]
+                        })
+                    )
+                    .then((res) => {
+                        if (res.value === 'ja') {
+                            return botui.message.add({
+                                type: 'html',
+                                content: isFr
+                                    ? `Merci ! Veuillez appeler onmiddellijk ${phoneLink}`
+                                    : `Bedankt! Gelieve onmiddellijk te bellen naar ${phoneLink}`
+                            });
+                        }
+                        return askDescription();
+                    });
+            }
+
+            function askDescription() {
+                return botui.message
+                    .add({ content: isFr ? 'Quel est le problème exactement?' : 'Wat is het probleem precies?' })
+                    .then(() => botui.action.text({ action: { placeholder: isFr ? 'Beschrijf het probleem' : 'Beschrijf het probleem' } }))
+                    .then((res) => {
+                        omschrijving = res.value;
+                        return askEmail();
+                    });
+            }
+
+            function askEmail() {
+                return botui.message
+                    .add({ content: isFr ? 'Quelle est votre adresse e-mail?' : 'Wat is je e-mailadres?' })
+                    .then(() => botui.action.text({ action: { placeholder: 'jouw@email.com' } }))
+                    .then((res) => {
+                        const email = res.value;
+                        if (!isValidEmail(email)) {
+                            return botui.message.add({ content: isFr ? 'Adresse e-mail invalide.' : 'Ongeldig e-mailadres.' }).then(() => askEmail());
+                        }
+                        const payload = { id, type, JobDescr: omschrijving, ReportText: email, lang };
+                        return fetch('/.netlify/functions/melding', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify(payload)
+                        })
+                            .then(async (apiRes) => {
+                                const text = await apiRes.text();
+                                if (!apiRes.ok) throw new Error(text);
+                                return botui.message.add({ content: isFr ? 'Merci ! Votre signalement a été envoyé.' : 'Bedankt! Jouw melding is verzonden.' });
+                            })
+                            .catch((err) => {
+                                console.error('Fout bij verzenden melding:', err);
+                                return botui.message.add({
+                                    content: isFr ? 'Erreur lors de l’Envoi de la demande.' : 'Fout bij het verzenden van de melding.'
+                                });
+                            });
+                    });
+            }
+
+            startChat();
+        </script>
+    </body>
 </html>
