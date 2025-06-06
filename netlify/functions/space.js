@@ -8,7 +8,7 @@ export async function handler(event) {
     };
   }
 
-  const apiKey = "E8CE6F5E76BE4925AE352310A6871B95";
+  const apiKey = "03F5BDB822224699AD5077BE481BB627";
   const url = `https://atalian-test.ultimo.net/api/v1/object/Space('${spaceId}')`;
 
   try {
