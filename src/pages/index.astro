@@ -118,6 +118,7 @@
       margin-bottom: 3rem;
     }
   </style>
+<script src="/apiConfo.js"></script>
 </head>
 <body>
 
@@ -173,7 +174,7 @@
     // ruimte of installatie ophalen
     const label = document.getElementById("ruimteLabel");
     if (id && type) {
-      const endpoint = type === "eq" ? "/.netlify/functions/equipment" : "/.netlify/functions/space";
+      const endpoint = type === "eq" ? window.apiConfig.equipmentEndpoint : window.apiConfig.spaceEndpoint;
       fetch(`${endpoint}?id=${encodeURIComponent(id)}`)
         .then(res => res.json())
         .then(data => {

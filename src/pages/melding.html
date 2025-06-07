@@ -132,6 +132,7 @@
       color: #990000;
     }
   </style>
+<script src="/apiConfo.js"></script>
 </head>
 <body>
 
@@ -176,7 +177,7 @@
     terugBtn.href = `/storing.html?id=${id}&type=${type}&lang=${lang}`;
 
     if (id && type) {
-      const endpoint = type === "eq" ? "/.netlify/functions/equipment" : "/.netlify/functions/space";
+      const endpoint = type === "eq" ? window.apiConfig.equipmentEndpoint : window.apiConfig.spaceEndpoint;
       fetch(`${endpoint}?id=${encodeURIComponent(id)}`)
         .then(res => res.json())
         .then(data => {
@@ -198,7 +199,7 @@
       const omschrijving = document.getElementById('omschrijving').value.trim();
 
       try {
-        const response = await fetch('/.netlify/functions/melding', {
+        const response = await fetch(window.apiConfig.meldingEndpoint, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({

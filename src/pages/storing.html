@@ -109,6 +109,7 @@
       transform: translateY(-2px);
     }
   </style>
+<script src="/apiConfo.js"></script>
 </head>
 <body>
 
@@ -148,8 +149,8 @@
     // Locatie/informatie bovenaan ophalen
     if (id && type) {
       const endpoint = type === "eq"
-        ? "/.netlify/functions/equipment"
-        : "/.netlify/functions/space";
+        ? window.apiConfig.equipmentEndpoint
+        : window.apiConfig.spaceEndpoint;
 
       fetch(`${endpoint}?id=${encodeURIComponent(id)}`)
         .then(res => res.json())
@@ -180,7 +181,7 @@
         isFr ? "Paramètres invalides." : "Geen geldige parameters opgegeven."
       }</div>`;
     } else {
-      fetch(`/.netlify/functions/jobs?type=${type}&id=${id}&lang=${lang}`)
+      fetch(`${window.apiConfig.jobsEndpoint}?type=${type}&id=${id}&lang=${lang}`)
         .then(res => res.json())
         .then(data => {
           if (!Array.isArray(data) || data.length === 0) {

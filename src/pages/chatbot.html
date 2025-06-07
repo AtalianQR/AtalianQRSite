@@ -144,6 +144,7 @@
                 }
             }
         </style>
+<script src="/apiConfo.js"></script>
     </head>
     <body>
         <header>
@@ -203,7 +204,7 @@
 
             function fetchLocationDescription() {
                 if (!id || !type) return;
-                const endpoint = type === 'eq' ? '/.netlify/functions/equipment' : '/.netlify/functions/space';
+                const endpoint = type === 'eq' ? window.apiConfig.equipmentEndpoint : window.apiConfig.spaceEndpoint;
                 fetch(`${endpoint}?id=${encodeURIComponent(id)}`)
                     .then((res) => res.json())
                     .then((data) => {
@@ -219,7 +220,7 @@
 
             async function fetchOpenJobs(type, id) {
                 try {
-                    const res = await fetch(`/.netlify/functions/jobs?type=${type}&id=${id}`);
+                    const res = await fetch(`${window.apiConfig.jobsEndpoint}?type=${type}&id=${id}`);
                     if (!res.ok) throw new Error(`Server error ${res.status}`);
                     const jobs = await res.json();
                     return Array.isArray(jobs) ? jobs : [];
@@ -363,7 +364,7 @@
                             return botui.message.add({ content: isFr ? 'Adresse e-mail invalide.' : 'Ongeldig e-mailadres.' }).then(() => askEmail());
                         }
                         const payload = { id, type, JobDescr: omschrijving, ReportText: email, lang };
-                        return fetch('/.netlify/functions/melding', {
+                        return fetch(window.apiConfig.meldingEndpoint, {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json' },
                             body: JSON.stringify(payload)
