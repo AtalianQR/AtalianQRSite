@@ -1,7 +1,8 @@
+import { API_KEY, BASE_URL } from "./APIConfig.js";
+
 export async function handler(event) {
   const equipmentId = event.queryStringParameters.id;
-  const API_KEY = "03F5BDB822224699AD5077BE481BB627";
-  const url = `https://atalian-test.ultimo.net/api/v1/object/Equipment('${equipmentId}')`;
+  const url = `${BASE_URL}/object/Equipment('${equipmentId}')`;
 
   try {
     const res = await fetch(url, {
