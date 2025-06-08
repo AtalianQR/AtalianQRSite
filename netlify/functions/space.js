@@ -1,3 +1,5 @@
+import { API_KEY, BASE_URL } from "./APIConfig.js";
+
 export async function handler(event) {
   const spaceId = event.queryStringParameters.id;
 
@@ -8,14 +10,13 @@ export async function handler(event) {
     };
   }
 
-  const apiKey = "03F5BDB822224699AD5077BE481BB627";
-  const url = `https://atalian-test.ultimo.net/api/v1/object/Space('${spaceId}')`;
+  const url = `${BASE_URL}/object/Space('${spaceId}')`;
 
   try {
     const response = await fetch(url, {
       headers: {
         accept: "application/json",
-        ApiKey: apiKey,
+        ApiKey: API_KEY,
       },
     });
 
