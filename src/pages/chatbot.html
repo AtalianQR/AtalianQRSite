@@ -319,68 +319,90 @@
                     });
             }
 
-            function askUrgency(selectedType) {
-                return botui.message
-                    .add({ content: isFr ? 'Le problème est urgent?' : 'Is het dringend?' })
-                    .then(() =>
-                        botui.action.button({
-                            action: [
-                                { text: isFr ? '🚨 Oui' : '🚨 Ja', value: 'ja' },
-                                { text: isFr ? '⏱ Non' : '⏱ Nee', value: 'nee' }
-                            ]
-                        })
-                    )
-                    .then((res) => {
-                        if (res.value === 'ja') {
-                            return botui.message.add({
-                                type: 'html',
-                                content: isFr
-                                    ? `Merci ! Veuillez appeler onmiddellijk ${phoneLink}`
-                                    : `Bedankt! Gelieve onmiddellijk te bellen naar ${phoneLink}`
-                            });
-                        }
-                        return askDescription();
-                    });
-            }
+ function askUrgency(selectedType) {
+    return botui.message
+        .add({ content: isFr ? 'Le problème est urgent?' : 'Is het dringend?' })
+        .then(() =>
+            botui.action.button({
+                action: [
+                    { text: isFr ? '🚨 Oui' : '🚨 Ja', value: 'ja' },
+                    { text: isFr ? '⏱ Non' : '⏱ Nee', value: 'nee' }
+                ]
+            })
+        )
+        .then((res) => {
+            const isUrgent = res.value === 'ja';
+            return askDescription(isUrgent);
+        });
+}
 
-            function askDescription() {
-                return botui.message
-                    .add({ content: isFr ? 'Quel est le problème exactement?' : 'Wat is het probleem precies?' })
-                    .then(() => botui.action.text({ action: { placeholder: isFr ? 'Beschrijf het probleem' : 'Beschrijf het probleem' } }))
-                    .then((res) => {
-                        omschrijving = res.value;
-                        return askEmail();
-                    });
-            }
+function askUrgency(selectedType) {
+    return botui.message
+        .add({ content: isFr ? 'Le problème est urgent?' : 'Is het dringend?' })
+        .then(() =>
+            botui.action.button({
+                action: [
+                    { text: isFr ? '🚨 Oui' : '🚨 Ja', value: 'ja' },
+                    { text: isFr ? '⏱ Non' : '⏱ Nee', value: 'nee' }
+                ]
+            })
+        )
+        .then((res) => {
+            const isUrgent = res.value === 'ja';
+            return askDescription(isUrgent);
+        });
+}
 
-            function askEmail() {
-                return botui.message
-                    .add({ content: isFr ? 'Quelle est votre adresse e-mail?' : 'Wat is je e-mailadres?' })
-                    .then(() => botui.action.text({ action: { placeholder: 'jouw@email.com' } }))
-                    .then((res) => {
-                        const email = res.value;
-                        if (!isValidEmail(email)) {
-                            return botui.message.add({ content: isFr ? 'Adresse e-mail invalide.' : 'Ongeldig e-mailadres.' }).then(() => askEmail());
-                        }
-                        const payload = { id, type, JobDescr: omschrijving, ReportText: email, lang };
-                        return fetch('/.netlify/functions/melding', {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify(payload)
-                        })
-                            .then(async (apiRes) => {
-                                const text = await apiRes.text();
-                                if (!apiRes.ok) throw new Error(text);
-                                return botui.message.add({ content: isFr ? 'Merci ! Votre signalement a été envoyé.' : 'Bedankt! Jouw melding is verzonden.' });
-                            })
-                            .catch((err) => {
-                                console.error('Fout bij verzenden melding:', err);
-                                return botui.message.add({
-                                    content: isFr ? 'Erreur lors de l’Envoi de la demande.' : 'Fout bij het verzenden van de melding.'
-                                });
-                            });
-                    });
+function askDescription(isUrgent) {
+    return botui.message
+        .add({ content: isFr ? 'Quel est le problème exactement?' : 'Wat is het probleem precies?' })
+        .then(() => botui.action.text({ action: { placeholder: isFr ? 'Beschrijf het probleem' : 'Beschrijf het probleem' } }))
+        .then((res) => {
+            omschrijving = res.value;
+            return askEmail(isUrgent);
+        });
+}
+
+function askEmail(isUrgent) {
+    return botui.message
+        .add({ content: isFr ? 'Quelle est votre adresse e-mail?' : 'Wat is je e-mailadres?' })
+        .then(() => botui.action.text({ action: { placeholder: 'jouw@email.com' } }))
+        .then((res) => {
+            const email = res.value;
+            if (!isValidEmail(email)) {
+                return botui.message.add({ content: isFr ? 'Adresse e-mail invalide.' : 'Ongeldig e-mailadres.' }).then(() => askEmail(isUrgent));
             }
+            const payload = { id, type, JobDescr: omschrijving, ReportText: email, lang };
+            return fetch('/.netlify/functions/melding', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            })
+                .then(async (apiRes) => {
+                    const text = await apiRes.text();
+                    if (!apiRes.ok) throw new Error(text);
+                    // Altijd melding van registratie
+                    await botui.message.add({ content: isFr ? 'Merci ! Votre signalement a été envoyé.' : 'Bedankt! Jouw melding is verzonden.' });
+                    // ENKEL bij dringend: de telefoonboodschap
+                    if (isUrgent) {
+                        return botui.message.add({
+                            type: 'html',
+                            content: isFr
+                                ? `⚠️ <b>Problème urgent :</b> Veuillez appeler immédiatement ${phoneLink}`
+                                : `⚠️ <b>Dringend probleem:</b> Gelieve onmiddellijk te bellen naar ${phoneLink}`
+                        });
+                    }
+                    return;
+                })
+                .catch((err) => {
+                    console.error('Fout bij verzenden melding:', err);
+                    return botui.message.add({
+                        content: isFr ? 'Erreur lors de l’Envoi de la demande.' : 'Fout bij het verzenden van de melding.'
+                    });
+                });
+        });
+}
+
 
             startChat();
         </script>
