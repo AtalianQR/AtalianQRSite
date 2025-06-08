@@ -234,8 +234,8 @@
                 await botui.message.add({
                     type: 'html',
                     content: isFr
-                        ? 'Bonjour, je suis votre assistant <span style="color: orange; font-weight: bold;">ATALIAN</span>, <br>je recherche pour vous les signalements en cours...'
-                        : 'Hallo, ik ben je <span style="color: orange; font-weight: bold;">ATALIAN</span>-assistent,<br>ik haal even de openstaande meldingen voor je op...'
+                        ? 'Bonjour, je suis votre assistant <span style="color: orange; font-weight: bold;">ATALIAN</span>. <br>Je recherche pour vous les <b>signalements en cours</b>...'
+                        : 'Hallo, ik ben je <span style="color: orange; font-weight: bold;">ATALIAN</span>-assistent.<br>Ik haal even de <b>openstaande meldingen</b> voor je op...'
                 });
                 const jobs = await fetchOpenJobs(type, id);
                 if (jobs === null) {
@@ -243,47 +243,75 @@
                         content: isFr ? '❌ Erreur lors du chargement des signalements.' : '❌ Fout bij het ophalen van de meldingen.'
                     });
                 }
-                if (jobs.length > 0) {
-                    const jobList = jobs.map((j) => `✅ ${j.Description}`).join('<br>');
-                    return botui.message
-                        .add({ type: 'html', content: jobList })
-                        .then(() => botui.message.add({ content: isFr ? 'Votre problème est-il déjà listé?' : 'Staat jouw probleem hierbij?' }))
-                        .then(() =>
-                            botui.action.button({
-                                action: [
-                                    { text: isFr ? 'Oui' : 'Ja', value: 'ja' },
-                                    { text: isFr ? 'Non' : 'Nee', value: 'nee' }
-                                ]
-                            })
-                        )
-                        .then((res) => {
-                            if (res.value === 'ja') {
-                                return botui.message
-                                    .add({
-                                        content: isFr
-                                            ? 'Merci ! Aucun nouveau signalement n’est nécessaire.'
-                                            : 'Bedankt! Je hoeft geen nieuwe melding te maken.'
-                                    })
-                                    .then(() =>
-                                        setTimeout(() => {
-                                            try {
-                                                window.close();
-                                            } catch {}
-                                        }, 3000)
-                                    );
-                            }
-                            if (res.value === 'info') {
-                                return botui.message
-                                    .add({ content: isFr ? 'Vous allez être redirigé vers Atalian.' : 'Je wordt nu doorgestuurd naar Atalian.' })
-                                    .then(() =>
-                                        setTimeout(() => {
-                                            window.location.href = 'https://www.atalian.be';
-                                        }, 1500)
-                                    );
-                            }
+				if (jobs.length > 0) {
+					await botui.message.add({
+						content: isFr
+							? '⚠️️ Quelques signalements sont déjà en cours :'
+							: '⚠️ Er zijn al enkele openstaande meldingen gevonden:'
+					});
+					const jobList = jobs.map((j) => `✅ ${j.Description}`).join('<br>');
+					return botui.message
+						.add({ type: 'html', content: jobList })
+						.then(() => botui.message.add({ content: isFr ? 'Votre problème est-il déjà listé?' : 'Staat jouw probleem hierbij?' }))
+						.then(() =>
+							botui.action.button({
+								action: [
+									{ text: isFr ? 'Oui' : 'Ja', value: 'ja' },
+									{ text: isFr ? 'Non' : 'Nee', value: 'nee' }
+								]
+							})
+						)
+						.then((res) => {
+							if (res.value === 'ja') {
+				return botui.message
+					.add({
+						content: isFr
+							? 'Merci ! Aucun nouveau signalement n’est nécessaire.<br>Wat wil je nu doen?'
+							: 'Bedankt! Je hoeft geen nieuwe melding te maken.<br>Wat wil je nu doen?'
+					})
+					.then(() =>
+						botui.action.button({
+							action: [
+								{
+									text: isFr ? 'ℹ️ Plus d\'info (Atalian.be)' : 'ℹ️ Meer info (Atalian.be)',
+									value: 'info'
+								},
+								{
+									text: isFr ? '🔄 Nouveau signalement' : '🔄 Nieuwe melding',
+									value: 'restart'
+								}
+							]
+						})
+					)
+					.then((choice) => {
+						if (choice.value === 'info') {
+							botui.message
+								.add({
+									content: isFr
+										? 'Vous allez être redirigé vers Atalian.'
+										: 'Je wordt nu doorgestuurd naar Atalian.'
+								})
+								.then(() => {
+									setTimeout(() => {
+										window.location.href = isFr
+											? 'https://www.atalian.be/?lang=fr'
+											: 'https://www.atalian.be/?lang=nl';
+									}, 1500);
+								});
+						} else if (choice.value === 'restart') {
+							window.location.reload();
+						}
+					});
+			}
                             return askProblemType();
                         });
-                }
+                }else {
+					await botui.message.add({
+						content: isFr
+							? 'ℹ️ Aucun signalement en cours.'
+							: 'ℹ️ Er zijn momenteel geen openstaande meldingen.'
+					});
+				}
                 return askProblemType();
             }
 
