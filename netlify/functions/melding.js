@@ -5,7 +5,7 @@ export async function handler(event, context) {
       body: 'Method Not Allowed'
     };
   }
-
+console.log('RECEIVED DATA:', event.body);
   const API_KEY = "03F5BDB822224699AD5077BE481BB627";
   const APPLICATION_ELEMENT_ID = "3f92bbfca30445ff875f3a9d956441be";
   const url = "https://atalian-test.ultimo.net/api/v1/action/_REST_OneAtalianJob";
