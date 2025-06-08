@@ -1,3 +1,5 @@
+import { API_KEY, BASE_URL, APP_ELEMENT_QueryAtalianJobs } from "./APIConfig.js";
+
 export async function handler(event) {
   const { type, id } = event.queryStringParameters || {};
 
@@ -9,21 +11,12 @@ export async function handler(event) {
     };
   }
 
-  const API_KEY = "03F5BDB822224699AD5077BE481BB627";
-  const APPLICATION_ELEMENT_ID = "6379d9e0a70545a6d90679e46e6ab715";
-  const url = "https://atalian-test.ultimo.net/api/v1/action/_rest_QueryAtalianJobs";
+  const url = `${BASE_URL}/action/_rest_QueryAtalianJobs`;
 
   const payload = {
     SpaceId: type === "sp" ? id : "",
     EquipmentId: type === "eq" ? id : "",
   };
-
-  console.log("POST body:", JSON.stringify(payload));
-  console.log(
-    `cURL command: curl -X POST "${url}" -H "accept: application/json" -H "ApiKey: ${API_KEY}" -H "Content-Type: application/json" -H "ApplicationElementId: ${APPLICATION_ELEMENT_ID}" -d '${JSON.stringify(
-      payload
-    )}'`
-  );
 
   try {
     const response = await fetch(url, {
@@ -32,16 +25,13 @@ export async function handler(event) {
         accept: "application/json",
         "Content-Type": "application/json",
         ApiKey: API_KEY,
-        ApplicationElementId: APPLICATION_ELEMENT_ID,
+        ApplicationElementId: APP_ELEMENT_QueryAtalianJobs,
       },
       body: JSON.stringify(payload),
     });
 
-    console.log("Response status:", response.status);
-
     if (!response.ok) {
       const errorText = await response.text();
-      console.error("Ultimo error response:", errorText);
       return {
         statusCode: response.status,
         body: JSON.stringify({ error: errorText }),
@@ -49,7 +39,6 @@ export async function handler(event) {
     }
 
     const rawData = await response.json();
-    console.log("RECEIVED RAW DATA:", JSON.stringify(rawData, null, 2));
 
     let jobs = [];
 
@@ -58,24 +47,18 @@ export async function handler(event) {
       try {
         jobs = JSON.parse(rawString);
       } catch (parseError) {
-        console.error("Failed to parse Output.object as JSON:", parseError, rawString);
         return {
           statusCode: 500,
           body: JSON.stringify({ error: "Invalid JSON returned by Ultimo.", raw: rawString }),
         };
       }
-    } else {
-      console.warn("Output.object was empty or missing:", rawData);
     }
-
-    console.log("Jobs returned:", jobs.length);
 
     return {
       statusCode: 200,
       body: JSON.stringify(jobs),
     };
   } catch (err) {
-    console.error("Catch error:", err);
     return {
       statusCode: 500,
       body: JSON.stringify({ error: err.message }),
