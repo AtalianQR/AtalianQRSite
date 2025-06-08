@@ -69,10 +69,12 @@
                 font-weight: 500;
                 white-space: normal;
                 box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05);
-                border: 1px solid #ddd;
+                border: 2.5px solid #EE7E00;  /* Atalian oranje */
+				box-shadow: 0 2px 8px rgba(238,126,0,0.06);
                 width: 100%;
                 max-width: 600px;
                 margin: 0 auto;
+				border-bottom-width: 4px;
             }
 
             .ruimte-label .type {
@@ -105,13 +107,39 @@
                 max-width: 600px;
                 width: 100%;
                 margin: 0 auto;
-                background-color: #fffaf0;
+                background: linear-gradient(120deg, #fff 85%, #f4f6fa 100%);
+				border: 2px solid #EE7E00;  /* oranje accent */
+				box-shadow: 0 6px 32px rgba(0,0,0,0.12), 0 1.5px 8px rgba(238,126,0,0.10);
                 border-radius: 12px;
                 padding: 1rem;
                 box-sizing: border-box;
                 opacity: 0;
                 animation: fadeIn 3s ease forwards;
             }
+			
+			.botui-container, .botui-message-content {
+			  font-family: 'Segoe UI', sans-serif;
+			}
+			
+			.botui-button {
+				font-weight: 600;
+				border: none;
+				box-shadow: 0 2px 6px rgba(238,126,0,0.04);
+				transition: background 0.12s;
+			}
+			.botui-button:active {
+				background: #d86e00;
+			}		
+			
+			.meldingen-lijst {
+				background: #f5f8fc;
+				border-radius: 10px;
+				padding: 0.7em 1em;
+				margin: 0.7em 0;
+				border-left: 4px solid #EE7E00;
+			}			
+
+
 
             @keyframes fadeIn {
                 to {
@@ -234,8 +262,8 @@
                 await botui.message.add({
                     type: 'html',
                     content: isFr
-                        ? 'Bonjour, je suis votre assistant <span style="color: orange; font-weight: bold;">ATALIAN</span>. <br>Je recherche pour vous les <b>signalements en cours</b>...'
-                        : 'Hallo, ik ben je <span style="color: orange; font-weight: bold;">ATALIAN</span>-assistent.<br>Ik haal even de <b>openstaande meldingen</b> voor je op...'
+                        ? 'Bonjour, je suis votre assistant <span style="color: #EE7E00; font-weight: bold;">ATALIAN</span>. <br>Je recherche pour vous les <b>signalements en cours</b>...'
+                        : 'Hallo, ik ben je <span style="color: #EE7E00; font-weight: bold;">ATALIAN</span>-assistent.<br>Ik haal even de <b>openstaande meldingen</b> voor je op...'
                 });
                 const jobs = await fetchOpenJobs(type, id);
                 if (jobs === null) {
@@ -245,11 +273,12 @@
                 }
 				if (jobs.length > 0) {
 					await botui.message.add({
+						type: 'html',
 						content: isFr
 							? '⚠️️ Quelques signalements sont déjà en cours :'
-							: '⚠️ Er zijn al enkele openstaande meldingen gevonden:'
+							: '⚠️   Er zijn al enkele openstaande meldingen gevonden:'
 					});
-					const jobList = jobs.map((j) => `✅ ${j.Description}`).join('<br>');
+					const jobList = '<div class="meldingen-lijst">' + jobs.map((j) => `✅ ${j.Description}`).join('<br>') + '</div>';
 					return botui.message
 						.add({ type: 'html', content: jobList })
 						.then(() => botui.message.add({ content: isFr ? 'Votre problème est-il déjà listé?' : 'Staat jouw probleem hierbij?' }))
