@@ -216,14 +216,21 @@
         </script>
         <script src="https://cdn.jsdelivr.net/npm/botui/build/botui.min.js"></script>
         <script>
-            const urlParams = new URLSearchParams(window.location.search);
-            const lang = urlParams.get('lang') ?? 'nl';
-            const type = urlParams.get('type') ?? '';
-            const id = urlParams.get('id') ?? '';
-            const isFr = lang === 'fr';
-            const botui = new BotUI('botui-app');
-            const phoneLink = '<a href="tel:+3278152300">📞 +32 78 152 300</a>';
-            let omschrijving = '';
+			const urlParams = new URLSearchParams(window.location.search);
+			let lang = urlParams.get('lang'); // Kan null zijn
+
+			// Automatische browsertaal als lang niet is opgegeven
+			if (!lang) {
+				const userLang = navigator.language || navigator.userLanguage; // bv. 'fr-FR', 'nl-NL'
+				lang = userLang && userLang.startsWith('fr') ? 'fr' : 'nl';
+			}
+
+			const isFr = lang === 'fr';
+			const type = urlParams.get('type') ?? '';
+			const id = urlParams.get('id') ?? '';
+			const botui = new BotUI('botui-app');
+			const phoneLink = '<a href="tel:+3278152300">📞 +32 78 152 300</a>';
+			let omschrijving = '';
 
             function isValidEmail(email) {
                 return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
@@ -231,7 +238,7 @@
 
             function fetchLocationDescription() {
                 if (!id || !type) return;
-                const endpoint = type === 'eq' ? '/.netlify/functions/equipment' : '/.netlify/functions/space';
+                const endpoint = type === 'eq' ? '/.netlify/functions/test_equipment' : '/.netlify/functions/test_space';
                 fetch(`${endpoint}?id=${encodeURIComponent(id)}`)
                     .then((res) => res.json())
                     .then((data) => {
@@ -247,10 +254,10 @@
 
 			async function fetchOpenJobs(type, id) {
 				try {
-					const res = await fetch(`/.netlify/functions/jobs?type=${type}&id=${id}`);
+					const res = await fetch(`/.netlify/functions/test_jobs?type=${type}&id=${id}`);
 					if (!res.ok) throw new Error(`Server error ${res.status}`);
 					const result = await res.json();
-					return result; // LET OP: bevat nu .Jobs en evt. .EquipmentTypeQR!
+					return result; // LET OP: bevat nu .Jobs en evt. .QRCommando!
 				} catch (e) {
 					console.error('Fout bij ophalen jobs:', e);
 					return null;
@@ -341,7 +348,7 @@
 			}
 
 			// ======= SCENARIO uit Ultimo tonen indien aanwezig ======
-			let scenarioObj = result.EquipmentTypeQR || result.ScenarioJSON;
+			let scenarioObj = result.QRCommando || result.ScenarioJSON;
 			if (typeof scenarioObj === 'string') {
 				// Carets naar quotes, dan JSON-parsen
 				scenarioObj = scenarioObj.replace(/\^/g, '"');
@@ -476,7 +483,7 @@ function askEmail(isUrgent) {
                 return botui.message.add({ content: isFr ? 'Adresse e-mail invalide.' : 'Ongeldig e-mailadres.' }).then(() => askEmail(isUrgent));
             }
             const payload = { id, type, JobDescr: omschrijving, ReportText: email, lang };
-            return fetch('/.netlify/functions/melding', {
+            return fetch('/.netlify/functions/test_melding', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(payload)
@@ -504,8 +511,15 @@ function askEmail(isUrgent) {
                     });
                 });
         });
-}
+		
+		
 
+}
+			function askProblemType() {
+				// Je kan hier eventueel eerst een probleemsoort-vraag stellen,
+				// maar als je dat niet wilt, kun je direct door naar de urgentie-vraag:
+				return askUrgency('');
+			}		
 
             startChat();
         </script>
