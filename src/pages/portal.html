@@ -299,8 +299,8 @@
 				});
 				const res = await botui.action.button({
 					action: [
-						{ text: isFr ? '🚨 Oui' : '🚨 Ja', value: 'ja' },
-						{ text: isFr ? '⏱ Non' : '⏱ Nee', value: 'nee' }
+						{ text: isFr ? '✅ Oui' : '✅ Ja', value: 'ja' },
+						{ text: isFr ? '❌ Non' : '❌ Nee', value: 'nee' }
 					]
 				});
 				if (res.value === 'ja') {
@@ -447,23 +447,6 @@
         });
 }
 
-function askUrgency(selectedType) {
-    return botui.message
-        .add({ content: isFr ? 'Le problème est urgent?' : 'Is het dringend?' })
-        .then(() =>
-            botui.action.button({
-                action: [
-                    { text: isFr ? '🚨 Oui' : '🚨 Ja', value: 'ja' },
-                    { text: isFr ? '⏱ Non' : '⏱ Nee', value: 'nee' }
-                ]
-            })
-        )
-        .then((res) => {
-            const isUrgent = res.value === 'ja';
-            return askDescription(isUrgent);
-        });
-}
-
 function askDescription(isUrgent) {
     return botui.message
         .add({ content: isFr ? 'Quel est le problème exactement?' : 'Wat is het probleem precies?' })
@@ -489,22 +472,57 @@ function askEmail(isUrgent) {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(payload)
             })
-                .then(async (apiRes) => {
-                    const text = await apiRes.text();
-                    if (!apiRes.ok) throw new Error(text);
-                    // Altijd melding van registratie
-                    await botui.message.add({ content: isFr ? 'Merci ! Votre signalement a été envoyé.' : 'Bedankt! Jouw melding is verzonden.' });
-                    // ENKEL bij dringend: de telefoonboodschap
-                    if (isUrgent) {
-                        return botui.message.add({
-                            type: 'html',
-                            content: isFr
-                                ? `⚠️ <b>Problème urgent :</b> Veuillez appeler immédiatement ${phoneLink}`
-                                : `⚠️ <b>Dringend probleem:</b> Gelieve onmiddellijk te bellen naar ${phoneLink}`
-                        });
-                    }
-                    return;
-                })
+			.then(async (apiRes) => {
+				const text = await apiRes.text();
+				if (!apiRes.ok) throw new Error(text);
+
+				await botui.message.add({ content: isFr ? 'Merci ! Votre signalement a été envoyé.' : 'Bedankt! Jouw melding is verzonden.' });
+
+				if (isUrgent) {
+					// Alleen dringende boodschap, geen knoppen!
+				await botui.message.add({
+					type: 'html',
+					content: isFr
+						? `Merci ! Votre signalement a été envoyé.<br>⚠️ <b>Problème urgent :</b> Veuillez appeler immédiatement ${phoneLink}`
+						: `Bedankt! Jouw melding is verzonden.<br>⚠️ <b>Dringend probleem:</b> Gelieve onmiddellijk te bellen naar ${phoneLink}`
+				});
+					return; // Niks meer doen hier!
+				}
+
+				// Alleen NIET-dringend: knoppen tonen
+				await botui.message.add({
+					content: isFr
+						? 'Que voulez-vous faire maintenant?'
+						: 'Wat wil je nu doen?'
+				});
+				const keuze = await botui.action.button({
+					action: [
+						{
+							text: isFr ? '🔄 Nouveau signalement' : '🔄 Nieuwe melding',
+							value: 'restart'
+						},
+						{
+							text: isFr ? 'ℹ️ Plus d\'info (Atalian.be)' : 'ℹ️ Meer info (Atalian.be)',
+							value: 'info'
+						}
+					]
+				});
+				if (keuze.value === 'restart') {
+					window.location.reload();
+				} else if (keuze.value === 'info') {
+					await botui.message.add({
+						content: isFr
+							? 'Vous allez être redirigé vers Atalian.'
+							: 'Je wordt nu doorgestuurd naar Atalian.'
+					});
+					setTimeout(() => {
+						window.location.href = isFr
+							? 'https://www.atalian.be/?lang=fr'
+							: 'https://www.atalian.be/?lang=nl';
+					}, 1000);
+				}
+				return;
+			})
                 .catch((err) => {
                     console.error('Fout bij verzenden melding:', err);
                     return botui.message.add({

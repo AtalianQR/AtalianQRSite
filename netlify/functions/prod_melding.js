@@ -1,3 +1,5 @@
+import { API_KEY, BASE_URL, APP_ELEMENT_OneAtalianJob } from "./APIConfig_prod.js";
+
 export async function handler(event, context) {
   if (event.httpMethod !== 'POST') {
     return {
@@ -5,10 +7,7 @@ export async function handler(event, context) {
       body: 'Method Not Allowed'
     };
   }
-console.log('RECEIVED DATA:', event.body);
-  const API_KEY = "03F5BDB822224699AD5077BE481BB627";
-  const APPLICATION_ELEMENT_ID = "3f92bbfca30445ff875f3a9d956441be";
-  const url = "https://atalian-test.ultimo.net/api/v1/action/_REST_OneAtalianJob";
+  console.log('RECEIVED DATA:', event.body);
 
   try {
     const data = JSON.parse(event.body);
@@ -39,12 +38,14 @@ console.log('RECEIVED DATA:', event.body);
       };
     }
 
+    const url = `${BASE_URL}/action/_REST_OneAtalianJob`;
+
     const response = await fetch(url, {
       method: "POST",
       headers: {
         "accept": "application/json",
         "ApiKey": API_KEY,
-        "ApplicationElementId": APPLICATION_ELEMENT_ID,
+        "ApplicationElementId": APP_ELEMENT_OneAtalianJob,
         "Content-Type": "application/json"
       },
       body: JSON.stringify(payload)
