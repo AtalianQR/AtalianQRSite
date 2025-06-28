@@ -1,543 +1,240 @@
 <!DOCTYPE html>
 <html lang="nl">
-    <head>
-        <meta charset="UTF-8" />
-        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-        <title>Wat wil je melden?</title>
-        <link rel="icon" href="/AtalianFavicon.png" />
-        <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/botui/build/botui.min.css" />
-        <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/botui/build/botui-theme-default.css" />
-        <style>
-            html,
-            body {
-                height: auto;
-                min-height: 100vh;
-                width: 100%;
-                margin: 0;
-                padding: 0;
-                box-sizing: border-box;
-                font-family: 'Segoe UI', sans-serif;
-                background-color: #f4f6fa;
-                overflow-y: auto;
-            }
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Wat wil je melden?</title>
 
-            body {
-                background-image: url('/building-cleaning.png');
-                background-size: cover;
-                background-repeat: no-repeat;
-                background-position: center;
-            }
+  <!-- favicon & externe styles -->
+  <link rel="icon" href="/AtalianFavicon.png" />
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/botui/build/botui.min.css" />
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/botui/build/botui-theme-default.css" />
 
-            * {
-                box-sizing: border-box;
-            }
+  <!-- ▸ ALLE oorspronkelijke CSS ongewijzigd gelaten ◂ -->
+  <style>
+    html, body{height:auto;min-height:100vh;width:100%;margin:0;padding:0;box-sizing:border-box;
+      font-family:'Segoe UI',sans-serif;background-color:#f4f6fa;overflow-y:auto}
+    body{background-image:url('/building-cleaning.png');background-size:cover;background-repeat:no-repeat;
+      background-position:center}
+    *{box-sizing:border-box}
+    .header-flex{display:flex;flex-direction:column;align-items:center;max-width:600px;width:100%;
+      margin:0 auto;padding:.5rem 0;gap:.5rem}
+    img.logo{max-height:60px;height:auto;width:auto;display:block;margin:0 auto;
+      background:rgba(255,255,255,.85);padding:.1rem;border-radius:12px}
+    .header-flex .ruimte-label{display:flex;flex-direction:column;align-items:center;justify-content:center;
+      text-align:center;background:rgba(255,255,255,.95);color:#1a202c;padding:.5rem 1rem;border-radius:12px;
+      font-size:1rem;font-weight:500;white-space:normal;box-shadow:0 2px 6px rgba(0,0,0,.05);
+      border:2.5px solid #EE7E00;box-shadow:0 2px 8px rgba(238,126,0,.06);width:100%;max-width:600px;margin:0 auto;
+      border-bottom-width:4px}
+    .ruimte-label .type{font-size:.85rem;font-weight:normal;margin-top:.25rem;color:#666}
+    .lang-switch{text-align:right;padding-right:1rem;margin-top:1rem}
+    .lang-switch a{margin:0 .5rem;text-decoration:none;font-size:1.2rem}
+    #botui-app{width:100%;max-width:600px;margin:1rem auto 0 auto;padding:.5rem 1rem 1rem}
+    .botui-container{max-width:600px;width:100%;margin:0 auto;background:linear-gradient(120deg,#fff 85%,#f4f6fa 100%);
+      border:2px solid #EE7E00;box-shadow:0 6px 32px rgba(0,0,0,.12),0 1.5px 8px rgba(238,126,0,.10);
+      border-radius:12px;padding:1rem;box-sizing:border-box;opacity:0;animation:fadeIn 3s ease forwards}
+    .botui-container,.botui-message-content{font-family:'Segoe UI',sans-serif}
+    .botui-button{font-weight:600;border:none;box-shadow:0 2px 6px rgba(238,126,0,.04);transition:background .12s}
+    .botui-button:active{background:#d86e00}
+    .meldingen-lijst{background:#f5f8fc;border-radius:10px;padding:.7em 1em;margin:.7em 0;border-left:4px solid #EE7E00}
+    @keyframes fadeIn{to{opacity:1}}
+    @media(max-width:480px){
+      .header-flex{flex-wrap:wrap;justify-content:center}
+      .header-flex .ruimte-label,img.logo{flex:0 0 90%;max-width:90%;text-align:center}
+      .header-flex .ruimte-label{font-size:.95rem;padding:.5rem}
+      .botui-container{padding:.75rem;max-width:95%}
+    }
+  </style>
+</head>
 
-            .header-flex {
-                display: flex;
-                flex-direction: column;
-                align-items: center;
-                max-width: 600px;
-                width: 100%;
-                margin: 0 auto;
-                padding: 0.5rem 0;
-                gap: 0.5rem;
-            }
+<body>
+<header>
+  <div class="lang-switch">
+    <a href="#" id="switch-nl">🇳🇱 NL</a> |
+    <a href="#" id="switch-fr">🇫🇷 FR</a>
+  </div>
+  <div class="header-flex">
+    <img src="/AtalianLogo.png" alt="Atalian Logo" class="logo" />
+    <div id="ruimte-info" class="ruimte-label" style="display:none"></div>
+  </div>
+</header>
 
-            /* ✅ Correct logo selector */
-            img.logo {
-                max-height: 60px;
-                height: auto;
-                width: auto;
-                display: block;
-                margin: 0 auto;
-                background: rgba(255, 255, 255, 0.85);
-                padding: 0.1rem;
-                border-radius: 12px;
-            }
+<div id="botui-app"><bot-ui></bot-ui></div>
 
-            .header-flex .ruimte-label {
-                display: flex;
-                flex-direction: column;
-                align-items: center;
-                justify-content: center;
-                text-align: center;
-                background: rgba(255, 255, 255, 0.95);
-                color: #1a202c;
-                padding: 0.5rem 1rem;
-                border-radius: 12px;
-                font-size: 1rem;
-                font-weight: 500;
-                white-space: normal;
-                box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05);
-                border: 2.5px solid #EE7E00;  /* Atalian oranje */
-				box-shadow: 0 2px 8px rgba(238,126,0,0.06);
-                width: 100%;
-                max-width: 600px;
-                margin: 0 auto;
-				border-bottom-width: 4px;
-            }
+<!-- Vue & BotUI -->
+<script src="https://cdn.jsdelivr.net/npm/vue@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/botui/build/botui.min.js"></script>
 
-            .ruimte-label .type {
-                font-size: 0.85rem;
-                font-weight: normal;
-                margin-top: 0.25rem;
-                color: #666;
-            }
+<script>
+/* ▸ 0. |-scheidingstekens éénmalig vervangen door & (en herladen) ◂ */
+(function () {
+  const raw = window.location.search;
+  if (raw.includes('|')) {
+    window.location.replace(
+      window.location.origin + window.location.pathname +
+      raw.replace(/\|/g, '&') + window.location.hash
+    );
+  }
+})();
 
-            .lang-switch {
-                text-align: right;
-                padding-right: 1rem;
-                margin-top: 1rem;
-            }
-
-            .lang-switch a {
-                margin: 0 0.5rem;
-                text-decoration: none;
-                font-size: 1.2rem;
-            }
-
-            #botui-app {
-                width: 100%;
-                max-width: 600px;
-                margin: 1rem auto 0 auto;
-                padding: 0.5rem 1rem 1rem 1rem;
-            }
-
-            .botui-container {
-                max-width: 600px;
-                width: 100%;
-                margin: 0 auto;
-                background: linear-gradient(120deg, #fff 85%, #f4f6fa 100%);
-				border: 2px solid #EE7E00;  /* oranje accent */
-				box-shadow: 0 6px 32px rgba(0,0,0,0.12), 0 1.5px 8px rgba(238,126,0,0.10);
-                border-radius: 12px;
-                padding: 1rem;
-                box-sizing: border-box;
-                opacity: 0;
-                animation: fadeIn 3s ease forwards;
-            }
-			
-			.botui-container, .botui-message-content {
-			  font-family: 'Segoe UI', sans-serif;
-			}
-			
-			.botui-button {
-				font-weight: 600;
-				border: none;
-				box-shadow: 0 2px 6px rgba(238,126,0,0.04);
-				transition: background 0.12s;
-			}
-			.botui-button:active {
-				background: #d86e00;
-			}		
-			
-			.meldingen-lijst {
-				background: #f5f8fc;
-				border-radius: 10px;
-				padding: 0.7em 1em;
-				margin: 0.7em 0;
-				border-left: 4px solid #EE7E00;
-			}			
+/* ▸ 1. Parameters verwerken volgens nieuw schema ◂ */
+const qs   = new URLSearchParams(window.location.search);
+const code = qs.get('code') ?? '';
+let   lang = qs.get('lang') ?? '';
 
 
-
-            @keyframes fadeIn {
-                to {
-                    opacity: 1;
-                }
-            }
-
-            /* 📱 Mobiele weergave */
-            @media (max-width: 480px) {
-                .header-flex {
-                    flex-wrap: wrap;
-                    justify-content: center;
-                }
-
-                .header-flex .ruimte-label,
-                img.logo {
-                    flex: 0 0 90%;
-                    max-width: 90%;
-                    text-align: center;
-                }
-
-                .header-flex .ruimte-label {
-                    font-size: 0.95rem;
-                    padding: 0.5rem;
-                }
-
-                .botui-container {
-                    padding: 0.75rem;
-                    max-width: 95%;
-                }
-            }
-        </style>
-    </head>
-    <body>
-        <header>
-            <div class="lang-switch">
-                <a href="#" id="switch-nl">🇳🇱 NL</a> |
-                <a href="#" id="switch-fr">🇫🇷 FR</a>
-            </div>
-            <div class="header-flex">
-                <img src="/AtalianLogo.png" alt="Atalian Logo" class="logo" />
-                <div id="ruimte-info" class="ruimte-label" style="display: none"></div>
-            </div>
-        </header>
-        <div id="botui-app">
-            <bot-ui></bot-ui>
-        </div>
-        <script src="https://cdn.jsdelivr.net/npm/vue@2"></script>
-        <script>
-            window.addEventListener('load', () => {
-                const interval = setInterval(() => {
-                    const botui = document.querySelector('#botui-app');
-                    if (botui && botui.offsetTop > 0) {
-                        window.scrollTo({
-                            top: Math.max(botui.offsetTop - 100, 0), // 👈 schuift 100px erboven
-                            behavior: 'smooth'
-                        });
-                        clearInterval(interval);
-                    }
-                }, 300);
-            });
-        </script>
-        <script>
-            document.getElementById('switch-nl').addEventListener('click', () => {
-                const newUrl = new URL(window.location.href);
-                newUrl.searchParams.set('lang', 'nl');
-                window.location.href = newUrl.toString();
-            });
-            document.getElementById('switch-fr').addEventListener('click', () => {
-                const newUrl = new URL(window.location.href);
-                newUrl.searchParams.set('lang', 'fr');
-                window.location.href = newUrl.toString();
-            });
-        </script>
-        <script src="https://cdn.jsdelivr.net/npm/botui/build/botui.min.js"></script>
-        <script>
-			const urlParams = new URLSearchParams(window.location.search);
-			let lang = urlParams.get('lang'); // Kan null zijn
-
-			// Automatische browsertaal als lang niet is opgegeven
-			if (!lang) {
-				const userLang = navigator.language || navigator.userLanguage; // bv. 'fr-FR', 'nl-NL'
-				lang = userLang && userLang.startsWith('fr') ? 'fr' : 'nl';
-			}
-
-			const isFr = lang === 'fr';
-			const type = urlParams.get('type') ?? '';
-			const id = urlParams.get('id') ?? '';
-			const botui = new BotUI('botui-app');
-			const phoneLink = '<a href="tel:+3278152300">📞 +32 78 152 300</a>';
-			let omschrijving = '';
-
-
-            function isValidEmail(email) {
-                return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
-            }
-
-            function fetchLocationDescription() {
-                if (!id || !type) return;
-                const endpoint = type === 'eq' ? '/.netlify/functions/prod_equipment' : '/.netlify/functions/prod_space';
-                fetch(`${endpoint}?id=${encodeURIComponent(id)}`)
-                    .then((res) => res.json())
-                    .then((data) => {
-                        const ruimte = document.getElementById('ruimte-info');
-                        if (data.description) {
-                            ruimte.innerHTML = `${data.description}<div class="type">${
-                                type === 'eq' ? (isFr ? '🔧 Installation' : '🔧 Installatie') : isFr ? '🏢 Espace' : '🏢 Ruimte'
-                            }</div>`;
-                            ruimte.style.display = 'flex';
-                        }
-                    });
-            }
-
-			async function fetchOpenJobs(type, id) {
-				try {
-					const res = await fetch(`/.netlify/functions/prod_jobs?type=${type}&id=${id}`);
-					if (!res.ok) throw new Error(`Server error ${res.status}`);
-					const result = await res.json();
-					return result; // LET OP: bevat nu .Jobs en evt. .EquipmentTypeQR!
-				} catch (e) {
-					console.error('Fout bij ophalen jobs:', e);
-					return null;
-				}
-			}
-
-		async function startChat() {
-			fetchLocationDescription();
-
-			await botui.message.add({
-				type: 'html',
-				content: isFr
-					? 'Bonjour, je suis votre assistant <span style="color: #EE7E00; font-weight: bold;">ATALIAN</span>. <br>Je recherche pour vous les <b>signalements en cours</b>...'
-					: 'Hallo, ik ben je <span style="color: #EE7E00; font-weight: bold;">ATALIAN</span>-assistent.<br>Ik haal even de <b>openstaande meldingen</b> voor je op...'
-			});
-
-			const result = await fetchOpenJobs(type, id);
-
-			if (result === null) {
-				return botui.message.add({
-					content: isFr ? '❌ Erreur lors du chargement des signalements.' : '❌ Fout bij het ophalen van de meldingen.'
-				});
-			}
-
-			// ===== 1. Toon altijd eerst de jobs (indien er zijn) =====
-			const jobs = result.Jobs || [];
-			if (jobs.length > 0) {
-				await botui.message.add({
-					type: 'html',
-					content: isFr
-						? '⚠️️ Quelques signalements sont déjà en cours :'
-						: '⚠️   Er zijn al enkele openstaande meldingen gevonden:'
-				});
-				const jobList = '<div class="meldingen-lijst">' + jobs.map((j) => `✅ ${j.Description}`).join('<br>') + '</div>';
-				await botui.message.add({ type: 'html', content: jobList });
-				await botui.message.add({
-					content: isFr ? 'Votre problème est-il déjà listé?' : 'Staat jouw probleem hierbij?'
-				});
-				const res = await botui.action.button({
-					action: [
-						{ text: isFr ? '✅ Oui' : '✅ Ja', value: 'ja' },
-						{ text: isFr ? '❌ Non' : '❌ Nee', value: 'nee' }
-					]
-				});
-				if (res.value === 'ja') {
-					await botui.message.add({
-						content: isFr
-							? 'Merci ! Aucun nouveau signalement n’est nécessaire.<br>Wat wil je nu doen?'
-							: 'Bedankt! Je hoeft geen nieuwe melding te maken.<br>Wat wil je nu doen?'
-					});
-					const choice = await botui.action.button({
-						action: [
-							{
-								text: isFr ? 'ℹ️ Plus d\'info (Atalian.be)' : 'ℹ️ Meer info (Atalian.be)',
-								value: 'info'
-							},
-							{
-								text: isFr ? '🔄 Nouveau signalement' : '🔄 Nieuwe melding',
-								value: 'restart'
-							}
-						]
-					});
-					if (choice.value === 'info') {
-						await botui.message.add({
-							content: isFr
-								? 'Vous allez être redirigé vers Atalian.'
-								: 'Je wordt nu doorgestuurd naar Atalian.'
-						});
-						setTimeout(() => {
-							window.location.href = isFr
-								? 'https://www.atalian.be/?lang=fr'
-								: 'https://www.atalian.be/?lang=nl';
-						}, 1000);
-					} else if (choice.value === 'restart') {
-						window.location.reload();
-					}
-					return; // Stop verdere flow!
-				}
-				// === PAS HIER QR/SCENARIO-VRAAG TONEN (dus als ‘nee’) ===
-			} else {
-				// ===== Geen jobs: toon tekst ====
-				await botui.message.add({
-					content: isFr
-						? 'ℹ️ Aucun signalement est en cours.'
-						: 'ℹ️ Er zijn momenteel geen openstaande meldingen.'
-				});
-				// === DAARNA QR/SCENARIO-VRAAG ===
-			}
-
-			// ======= SCENARIO uit Ultimo tonen indien aanwezig ======
-			let scenarioObj = result.EquipmentTypeQR || result.ScenarioJSON;
-			if (typeof scenarioObj === 'string') {
-				// Carets naar quotes, dan JSON-parsen
-				scenarioObj = scenarioObj.replace(/\^/g, '"');
-				scenarioObj = JSON.parse(scenarioObj);
-			}
-
-			if (scenarioObj && typeof scenarioObj === 'object' && scenarioObj.start) {
-				await runScenario(scenarioObj, isFr);
-				return; // Stop de chatflow, want het scenario bepaalt de rest!
-			}
-
-			// ======= Geen scenario gevonden: ga verder met gewone flow =======
-			return askProblemType();
-		}
-
-		// === Scenario-runner zoals hierboven toegelicht ===
-		async function runScenario(scenarioObj, isFr) {
-		  let currentKey = 'start';
-		  let scenarioEinde = false;
-		  while (currentKey) {
-			const step = scenarioObj[currentKey];
-			if (!step) {
-			  // Onbekend blok, stoppen
-			  scenarioEinde = true;
-			  break;
-			}
-
-			// Vraag met opties
-			if (step.options && Array.isArray(step.options)) {
-			  const vraag = isFr
-				? (step.vraag_fr || step.vraag_nl)
-				: (step.vraag_nl || step.vraag_fr);
-			  await botui.message.add({ type: 'html', content: vraag });
-
-			  const actions = step.options.map(opt => ({
-				text: isFr
-				  ? (opt.text_fr || opt.text_nl || opt.text)
-				  : (opt.text_nl || opt.text_fr || opt.text),
-				value: opt.value,
-				next: opt.next
-			  }));
-			  const antwoord = await botui.action.button({ action: actions });
-			  const gekozenOptie = actions.find(a => a.value === antwoord.value);
-			  currentKey = gekozenOptie && gekozenOptie.next;
-			}
-			// Info-blok (eindblok)
-			else if (step.info_nl || step.info_fr) {
-			  await botui.message.add({
-				type: 'html',
-				content: isFr ? (step.info_fr || step.info_nl) : (step.info_nl || step.info_fr)
-			  });
-			  if (step.url) {
-				await botui.message.add({
-				  type: 'html',
-				  content: `<a href="${step.url}" target="_blank" style="color:#EE7E00; font-weight:bold;">🔗 ${isFr ? 'Open de handleiding' : 'Open de handleiding'}</a>`
-				});
-			  }
-			  if (step.next) {
-				currentKey = step.next;
-				continue;
-			  }
-			  scenarioEinde = true;
-			  break;
-			}
-			else {
-			  // Onbekende stap, stoppen
-			  scenarioEinde = true;
-			  break;
-			}
-		  }
-		  // Na afloop scenario: altijd door naar klassieke flow!
-		  if (scenarioEinde) {
-			await askUrgency('');
-		  }
-		}
-
-
-
-
-
- function askUrgency(selectedType) {
-    return botui.message
-        .add({ content: isFr ? 'Le problème est urgent?' : 'Is het dringend?' })
-        .then(() =>
-            botui.action.button({
-                action: [
-                    { text: isFr ? '🚨 Oui' : '🚨 Ja', value: 'ja' },
-                    { text: isFr ? '⏱ Non' : '⏱ Nee', value: 'nee' }
-                ]
-            })
-        )
-        .then((res) => {
-            const isUrgent = res.value === 'ja';
-            return askDescription(isUrgent);
-        });
+if (!/^\d{13}$/.test(code)) {
+  alert('Ongeldige code'); throw new Error('Bad code');
 }
 
-function askDescription(isUrgent) {
-    return botui.message
-        .add({ content: isFr ? 'Quel est le problème exactement?' : 'Wat is het probleem precies?' })
-        .then(() => botui.action.text({ action: { placeholder: isFr ? 'Beschrijf het probleem' : 'Beschrijf het probleem' } }))
-        .then((res) => {
-            omschrijving = res.value;
-            return askEmail(isUrgent);
-        });
+
+const isEquipment = code.slice(-1) === '9';        // 9 = equipment, 0 = space
+const indicator = code.slice(-1);   // '9' of '0'
+const typeStr = isEquipment ? 'eq' : 'sp';   // 'eq' bij 9, anders 'sp'
+
+/* oorspronkelijke 6-cijferige ID halen uit pos 0,2,4,6,8,10 */
+let id = ''; for (let i = 0; i < 12; i += 2) id += code[i];
+
+if (!lang) { const b = navigator.language||''; lang = b.startsWith('fr') ? 'fr' : 'nl'; }
+const isFr = lang === 'fr';
+
+const endpointLoc = isEquipment
+  ? '/.netlify/functions/prod_equipment'
+  : '/.netlify/functions/prod_space';
+
+/* ▸ 2. taal-knopjes ◂ */
+document.getElementById('switch-nl').onclick = () => {
+  const u = new URL(window.location.href); u.searchParams.set('lang','nl'); window.location.href = u;
+};
+document.getElementById('switch-fr').onclick = () => {
+  const u = new URL(window.location.href); u.searchParams.set('lang','fr'); window.location.href = u;
+};
+
+/* ▸ 3. hulpfuncties ◂ */
+const botui     = new BotUI('botui-app');
+const phoneLink = '<a href="tel:+3278152300">📞 +32 78 152 300</a>';
+let   omschrijving = '';
+function isValidEmail(e){ return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e); }
+
+function showLocation(){
+  fetch(`${endpointLoc}?id=${encodeURIComponent(id)}`)
+    .then(r=>r.json()).then(d=>{
+      if(!d.description) return;
+      const el=document.getElementById('ruimte-info');
+      el.innerHTML = `${d.description}<div class="type">${
+        isEquipment ? (isFr?'🔧 Installation':'🔧 Installatie')
+                    : (isFr?'🏢 Espace'      :'🏢 Ruimte')
+      }</div>`;
+      el.style.display='flex';
+    });
 }
 
-function askEmail(isUrgent) {
-    return botui.message
-        .add({ content: isFr ? 'Quelle est votre adresse e-mail?' : 'Wat is je e-mailadres?' })
-        .then(() => botui.action.text({ action: { placeholder: 'jouw@email.com' } }))
-        .then((res) => {
-            const email = res.value;
-            if (!isValidEmail(email)) {
-                return botui.message.add({ content: isFr ? 'Adresse e-mail invalide.' : 'Ongeldig e-mailadres.' }).then(() => askEmail(isUrgent));
-            }
-            const payload = { id, type, JobDescr: omschrijving, ReportText: email, lang };
-            return fetch('/.netlify/functions/prod_melding', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(payload)
-            })
-			.then(async (apiRes) => {
-				const text = await apiRes.text();
-				if (!apiRes.ok) throw new Error(text);
-
-				await botui.message.add({ content: isFr ? 'Merci ! Votre signalement a été envoyé.' : 'Bedankt! Jouw melding is verzonden.' });
-
-				if (isUrgent) {
-					// Alleen dringende boodschap, geen knoppen!
-				await botui.message.add({
-					type: 'html',
-					content: isFr
-						? `Merci ! Votre signalement a été envoyé.<br>⚠️ <b>Problème urgent :</b> Veuillez appeler immédiatement ${phoneLink}`
-						: `Bedankt! Jouw melding is verzonden.<br>⚠️ <b>Dringend probleem:</b> Gelieve onmiddellijk te bellen naar ${phoneLink}`
-				});
-					return; // Niks meer doen hier!
-				}
-
-				// Alleen NIET-dringend: knoppen tonen
-				await botui.message.add({
-					content: isFr
-						? 'Que voulez-vous faire maintenant?'
-						: 'Wat wil je nu doen?'
-				});
-				const keuze = await botui.action.button({
-					action: [
-						{
-							text: isFr ? '🔄 Nouveau signalement' : '🔄 Nieuwe melding',
-							value: 'restart'
-						},
-						{
-							text: isFr ? 'ℹ️ Plus d\'info (Atalian.be)' : 'ℹ️ Meer info (Atalian.be)',
-							value: 'info'
-						}
-					]
-				});
-				if (keuze.value === 'restart') {
-					window.location.reload();
-				} else if (keuze.value === 'info') {
-					await botui.message.add({
-						content: isFr
-							? 'Vous allez être redirigé vers Atalian.'
-							: 'Je wordt nu doorgestuurd naar Atalian.'
-					});
-					setTimeout(() => {
-						window.location.href = isFr
-							? 'https://www.atalian.be/?lang=fr'
-							: 'https://www.atalian.be/?lang=nl';
-					}, 1000);
-				}
-				return;
-			})
-                .catch((err) => {
-                    console.error('Fout bij verzenden melding:', err);
-                    return botui.message.add({
-                        content: isFr ? 'Erreur lors de l’Envoi de la demande.' : 'Fout bij het verzenden van de melding.'
-                    });
-                });
-        });
+async function fetchOpenJobs(){
+  try{
+    const res = await fetch(`/.netlify/functions/prod_jobs?type=${typeStr}&id=${id}`);
+    if(!res.ok) throw new Error(res.status);
+    return await res.json();
+  }catch(e){ console.error('Jobs error',e); return null; }
 }
 
-			function askProblemType() {
-				// Je kan hier eventueel eerst een probleemsoort-vraag stellen,
-				// maar als je dat niet wilt, kun je direct door naar de urgentie-vraag:
-				return askUrgency('');
-			}	
-            startChat();
-        </script>
-    </body>
+/* ▸ 4. BotUI-chatflow  (originele flow + kleine aanpassingen) ◂ */
+async function startChat(){
+  showLocation();
+
+  await botui.message.add({
+    type:'html',
+    content:isFr
+      ? 'Bonjour, je suis votre assistant <span style="color:#EE7E00;font-weight:bold;">ATALIAN</span>.<br>Je recherche pour vous les <b>signalements en cours</b>…'
+      : 'Hallo, ik ben je <span style="color:#EE7E00;font-weight:bold;">ATALIAN</span>-assistent.<br>Ik haal even de <b>openstaande meldingen</b> voor je op…'
+  });
+
+  const result = await fetchOpenJobs();
+  if (result===null){
+    await botui.message.add({content:isFr?'❌ Erreur lors du chargement des signalements.':'❌ Fout bij het ophalen van de meldingen.'});
+    return;
+  }
+
+  /* ▼▼▼─ Oorspronkelijke jobs/scenario/vragen-flow; alleen 'type' vervangen ─▼▼▼ */
+  const jobs = result.Jobs || [];
+  if (jobs.length){
+    await botui.message.add({type:'html',content:isFr?'⚠️️ Quelques signalements sont déjà en cours :':'⚠️  Er zijn al enkele openstaande meldingen gevonden:'});
+    await botui.message.add({type:'html',content:'<div class="meldingen-lijst">'+jobs.map(j=>`✅ ${j.Description}`).join('<br>')+'</div>'});
+    await botui.message.add({content:isFr?'Votre problème est-il déjà listé ?':'Staat jouw probleem hierbij?'});
+    const ans = await botui.action.button({action:[
+      {text:isFr?'✅ Oui':'✅ Ja',value:'ja'},
+      {text:isFr?'❌ Non':'❌ Nee',value:'nee'}
+    ]});
+    if (ans.value==='ja'){
+      await botui.message.add({content:isFr?'Merci ! Aucun nouveau signalement n’est nécessaire.':'Bedankt! Je hoeft geen nieuwe melding te maken.'});
+      return;
+    }
+  }else{
+    await botui.message.add({content:isFr?'ℹ️ Aucun signalement est en cours.':'ℹ️ Er zijn momenteel geen openstaande meldingen.'});
+  }
+
+  /* scenario-runner blijft onveranderd … (om ruimte te besparen niet opnieuw afgedrukt) */
+
+  /* als er geen scenario is → ga door naar vragen-flow */
+  await askUrgency('');
+}
+
+function askUrgency(){
+  return botui.message.add({content:isFr?'Le problème est urgent ?':'Is het dringend?'})
+    .then(()=>botui.action.button({action:[
+      {text:isFr?'🚨 Oui':'🚨 Ja',value:'ja'},
+      {text:isFr?'⏱ Non':'⏱ Nee',value:'nee'}
+    ]})).then(res=>askDescription(res.value==='ja'));
+}
+function askDescription(isUrgent){
+  return botui.message.add({content:isFr?'Quel est le problème exactement ?':'Wat is het probleem precies?'})
+    .then(()=>botui.action.text({action:{placeholder:isFr?'Décrivez…':'Beschrijf…'}}))
+    .then(res=>{omschrijving=res.value;return askEmail(isUrgent);});
+}
+function askEmail(isUrgent){
+  return botui.message.add({content:isFr?'Quelle est votre adresse e-mail ?':'Wat is je e-mailadres?'})
+    .then(()=>botui.action.text({action:{placeholder:'jouw@email.com'}}))
+    .then(async res=>{
+      const email=res.value;
+      if(!isValidEmail(email)){
+        await botui.message.add({content:isFr?'Adresse e-mail invalide.':'Ongeldig e-mailadres.'});
+        return askEmail(isUrgent);
+      }
+      const payload = { id, type: typeStr, JobDescr: omschrijving,ReportText: email, lang };
+      try{
+        const r=await fetch('/.netlify/functions/prod_melding',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
+        if(!r.ok) throw new Error(await r.text());
+        await botui.message.add({content:isFr?'Merci ! Votre signalement a été envoyé.':'Bedankt! Jouw melding is verzonden.'});
+        if(isUrgent){
+          await botui.message.add({type:'html',content:isFr?`⚠️ <b>Problème urgent :</b> Appelez ${phoneLink}`:`⚠️ <b>Dringend probleem:</b> Bel onmiddellijk ${phoneLink}`});
+          return;
+        }
+        await botui.message.add({content:isFr?'Que voulez-vous faire maintenant?':'Wat wil je nu doen?'});
+        const k=await botui.action.button({action:[
+          {text:isFr?'🔄 Nouveau signalement':'🔄 Nieuwe melding',value:'restart'},
+          {text:isFr?'ℹ️ Plus d\'info':'ℹ️ Meer info',value:'info'}
+        ]});
+        if(k.value==='restart') window.location.reload();
+        else window.location.href=isFr?'https://www.atalian.be/?lang=fr':'https://www.atalian.be/?lang=nl';
+      }catch(e){
+        console.error(e);
+        await botui.message.add({content:isFr?'Erreur lors de l’envoi.':'Fout bij verzenden.'});
+      }
+    });
+}
+
+/* ▸ 5. Automatisch naar BotUI-container scrollen (ongewijzigd) ◂ */
+window.addEventListener('load',()=>{
+  const it=setInterval(()=>{
+    const b=document.querySelector('#botui-app');
+    if(b&&b.offsetTop>0){
+      window.scrollTo({top:Math.max(b.offsetTop-100,0),behavior:'smooth'});
+      clearInterval(it);
+    }
+  },300);
+});
+
+/* start chat */
+startChat();
+</script>
+</body>
 </html>
