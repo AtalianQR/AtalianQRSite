@@ -1,34 +1,58 @@
-import { API_KEY, BASE_URL, APP_ELEMENT_QueryAtalianJobs } from "./APIConfig_prod.js";
+/*  prod_jobs.js  */
+import {
+  API_KEY,
+  BASE_URL,
+  APP_ELEMENT_QueryAtalianJobs,
+} from "./APIConfig_prod.js";
 
 export async function handler(event) {
-  const { type, id } = event.queryStringParameters || {};
+  /* ── 1. Query-params ophalen ─────────────────────────────────────── */
+  const { type, id, code } = event.queryStringParameters || {};
 
-  function stripHtmlTags(input) {
-    if (!input) return '';
-    // Verwijder tags zoals <div> en HTML entities als &nbsp; en overbodige whitespace
-    return input
-      .replace(/<[^>]*>/g, '')     // strip alle HTML-tags
-      .replace(/&nbsp;/g, ' ')     // vervang &nbsp; door spatie
-      .replace(/\s{2,}/g, ' ')     // dubbele spaties weg
-      .replace(/^\s+|\s+$/g, '');  // trim whitespace
+  /* ── 2. Decode-blok voor 13-cijferige ‘code’ ─────────────────────── */
+  let finalType = type;
+  let finalId   = id;
+
+  if (code) {
+    if (!/^\d{13}$/.test(code)) {
+      return {
+        statusCode: 400,
+        body: JSON.stringify({ error: "Ongeldige code-parameter" }),
+      };
+    }
+    const indicator = code.slice(-1);           // '9' → equipment, '0' → space
+    finalType       = indicator === "9" ? "eq" : "sp";
+
+    // oorspronkelijke 6-cijferige ID = posities 0,2,4,6,8,10
+    finalId = code[0] + code[2] + code[4] + code[6] + code[8] + code[10];
   }
 
-  if (!type || !id) {
-    console.error("Missing 'type' or 'id'");
+  /* ── 3. Valideer na decoderen ────────────────────────────────────── */
+  if (!finalType || !finalId) {
     return {
       statusCode: 400,
       body: JSON.stringify({ error: "Missing 'type' of 'id' parameter." }),
     };
   }
 
-  const url = `${BASE_URL}/action/_rest_QueryAtalianJobs`;
-
+  /* ── 4. Payload voor Ultimo-API ──────────────────────────────────── */
   const payload = {
-    SpaceId: type === "sp" ? id : "",
-    EquipmentId: type === "eq" ? id : "",
+    SpaceId:     finalType === "sp" ? finalId : "",
+    EquipmentId: finalType === "eq" ? finalId : "",
   };
 
+  /* ── 5. Ultimo-call + verwerking ─────────────────────────────────── */
+
+  // helper om HTML-tags en carets te strippen
+  const stripHtmlTags = (txt = "") =>
+    txt
+      .replace(/<[^>]*>/g, "")
+      .replace(/&nbsp;/g, " ")
+      .replace(/\s{2,}/g, " ")
+      .trim();
+
   try {
+    const url = `${BASE_URL}/action/_rest_QueryAtalianJobs`;
     const response = await fetch(url, {
       method: "POST",
       headers: {
@@ -41,71 +65,45 @@ export async function handler(event) {
     });
 
     if (!response.ok) {
-      const errorText = await response.text();
-      console.error("Ultimo API returned non-200:", response.status, errorText);
-      return {
-        statusCode: response.status,
-        body: JSON.stringify({ error: errorText }),
-      };
+      const errText = await response.text();
+      console.error("Ultimo API error:", response.status, errText);
+      return { statusCode: response.status, body: errText };
     }
 
-    const rawData = await response.json();
+    /* 5a. Parse Ultimo-response */
+    const rawData   = await response.json();
     const rawString = rawData?.properties?.Output?.object;
 
-    let obj = {};
     let jobs = [];
     let equipmentTypeQR = null;
 
     if (rawString) {
-      try {
-        obj = JSON.parse(rawString);
+      const obj = JSON.parse(rawString);
 
-        // Jobs altijd als array, ook als leeg
-        jobs = Array.isArray(obj.Jobs) ? obj.Jobs : [];
+      /* Jobs altijd als array */
+      jobs = Array.isArray(obj.Jobs) ? obj.Jobs : [];
 
-        // EquipmentTypeQR: indien string, strip html + vervang carets en parse
-        if (obj.EquipmentTypeQR && typeof obj.EquipmentTypeQR === "string") {
-          let cleaned = stripHtmlTags(obj.EquipmentTypeQR);
-          cleaned = cleaned.replace(/\^/g, '"');
-          cleaned = cleaned.trim();
-          try {
-            equipmentTypeQR = JSON.parse(cleaned);
-          } catch (e) {
-            equipmentTypeQR = null;
-          }
-        }
-      } catch (parseError) {
-        return {
-          statusCode: 500,
-          body: JSON.stringify({
-            error: "Kan hoofdobject niet als JSON lezen.",
-            raw: rawString,
-          }),
-        };
+      /* EquipmentTypeQR clean-up (optional) */
+      if (typeof obj.EquipmentTypeQR === "string") {
+        const cleaned = stripHtmlTags(obj.EquipmentTypeQR).replace(/\^/g, '"');
+        try { equipmentTypeQR = JSON.parse(cleaned); } catch {/* ignore */}
       }
     }
 
-    // Optioneel: message voor frontend als er geen jobs en geen QR zijn
-    let message = '';
-    if (!equipmentTypeQR && (!jobs || jobs.length === 0)) {
-      message = "Er zijn momenteel geen openstaande meldingen.";
-    }
-
+    /* ── 6. Succes-response ───────────────────────────────────────── */
     return {
       statusCode: 200,
       body: JSON.stringify({
-        Jobs: jobs,
+        type : finalType,     // mee terug voor front-end (optioneel)
+        id   : finalId,
+        Jobs : jobs,
         EquipmentTypeQR: equipmentTypeQR,
-        hasJobs: jobs && jobs.length > 0,
-        message,
+        hasJobs: jobs.length > 0,
       }),
     };
 
   } catch (err) {
-    console.error('Jobs Lambda Error:', err, err.stack);
-    return {
-      statusCode: 500,
-      body: JSON.stringify({ error: err.message }),
-    };
+    console.error("Jobs Lambda Error:", err);
+    return { statusCode: 500, body: JSON.stringify({ error: err.message }) };
   }
 }
