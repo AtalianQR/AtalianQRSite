@@ -74,6 +74,7 @@
       window.location.origin + window.location.pathname +
       raw.replace(/\|/g, '&') + window.location.hash
     );
+    return;   // ← stop verdere uitvoering op de oude URL
   }
 })();
 
