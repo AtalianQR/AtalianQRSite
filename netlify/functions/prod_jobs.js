@@ -1,7 +1,22 @@
 import { API_KEY, BASE_URL, APP_ELEMENT_QueryAtalianJobs } from "./APIConfig_prod.js";
 
 export async function handler(event) {
-  const { type, id } = event.queryStringParameters || {};
+	const { equip, type: legacyType, id } = event.queryStringParameters;
+	let type = legacyType;
+	if (equip !== undefined) {
+	  if      (equip === '9') type = 'eq';
+	  else if (equip === '0') type = 'sp';
+	}
+
+  /* ---- hierna komt je bestaande stripHtmlTags, payload-opbouw enz. ---- */
+
+  if (!type || !id) {                  // ← controle ná mapping!
+    console.error("Missing 'type' or 'id'");
+    return {
+      statusCode: 400,
+      body: JSON.stringify({ error: "Missing 'type' or 'id' parameter." }),
+    };
+  }
 
   function stripHtmlTags(input) {
     if (!input) return '';
