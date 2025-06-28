@@ -130,6 +130,7 @@ function showLocation(){
     });
 }
 
+console.log('DEBUG typeStr=', typeStr, 'id=', id);
 async function fetchOpenJobs(){
   try{
     const res = await fetch(`/.netlify/functions/prod_jobs?type=${typeStr}&id=${id}`);
