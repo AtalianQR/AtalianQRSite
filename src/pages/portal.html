@@ -84,10 +84,6 @@ const code = qs.get('code') ?? '';
 let   lang = qs.get('lang') ?? '';
 
 
-if (!/^\d{13}$/.test(code)) {
-  alert('Ongeldige code'); throw new Error('Bad code');
-}
-
  
 const isEquipment = code.slice(-1) === '9';        // 9 = equipment, 0 = space
 const indicator = code.slice(-1);   // '9' of '0'
