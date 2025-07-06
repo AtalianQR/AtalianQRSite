@@ -9,7 +9,6 @@
   <link rel="icon" href="/AtalianFavicon.png" />
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/botui/build/botui.min.css" />
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/botui/build/botui-theme-default.css" />
-
   <style>
     html, body{height:auto;min-height:100vh;width:100%;margin:0;padding:0;box-sizing:border-box;
       font-family:'Segoe UI',sans-serif;background-color:#f4f6fa;overflow-y:auto}
@@ -45,7 +44,6 @@
     }
   </style>
 </head>
-
 <body>
 <header>
   <div class="lang-switch">
@@ -57,14 +55,12 @@
     <div id="ruimte-info" class="ruimte-label" style="display:none"></div>
   </div>
 </header>
-
 <div id="botui-app"><bot-ui></bot-ui></div>
 
 <!-- Vue & BotUI -->
 <script src="https://cdn.jsdelivr.net/npm/vue@2"></script>
 <script src="https://cdn.jsdelivr.net/npm/botui/build/botui.min.js"></script>
 
-<!-- Voeg je eigen config en QR decode toe -->
 <script type="module">
 import { parseUltimoQR } from './CodeUrl.js';
 
@@ -84,14 +80,13 @@ import { parseUltimoQR } from './CodeUrl.js';
 const qs   = new URLSearchParams(window.location.search);
 const code = qs.get('code') ?? '';
 let   lang = qs.get('lang') ?? '';
-
 if (!lang) { const b = navigator.language||''; lang = b.startsWith('fr') ? 'fr' : 'nl'; }
 const isFr = lang === 'fr';
 
-// Gebruik parseUltimoQR uit de config
+// Alleen parsen, NIET direct valideren!
 const parsedQR = parseUltimoQR(code);
-
-const { isEquipment, typeStr, id, indicator } = parsedQR;
+let isEquipment = false, typeStr = '', id = '', indicator = '';
+if (parsedQR) { isEquipment = parsedQR.isEquipment; typeStr = parsedQR.typeStr; id = parsedQR.id; indicator = parsedQR.indicator; }
 
 const endpointLoc = isEquipment
   ? '/.netlify/functions/prod_equipment'
@@ -163,12 +158,12 @@ async function startChat(){
       });
 
       // Daarna: wil je toch een probleem melden?
-	const vervolg = await botui.action.button({
-	  action: [
-		{ text: isFr ? '🔄 Nouveau signalement' : '🔄 Nieuwe melding', value: "doorgaan" },
-		{ text: isFr ? "ℹ️ Plus d'info" : "ℹ️ Meer info", value: "info" }
-	  ]
-	});
+      const vervolg = await botui.action.button({
+        action: [
+          { text: isFr ? '🔄 Nouveau signalement' : '🔄 Nieuwe melding', value: "doorgaan" },
+          { text: isFr ? "ℹ️ Plus d'info" : "ℹ️ Meer info", value: "info" }
+        ]
+      });
       if (vervolg.value === "doorgaan") {
         return await startProbleemFlow();
       } else if (vervolg.value === "info") {
@@ -195,6 +190,15 @@ async function startChat(){
 }
 
 async function startProbleemFlow() {
+  // QR-validatie ENKEL op dit punt!
+  if (!parsedQR) {
+    await botui.message.add({
+      type: 'html',
+      content: '<span style="color:red;font-weight:bold">Geen geldige QR-code. Je kunt geen melding doen zonder geldige code.</span>'
+    });
+    return;
+  }
+
   const result = await fetchOpenJobs();
   if (result===null){
     await botui.message.add({content:isFr?'❌ Erreur lors du chargement des signalements.':'❌ Fout bij het ophalen van de meldingen.'});
