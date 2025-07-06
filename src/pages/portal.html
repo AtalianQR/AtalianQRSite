@@ -166,8 +166,8 @@ async function startChat(){
 	  // Daarna: wil je toch een probleem melden?
 	  const vervolg = await botui.action.button({
 		action: [
-		  { text: isFr ? '❗️ Je veux signaler un problème' : '❗️ Ik wil een probleem melden', value: "doorgaan" },
-		  { text: isFr ? "ℹ️ Plus d'info" : "ℹ️ Meer info", value: "info" }
+		      { text: isFr?'🔄 Nouveau signalement':'🔄 Nieuwe melding',value:"doorgaan"},
+			  { text: isFr ? "ℹ️ Plus d'info" : "ℹ️ Meer info", value: "info" }
 		]
 	  });
 		if (vervolg.value === "doorgaan") {
