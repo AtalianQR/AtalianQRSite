@@ -10,7 +10,6 @@
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/botui/build/botui.min.css" />
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/botui/build/botui-theme-default.css" />
 
-  <!-- ▸ ALLE oorspronkelijke CSS ongewijzigd gelaten ◂ -->
   <style>
     html, body{height:auto;min-height:100vh;width:100%;margin:0;padding:0;box-sizing:border-box;
       font-family:'Segoe UI',sans-serif;background-color:#f4f6fa;overflow-y:auto}
@@ -83,8 +82,6 @@ const qs   = new URLSearchParams(window.location.search);
 const code = qs.get('code') ?? '';
 let   lang = qs.get('lang') ?? '';
 
-
- 
 const isEquipment = code.slice(-1) === '9';        // 9 = equipment, 0 = space
 const indicator = code.slice(-1);   // '9' of '0'
 const typeStr = isEquipment ? 'eq' : 'sp';   // 'eq' bij 9, anders 'sp'
@@ -113,32 +110,33 @@ const phoneLink = '<a href="tel:+3278152300">📞 +32 78 152 300</a>';
 let   omschrijving = '';
 function isValidEmail(e){ return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e); }
 
-function showLocation(){
-  fetch(`${endpointLoc}?id=${encodeURIComponent(id)}`)
-    .then(r=>r.json()).then(d=>{
-      if(!d.description) return;
-      const el=document.getElementById('ruimte-info');
-      el.innerHTML = `${d.description}<div class="type">${
-        isEquipment ? (isFr?'🔧 Installation':'🔧 Installatie')
-                    : (isFr?'🏢 Espace'      :'🏢 Ruimte')
-      }</div>`;
-      el.style.display='flex';
-    });
-}
+let cleaningProgramText = ""; // Globaal beschikbaar
 
+async function showLocation(){
+  const r = await fetch(`${endpointLoc}?id=${encodeURIComponent(id)}&lang=${lang}`);
+  const d = await r.json();
+  if(!d.description) return;
+  const el=document.getElementById('ruimte-info');
+  el.innerHTML = `${d.description}<div class="type">${
+    isEquipment ? (isFr?'🔧 Installation':'🔧 Installatie')
+                : (isFr?'🏢 Espace'      :'🏢 Ruimte')
+  }</div>`;
+  el.style.display='flex';
+  cleaningProgramText = d.cleaningProgramFormatted || "";// Sla poetsprogramma op (ook als leeg)
+  console.log("DEBUG: cleaningProgramText =", cleaningProgramText); // DEBUGREGEL
+}
 
 async function fetchOpenJobs(){
   try{
-
     const res = await fetch(`/.netlify/functions/prod_jobs?code=${code}`);
     if(!res.ok) throw new Error(res.status);
     return await res.json();
   }catch(e){ console.error('Jobs error',e); return null; }
 }
 
-/* ▸ 4. BotUI-chatflow  (originele flow + kleine aanpassingen) ◂ */
+/* ▸ 4. BotUI-chatflow ◂ */
 async function startChat(){
-  showLocation();
+  await showLocation();
 
   await botui.message.add({
     type:'html',
@@ -147,13 +145,64 @@ async function startChat(){
       : 'Hallo, ik ben je <span style="color:#EE7E00;font-weight:bold;">ATALIAN</span>-assistent.<br>Ik haal even de <b>openstaande meldingen</b> voor je op…'
   });
 
+  // Eerst: alleen bij ruimte, én als cleaningProgram NIET leeg is, extra keuze!
+  if (!isEquipment && cleaningProgramText && cleaningProgramText.trim() !== "") {
+    const ans = await botui.action.button({
+      action: [
+        { text: isFr ? '🧹 Infos sur le programme de nettoyage' : '🧹 Info over poetsprogramma', value: 'poets' },
+        { text: isFr ? '❗️ Je veux signaler un problème' : '❗️ Ik wil een probleem melden', value: 'probleem' }
+      ]
+    });
+
+	 if (ans.value === 'poets') {
+	  // TOON POETSPROGRAMMA INFO
+	  await botui.message.add({
+		type: 'html',
+		content: isFr
+		  ? `<b>Programme de nettoyage :</b><br>${cleaningProgramText}`
+		  : `<b>Poetsprogramma:</b><br>${cleaningProgramText}`
+	  });
+
+	  // Daarna: wil je toch een probleem melden?
+	  const vervolg = await botui.action.button({
+		action: [
+		  { text: isFr ? '❗️ Je veux signaler un problème' : '❗️ Ik wil een probleem melden', value: "doorgaan" },
+		  { text: isFr ? "ℹ️ Plus d'info" : "ℹ️ Meer info", value: "info" }
+		]
+	  });
+		if (vervolg.value === "doorgaan") {
+		  return await startProbleemFlow();
+		} else if (vervolg.value === "info") {
+		  await botui.message.add({
+			type: 'html',
+			content: isFr
+			  ? 'Vous allez être redirigé vers notre site web externe.'
+			  : 'Je wordt nu doorverwezen naar onze externe website.'
+		  });
+		  setTimeout(() => {
+			window.location.href = isFr
+			  ? "https://www.atalian.be/?lang=fr"
+			  : "https://www.atalian.be/?lang=nl";
+		  }, 2000);
+		  return;
+		}
+
+    }
+    // Bij 'probleem' direct de flow starten:
+    return await startProbleemFlow();
+  }
+
+  // Anders (installatie of poetsprogramma niet ingevuld): standaardflow
+  return await startProbleemFlow();
+}
+
+async function startProbleemFlow() {
   const result = await fetchOpenJobs();
   if (result===null){
     await botui.message.add({content:isFr?'❌ Erreur lors du chargement des signalements.':'❌ Fout bij het ophalen van de meldingen.'});
     return;
   }
 
-  /* ▼▼▼─ Oorspronkelijke jobs/scenario/vragen-flow; alleen 'type' vervangen ─▼▼▼ */
   const jobs = result.Jobs || [];
   if (jobs.length){
     await botui.message.add({type:'html',content:isFr?'⚠️️ Quelques signalements sont déjà en cours :':'⚠️  Er zijn al enkele openstaande meldingen gevonden:'});
@@ -170,10 +219,6 @@ async function startChat(){
   }else{
     await botui.message.add({content:isFr?'ℹ️ Aucun signalement est en cours.':'ℹ️ Er zijn momenteel geen openstaande meldingen.'});
   }
-
-  /* scenario-runner blijft onveranderd … (om ruimte te besparen niet opnieuw afgedrukt) */
-
-  /* als er geen scenario is → ga door naar vragen-flow */
   await askUrgency('');
 }
 
