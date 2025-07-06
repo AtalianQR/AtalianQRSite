@@ -90,7 +90,13 @@ const isFr = lang === 'fr';
 
 // Gebruik parseUltimoQR uit de config
 const parsedQR = parseUltimoQR(code);
-
+if (!parsedQR) {
+  alert("Geen geldige QR-code. Deze pagina werkt alleen via een Ultimo QR.");
+  document.getElementById('botui-app').innerHTML = '';
+  document.body.innerHTML += "<h2 style='color:red;text-align:center'>Niet toegelaten zonder geldige QR-code.</h2>";
+  // return;  <---- Verwijderen!
+  throw new Error("Ongeldige of ontbrekende QR-code."); // Dit blokkeert verder laden!
+}
 const { isEquipment, typeStr, id, indicator } = parsedQR;
 
 const endpointLoc = isEquipment
