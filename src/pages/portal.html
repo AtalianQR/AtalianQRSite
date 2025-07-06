@@ -64,7 +64,10 @@
 <script src="https://cdn.jsdelivr.net/npm/vue@2"></script>
 <script src="https://cdn.jsdelivr.net/npm/botui/build/botui.min.js"></script>
 
-<script>
+<!-- Voeg je eigen config en QR decode toe -->
+<script type="module">
+import { parseUltimoQR } from './APIConfig_prod.js';
+
 /* ▸ 0. |-scheidingstekens éénmalig vervangen door & (en herladen) ◂ */
 (function () {
   const raw = window.location.search;
@@ -73,24 +76,25 @@
       window.location.origin + window.location.pathname +
       raw.replace(/\|/g, '&') + window.location.hash
     );
-    return;                 // ← stop verdere uitvoering op de OUDE URL
+    return; // stop verdere uitvoering op de OUDE URL
   }
 })();
 
-/* ▸ 1. Parameters verwerken volgens nieuw schema ◂ */
+/* ▸ 1. Parameters verwerken ◂ */
 const qs   = new URLSearchParams(window.location.search);
 const code = qs.get('code') ?? '';
 let   lang = qs.get('lang') ?? '';
 
-const isEquipment = code.slice(-1) === '9';        // 9 = equipment, 0 = space
-const indicator = code.slice(-1);   // '9' of '0'
-const typeStr = isEquipment ? 'eq' : 'sp';   // 'eq' bij 9, anders 'sp'
-
-/* oorspronkelijke 6-cijferige ID halen uit pos 0,2,4,6,8,10 */
-let id = ''; for (let i = 0; i < 12; i += 2) id += code[i];
-
 if (!lang) { const b = navigator.language||''; lang = b.startsWith('fr') ? 'fr' : 'nl'; }
 const isFr = lang === 'fr';
+
+// Gebruik parseUltimoQR uit de config
+const parsedQR = parseUltimoQR(code);
+if (!parsedQR) {
+  alert("Geen geldige QR-code. Deze pagina werkt alleen via een Ultimo QR.");
+  throw new Error("Ongeldige of ontbrekende QR-code.");
+}
+const { isEquipment, typeStr, id, indicator } = parsedQR;
 
 const endpointLoc = isEquipment
   ? '/.netlify/functions/prod_equipment'
@@ -122,8 +126,7 @@ async function showLocation(){
                 : (isFr?'🏢 Espace'      :'🏢 Ruimte')
   }</div>`;
   el.style.display='flex';
-  cleaningProgramText = d.cleaningProgramFormatted || "";// Sla poetsprogramma op (ook als leeg)
-  console.log("DEBUG: cleaningProgramText =", cleaningProgramText); // DEBUGREGEL
+  cleaningProgramText = d.cleaningProgramFormatted || "";
 }
 
 async function fetchOpenJobs(){
@@ -154,39 +157,37 @@ async function startChat(){
       ]
     });
 
-	 if (ans.value === 'poets') {
-	  // TOON POETSPROGRAMMA INFO
-	  await botui.message.add({
-		type: 'html',
-		content: isFr
-		  ? `<b>Programme de nettoyage :</b><br>${cleaningProgramText}`
-		  : `<b>Poetsprogramma:</b><br>${cleaningProgramText}`
-	  });
+    if (ans.value === 'poets') {
+      await botui.message.add({
+        type: 'html',
+        content: isFr
+          ? `<b>Programme de nettoyage :</b><br>${cleaningProgramText}`
+          : `<b>Poetsprogramma:</b><br>${cleaningProgramText}`
+      });
 
-	  // Daarna: wil je toch een probleem melden?
-	  const vervolg = await botui.action.button({
-		action: [
-		      { text: isFr?'🔄 Nouveau signalement':'🔄 Nieuwe melding',value:"doorgaan"},
-			  { text: isFr ? "ℹ️ Plus d'info" : "ℹ️ Meer info", value: "info" }
-		]
-	  });
-		if (vervolg.value === "doorgaan") {
-		  return await startProbleemFlow();
-		} else if (vervolg.value === "info") {
-		  await botui.message.add({
-			type: 'html',
-			content: isFr
-			  ? 'Vous allez être redirigé vers notre site web externe.'
-			  : 'Je wordt nu doorverwezen naar onze externe website.'
-		  });
-		  setTimeout(() => {
-			window.location.href = isFr
-			  ? "https://www.atalian.be/?lang=fr"
-			  : "https://www.atalian.be/?lang=nl";
-		  }, 2000);
-		  return;
-		}
-
+      // Daarna: wil je toch een probleem melden?
+	const vervolg = await botui.action.button({
+	  action: [
+		{ text: isFr ? '🔄 Nouveau signalement' : '🔄 Nieuwe melding', value: "doorgaan" },
+		{ text: isFr ? "ℹ️ Plus d'info" : "ℹ️ Meer info", value: "info" }
+	  ]
+	});
+      if (vervolg.value === "doorgaan") {
+        return await startProbleemFlow();
+      } else if (vervolg.value === "info") {
+        await botui.message.add({
+          type: 'html',
+          content: isFr
+            ? 'Vous allez être redirigé vers notre site web externe.'
+            : 'Je wordt nu doorverwezen naar onze externe website.'
+        });
+        setTimeout(() => {
+          window.location.href = isFr
+            ? "https://www.atalian.be/?lang=fr"
+            : "https://www.atalian.be/?lang=nl";
+        }, 2000);
+        return;
+      }
     }
     // Bij 'probleem' direct de flow starten:
     return await startProbleemFlow();
