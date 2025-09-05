@@ -284,6 +284,12 @@
 
     // --- URL opties (single run per step) ---
     const qs = new URLSearchParams(window.location.search);
+	// Reset-optie via URL (bv. game.html?reset=1)
+		if (qs.get('reset') === '1') {
+		  localStorage.clear();
+		  // Terug naar start (zonder reset-param)
+		  window.location.href = window.location.pathname + '?step=0';
+		}
     const STEP_PARAM = parseInt(qs.get('step') || '0', 10);
 
     const SCENARIOS = [
