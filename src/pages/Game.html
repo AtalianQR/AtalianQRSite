@@ -48,18 +48,81 @@
     <div class="credit">Vragen of ideeën? Spreek ons FM-team aan 💬</div>
   </div>
 
+  <!-- Dependencies -->
   <script src="https://cdn.jsdelivr.net/npm/vue@2"></script>
   <script src="https://cdn.jsdelivr.net/npm/botui/build/botui.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
 
   <script>
-    // Initialiseert BotUI pas NA window load om race conditions te vermijden
+    // ===== Foto helpers (inline i.p.v. extern bestand) =====
+    function createHiddenFileInput(){
+      const input = document.createElement('input');
+      input.type = 'file';
+      input.accept = 'image/*';
+      input.capture = 'environment';
+      input.style.display = 'none';
+      document.body.appendChild(input);
+      return input;
+    }
+    function fileToDataUrl(file){
+      return new Promise((resolve,reject)=>{
+        const fr=new FileReader();
+        fr.onload=()=>resolve(fr.result);
+        fr.onerror=reject;
+        fr.readAsDataURL(file);
+      });
+    }
+    function compressDataUrl(dataUrl,maxW=1200,quality=0.8){
+      return new Promise(res=>{
+        const img=new Image();
+        img.onload=function(){
+          const scale=Math.min(1,maxW/img.width);
+          const w=Math.round(img.width*scale),h=Math.round(img.height*scale);
+          const canvas=document.createElement('canvas');
+          canvas.width=w; canvas.height=h;
+          const ctx=canvas.getContext('2d');
+          ctx.drawImage(img,0,0,w,h);
+          res(canvas.toDataURL('image/jpeg',quality));
+        };
+        img.src=dataUrl;
+      });
+    }
+    async function askPhoto(botui,label='Wil je een foto toevoegen van het probleem? 📷',compress=true){
+      await botui.message.add({ content: label });
+      const choice = await botui.action.button({ action:[
+        { text:'📷 Foto nemen / kiezen', value:'snap' },
+        { text:'⏭️ Overslaan', value:'skip' }
+      ]});
+      if(choice.value==='skip'){
+        await botui.message.add({ content:'Oké, we gaan verder zonder foto 👍' });
+        return null;
+      }
+      const input=createHiddenFileInput();
+      const p=new Promise(resolve=>{
+        input.onchange=async()=>{
+          const file=input.files && input.files[0];
+          input.remove();
+          if(!file){ resolve(null); return; }
+          try{
+            let dataUrl=await fileToDataUrl(file);
+            if(compress) dataUrl=await compressDataUrl(dataUrl,1200,0.8);
+            await botui.message.add({ type:'html', content:`<div class='hint'>Voorbeeld van je foto:</div><img src='${dataUrl}' alt='foto' style='max-width:100%;border-radius:10px;border:1px solid #ddd' />` });
+            resolve(dataUrl);
+          }catch(e){ console.error(e); resolve(null); }
+        };
+      });
+      input.click();
+      return p;
+    }
+  </script>
+
+  <script>
+    // ===== Kern-logica =====
     let botui; // wordt gezet in bootstrap()
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     let USERNAME = localStorage.getItem('atalian_name') || '';
 
     function sleep(ms){ return new Promise(r=>setTimeout(r,ms)); }
-
     function launchConfetti(){
       const end = Date.now() + 800;
       (function frame(){
@@ -71,27 +134,22 @@
     // ---------- Progress tracking (localStorage) ----------
     const PROG_KEY = 'atalian_all_done';
     function markScenarioDone(step){
-      try {
-        localStorage.setItem('atalian_scenario_'+step, 'done');
-        checkAllScenarios();
-      } catch(e) { /* ignore */ }
+      try { localStorage.setItem('atalian_scenario_'+step, 'done'); checkAllScenarios(); } catch(e){}
     }
-    function countCompleted(){
-      let n=0; for(let i=1;i<=4;i++){ if(localStorage.getItem('atalian_scenario_'+i)==='done') n++; }
-      return n;
-    }
+    function countCompleted(){ let n=0; for(let i=1;i<=4;i++){ if(localStorage.getItem('atalian_scenario_'+i)==='done') n++; } return n; }
     function checkAllScenarios(){
       try{
-        const all = [1,2,3,4].every(i => localStorage.getItem('atalian_scenario_'+i)==='done');
-        const fired = localStorage.getItem(PROG_KEY)==='yes';
+        const all=[1,2,3,4].every(i=>localStorage.getItem('atalian_scenario_'+i)==='done');
+        const fired=localStorage.getItem(PROG_KEY)==='yes';
         if(all && !fired){
           localStorage.setItem(PROG_KEY,'yes');
           launchConfetti();
           botui && botui.message.add({ type:'html', content:'🎊 <b>Fantastisch!</b> Je hebt alle 4 scenario’s ontdekt.<br>Bedankt om de volledige AI‑Ultimo missie mee te doen 🙏' });
         }
-      }catch(e){/* ignore */}
+      }catch(e){}
     }
 
+    // ---------- UI helpers ----------
     async function askNameIfNeeded(){
       if (USERNAME) return;
       await botui.message.add({ type:'html', content: 'Hallo! Ik ben je <span style="color:var(--atalian-orange);font-weight:700">ATALIAN</span>-assistent 🤖. Hoe heet jij?' });
@@ -100,50 +158,57 @@
       localStorage.setItem('atalian_name', USERNAME);
       await botui.message.add({ content: `Aangenaam, ${USERNAME}!` });
     }
-
     async function askProblem(){
       await botui.message.add({ content: 'Kun je kort beschrijven wat er aan de hand is?' });
       const { value } = await botui.action.text({ action:{ placeholder:'Schrijf hier je melding…' } });
       return (value||'').trim();
     }
-
     async function askEmail(){
       await botui.message.add({ content: 'Wat is je e-mailadres? (mag ook nep zijn 😉)' });
       const { value } = await botui.action.text({ action: { placeholder: 'jij@voorbeeld.be' } });
-      if (!emailRegex.test(value)) {
-        await botui.message.add({ content: 'Hm, dat lijkt geen geldig adres. Probeer nog eens 🙈' });
-        return askEmail();
-      }
+      if (!emailRegex.test(value)) { await botui.message.add({ content: 'Hm, dat lijkt geen geldig adres. Probeer nog eens 🙈' }); return askEmail(); }
       return value;
     }
 
+    // ---------- Ticket-flow ----------
     async function ticketFlow(contextLabel){
+      // 1) Dringend of niet
       await botui.message.add({ content: `Is dit dringend, ${USERNAME}?` });
-      const urgent = await botui.action.button({
-        action: [
-          { text: '🚨 Ja, dringend', value: 'ja' },
-          { text: '⏱️ Nee, kan wachten', value: 'nee' },
-        ]
-      });
+      const urgent = await botui.action.button({ action:[
+        { text: '🚨 Ja, dringend', value: 'ja' },
+        { text: '⏱️ Nee, kan wachten', value: 'nee' },
+      ]});
+      // 2) Beschrijving
       const desc = await askProblem();
+      // 3) Optionele foto
+      const photoDataUrl = await askPhoto(botui);
+      // 4) E-mail
       const email = await askEmail();
+      // 5) Dringend boodschap i.p.v. nummer
       if(urgent.value==='ja'){
         await botui.message.add({ type:'html', content: 'Normaal zou je nu het telefoonnummer van de servicedesk krijgen ☎️.<br><b>Maar omdat ze zelf deelnemen aan dit event, laten we ze vandaag met rust 😇.</b>' });
       }
+      // 6) Fake submit + samenvatting
       const fakeId = 'TCK-' + Math.random().toString(36).slice(2, 6).toUpperCase();
+      try{
+        const key='atalian_demo_tickets';
+        const arr=JSON.parse(localStorage.getItem(key)||'[]');
+        arr.push({ contextLabel, urgent:urgent.value, desc, email, photo: !!photoDataUrl, ts:Date.now() });
+        localStorage.setItem(key, JSON.stringify(arr));
+      }catch(e){}
       await botui.message.add({ type:'html', content: `Bedankt! Je <b>${contextLabel}</b> is verzonden naar Ultimo ✅<br><span class="hint">(Demo, geen echte ticket) – ref: ${fakeId}</span>` });
-      await sleep(300);
-      await botui.message.add({ type:'html', content: `<span class="hint">Samenvatting:</span><br>• Urgent: <b>${urgent.value==='ja'?'ja':'nee'}</b><br>• Beschrijving: <b>${desc||'-'}</b><br>• Contact: <b>${email}</b>` });
+      await botui.message.add({ type:'html', content: `<span class="hint">Samenvatting:</span><br>• Urgent: <b>${urgent.value==='ja'?'ja':'nee'}</b><br>• Beschrijving: <b>${desc||'-'}</b><br>• Contact: <b>${email}</b>${photoDataUrl?'\n<br>• Foto: <i>bijgevoegd</i>':''}` });
     }
 
+    // ---------- Content ----------
     async function intro(){
       await askNameIfNeeded();
       await botui.message.add({ type:'html', content: `Welkom, ${USERNAME}! 🎉` });
       await botui.message.add({ type:'html', content: 'Dit is onze speurtocht met AI + <b>Ultimo</b> (FMIS). Scan de verschillende QR-codes in het gebouw en ontdek per scenario hoe melden werkt: schoonmaak, techniek en comfort.' });
       await botui.message.add({ content: 'Tip: elke QR werkt apart. Er worden geen echte tickets aangemaakt – dit is een demo.' });
-      await botui.message.add({ content: 'Veel plezier! 🤝 Scan nu de volgende QR voor een scenario.' });
       const done = countCompleted();
-      if(done>0) await botui.message.add({ content:`Je hebt al ${done}/4 scenario’s ontdekt.` });
+      await botui.message.add({ content: `Je voortgang: ${done}/4 scenario’s afgerond.` });
+      await botui.message.add({ content: 'Veel plezier! 🤝 Scan nu de volgende QR voor een scenario.' });
     }
 
     async function scenarioCleaning(){
