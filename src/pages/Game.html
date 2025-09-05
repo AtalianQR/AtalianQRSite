@@ -17,11 +17,13 @@
       font-family:'Segoe UI',system-ui,-apple-system,sans-serif;background-color:var(--bg);overflow-y:auto}
     body{background-image:url('/building-cleaning.png');background-size:cover;background-repeat:no-repeat;background-position:center}
     *{box-sizing:border-box}
-    header{display:flex;flex-direction:column;align-items:center;gap:.5rem;margin:1rem 0}
+    header{display:flex;flex-direction:column;align-items:center;gap:.5rem;margin:1rem 0;position:relative}
     img.logo{max-height:60px;height:auto;width:auto;display:block;margin:0 auto;background:rgba(255,255,255,.85);
       padding:.15rem .4rem;border-radius:12px}
     .subtitle{background:rgba(255,255,255,.95);padding:.35rem .8rem;border-radius:10px;border:2.5px solid var(--atalian-orange);
       color:#334155;font-size:.95rem;box-shadow:0 2px 8px rgba(238,126,0,.08)}
+    .lang-toggle{position:absolute;right:12px;top:6px;display:flex;gap:6px;align-items:center}
+    .lang-btn{cursor:pointer;background:#fff;border:1.5px solid var(--atalian-orange);border-radius:999px;padding:.2rem .5rem;font-weight:600}
     .wrap{max-width:640px;margin:0 auto;padding:0 1rem 2rem}
     .botui-container{max-width:640px;margin:0 auto;background:linear-gradient(120deg,#fff 85%,#f4f6fa 100%);
       border:2px solid var(--atalian-orange);box-shadow:0 6px 32px rgba(0,0,0,.12),0 1.5px 8px rgba(238,126,0,.10);
@@ -31,31 +33,28 @@
     .botui-actions-buttons-button:active{transform:scale(.98)}
     .hint{font-size:.9rem;color:#475569}
     @keyframes fadeIn{to{opacity:1}}
-    .credit{
-	  margin-top:.75rem;
-	  text-align:center;
-	  font-size:.85rem;
-	  background:rgba(255,255,255,0.92);   /* witte achtergrond */
-	  padding:.4rem .8rem;
-	  border-radius:8px;
-	  border:1.5px solid var(--atalian-orange);
-	  color:#1a202c;                       /* donkere tekst */
-	  display:inline-block;
-	}
+    .credit{margin-top:.75rem;text-align:center;font-size:.85rem;
+      background:rgba(255,255,255,0.92);padding:.4rem .8rem;border-radius:8px;
+      border:1.5px solid var(--atalian-orange);color:#1a202c;
+      display:inline-block}
     #confetti-canvas{position:fixed;inset:0;pointer-events:none;z-index:9999}
   </style>
 </head>
 <body>
   <header>
     <img src="/AtalianLogo.png" alt="Atalian Logo" class="logo" />
-    <div class="subtitle">🎉 Personeelsevent – demo met AI-assistent · geen echte tickets</div>
+    <div class="subtitle" id="subtitle">🎉 Personeelsevent – demo met AI-assistent · geen echte tickets</div>
+    <div class="lang-toggle">
+      <button class="lang-btn" id="btn-nl">NL</button>
+      <button class="lang-btn" id="btn-fr">FR</button>
+    </div>
   </header>
 
   <canvas id="confetti-canvas"></canvas>
 
   <div class="wrap">
     <div id="botui-app"><bot-ui></bot-ui></div>
-    <div class="credit">Vragen of ideeën? Spreek ons FM-team aan 💬</div>
+    <div class="credit" id="foot-credit">Vragen of ideeën? Spreek ons FM-team aan 💬</div>
   </div>
 
   <!-- Dependencies -->
@@ -64,7 +63,131 @@
   <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
 
   <script>
-    // ===== Foto helpers (inline i.p.v. extern bestand) =====
+    // ===== i18n teksten =====
+    const I18N = {
+      nl: {
+        subtitle: '🎉 Personeelsevent – demo met AI-assistent · geen echte tickets',
+        credit: 'Vragen of ideeën? Spreek ons FM-team aan 💬',
+        hello_name: 'Hallo! Ik ben je <span style="color:var(--atalian-orange);font-weight:700">ATALIAN</span>-assistent 🤖. Hoe heet jij?',
+        nice_to_meet: name => `Aangenaam, ${name}!`,
+        intro_welcome: name => `Welkom, ${name}! 🎉`,
+        intro_line1: 'Dit is onze speurtocht met AI + <b>Ultimo</b> (FMIS). Scan de verschillende QR-codes in het gebouw en ontdek per scenario hoe melden werkt: schoonmaak, techniek en comfort.',
+        intro_tip: 'Tip: elke QR werkt apart. Er worden geen echte tickets aangemaakt – dit is een demo.',
+        intro_progress: done => `Je voortgang: ${done}/4 scenario’s afgerond.`,
+        intro_go: 'Veel plezier! 🤝 Scan nu de volgende QR voor een scenario.',
+        ask_problem: 'Kun je kort beschrijven wat er aan de hand is?',
+        ask_email: 'Wat is je e-mailadres? (mag ook nep zijn 😉)',
+        invalid_email: 'Hm, dat lijkt geen geldig adres. Probeer nog eens 🙈',
+        urgent_q: name => `Is dit dringend, ${name}?`,
+        urgent_yes: '🚨 Ja, dringend',
+        urgent_no: '⏱️ Nee, kan wachten',
+        servicedesk_note: 'Normaal zou je nu het telefoonnummer van de servicedesk krijgen ☎️.<br><b>Maar omdat ze zelf deelnemen aan dit event, laten we ze vandaag met rust 😇.</b>',
+        photo_label: 'Wil je een foto toevoegen van het probleem? 📷',
+        photo_btn: '📷 Foto nemen / kiezen',
+        photo_skip: '⏭️ Overslaan',
+        photo_skip_msg: 'Oké, we gaan verder zonder foto 👍',
+        photo_preview: 'Voorbeeld van je foto:',
+        thanks_sent: (ctx,id) => `Bedankt! Je <b>${ctx}</b> is verzonden naar Ultimo ✅<br><span class="hint">(Demo, geen echte ticket) – ref: ${id}</span>`,
+        summary_heading: 'Samenvatting:',
+        summary_urgent: u => `• Urgent: <b>${u==='ja'?'ja':'nee'}</b>`,
+        summary_desc: d => `• Beschrijving: <b>${d||'-'}</b>`,
+        summary_email: e => `• Contact: <b>${e}</b>`,
+        summary_photo: '• Foto: <i>bijgevoegd</i>',
+        end_msg: 'Bedankt! Dit scenario is afgerond ✅. Scan gerust een andere QR om nog een scenario te ontdekken.',
+        confetti_msg: '🎊 <b>Fantastisch!</b> Je hebt alle 4 scenario’s ontdekt.<br>Bedankt om de volledige AI‑Ultimo missie mee te doen 🙏',
+        scen1_q: 'Stel je vindt een ruimte die niet netjes is. Wat zou jij doen?',
+        scen1_opts: ['Direct melden via Ultimo 📲','Zelf de mop pakken 🪣','Niks doen en hopen dat het verdwijnt 🙈'],
+        scen1_feedback: name => `Juist! In Ultimo registreer je het meteen, zodat cleaning het kan oppakken. Geen zorgen ${name}, ik verklik niemand 😅.`,
+        scen2_q: 'Je komt in de refter en de koffiemachine is kapot. Wat nu?',
+        scen2_opts: ['Een technieker bellen 📞','Een ticket in Ultimo maken 🛠️','Gewoon thee drinken 🍵'],
+        scen2_feedback: name => `Precies ${name}! Via Ultimo komt dit meteen bij techniek terecht.`,
+        scen3_q: 'Benieuwd wanneer de volgende poetsbeurt is in jouw gebouw?',
+        scen3_btn: 'Toon poetsprogramma 🧹',
+        scen3_info: '🌞 <b>Dagelijks</b> op elke werkdag.<br>🧹 Volgende beurt: 📅 <b>ma 09-09-2025</b>.<br><span class="hint">(Voorbeeld – demo)</span>',
+        scen3_mk: '📩 Maak hier een melding van',
+        scen3_ok: 'Nee hoor, is duidelijk 👍',
+        scen3_okreply: 'Oké, ik onthoud het wel voor je 😎.',
+        scen4_q: 'Je ziet dat een lamp stuk is in de vergaderzaal. Hoe los je dit op?',
+        scen4_opts: ['Ultimo inschakelen 🖥️','Zelf vervangen met ladder en risico 🤕','Vergaderen in het donker 😎'],
+        scen4_feedback: 'Ha, vergaderen in het donker klinkt spannend, maar Ultimo is slimmer 🤓.'
+      },
+      fr: {
+        subtitle: '🎉 Événement du personnel – démo avec assistant IA · pas de vrais tickets',
+        credit: 'Des questions ou des idées ? Parlez à notre équipe FM 💬',
+        hello_name: 'Bonjour ! Je suis votre collègue <span style="color:var(--atalian-orange);font-weight:700">ATALIAN</span> 🤖. Comment vous appelez‑vous ?',
+        nice_to_meet: name => `Ravi de vous rencontrer, ${name} !`,
+        intro_welcome: name => `Bienvenue, ${name} ! 🎉`,
+        intro_line1: 'Voici notre chasse aux QR avec l’IA + <b>Ultimo</b> (FMIS). Scannez les QR-codes dans le bâtiment et découvrez, par scénario, comment signaler nettoyage, technique et confort.',
+        intro_tip: 'Astuce : chaque QR fonctionne séparément. Aucun ticket réel n’est créé – c’est une démo.',
+        intro_progress: done => `Votre progression : ${done}/4 scénarios terminés.`,
+        intro_go: 'Amusez‑vous ! 🤝 Scannez maintenant un autre QR pour un scénario.',
+        ask_problem: 'Pouvez‑vous décrire brièvement le problème ?',
+        ask_email: 'Quelle est votre adresse e‑mail ? (une fausse est ok 😉)',
+        invalid_email: 'Hmm, cela ne ressemble pas à une adresse valide. Réessayez 🙈',
+        urgent_q: name => `Est‑ce urgent, ${name} ?`,
+        urgent_yes: '🚨 Oui, urgent',
+        urgent_no: '⏱️ Non, ça peut attendre',
+        servicedesk_note: 'Normalement, vous verriez maintenant le numéro de la helpdesk ☎️.<br><b>Mais comme ils participent eux‑mêmes à l’événement, on les laisse tranquilles aujourd’hui 😇.</b>',
+        photo_label: 'Voulez‑vous ajouter une photo du problème ? 📷',
+        photo_btn: '📷 Prendre/choisir une photo',
+        photo_skip: '⏭️ Passer',
+        photo_skip_msg: 'D’accord, continuons sans photo 👍',
+        photo_preview: 'Aperçu de votre photo :',
+        thanks_sent: (ctx,id) => `Merci ! Votre <b>${ctx}</b> a été envoyé à Ultimo ✅<br><span class="hint">(Démo, pas de vrai ticket) – réf. ${id}</span>`,
+        summary_heading: 'Récapitulatif :',
+        summary_urgent: u => `• Urgent : <b>${u==='ja'?'oui':'non'}</b>`,
+        summary_desc: d => `• Description : <b>${d||'-'}</b>`,
+        summary_email: e => `• Contact : <b>${e}</b>`,
+        summary_photo: '• Photo : <i>jointe</i>',
+        end_msg: 'Merci ! Ce scénario est terminé ✅. Scannez un autre QR pour en découvrir un autre.',
+        confetti_msg: '🎊 <b>Génial !</b> Vous avez terminé les 4 scénarios.<br>Merci d’avoir participé à la mission IA‑Ultimo 🙏',
+        scen1_q: 'Vous trouvez un local qui n’est pas propre. Que faites‑vous ?',
+        scen1_opts: ['Signaler via Ultimo 📲','Prendre la serpillière 🪣','Ne rien faire et espérer que ça disparaisse 🙈'],
+        scen1_feedback: name => `Exact ! Dans Ultimo, on enregistre directement pour que le cleaning s’en occupe. Pas d’inquiétude ${name}, personne ne vous dénoncera 😅.`,
+        scen2_q: 'Vous arrivez au réfectoire et la machine à café est en panne. Et maintenant ?',
+        scen2_opts: ['Appeler un technicien 📞','Créer un ticket dans Ultimo 🛠️','Boire du thé 🍵'],
+        scen2_feedback: name => `Parfait ${name} ! Via Ultimo, cela va directement à la technique.`,
+        scen3_q: 'Curieux de connaître le prochain programme de nettoyage dans votre bâtiment ?',
+        scen3_btn: 'Afficher le programme 🧹',
+        scen3_info: '🌞 <b>Quotidien</b> les jours ouvrables.<br>🧹 Prochain passage : 📅 <b>lun 09‑09‑2025</b>.<br><span class="hint">(Exemple – démo)</span>',
+        scen3_mk: '📩 Créer un signalement',
+        scen3_ok: 'Non merci, c’est clair 👍',
+        scen3_okreply: 'Ok, je le note pour vous 😎.',
+        scen4_q: 'Vous voyez une lampe cassée dans la salle de réunion. Que faites‑vous ?',
+        scen4_opts: ['Activer Ultimo 🖥️','Remplacer vous‑même avec une échelle 🤕','Réunion dans le noir 😎'],
+        scen4_feedback: 'Réunir dans le noir, c’est audacieux, mais Ultimo est plus malin 🤓.'
+      }
+    };
+
+    // taalkeuze
+    const qs = new URLSearchParams(window.location.search);
+    let LANG = (qs.get('lang') || localStorage.getItem('atalian_lang') || 'nl').toLowerCase();
+    if (!['nl','fr'].includes(LANG)) LANG='nl';
+    localStorage.setItem('atalian_lang', LANG);
+
+    function t(key, ...args){
+      const txt = I18N[LANG][key];
+      return typeof txt === 'function' ? txt(...args) : txt;
+    }
+
+    // Header-teksten initialiseren op basis van taal
+    window.addEventListener('DOMContentLoaded', ()=>{
+      document.getElementById('subtitle').innerHTML = t('subtitle');
+      document.getElementById('foot-credit').textContent = t('credit');
+      document.getElementById('btn-nl').onclick = ()=> switchLang('nl');
+      document.getElementById('btn-fr').onclick = ()=> switchLang('fr');
+    });
+
+    function switchLang(lang){
+      localStorage.setItem('atalian_lang', lang);
+      const step = qs.get('step') || '0';
+      const base = window.location.pathname;
+      window.location.href = `${base}?step=${step}&lang=${lang}`;
+    }
+  </script>
+
+  <script>
+    // ===== Foto helpers =====
     function createHiddenFileInput(){
       const input = document.createElement('input');
       input.type = 'file';
@@ -97,14 +220,14 @@
         img.src=dataUrl;
       });
     }
-    async function askPhoto(botui,label='Wil je een foto toevoegen van het probleem? 📷',compress=true){
+    async function askPhoto(botui,label=t('photo_label'),compress=true){
       await botui.message.add({ content: label });
       const choice = await botui.action.button({ action:[
-        { text:'📷 Foto nemen / kiezen', value:'snap' },
-        { text:'⏭️ Overslaan', value:'skip' }
+        { text: t('photo_btn'), value:'snap' },
+        { text: t('photo_skip'), value:'skip' }
       ]});
       if(choice.value==='skip'){
-        await botui.message.add({ content:'Oké, we gaan verder zonder foto 👍' });
+        await botui.message.add({ content: t('photo_skip_msg') });
         return null;
       }
       const input=createHiddenFileInput();
@@ -116,7 +239,7 @@
           try{
             let dataUrl=await fileToDataUrl(file);
             if(compress) dataUrl=await compressDataUrl(dataUrl,1200,0.8);
-            await botui.message.add({ type:'html', content:`<div class='hint'>Voorbeeld van je foto:</div><img src='${dataUrl}' alt='foto' style='max-width:100%;border-radius:10px;border:1px solid #ddd' />` });
+            await botui.message.add({ type:'html', content:`<div class='hint'>${t('photo_preview')}</div><img src='${dataUrl}' alt='photo' style='max-width:100%;border-radius:10px;border:1px solid #ddd' />` });
             resolve(dataUrl);
           }catch(e){ console.error(e); resolve(null); }
         };
@@ -154,7 +277,7 @@
         if(all && !fired){
           localStorage.setItem(PROG_KEY,'yes');
           launchConfetti();
-          botui && botui.message.add({ type:'html', content:'🎊 <b>Fantastisch!</b> Je hebt alle 4 scenario’s ontdekt.<br>Bedankt om de volledige AI‑Ultimo missie mee te doen 🙏' });
+          botui && botui.message.add({ type:'html', content:t('confetti_msg') });
         }
       }catch(e){}
     }
@@ -162,31 +285,31 @@
     // ---------- UI helpers ----------
     async function askNameIfNeeded(){
       if (USERNAME) return;
-      await botui.message.add({ type:'html', content: 'Hallo! Ik ben je <span style="color:var(--atalian-orange);font-weight:700">ATALIAN</span>-assistent 🤖. Hoe heet jij?' });
-      const name = await botui.action.text({ action:{ placeholder:'Typ je naam…' } });
-      USERNAME = (name.value||'collega').trim();
+      await botui.message.add({ type:'html', content: t('hello_name') });
+      const name = await botui.action.text({ action:{ placeholder:'Typ je naam… / Entrez votre nom…' } });
+      USERNAME = (name.value|| (LANG==='fr'?'collègue':'collega')).trim();
       localStorage.setItem('atalian_name', USERNAME);
-      await botui.message.add({ content: `Aangenaam, ${USERNAME}!` });
+      await botui.message.add({ content: t('nice_to_meet', USERNAME) });
     }
     async function askProblem(){
-      await botui.message.add({ content: 'Kun je kort beschrijven wat er aan de hand is?' });
-      const { value } = await botui.action.text({ action:{ placeholder:'Schrijf hier je melding…' } });
+      await botui.message.add({ content: t('ask_problem') });
+      const { value } = await botui.action.text({ action:{ placeholder: LANG==='fr'?'Décrivez brièvement…':'Schrijf kort je melding…' } });
       return (value||'').trim();
     }
     async function askEmail(){
-      await botui.message.add({ content: 'Wat is je e-mailadres? (mag ook nep zijn 😉)' });
-      const { value } = await botui.action.text({ action: { placeholder: 'jij@voorbeeld.be' } });
-      if (!emailRegex.test(value)) { await botui.message.add({ content: 'Hm, dat lijkt geen geldig adres. Probeer nog eens 🙈' }); return askEmail(); }
+      await botui.message.add({ content: t('ask_email') });
+      const { value } = await botui.action.text({ action: { placeholder: LANG==='fr'?'vous@exemple.be':'jij@voorbeeld.be' } });
+      if (!emailRegex.test(value)) { await botui.message.add({ content: t('invalid_email') }); return askEmail(); }
       return value;
     }
 
     // ---------- Ticket-flow ----------
     async function ticketFlow(contextLabel){
       // 1) Dringend of niet
-      await botui.message.add({ content: `Is dit dringend, ${USERNAME}?` });
+      await botui.message.add({ content: t('urgent_q', USERNAME) });
       const urgent = await botui.action.button({ action:[
-        { text: '🚨 Ja, dringend', value: 'ja' },
-        { text: '⏱️ Nee, kan wachten', value: 'nee' },
+        { text: t('urgent_yes'), value: 'ja' },
+        { text: t('urgent_no'), value: 'nee' },
       ]});
       // 2) Beschrijving
       const desc = await askProblem();
@@ -196,109 +319,104 @@
       const email = await askEmail();
       // 5) Dringend boodschap i.p.v. nummer
       if(urgent.value==='ja'){
-        await botui.message.add({ type:'html', content: 'Normaal zou je nu het telefoonnummer van de servicedesk krijgen ☎️.<br><b>Maar omdat ze zelf deelnemen aan dit event, laten we ze vandaag met rust 😇.</b>' });
+        await botui.message.add({ type:'html', content: t('servicedesk_note') });
       }
       // 6) Fake submit + samenvatting
       const fakeId = 'TCK-' + Math.random().toString(36).slice(2, 6).toUpperCase();
       try{
         const key='atalian_demo_tickets';
         const arr=JSON.parse(localStorage.getItem(key)||'[]');
-        arr.push({ contextLabel, urgent:urgent.value, desc, email, photo: !!photoDataUrl, ts:Date.now() });
+        arr.push({ contextLabel, urgent:urgent.value, desc, email, photo: !!photoDataUrl, ts:Date.now(), lang:LANG });
         localStorage.setItem(key, JSON.stringify(arr));
       }catch(e){}
-      await botui.message.add({ type:'html', content: `Bedankt! Je <b>${contextLabel}</b> is verzonden naar Ultimo ✅<br><span class="hint">(Demo, geen echte ticket) – ref: ${fakeId}</span>` });
-      await botui.message.add({ type:'html', content: `<span class="hint">Samenvatting:</span><br>• Urgent: <b>${urgent.value==='ja'?'ja':'nee'}</b><br>• Beschrijving: <b>${desc||'-'}</b><br>• Contact: <b>${email}</b>${photoDataUrl?'\n<br>• Foto: <i>bijgevoegd</i>':''}` });
+      await botui.message.add({ type:'html', content: t('thanks_sent', contextLabel, fakeId) });
+      await botui.message.add({ type:'html', content: `<span class="hint">${t('summary_heading')}</span><br>${t('summary_urgent', urgent.value)}<br>${t('summary_desc', desc)}<br>${t('summary_email', email)}${photoDataUrl?'\n<br>'+t('summary_photo'):''}` });
     }
 
     // ---------- Content ----------
     async function intro(){
       await askNameIfNeeded();
-      await botui.message.add({ type:'html', content: `Welkom, ${USERNAME}! 🎉` });
-      await botui.message.add({ type:'html', content: 'Dit is onze speurtocht met AI + <b>Ultimo</b> (FMIS). Scan de verschillende QR-codes in het gebouw en ontdek per scenario hoe melden werkt: schoonmaak, techniek en comfort.' });
-      await botui.message.add({ content: 'Tip: elke QR werkt apart. Er worden geen echte tickets aangemaakt – dit is een demo.' });
+      await botui.message.add({ type:'html', content: t('intro_welcome', USERNAME) });
+      await botui.message.add({ type:'html', content: t('intro_line1') });
+      await botui.message.add({ content: t('intro_tip') });
       const done = countCompleted();
-      await botui.message.add({ content: `Je voortgang: ${done}/4 scenario’s afgerond.` });
-      await botui.message.add({ content: 'Veel plezier! 🤝 Scan nu de volgende QR voor een scenario.' });
+      await botui.message.add({ content: t('intro_progress', done) });
+      await botui.message.add({ content: t('intro_go') });
     }
 
     async function scenarioCleaning(){
       await askNameIfNeeded();
-      await botui.message.add({ content: 'Stel je vindt een ruimte die niet netjes is. Wat zou jij doen?' });
+      await botui.message.add({ content: t('scen1_q') });
       await botui.action.button({ action:[
-        { text: 'Direct melden via Ultimo 📲', value: 'ultimo' },
-        { text: 'Zelf de mop pakken 🪣', value: 'mop' },
-        { text: 'Niks doen en hopen dat het verdwijnt 🙈', value: 'niks' },
+        { text: I18N[LANG].scen1_opts[0], value: 'ultimo' },
+        { text: I18N[LANG].scen1_opts[1], value: 'mop' },
+        { text: I18N[LANG].scen1_opts[2], value: 'niks' },
       ] });
-      await botui.message.add({ content: `Juist! In Ultimo registreer je het meteen, zodat cleaning het kan oppakken. Geen zorgen ${USERNAME}, ik verklik niemand 😅.` });
-      await ticketFlow('schoonmaak-melding');
+      await botui.message.add({ content: t('scen1_feedback', USERNAME) });
+      await ticketFlow(LANG==='fr'?'signalement nettoyage':'schoonmaak-melding');
       await endMessage();
       markScenarioDone(1);
     }
 
     async function scenarioCoffee(){
       await askNameIfNeeded();
-      await botui.message.add({ content: 'Je komt in de refter en de koffiemachine is kapot. Wat nu?' });
+      await botui.message.add({ content: t('scen2_q') });
       await botui.action.button({ action:[
-        { text: 'Een technieker bellen 📞', value: 'bel' },
-        { text: 'Een ticket in Ultimo maken 🛠️', value: 'ultimo' },
-        { text: 'Gewoon thee drinken 🍵', value: 'thee' },
+        { text: I18N[LANG].scen2_opts[0], value: 'bel' },
+        { text: I18N[LANG].scen2_opts[1], value: 'ultimo' },
+        { text: I18N[LANG].scen2_opts[2], value: 'thee' },
       ] });
-      await botui.message.add({ content: `Precies ${USERNAME}! Via Ultimo komt dit meteen bij techniek terecht.` });
-      await ticketFlow('koffiemachine-melding');
+      await botui.message.add({ content: t('scen2_feedback', USERNAME) });
+      await ticketFlow(LANG==='fr'?'machine à café en panne':'koffiemachine-melding');
       await endMessage();
       markScenarioDone(2);
     }
 
     async function scenarioProgram(){
       await askNameIfNeeded();
-      await botui.message.add({ content: 'Benieuwd wanneer de volgende poetsbeurt is in jouw gebouw?' });
-      await botui.action.button({ action:[ { text: 'Toon poetsprogramma 🧹', value: 'toon' } ] });
-      await botui.message.add({ type:'html', content: '🌞 <b>Dagelijks</b> op elke werkdag.<br>🧹 Volgende beurt: 📅 <b>ma 09-09-2025</b>.<br><span class="hint">(Voorbeeld – demo)</span>' });
+      await botui.message.add({ content: t('scen3_q') });
+      await botui.action.button({ action:[ { text: t('scen3_btn'), value: 'toon' } ] });
+      await botui.message.add({ type:'html', content: t('scen3_info') });
       const wilMelding = await botui.action.button({ action:[
-        { text: '📩 Maak hier een melding van', value: 'ja' },
-        { text: 'Nee hoor, is duidelijk 👍', value: 'nee' },
+        { text: t('scen3_mk'), value: 'ja' },
+        { text: t('scen3_ok'), value: 'nee' },
       ]});
-      if (wilMelding.value === 'ja') await ticketFlow('poetsprogramma-melding');
-      else await botui.message.add({ content:'Oké, ik onthoud het wel voor je 😎.' });
+      if (wilMelding.value === 'ja') await ticketFlow(LANG==='fr'?'programme de nettoyage':'poetsprogramma-melding');
+      else await botui.message.add({ content: t('scen3_okreply') });
       await endMessage();
       markScenarioDone(3);
     }
 
     async function scenarioLamp(){
       await askNameIfNeeded();
-      await botui.message.add({ content: 'Je ziet dat een lamp stuk is in de vergaderzaal. Hoe los je dit op?' });
+      await botui.message.add({ content: t('scen4_q') });
       await botui.action.button({ action:[
-        { text: 'Ultimo inschakelen 🖥️', value: 'ultimo' },
-        { text: 'Zelf vervangen met ladder en risico 🤕', value: 'zelf' },
-        { text: 'Vergaderen in het donker 😎', value: 'donker' },
+        { text: I18N[LANG].scen4_opts[0], value: 'ultimo' },
+        { text: I18N[LANG].scen4_opts[1], value: 'zelf' },
+        { text: I18N[LANG].scen4_opts[2], value: 'donker' },
       ] });
-      await botui.message.add({ content: 'Ha, vergaderen in het donker klinkt spannend, maar Ultimo is slimmer 🤓.' });
-      await ticketFlow('lamp-melding');
+      await botui.message.add({ content: t('scen4_feedback') });
+      await ticketFlow(LANG==='fr'?'lampe cassée':'lamp-melding');
       await endMessage();
       markScenarioDone(4);
     }
 
     async function endMessage(){
-      await botui.message.add({ content: 'Bedankt! Dit scenario is afgerond ✅. Scan gerust een andere QR om nog een scenario te ontdekken.' });
+      await botui.message.add({ content: t('end_msg') });
     }
 
-    // --- URL opties (single run per step) ---
-    const qs = new URLSearchParams(window.location.search);
-	// Reset-optie via URL (bv. game.html?reset=1)
-		if (qs.get('reset') === '1') {
-		  localStorage.clear();
-		  // Terug naar start (zonder reset-param)
-		  window.location.href = window.location.pathname + '?step=0';
-		}
-    const STEP_PARAM = parseInt(qs.get('step') || '0', 10);
+    // --- URL opties (single run per step) + reset ---
+    // Reset via URL (bv. game.html?reset=1)
+    if (qs.get('reset') === '1') {
+      localStorage.clear();
+      // behoud taal bij reset
+      localStorage.setItem('atalian_lang', LANG);
+      // Terug naar start met huidige taal
+      window.location.href = window.location.pathname + `?step=0&lang=${LANG}`;
+    }
 
-    const SCENARIOS = [
-      intro,            // 0 = intro
-      scenarioCleaning, // 1
-      scenarioCoffee,   // 2
-      scenarioProgram,  // 3
-      scenarioLamp      // 4
-    ];
+    const STEP_PARAM = parseInt(qs.get('step') || '0', 10);
+    const SCENARIOS = [ intro, scenarioCleaning, scenarioCoffee, scenarioProgram, scenarioLamp ];
 
     async function start(){
       const step = isNaN(STEP_PARAM) ? 0 : Math.max(0, Math.min(4, STEP_PARAM));
