@@ -67,6 +67,30 @@
       })();
     }
 
+    // ---------- Progress tracking (localStorage) ----------
+    const PROG_KEY = 'atalian_all_done';
+    function markScenarioDone(step){
+      try {
+        localStorage.setItem('atalian_scenario_'+step, 'done');
+        checkAllScenarios();
+      } catch(e) { /* ignore */ }
+    }
+    function countCompleted(){
+      let n=0; for(let i=1;i<=4;i++){ if(localStorage.getItem('atalian_scenario_'+i)==='done') n++; }
+      return n;
+    }
+    function checkAllScenarios(){
+      try{
+        const all = [1,2,3,4].every(i => localStorage.getItem('atalian_scenario_'+i)==='done');
+        const fired = localStorage.getItem(PROG_KEY)==='yes';
+        if(all && !fired){
+          localStorage.setItem(PROG_KEY,'yes');
+          launchConfetti();
+          botui.message.add({ type:'html', content:'🎊 <b>Fantastisch!</b> Je hebt alle 4 scenario’s ontdekt.<br>Bedankt om de volledige AI‑Ultimo missie mee te doen 🙏' });
+        }
+      }catch(e){/* ignore */}
+    }
+
     async function askNameIfNeeded(){
       if (USERNAME) return;
       await botui.message.add({ type:'html', content: 'Hallo! Ik ben je <span style="color:var(--atalian-orange);font-weight:700">ATALIAN</span>-assistent 🤖. Hoe heet jij?' });
@@ -116,6 +140,9 @@
       await botui.message.add({ type:'html', content: 'Dit is onze speurtocht met AI + <b>Ultimo</b> (FMIS). Scan de verschillende QR-codes in het gebouw en ontdek per scenario hoe melden werkt: schoonmaak, techniek en comfort.' });
       await botui.message.add({ content: 'Tip: elke QR werkt apart. Er worden geen echte tickets aangemaakt – dit is een demo.' });
       await botui.message.add({ content: 'Veel plezier! 🤝 Scan nu de volgende QR voor een scenario.' });
+      // Toon optioneel voortgang (uitgezet, maar check kan hier):
+      // const done = countCompleted();
+      // if(done>0) await botui.message.add({ content:`Je hebt al ${done}/4 scenario’s ontdekt.` });
     }
 
     async function scenarioCleaning(){
@@ -129,6 +156,7 @@
       await botui.message.add({ content: `Juist! In Ultimo registreer je het meteen, zodat cleaning het kan oppakken. Geen zorgen ${USERNAME}, ik verklik niemand 😅.` });
       await ticketFlow('schoonmaak-melding');
       await endMessage();
+      markScenarioDone(1);
     }
 
     async function scenarioCoffee(){
@@ -142,6 +170,7 @@
       await botui.message.add({ content: `Precies ${USERNAME}! Via Ultimo komt dit meteen bij techniek terecht.` });
       await ticketFlow('koffiemachine-melding');
       await endMessage();
+      markScenarioDone(2);
     }
 
     async function scenarioProgram(){
@@ -156,6 +185,7 @@
       if (wilMelding.value === 'ja') await ticketFlow('poetsprogramma-melding');
       else await botui.message.add({ content:'Oké, ik onthoud het wel voor je 😎.' });
       await endMessage();
+      markScenarioDone(3);
     }
 
     async function scenarioLamp(){
@@ -169,12 +199,14 @@
       await botui.message.add({ content: 'Ha, vergaderen in het donker klinkt spannend, maar Ultimo is slimmer 🤓.' });
       await ticketFlow('lamp-melding');
       await endMessage();
+      markScenarioDone(4);
     }
 
     async function endMessage(){
       await botui.message.add({ content: 'Bedankt! Dit scenario is afgerond ✅. Scan gerust een andere QR om nog een scenario te ontdekken.' });
     }
 
+    // --- URL opties (single run per step) ---
     const qs = new URLSearchParams(window.location.search);
     const STEP_PARAM = parseInt(qs.get('step') || '0', 10);
 
