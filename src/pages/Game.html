@@ -31,7 +31,17 @@
     .botui-actions-buttons-button:active{transform:scale(.98)}
     .hint{font-size:.9rem;color:#475569}
     @keyframes fadeIn{to{opacity:1}}
-    .credit{margin-top:.75rem;text-align:center;color:#475569;font-size:.85rem}
+    .credit{
+	  margin-top:.75rem;
+	  text-align:center;
+	  font-size:.85rem;
+	  background:rgba(255,255,255,0.92);   /* witte achtergrond */
+	  padding:.4rem .8rem;
+	  border-radius:8px;
+	  border:1.5px solid var(--atalian-orange);
+	  color:#1a202c;                       /* donkere tekst */
+	  display:inline-block;
+	}
     #confetti-canvas{position:fixed;inset:0;pointer-events:none;z-index:9999}
   </style>
 </head>
