@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ATALIAN – Stats (lokaal toestel)</title>
+  <meta http-equiv="Cache-Control" content="no-store, no-cache, must-revalidate, max-age=0">
+  <meta http-equiv="Pragma" content="no-cache">
+  <meta http-equiv="Expires" content="0">
+  <style>
+    :root{--o:#EE7E00;}
+    body{font-family:system-ui,-apple-system,Segoe UI,sans-serif;margin:20px;background:#f7f8fb;color:#0f172a}
+    h1{margin:0 0 .25rem 0}
+    .hint{color:#475569;font-size:.9rem}
+    .cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px;margin:16px 0}
+    .card{background:#fff;border:2px solid #eee;border-radius:12px;padding:12px}
+    .card h3{margin:.2rem 0;font-size:1rem}
+    .pill{display:inline-block;padding:.15rem .5rem;border-radius:999px;border:1px solid #e2e8f0;background:#f8fafc;font-size:.85rem}
+    table{width:100%;border-collapse:collapse;margin-top:10px;background:#fff;border-radius:12px;overflow:hidden;border:2px solid #eee}
+    th,td{padding:8px 10px;border-bottom:1px solid #eef2f7;text-align:left;font-size:.95rem}
+    th{background:#f9fafb}
+    .btn{border:2px solid var(--o);padding:.45rem .7rem;border-radius:10px;background:#fff;font-weight:700;cursor:pointer}
+    .btn:active{transform:scale(.98)}
+    .foot{margin-top:12px;font-size:.9rem;color:#475569}
+  </style>
+</head>
+<body>
+  <h1>📊 ATALIAN – Stats (lokaal)</h1>
+  <div class="hint">Deze pagina toont <b>enkel de meldingen op dit toestel</b> (localStorage). Voor centrale stats zie onderaan.</div>
+
+  <div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap">
+    <button class="btn" id="btn-refresh">🔄 Vernieuwen</button>
+    <button class="btn" id="btn-export">⬇️ Exporteer JSON</button>
+    <button class="btn" id="btn-clear">🧹 Wis (alleen dit toestel)</button>
+  </div>
+
+  <div class="cards">
+    <div class="card">
+      <h3>Totaal meldingen</h3>
+      <div id="total" class="pill">0</div>
+    </div>
+    <div class="card">
+      <h3>Per scenario</h3>
+      <div id="by-scenario"></div>
+    </div>
+    <div class="card">
+      <h3>Urgentie</h3>
+      <div id="by-urgent"></div>
+    </div>
+    <div class="card">
+      <h3>Foto bijgevoegd</h3>
+      <div id="by-photo"></div>
+    </div>
+    <div class="card">
+      <h3>Taal</h3>
+      <div id="by-lang"></div>
+    </div>
+  </div>
+
+  <h3>Laatste meldingen</h3>
+  <table id="tbl">
+    <thead>
+      <tr>
+        <th>#</th>
+        <th>Wanneer</th>
+        <th>Scenario</th>
+        <th>Urgent</th>
+        <th>Foto</th>
+        <th>Taal</th>
+        <th>Beschrijving</th>
+        <th>E-mail</th>
+      </tr>
+    </thead>
+    <tbody></tbody>
+  </table>
+
+  <div class="foot">
+    Tip: open in dezelfde browser als waar <code>Game.html</code> gebruikt is.  
+    Voor centrale stats: kleine backend (bv. Netlify Function + Google Sheet/DB) → ik kan dit voor je schetsen.
+  </div>
+
+<script>
+function load() {
+  const rows = JSON.parse(localStorage.getItem('atalian_demo_tickets') || '[]');
+  // sorteer nieuwste eerst
+  rows.sort((a,b)=>b.ts-a.ts);
+
+  // total
+  document.getElementById('total').textContent = rows.length;
+
+  // helpers
+  const countBy = (arr, key, mapFn=(x)=>x) => arr.reduce((acc,r)=>{
+    const k = mapFn(r[key]);
+    acc[k] = (acc[k]||0)+1; return acc;
+  },{});
+  const pillList = (obj) => Object.entries(obj).map(([k,v])=>`<span class="pill">${k}: <b>${v}</b></span>`).join(' ');
+
+  // per scenario
+  const scenMap = countBy(rows,'contextLabel');
+  document.getElementById('by-scenario').innerHTML = pillList(scenMap);
+
+  // urgentie
+  const urgMap = countBy(rows,'urgent', v => v==='ja'?'dringend':'kan wachten');
+  document.getElementById('by-urgent').innerHTML = pillList(urgMap);
+
+  // foto
+  const photoMap = countBy(rows,'photo', v => v ? 'met foto' : 'zonder foto');
+  document.getElementById('by-photo').innerHTML = pillList(photoMap);
+
+  // taal
+  const langMap = countBy(rows,'lang', v => v || 'nl');
+  document.getElementById('by-lang').innerHTML = pillList(langMap);
+
+  // tabel
+  const tb = document.querySelector('#tbl tbody');
+  tb.innerHTML = rows.map((r,i)=>`
+    <tr>
+      <td>${rows.length - i}</td>
+      <td>${new Date(r.ts).toLocaleString()}</td>
+      <td>${r.contextLabel||''}</td>
+      <td>${r.urgent==='ja'?'dringend':'kan wachten'}</td>
+      <td>${r.photo?'ja':'nee'}</td>
+      <td>${r.lang||'nl'}</td>
+      <td>${(r.desc||'').replace(/[<>&]/g,'')}</td>
+      <td>${(r.email||'')}</td>
+    </tr>
+  `).join('');
+}
+
+document.getElementById('btn-refresh').onclick = load;
+document.getElementById('btn-export').onclick = () => {
+  const rows = JSON.parse(localStorage.getItem('atalian_demo_tickets') || '[]');
+  const blob = new Blob([JSON.stringify(rows,null,2)], {type:'application/json'});
+  const url = URL.createObjectURL(blob);
+  const a = Object.assign(document.createElement('a'), { href:url, download:'atalian_stats_local.json' });
+  document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
+};
+document.getElementById('btn-clear').onclick = () => {
+  if (confirm('Alle lokale stats wissen? (enkel dit toestel)')) {
+    localStorage.removeItem('atalian_demo_tickets');
+    ['atalian_scenario_1','atalian_scenario_2','atalian_scenario_3','atalian_scenario_4','atalian_all_done'].forEach(k=>localStorage.removeItem(k));
+    load();
+  }
+};
+
+load();
+</script>
+</body>
+</html>
