@@ -454,5 +454,35 @@
 
     window.addEventListener('load', bootstrap);
   </script>
+  <script>
+/* ===== Lang-press reset op logo ===== */
+window.addEventListener('DOMContentLoaded', () => {
+  const logo = document.querySelector('img.logo');
+  if (!logo) return;
+  let pressTimer = null;
+
+  logo.addEventListener('touchstart', start, {passive:true});
+  logo.addEventListener('mousedown', start);
+  logo.addEventListener('touchend', cancel, {passive:true});
+  logo.addEventListener('mouseup', cancel);
+  logo.addEventListener('mouseleave', cancel);
+
+  function start(e){
+    cancel();
+    pressTimer = setTimeout(() => {
+      // Harde reset maar bewaar taal
+      const lang = (localStorage.getItem('atalian_lang') || 'nl');
+      ['atalian_scenario_1','atalian_scenario_2','atalian_scenario_3','atalian_scenario_4',
+       'atalian_all_done','atalian_name','atalian_demo_tickets'].forEach(k => localStorage.removeItem(k));
+      localStorage.setItem('atalian_lang', lang);
+      // Cache-buster
+      const base = window.location.pathname;
+      window.location.replace(`${base}?step=0&lang=${lang}&_=${Date.now()}`);
+    }, 900); // 0.9s lang indrukken
+  }
+  function cancel(){ if (pressTimer){ clearTimeout(pressTimer); pressTimer=null; } }
+});
+</script>
+
 </body>
 </html>
