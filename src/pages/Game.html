@@ -79,39 +79,8 @@
   <script src="https://cdn.jsdelivr.net/npm/vue@2"></script>
   <script src="https://cdn.jsdelivr.net/npm/botui/build/botui.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
-<script>
-/* ===== PRE-RESET voor mobiel/webviews ===== */
-(function(){
-  const url = new URL(window.location.href);
-  const qs = url.searchParams;
-  const lang = (qs.get('lang') || localStorage.getItem('atalian_lang') || 'nl').toLowerCase();
 
-  // Harde reset via ?reset=1
-  if (qs.get('reset') === '1') {
-    try {
-      // Wis expliciet alle keys i.p.v. clear() (sommige webviews negeren clear)
-      [
-        'atalian_scenario_1','atalian_scenario_2','atalian_scenario_3','atalian_scenario_4',
-        'atalian_all_done','atalian_name','atalian_demo_tickets'
-      ].forEach(k => localStorage.removeItem(k));
-      // taal bewaren
-      localStorage.setItem('atalian_lang', lang);
-    } catch(e) { /* ignore */ }
-
-    // Redirect naar start met cache-buster (dwingt vers laden)
-    qs.delete('reset');
-    qs.set('step','0');
-    qs.set('lang', lang);
-    qs.set('_', Date.now().toString());
-    window.location.replace(url.pathname + '?' + qs.toString());
-  }
-
-  // Admin-paneel aanzetten met ?admin=1 → toont resetknop
-  if (qs.get('admin') === '1') {
-    localStorage.setItem('atalian_admin', 'yes');
-  }
-})();
-</script>
+  <script>
   
     // ===== i18n teksten =====
     const I18N = {
@@ -235,35 +204,6 @@
       window.location.href = `${base}?step=${step}&lang=${lang}`;
     }
   </script>
-<script>
-/* ===== Lang-press reset op logo ===== */
-window.addEventListener('DOMContentLoaded', () => {
-  const logo = document.querySelector('img.logo');
-  if (!logo) return;
-  let pressTimer = null;
-
-  logo.addEventListener('touchstart', start, {passive:true});
-  logo.addEventListener('mousedown', start);
-  logo.addEventListener('touchend', cancel, {passive:true});
-  logo.addEventListener('mouseup', cancel);
-  logo.addEventListener('mouseleave', cancel);
-
-  function start(e){
-    cancel();
-    pressTimer = setTimeout(() => {
-      // Harde reset maar bewaar taal
-      const lang = (localStorage.getItem('atalian_lang') || 'nl');
-      ['atalian_scenario_1','atalian_scenario_2','atalian_scenario_3','atalian_scenario_4',
-       'atalian_all_done','atalian_name','atalian_demo_tickets'].forEach(k => localStorage.removeItem(k));
-      localStorage.setItem('atalian_lang', lang);
-      // Cache-buster
-      const base = window.location.pathname;
-      window.location.replace(`${base}?step=0&lang=${lang}&_=${Date.now()}`);
-    }, 900); // 0.9s lang indrukken
-  }
-  function cancel(){ if (pressTimer){ clearTimeout(pressTimer); pressTimer=null; } }
-});
-</script>
 
   <script>
     // ===== Foto helpers =====
