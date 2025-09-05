@@ -1,0 +1,17 @@
+[edge_functions]
+  directory = "netlify/edge-functions"
+
+[[edge_functions.routes]]
+  pattern = "/api/log"
+  function = "log"
+
+# Zorg dat game/stats niet gecached worden (optioneel maar handig bij demo’s)
+[[headers]]
+  for = "/game.html"
+  [headers.values]
+    Cache-Control = "no-store, no-cache, must-revalidate, max-age=0"
+
+[[headers]]
+  for = "/stats.html"
+  [headers.values]
+    Cache-Control = "no-store, no-cache, must-revalidate, max-age=0"

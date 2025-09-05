@@ -321,35 +321,68 @@
       return value;
     }
 
-    // ---------- Ticket-flow ----------
-    async function ticketFlow(contextLabel){
-      // 1) Dringend of niet
-      await botui.message.add({ content: t('urgent_q', USERNAME) });
-      const urgent = await botui.action.button({ action:[
-        { text: t('urgent_yes'), value: 'ja' },
-        { text: t('urgent_no'), value: 'nee' },
-      ]});
-      // 2) Beschrijving
-      const desc = await askProblem();
-      // 3) Optionele foto
-      const photoDataUrl = await askPhoto(botui);
-      // 4) E-mail
-      const email = await askEmail();
-      // 5) Dringend boodschap i.p.v. nummer
-      if(urgent.value==='ja'){
-        await botui.message.add({ type:'html', content: t('servicedesk_note') });
-      }
-      // 6) Fake submit + samenvatting
-      const fakeId = 'TCK-' + Math.random().toString(36).slice(2, 6).toUpperCase();
-      try{
-        const key='atalian_demo_tickets';
-        const arr=JSON.parse(localStorage.getItem(key)||'[]');
-        arr.push({ contextLabel, urgent:urgent.value, desc, email, photo: !!photoDataUrl, ts:Date.now(), lang:LANG });
-        localStorage.setItem(key, JSON.stringify(arr));
-      }catch(e){}
-      await botui.message.add({ type:'html', content: t('thanks_sent', contextLabel, fakeId) });
-      await botui.message.add({ type:'html', content: `<span class="hint">${t('summary_heading')}</span><br>${t('summary_urgent', urgent.value)}<br>${t('summary_desc', desc)}<br>${t('summary_email', email)}${photoDataUrl?'\n<br>'+t('summary_photo'):''}` });
-    }
+	 // ---------- Ticket-flow ----------
+	async function ticketFlow(contextLabel){
+	  // 1) Dringend of niet
+	  await botui.message.add({ content: t('urgent_q', USERNAME) });
+	  const urgent = await botui.action.button({ action:[
+		{ text: t('urgent_yes'), value: 'ja' },
+		{ text: t('urgent_no'), value: 'nee' },
+	  ]});
+
+	  // 2) Beschrijving
+	  const desc = await askProblem();
+
+	  // 3) Optionele foto
+	  const photoDataUrl = await askPhoto(botui);
+
+	  // 4) E-mail
+	  const email = await askEmail();
+
+	  // 5) Dringend boodschap i.p.v. nummer
+	  if(urgent.value==='ja'){
+		await botui.message.add({ type:'html', content: t('servicedesk_note') });
+	  }
+
+	  // 6) Fake submit + samenvatting
+	  const fakeId = 'TCK-' + Math.random().toString(36).slice(2, 6).toUpperCase();
+
+	  // --- Payload (één bron van waarheid) ---
+	  const payload = {
+		contextLabel,
+		urgent: urgent.value,
+		desc,
+		email,
+		photo: !!photoDataUrl,
+		lang: LANG,
+		ts: Date.now()
+	  };
+
+	  // Lokale opslag (fallback / demo)
+	  try{
+		const key='atalian_demo_tickets';
+		const arr=JSON.parse(localStorage.getItem(key)||'[]');
+		arr.push(payload);
+		localStorage.setItem(key, JSON.stringify(arr));
+	  }catch(e){ /* ignore quota */ }
+
+	  // Centrale opslag naar Netlify Edge Function (/api/log)
+	  try{
+		await postCentral('/api/log', payload, 4000); // 4s timeout
+	  }catch(e){
+		// Fallback: in wachtrij zetten voor later
+		queuePending(payload);
+	  }
+
+	  await botui.message.add({ type:'html', content: t('thanks_sent', contextLabel, fakeId) });
+	  await botui.message.add({
+		type:'html',
+		content: `<span class="hint">${t('summary_heading')}</span><br>`
+			   + `${t('summary_urgent', urgent.value)}<br>`
+			   + `${t('summary_desc', desc)}<br>`
+			   + `${t('summary_email', email)}${photoDataUrl?'<br>'+t('summary_photo'):''}`
+	  });
+	}
 
     // ---------- Content ----------
     async function intro(){
@@ -451,6 +484,47 @@
         if(c){ c.innerHTML = '<div style="background:#fff;border:2px solid #EE7E00;border-radius:12px;padding:12px">Er ging iets mis bij het laden van de chat. Vernieuw de pagina of probeer een andere QR. 🙏</div>'; }
       }
     }
+	// --- Helpers voor centrale logging + retry-queue ---
+	async function postCentral(url, data, timeoutMs=4000){
+	  const controller = new AbortController();
+	  const t = setTimeout(()=>controller.abort(), timeoutMs);
+	  const res = await fetch(url, {
+		method:'POST',
+		headers:{'Content-Type':'application/json'},
+		body: JSON.stringify(data),
+		signal: controller.signal
+	  });
+	  clearTimeout(t);
+	  if(!res.ok) throw new Error('HTTP '+res.status);
+	  return res.json().catch(()=>({ok:true}));
+	}
+
+	function queuePending(item){
+	  try{
+		const k='atalian_pending';
+		const q = JSON.parse(localStorage.getItem(k) || '[]');
+		q.push(item);
+		localStorage.setItem(k, JSON.stringify(q));
+	  }catch(e){}
+	}
+
+	async function flushPending(){
+	  try{
+		const k='atalian_pending';
+		const q = JSON.parse(localStorage.getItem(k) || '[]');
+		if(!q.length) return;
+		const rest=[];
+		for (const it of q){
+		  try{ await postCentral('/api/log', it, 4000); }
+		  catch(e){ rest.push(it); }
+		}
+		localStorage.setItem(k, JSON.stringify(rest));
+	  }catch(e){}
+	}
+
+	// automatisch flushen bij start en wanneer we terug online komen
+	window.addEventListener('load', flushPending);
+	window.addEventListener('online', flushPending);
 
     window.addEventListener('load', bootstrap);
   </script>
