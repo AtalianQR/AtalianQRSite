@@ -22,8 +22,23 @@
       padding:.15rem .4rem;border-radius:12px}
     .subtitle{background:rgba(255,255,255,.95);padding:.35rem .8rem;border-radius:10px;border:2.5px solid var(--atalian-orange);
       color:#334155;font-size:.95rem;box-shadow:0 2px 8px rgba(238,126,0,.08)}
-    .lang-toggle{position:absolute;right:12px;top:6px;display:flex;gap:6px;align-items:center}
-    .lang-btn{cursor:pointer;background:#fff;border:1.5px solid var(--atalian-orange);border-radius:999px;padding:.2rem .5rem;font-weight:600}
+	.lang-toggle {
+	  margin-top: 0.5rem;
+	  display: flex;
+	  gap: 8px;
+	  justify-content: center;
+	}
+
+	.lang-btn {
+	  cursor: pointer;
+	  background: #fff;
+	  border: 1.5px solid var(--atalian-orange);
+	  border-radius: 999px;
+	  padding: .25rem .6rem;
+	  font-weight: 600;
+	  font-size: 0.9rem;
+	}
+
     .wrap{max-width:640px;margin:0 auto;padding:0 1rem 2rem}
     .botui-container{max-width:640px;margin:0 auto;background:linear-gradient(120deg,#fff 85%,#f4f6fa 100%);
       border:2px solid var(--atalian-orange);box-shadow:0 6px 32px rgba(0,0,0,.12),0 1.5px 8px rgba(238,126,0,.10);
@@ -41,16 +56,16 @@
   </style>
 </head>
 <body>
-	<header>
-	  <img src="/AtalianLogo.png" alt="Atalian Logo" class="logo" />
-	  <div class="lang-toggle">
-		<button class="lang-btn" id="btn-nl">🇳🇱 NL</button>
-		<button class="lang-btn" id="btn-fr">🇫🇷 FR</button>
-	  </div>
-	  <div class="subtitle" id="subtitle">
-		🎉 Personeelsevent – demo met AI-assistent · geen echte tickets
-	  </div>
-	</header>
+<header>
+  <img src="/AtalianLogo.png" alt="Atalian Logo" class="logo" />
+  <div class="lang-toggle">
+    <button class="lang-btn" id="btn-nl">🇳🇱 NL</button>
+    <button class="lang-btn" id="btn-fr">🇫🇷 FR</button>
+  </div>
+  <div class="subtitle" id="subtitle">
+    🎉 Personeelsevent – demo met AI-assistent · geen echte tickets
+  </div>
+</header>
 
 
   <canvas id="confetti-canvas"></canvas>
