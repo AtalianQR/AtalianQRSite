@@ -67,6 +67,20 @@
       })();
     }
 
+    async function askNameIfNeeded(){
+      if (USERNAME) return;
+      await botui.message.add({ type:'html', content: 'Hallo! Ik ben je <span style="color:var(--atalian-orange);font-weight:700">ATALIAN</span>-assistent 🤖. Hoe heet jij?' });
+      const name = await botui.action.text({ action:{ placeholder:'Typ je naam…' } });
+      USERNAME = (name.value||'collega').trim();
+      await botui.message.add({ content: `Aangenaam, ${USERNAME}!` });
+    }
+
+    async function askProblem(){
+      await botui.message.add({ content: 'Kun je kort beschrijven wat er aan de hand is?' });
+      const { value } = await botui.action.text({ action:{ placeholder:'Schrijf hier je melding…' } });
+      return (value||'').trim();
+    }
+
     async function askEmail(){
       await botui.message.add({ content: 'Wat is je e-mailadres? (mag ook nep zijn 😉)' });
       const { value } = await botui.action.text({ action: { placeholder: 'jij@voorbeeld.be' } });
@@ -78,24 +92,34 @@
     }
 
     async function ticketFlow(contextLabel){
+      await botui.message.add({ content: `Is dit dringend, ${USERNAME}?` });
       const urgent = await botui.action.button({
         action: [
           { text: '🚨 Ja, dringend', value: 'ja' },
           { text: '⏱️ Nee, kan wachten', value: 'nee' },
         ]
       });
+      if(urgent.value==='ja'){
+        await botui.message.add({ type:'html', content: 'Normaal zou je nu het telefoonnummer van de servicedesk krijgen ☎️.<br><b>Maar omdat ze zelf deelnemen aan dit event, laten we ze vandaag met rust 😇.</b>' });
+      }
+      const desc = await askProblem();
       const email = await askEmail();
       const fakeId = 'TCK-' + Math.random().toString(36).slice(2, 6).toUpperCase();
       await botui.message.add({ type:'html', content: `Bedankt! Je <b>${contextLabel}</b> is verzonden naar Ultimo ✅<br><span class="hint">(Demo, geen echte ticket) – ref: ${fakeId}</span>` });
-      await sleep(400);
+      await sleep(300);
+      await botui.message.add({ type:'html', content: `<span class="hint">Samenvatting:</span><br>• Urgent: <b>${urgent.value==='ja'?'ja':'nee'}</b><br>• Beschrijving: <b>${desc||'-'}</b><br>• Contact: <b>${email}</b>` });
     }
 
     async function intro(){
-      await botui.message.add({ type:'html', content: 'Welkom bij de <span style="color:var(--atalian-orange);font-weight:700">ATALIAN</span>-missie 🤖.<br>Scan de QR-codes op verschillende plaatsen en ontdek hoe we AI en Ultimo gebruiken in ons FMIS.' });
-      await botui.message.add({ content: 'Bij elke QR krijg je een scenario: schoonmaak, techniek of comfort. Doorloop ze allemaal en ontdek hoe makkelijk melden is!' });
+      await askNameIfNeeded();
+      await botui.message.add({ type:'html', content: `Welkom, ${USERNAME}! 🎉` });
+      await botui.message.add({ type:'html', content: 'Dit is onze speurtocht met AI + <b>Ultimo</b> (FMIS). Scan de verschillende QR-codes in het gebouw en ontdek per scenario hoe melden werkt: schoonmaak, techniek en comfort.' });
+      await botui.message.add({ content: 'Tip: elke QR werkt apart. Er worden geen echte tickets aangemaakt – dit is een demo.' });
+      await botui.message.add({ content: 'Veel plezier! 🤝 Scan nu de volgende QR voor een scenario.' });
     }
 
     async function scenarioCleaning(){
+      await askNameIfNeeded();
       await botui.message.add({ content: 'Stel je vindt een ruimte die niet netjes is. Wat zou jij doen?' });
       await botui.action.button({ action:[
         { text: 'Direct melden via Ultimo 📲', value: 'ultimo' },
@@ -104,9 +128,11 @@
       ] });
       await botui.message.add({ content: `Juist! In Ultimo registreer je het meteen, zodat cleaning het kan oppakken. Geen zorgen ${USERNAME}, ik verklik niemand 😅.` });
       await ticketFlow('schoonmaak-melding');
+      await endMessage();
     }
 
     async function scenarioCoffee(){
+      await askNameIfNeeded();
       await botui.message.add({ content: 'Je komt in de refter en de koffiemachine is kapot. Wat nu?' });
       await botui.action.button({ action:[
         { text: 'Een technieker bellen 📞', value: 'bel' },
@@ -115,9 +141,11 @@
       ] });
       await botui.message.add({ content: `Precies ${USERNAME}! Via Ultimo komt dit meteen bij techniek terecht.` });
       await ticketFlow('koffiemachine-melding');
+      await endMessage();
     }
 
     async function scenarioProgram(){
+      await askNameIfNeeded();
       await botui.message.add({ content: 'Benieuwd wanneer de volgende poetsbeurt is in jouw gebouw?' });
       await botui.action.button({ action:[ { text: 'Toon poetsprogramma 🧹', value: 'toon' } ] });
       await botui.message.add({ type:'html', content: '🌞 <b>Dagelijks</b> op elke werkdag.<br>🧹 Volgende beurt: 📅 <b>ma 09-09-2025</b>.<br><span class="hint">(Voorbeeld – demo)</span>' });
@@ -127,9 +155,11 @@
       ]});
       if (wilMelding.value === 'ja') await ticketFlow('poetsprogramma-melding');
       else await botui.message.add({ content:'Oké, ik onthoud het wel voor je 😎.' });
+      await endMessage();
     }
 
     async function scenarioLamp(){
+      await askNameIfNeeded();
       await botui.message.add({ content: 'Je ziet dat een lamp stuk is in de vergaderzaal. Hoe los je dit op?' });
       await botui.action.button({ action:[
         { text: 'Ultimo inschakelen 🖥️', value: 'ultimo' },
@@ -138,45 +168,27 @@
       ] });
       await botui.message.add({ content: 'Ha, vergaderen in het donker klinkt spannend, maar Ultimo is slimmer 🤓.' });
       await ticketFlow('lamp-melding');
+      await endMessage();
     }
 
-    async function finale(){
-      launchConfetti();
-      await botui.message.add({ type:'html', content: `🎊 <b>Proficiat ${USERNAME}!</b><br>Je hebt alle scenario’s doorlopen en ervaren hoe we met <b>AI</b> en <b>Ultimo</b> ons FMIS gebruiken voor schoonmaak, techniek en comfort.` });
-      await botui.message.add({ content: 'Dankjewel om dit samen met ons uit te proberen 🙏. Samen maken we slimme tools menselijk.' });
+    async function endMessage(){
+      await botui.message.add({ content: 'Bedankt! Dit scenario is afgerond ✅. Scan gerust een andere QR om nog een scenario te ontdekken.' });
     }
 
-    // --- URL opties ---
     const qs = new URLSearchParams(window.location.search);
     const STEP_PARAM = parseInt(qs.get('step') || '0', 10);
-    const RUN_ONE = qs.get('one') === '1';
 
     const SCENARIOS = [
-      intro,             // 0 = enkel introductie
-      scenarioCleaning,  // 1
-      scenarioCoffee,    // 2
-      scenarioProgram,   // 3
-      scenarioLamp       // 4
+      intro,            // 0 = intro
+      scenarioCleaning, // 1
+      scenarioCoffee,   // 2
+      scenarioProgram,  // 3
+      scenarioLamp      // 4
     ];
 
-    async function runFromStep(step) {
-      if (!SCENARIOS[step]) return;
-      await SCENARIOS[step]();
-      if (!RUN_ONE && step > 0) {
-        for (let s = step + 1; s <= 4; s++) {
-          await SCENARIOS[s]();
-        }
-        await finale();
-      }
-    }
-
     async function start(){
-      if (STEP_PARAM > 0) {
-        USERNAME = 'collega'; // bij directe scenario’s generieke aanspreking
-      } else {
-        USERNAME = '';
-      }
-      await runFromStep(isNaN(STEP_PARAM) ? 0 : Math.max(0, Math.min(4, STEP_PARAM)));
+      const step = isNaN(STEP_PARAM) ? 0 : Math.max(0, Math.min(4, STEP_PARAM));
+      await SCENARIOS[step]();
     }
 
     start();
