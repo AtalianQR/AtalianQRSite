@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ATALIAN – De Missie van de Assistent (Demo)</title>
+  <link rel="icon" href="/AtalianFavicon.png" />
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/botui/build/botui.min.css" />
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/botui/build/botui-theme-default.css" />
+  <style>
+    :root{
+      --atalian-orange:#EE7E00;
+      --bg:#f4f6fa;
+      --text:#1a202c;
+    }
+    html,body{height:auto;min-height:100vh;width:100%;margin:0;padding:0;box-sizing:border-box;
+      font-family:'Segoe UI',system-ui,-apple-system,sans-serif;background-color:var(--bg);overflow-y:auto}
+    body{background-image:url('/building-cleaning.png');background-size:cover;background-repeat:no-repeat;background-position:center}
+    *{box-sizing:border-box}
+    header{display:flex;flex-direction:column;align-items:center;gap:.5rem;margin:1rem 0}
+    img.logo{max-height:60px;height:auto;width:auto;display:block;margin:0 auto;background:rgba(255,255,255,.85);
+      padding:.15rem .4rem;border-radius:12px}
+    .subtitle{background:rgba(255,255,255,.95);padding:.35rem .8rem;border-radius:10px;border:2.5px solid var(--atalian-orange);
+      color:#334155;font-size:.95rem;box-shadow:0 2px 8px rgba(238,126,0,.08)}
+    .wrap{max-width:640px;margin:0 auto;padding:0 1rem 2rem}
+    .botui-container{max-width:640px;margin:0 auto;background:linear-gradient(120deg,#fff 85%,#f4f6fa 100%);
+      border:2px solid var(--atalian-orange);box-shadow:0 6px 32px rgba(0,0,0,.12),0 1.5px 8px rgba(238,126,0,.10);
+      border-radius:12px;padding:1rem;opacity:0;animation:fadeIn .9s ease forwards}
+    .botui-container,.botui-message-content{font-family:'Segoe UI',system-ui,-apple-system,sans-serif}
+    .botui-actions-buttons-button{font-weight:600;border:none;box-shadow:0 2px 6px rgba(238,126,0,.07);transition:transform .06s ease}
+    .botui-actions-buttons-button:active{transform:scale(.98)}
+    .hint{font-size:.9rem;color:#475569}
+    @keyframes fadeIn{to{opacity:1}}
+    .credit{margin-top:.75rem;text-align:center;color:#475569;font-size:.85rem}
+    /* Confetti canvas */
+    #confetti-canvas{position:fixed;inset:0;pointer-events:none;z-index:9999}
+  </style>
+</head>
+<body>
+  <header>
+    <img src="/AtalianLogo.png" alt="Atalian Logo" class="logo" />
+    <div class="subtitle">🎉 Personeelsevent – demo met AI‑assistent · geen echte tickets</div>
+  </header>
+
+  <canvas id="confetti-canvas"></canvas>
+
+  <div class="wrap">
+    <div id="botui-app"><bot-ui></bot-ui></div>
+    <div class="credit">Vragen of ideeën? Spreek ons FM‑team aan 💬</div>
+  </div>
+
+  <!-- Vue & BotUI -->
+  <script src="https://cdn.jsdelivr.net/npm/vue@2"></script>
+  <script src="https://cdn.jsdelivr.net/npm/botui/build/botui.min.js"></script>
+  <!-- Confetti (lightweight) -->
+  <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+
+  <script>
+    // ---------- Helpers ----------
+    const botui = new BotUI('botui-app');
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    let USERNAME = '';
+
+    function sleep(ms){ return new Promise(r=>setTimeout(r,ms)); }
+
+    function launchConfetti(){
+      const end = Date.now() + 800;
+      (function frame(){
+        confetti({ particleCount: 80, spread: 70, origin: { y: 0.2 } });
+        if (Date.now() < end) requestAnimationFrame(frame);
+      })();
+    }
+
+    async function askEmail(){
+      await botui.message.add({ content: 'Wat is je e-mailadres? (mag ook nep zijn 😉)' });
+      const { value } = await botui.action.text({ action: { placeholder: 'jij@voorbeeld.be' } });
+      if (!emailRegex.test(value)) {
+        await botui.message.add({ content: 'Hm, dat lijkt geen geldig adres. Probeer nog eens 🙈' });
+        return askEmail();
+      }
+      return value;
+    }
+
+    async function ticketFlow(contextLabel){
+      const urgent = await botui.action.button({
+        action: [
+          { text: '🚨 Ja, dringend', value: 'ja' },
+          { text: '⏱️ Nee, kan wachten', value: 'nee' },
+        ]
+      });
+      const email = await askEmail();
+      // Fake ticket "verzonden"
+      const fakeId = 'TCK-' + Math.random().toString(36).slice(2, 6).toUpperCase();
+      await botui.message.add({ type:'html', content: `Bedankt! Je <b>${contextLabel}</b> is verzonden naar Ultimo ✅<br><span class="hint">(Demo, geen echte ticket) – ref: ${fakeId}</span>` });
+      await sleep(400);
+    }
+
+    // ---------- Scenarios ----------
+    async function scenarioCleaning(){
+      await botui.message.add({ content: 'Stel je vindt een ruimte die niet netjes is. Wat zou jij doen?' });
+      await botui.action.button({ action:[
+        { text: 'Direct melden via Ultimo 📲', value: 'ultimo' },
+        { text: 'Zelf de mop pakken 🪣', value: 'mop' },
+        { text: 'Niks doen en hopen dat het verdwijnt 🙈', value: 'niks' },
+      ] }).then(async res => {
+        await botui.message.add({ content: `Juist! In Ultimo registreer je het meteen, zodat cleaning het kan oppakken. Geen zorgen ${USERNAME}, ik verklik niemand 😅.` });
+        await ticketFlow('schoonmaak‑melding');
+      });
+    }
+
+    async function scenarioCoffee(){
+      await botui.message.add({ content: 'Je komt in de refter en de koffiemachine is kapot. Wat nu?' });
+      await botui.action.button({ action:[
+        { text: 'Een technieker bellen 📞', value: 'bel' },
+        { text: 'Een ticket in Ultimo maken 🛠️', value: 'ultimo' },
+        { text: 'Gewoon thee drinken 🍵', value: 'thee' },
+      ] }).then(async res => {
+        await botui.message.add({ content: `Precies ${USERNAME}! Via Ultimo komt dit meteen bij techniek terecht.` });
+        await ticketFlow('koffiemachine‑melding');
+      });
+    }
+
+    async function scenarioProgram(){
+      await botui.message.add({ content: 'Benieuwd wanneer de volgende poetsbeurt is in jouw gebouw?' });
+      await botui.action.button({ action:[ { text: 'Toon poetsprogramma 🧹', value: 'toon' } ] });
+      await botui.message.add({ type:'html', content: '🌞 <b>Dagelijks</b> op elke werkdag.<br>🧹 Volgende beurt: 📅 <b>ma 09‑09‑2025</b>.<br><span class="hint">(Voorbeeld – demo)</span>' });
+      const wilMelding = await botui.action.button({ action:[
+        { text: '📩 Maak hier een melding van', value: 'ja' },
+        { text: 'Nee hoor, is duidelijk 👍', value: 'nee' },
+      ]});
+      if (wilMelding.value === 'ja') await ticketFlow('poetsprogramma‑melding');
+      else await botui.message.add({ content:'Oké, ik onthoud het wel voor je 😎.' });
+    }
+
+    async function scenarioLamp(){
+      await botui.message.add({ content: 'Je ziet dat een lamp stuk is in de vergaderzaal. Hoe los je dit op?' });
+      await botui.action.button({ action:[
+        { text: 'Ultimo inschakelen 🖥️', value: 'ultimo' },
+        { text: 'Zelf vervangen met ladder en risico 🤕', value: 'zelf' },
+        { text: 'Vergaderen in het donker 😎', value: 'donker' },
+      ] }).then(async res => {
+        await botui.message.add({ content: 'Ha, vergaderen in het donker klinkt spannend, maar Ultimo is slimmer 🤓.' });
+        await ticketFlow('lamp‑melding');
+      });
+    }
+
+    // ---------- Finale ----------
+    async function finale(){
+      launchConfetti();
+      await botui.message.add({ type:'html', content: `🎊 <b>Proficiat ${USERNAME}!</b><br>Je hebt alle scenario’s doorlopen en ervaren hoe we met <b>AI</b> en <b>Ultimo</b> ons FMIS gebruiken voor schoonmaak, techniek en comfort.` });
+      await botui.message.add({ content: 'Dankjewel om dit samen met ons uit te proberen 🙏. Samen maken we slimme tools menselijk.' });
+    }
+
+    // ---------- Orchestratie ----------
+    async function start(){
+      await botui.message.add({ type:'html', content: 'Hallo, ik ben je <span style="color:var(--atalian-orange);font-weight:700">ATALIAN</span>-assistent 🤖. Om te starten: hoe heet jij?' });
+      const name = await botui.action.text({ action:{ placeholder:'Typ je naam…' } });
+      USERNAME = (name.value||'collega').trim();
+      await botui.message.add({ content: `Leuk je te ontmoeten, ${USERNAME}! Klaar om te ervaren hoe wij AI en Ultimo gebruiken in ons FMIS?` });
+      await scenarioCleaning();
+      await scenarioCoffee();
+      await scenarioProgram();
+      await scenarioLamp();
+      await finale();
+    }
+
+    // kick-off
+    start();
+  </script>
+</body>
+</html>
