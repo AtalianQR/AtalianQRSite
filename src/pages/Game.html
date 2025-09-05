@@ -117,8 +117,6 @@
     }
 
     async function ticketFlow(contextLabel){
-      const desc = await askProblem();
-      const email = await askEmail();
       await botui.message.add({ content: `Is dit dringend, ${USERNAME}?` });
       const urgent = await botui.action.button({
         action: [
@@ -126,9 +124,18 @@
           { text: '⏱️ Nee, kan wachten', value: 'nee' },
         ]
       });
+      // Eerst melding + e-mail verzamelen
+      const desc = await askProblem();
+      const email = await askEmail();
+      // Pas daarna het "bellen"-gedrag tonen bij dringend
       if(urgent.value==='ja'){
         await botui.message.add({ type:'html', content: 'Normaal zou je nu het telefoonnummer van de servicedesk krijgen ☎️.<br><b>Maar omdat ze zelf deelnemen aan dit event, laten we ze vandaag met rust 😇.</b>' });
       }
+      const fakeId = 'TCK-' + Math.random().toString(36).slice(2, 6).toUpperCase();
+      await botui.message.add({ type:'html', content: `Bedankt! Je <b>${contextLabel}</b> is verzonden naar Ultimo ✅<br><span class="hint">(Demo, geen echte ticket) – ref: ${fakeId}</span>` });
+      await sleep(300);
+      await botui.message.add({ type:'html', content: `<span class="hint">Samenvatting:</span><br>• Urgent: <b>${urgent.value==='ja'?'ja':'nee'}</b><br>• Beschrijving: <b>${desc||'-'}</b><br>• Contact: <b>${email}</b>` });
+    }
       const fakeId = 'TCK-' + Math.random().toString(36).slice(2, 6).toUpperCase();
       await botui.message.add({ type:'html', content: `Bedankt! Je <b>${contextLabel}</b> is verzonden naar Ultimo ✅<br><span class="hint">(Demo, geen echte ticket) – ref: ${fakeId}</span>` });
       await sleep(300);
