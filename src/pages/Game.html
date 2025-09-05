@@ -53,7 +53,8 @@
   <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
 
   <script>
-    const botui = new BotUI('botui-app');
+    // Initialiseert BotUI pas NA window load om race conditions te vermijden
+    let botui; // wordt gezet in bootstrap()
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     let USERNAME = localStorage.getItem('atalian_name') || '';
 
@@ -86,7 +87,7 @@
         if(all && !fired){
           localStorage.setItem(PROG_KEY,'yes');
           launchConfetti();
-          botui.message.add({ type:'html', content:'🎊 <b>Fantastisch!</b> Je hebt alle 4 scenario’s ontdekt.<br>Bedankt om de volledige AI‑Ultimo missie mee te doen 🙏' });
+          botui && botui.message.add({ type:'html', content:'🎊 <b>Fantastisch!</b> Je hebt alle 4 scenario’s ontdekt.<br>Bedankt om de volledige AI‑Ultimo missie mee te doen 🙏' });
         }
       }catch(e){/* ignore */}
     }
@@ -124,18 +125,11 @@
           { text: '⏱️ Nee, kan wachten', value: 'nee' },
         ]
       });
-      // Eerst melding + e-mail verzamelen
       const desc = await askProblem();
       const email = await askEmail();
-      // Pas daarna het "bellen"-gedrag tonen bij dringend
       if(urgent.value==='ja'){
         await botui.message.add({ type:'html', content: 'Normaal zou je nu het telefoonnummer van de servicedesk krijgen ☎️.<br><b>Maar omdat ze zelf deelnemen aan dit event, laten we ze vandaag met rust 😇.</b>' });
       }
-      const fakeId = 'TCK-' + Math.random().toString(36).slice(2, 6).toUpperCase();
-      await botui.message.add({ type:'html', content: `Bedankt! Je <b>${contextLabel}</b> is verzonden naar Ultimo ✅<br><span class="hint">(Demo, geen echte ticket) – ref: ${fakeId}</span>` });
-      await sleep(300);
-      await botui.message.add({ type:'html', content: `<span class="hint">Samenvatting:</span><br>• Urgent: <b>${urgent.value==='ja'?'ja':'nee'}</b><br>• Beschrijving: <b>${desc||'-'}</b><br>• Contact: <b>${email}</b>` });
-    }
       const fakeId = 'TCK-' + Math.random().toString(36).slice(2, 6).toUpperCase();
       await botui.message.add({ type:'html', content: `Bedankt! Je <b>${contextLabel}</b> is verzonden naar Ultimo ✅<br><span class="hint">(Demo, geen echte ticket) – ref: ${fakeId}</span>` });
       await sleep(300);
@@ -230,7 +224,18 @@
       await SCENARIOS[step]();
     }
 
-    start();
+    async function bootstrap(){
+      try{
+        botui = new BotUI('botui-app');
+        await start();
+      }catch(err){
+        console.error('Init error', err);
+        const c = document.getElementById('botui-app');
+        if(c){ c.innerHTML = '<div style="background:#fff;border:2px solid #EE7E00;border-radius:12px;padding:12px">Er ging iets mis bij het laden van de chat. Vernieuw de pagina of probeer een andere QR. 🙏</div>'; }
+      }
+    }
+
+    window.addEventListener('load', bootstrap);
   </script>
 </body>
 </html>
