@@ -79,34 +79,39 @@
   <script src="https://cdn.jsdelivr.net/npm/vue@2"></script>
   <script src="https://cdn.jsdelivr.net/npm/botui/build/botui.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
-	<script>
-	/* ===== Sterke reset voor mobiel ===== */
-	(function(){
-	  const url = new URL(window.location.href);
-	  const qs = url.searchParams;
-	  const lang = (qs.get('lang') || localStorage.getItem('atalian_lang') || 'nl').toLowerCase();
+<script>
+/* ===== PRE-RESET voor mobiel/webviews ===== */
+(function(){
+  const url = new URL(window.location.href);
+  const qs = url.searchParams;
+  const lang = (qs.get('lang') || localStorage.getItem('atalian_lang') || 'nl').toLowerCase();
 
-	  if (qs.get('reset') === '1') {
-		try {
-		  // Wis expliciet alle gebruikte keys i.p.v. clear() (sommige mobile webviews negeren clear)
-		  [
-			'atalian_scenario_1','atalian_scenario_2','atalian_scenario_3','atalian_scenario_4',
-			'atalian_all_done','atalian_name','atalian_demo_tickets'
-		  ].forEach(k => localStorage.removeItem(k));
-		  // Taal behouden
-		  localStorage.setItem('atalian_lang', lang);
-		} catch(e) { /* ignore */ }
+  // Harde reset via ?reset=1
+  if (qs.get('reset') === '1') {
+    try {
+      // Wis expliciet alle keys i.p.v. clear() (sommige webviews negeren clear)
+      [
+        'atalian_scenario_1','atalian_scenario_2','atalian_scenario_3','atalian_scenario_4',
+        'atalian_all_done','atalian_name','atalian_demo_tickets'
+      ].forEach(k => localStorage.removeItem(k));
+      // taal bewaren
+      localStorage.setItem('atalian_lang', lang);
+    } catch(e) { /* ignore */ }
 
-		// Redirect naar start zonder reset, met cache-buster
-		qs.delete('reset');
-		qs.set('step','0');
-		qs.set('lang', lang);
-		qs.set('_', Date.now().toString()); // cache buster voorkomt “oude” pagina
-		window.location.replace(url.pathname + '?' + qs.toString());
-	  }
-	})();
-	</script>
-  <script>
+    // Redirect naar start met cache-buster (dwingt vers laden)
+    qs.delete('reset');
+    qs.set('step','0');
+    qs.set('lang', lang);
+    qs.set('_', Date.now().toString());
+    window.location.replace(url.pathname + '?' + qs.toString());
+  }
+
+  // Admin-paneel aanzetten met ?admin=1 → toont resetknop
+  if (qs.get('admin') === '1') {
+    localStorage.setItem('atalian_admin', 'yes');
+  }
+})();
+</script>
   
     // ===== i18n teksten =====
     const I18N = {
