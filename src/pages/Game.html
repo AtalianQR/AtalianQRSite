@@ -55,7 +55,7 @@
   <script>
     const botui = new BotUI('botui-app');
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    let USERNAME = '';
+    let USERNAME = localStorage.getItem('atalian_name') || '';
 
     function sleep(ms){ return new Promise(r=>setTimeout(r,ms)); }
 
@@ -96,6 +96,7 @@
       await botui.message.add({ type:'html', content: 'Hallo! Ik ben je <span style="color:var(--atalian-orange);font-weight:700">ATALIAN</span>-assistent 🤖. Hoe heet jij?' });
       const name = await botui.action.text({ action:{ placeholder:'Typ je naam…' } });
       USERNAME = (name.value||'collega').trim();
+      localStorage.setItem('atalian_name', USERNAME);
       await botui.message.add({ content: `Aangenaam, ${USERNAME}!` });
     }
 
@@ -116,6 +117,8 @@
     }
 
     async function ticketFlow(contextLabel){
+      const desc = await askProblem();
+      const email = await askEmail();
       await botui.message.add({ content: `Is dit dringend, ${USERNAME}?` });
       const urgent = await botui.action.button({
         action: [
@@ -126,8 +129,6 @@
       if(urgent.value==='ja'){
         await botui.message.add({ type:'html', content: 'Normaal zou je nu het telefoonnummer van de servicedesk krijgen ☎️.<br><b>Maar omdat ze zelf deelnemen aan dit event, laten we ze vandaag met rust 😇.</b>' });
       }
-      const desc = await askProblem();
-      const email = await askEmail();
       const fakeId = 'TCK-' + Math.random().toString(36).slice(2, 6).toUpperCase();
       await botui.message.add({ type:'html', content: `Bedankt! Je <b>${contextLabel}</b> is verzonden naar Ultimo ✅<br><span class="hint">(Demo, geen echte ticket) – ref: ${fakeId}</span>` });
       await sleep(300);
@@ -140,9 +141,8 @@
       await botui.message.add({ type:'html', content: 'Dit is onze speurtocht met AI + <b>Ultimo</b> (FMIS). Scan de verschillende QR-codes in het gebouw en ontdek per scenario hoe melden werkt: schoonmaak, techniek en comfort.' });
       await botui.message.add({ content: 'Tip: elke QR werkt apart. Er worden geen echte tickets aangemaakt – dit is een demo.' });
       await botui.message.add({ content: 'Veel plezier! 🤝 Scan nu de volgende QR voor een scenario.' });
-      // Toon optioneel voortgang (uitgezet, maar check kan hier):
-      // const done = countCompleted();
-      // if(done>0) await botui.message.add({ content:`Je hebt al ${done}/4 scenario’s ontdekt.` });
+      const done = countCompleted();
+      if(done>0) await botui.message.add({ content:`Je hebt al ${done}/4 scenario’s ontdekt.` });
     }
 
     async function scenarioCleaning(){
