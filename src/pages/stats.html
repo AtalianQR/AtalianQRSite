@@ -1,90 +1,342 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="nl">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>ATALIAN – Centrale stats</title>
-  <meta http-equiv="Cache-Control" content="no-store, no-cache, must-revalidate, max-age=0">
-  <meta http-equiv="Pragma" content="no-cache">
-  <meta http-equiv="Expires" content="0">
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>Atalian • Centrale logging – Stats</title>
   <style>
-    :root{--o:#EE7E00}
-    body{font-family:system-ui,-apple-system,Segoe UI,sans-serif;margin:20px;background:#f7f8fb;color:#0f172a}
-    h1{margin:0 0 .25rem 0}
-    .cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px;margin:16px 0}
-    .card{background:#fff;border:2px solid #eee;border-radius:12px;padding:12px}
-    .card h3{margin:.2rem 0;font-size:1rem}
-    .pill{display:inline-block;padding:.15rem .5rem;border-radius:999px;border:1px solid #e2e8f0;background:#f8fafc;font-size:.85rem}
-    table{width:100%;border-collapse:collapse;margin-top:10px;background:#fff;border-radius:12px;overflow:hidden;border:2px solid #eee}
-    th,td{padding:8px 10px;border-bottom:1px solid #eef2f7;text-align:left;font-size:.95rem}
-    th{background:#f9fafb}
-    .btn{border:2px solid var(--o);padding:.45rem .7rem;border-radius:10px;background:#fff;font-weight:700;cursor:pointer}
+    :root{--bg:#f7fafc;--card:#ffffff;--muted:#475569;--text:#1f2937;--accent:#0369a1;--good:#16a34a;--warn:#f59e0b;--bad:#ef4444}
+    *{box-sizing:border-box} body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,Cantarell,Arial;color:var(--text);background:var(--bg)}
+    .wrap{max-width:1100px;margin:0 auto;padding:20px} h1{margin:0 0 6px;font-size:22px} .muted{color:var(--muted)}
+    .grid{display:grid;gap:12px} .cards{grid-template-columns:repeat(5,minmax(0,1fr))} .card{background:var(--card);border:1px solid rgba(0,0,0,.08);
+      border-radius:16px;padding:14px;box-shadow:0 6px 24px rgba(0,0,0,.08)}
+    .kpi{display:flex;flex-direction:column;gap:4px} .kpi .val{font-size:24px;font-weight:700} .kpi .lbl{font-size:12px;color:var(--muted)}
+    .row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+    table{width:100%;border-collapse:collapse} th,td{border-bottom:1px solid rgba(0,0,0,.08);font-size:14px;padding:8px 6px} th{text-align:left;color:var(--muted);font-weight:600}
+    .toolbar{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:8px 0 14px}
+    input,select,button{background:#ffffff;color:var(--text);border:1px solid rgba(0,0,0,.15);border-radius:10px;padding:8px 10px}
+    .presets{display:flex;gap:6px;flex-wrap:wrap;align-items:center} .presets button{background:#fff;border:1px solid rgba(0,0,0,.15);border-radius:999px;padding:6px 10px;font-size:12px;cursor:pointer}
+    .presets button.active{background:#e0f2fe;border-color:#7dd3fc} button.primary{background:var(--bg);border:none} .right{margin-left:auto}
+    .spark{width:100%;height:48px;display:block} .legend{display:flex;gap:8px;flex-wrap:wrap} .legend span{display:inline-flex;align-items:center;gap:6px;font-size:12px;color:var(--muted)}
+    .dot{width:10px;height:10px;border-radius:50%} .notice{padding:10px;border:1px dashed rgba(0,0,0,.15);border-radius:10px;font-size:13px;color:var(--muted);background:#fff}
+    details{background:#fff;border:1px solid rgba(0,0,0,.08);border-radius:10px;padding:8px;margin-top:6px} summary{cursor:pointer;font-weight:600}
+    code{background:#f1f5f9;border:1px solid #e2e8f0;border-radius:6px;padding:1px 4px}
+    @media(min-width:0px) and (max-width:900px){.cards{grid-template-columns:repeat(2,minmax(0,1fr))}.row{grid-template-columns:1fr}}
   </style>
 </head>
 <body>
-  <h1>📊 ATALIAN – Centrale stats</h1>
-  <div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap">
-    <button class="btn" id="btn-refresh">🔄 Vernieuwen</button>
-    <button class="btn" id="btn-export">⬇️ Exporteer JSON</button>
-  </div>
+  <div class="wrap">
+    <h1>Atalian • Centrale logging</h1>
+    <div class="muted">Live overzicht van events uit <code>/api/log</code>. Inschrijvingen gebeuren bij het onthaal (<code>checkin</code>). Voortgang = aantal scenario’s “klaar”.</div>
 
-  <div class="cards">
-    <div class="card"><h3>Totaal</h3><div id="total" class="pill">0</div></div>
-    <div class="card"><h3>Per scenario</h3><div id="by-scenario"></div></div>
-    <div class="card"><h3>Urgentie</h3><div id="by-urgent"></div></div>
-    <div class="card"><h3>Foto</h3><div id="by-photo"></div></div>
-    <div class="card"><h3>Taal</h3><div id="by-lang"></div></div>
-  </div>
+    <div class="toolbar">
+      <label>Periode:
+        <input type="date" id="from"/><span class="muted">t/m</span><input type="date" id="to"/>
+      </label>
+      <div class="presets" style="margin-right:auto">
+        <span class="muted">Snel:</span>
+        <button data-preset="today">Vandaag</button>
+        <button data-preset="7d">Laatste 7 d</button>
+        <button data-preset="14d" class="active">Laatste 14 d</button>
+        <button data-preset="thisweek">Deze week</button>
+        <button data-preset="thismonth">Deze maand</button>
+        <button data-preset="all">Alles</button>
+      </div>
+      <label>Limit: <input type="number" id="limit" value="1000" min="50" step="50" style="width:90px"></label>
+      <button id="btn-load" class="primary">Vernieuw</button>
+	  <button id="btn-reset-since">Reset teller (vanaf nu)</button>
+	<button id="btn-reset-clear" title="Reset ongedaan maken">↺ Ongedaan maken</button>
+	<span id="since-badge" class="muted" style="margin-left:8px;"></span>
 
-  <h3>Laatste meldingen</h3>
-  <table id="tbl">
-    <thead><tr>
-      <th>#</th><th>Wanneer</th><th>Scenario</th><th>Urgent</th><th>Foto</th><th>Taal</th><th>Beschrijving</th><th>E-mail</th>
-    </tr></thead>
-    <tbody></tbody>
-  </table>
+      <label class="right"><input type="checkbox" id="auto"/> Auto-refresh (30s)</label>
+    </div>
+
+    <div class="grid cards">
+      <div class="card kpi"><div class="lbl">Bezoeken</div><div class="val" id="k-visits">–</div><div class="muted" id="k-visits-sub">start</div></div>
+      <div class="card kpi"><div class="lbl">Inschrijvingen (onthaal)</div><div class="val" id="k-checkins">–</div><div class="muted" id="k-checkins-sub">&nbsp;</div></div>
+      <div class="card kpi"><div class="lbl">Voltooid (4/4)</div><div class="val" id="k-complete">–</div><div class="muted" id="k-complete-sub">van ingeschreven</div></div>
+      <div class="card kpi"><div class="lbl">Tickets</div><div class="val" id="k-tickets">–</div><div class="muted" id="k-tickets-sub">&nbsp;</div></div>
+      <div class="card kpi"><div class="lbl">Deelnemers (uniek user×sessie)</div><div class="val" id="k-participants">–</div><div class="muted">&nbsp;</div></div>
+    </div>
+
+    <div class="card" style="margin-top:12px">
+      <div class="legend" style="margin-bottom:8px"><span><span class="dot" style="background:#38bdf8"></span> events/dag</span></div>
+      <svg id="spark" class="spark" viewBox="0 0 600 48"></svg>
+    </div>
+
+    <div class="row" style="margin-top:12px">
+      <div class="card">
+        <h3 style="margin:0 0 8px">Funnel</h3>
+        <table><thead><tr><th>Stap</th><th>Aantal</th><th>Conversie vanaf onthaal</th></tr></thead><tbody id="tb-funnel"></tbody></table>
+      </div>
+      <div class="card">
+        <h3 style="margin:0 0 8px">Top contexten</h3>
+        <table><thead><tr><th>Context</th><th>Aantal</th></tr></thead><tbody id="tb-context"></tbody></table>
+      </div>
+    </div>
+
+    <div class="row" style="margin-top:12px">
+      <div class="card"><h3 style="margin:0 0 8px">Urgentie</h3>
+        <table><thead><tr><th>Urgent</th><th>Aantal</th></tr></thead><tbody id="tb-urgent"></tbody></table>
+      </div>
+      <div class="card"><h3 style="margin:0 0 8px">Taal</h3>
+        <table><thead><tr><th>Taal</th><th>Aantal</th></tr></thead><tbody id="tb-lang"></tbody></table>
+      </div>
+    </div>
+
+    <div class="card" style="margin-top:12px">
+      <h3 style="margin:0 0 8px">Deelnemers (per gebruiker/sessie)</h3>
+      <div class="notice">We groeperen op <em>user</em> (gehashte <code>user_id</code> of anders <code>visitor_id</code>) en <em>session_id</em>. Alleen deelnemers met een <code>checkin</code> worden hier getoond.</div>
+      <table>
+        <thead><tr><th>Gebruiker</th><th>Taal</th><th>Progressie</th><th>Tickets</th></tr></thead>
+        <tbody id="tb-part"></tbody>
+      </table>
+    </div>
+
+    <div class="card" style="margin-top:12px">
+      <h3 style="margin:0 0 8px">Ruwe events (laatste 50)</h3>
+      <table><thead><tr><th>ts</th><th>event</th><th>ctx</th><th>urgent</th><th>lang</th><th>user</th></tr></thead><tbody id="tb-raw"></tbody></table>
+    </div>
+  </div>
 
 <script>
-async function load() {
-  const res = await fetch('/api/log');
-  const data = await res.json();
-  const items = data.items || [];
-  const totals = data.totals || {};
+const $=sel=>document.querySelector(sel);
+const fmtPct=x=>isFinite(x)?(x*100).toFixed(0)+'%':'–';
 
-  document.getElementById('total').textContent = totals.total || 0;
+function groupBy(arr,key){ return arr.reduce((a,it)=>{const k=(typeof key==='function'?key(it):it[key])??'—'; a[k]=(a[k]||0)+1; return a; },{}); }
+function sortEntries(obj){ return Object.entries(obj).sort((a,b)=>b[1]-a[1]); }
 
-  const pillList = (obj) => Object.entries(obj||{}).map(([k,v])=>`<span class="pill">${k}: <b>${v}</b></span>`).join(' ');
-
-  document.getElementById('by-scenario').innerHTML = pillList(totals.perScenario);
-  document.getElementById('by-urgent').innerHTML   = pillList(totals.urgent);
-  document.getElementById('by-photo').innerHTML    = pillList(totals.photo);
-  document.getElementById('by-lang').innerHTML     = pillList(totals.lang);
-
-  const tb = document.querySelector('#tbl tbody');
-  tb.innerHTML = items.map((r,i)=>`
-    <tr>
-      <td>${items.length - i}</td>
-      <td>${new Date(r.ts).toLocaleString()}</td>
-      <td>${(r.contextLabel||'')}</td>
-      <td>${r.urgent==='ja'?'dringend':'kan wachten'}</td>
-      <td>${r.photo?'ja':'nee'}</td>
-      <td>${r.lang||'nl'}</td>
-      <td>${(r.desc||'').replace(/[<>&]/g,'')}</td>
-      <td>${r.email||''}</td>
-    </tr>
-  `).join('');
+function inferEvent(rec){
+  if(!rec.event && (rec.contextLabel || rec.email_present!==undefined || rec.urgent)) return 'ticket_submitted';
+  return rec.event || 'event';
+}
+function normalize(rec){
+  const ev=inferEvent(rec); const ts=Number(rec.server_ts||rec.ts||Date.now()); const day=new Date(ts); day.setHours(0,0,0,0);
+  const who=rec.user_id || rec.visitor_id || 'unknown';
+  return { event:ev, context:rec.contextLabel||'—', urgent:rec.urgent??'onbekend', lang:rec.lang||'nl',
+    user:who, session:rec.session_id||'default', name:rec.display_name||null, step:(rec.step!=null?Number(rec.step):null),
+    photo:!!rec.photo, desc_len:(typeof rec.desc_len==='number'?rec.desc_len:null), ts, day:+day };
 }
 
-document.getElementById('btn-refresh').onclick = load;
-document.getElementById('btn-export').onclick = async () => {
-  const res = await fetch('/api/log'); const data = await res.json();
-  const blob = new Blob([JSON.stringify(data.items||[],null,2)], {type:'application/json'});
-  const url = URL.createObjectURL(blob);
-  const a = Object.assign(document.createElement('a'), { href:url, download:'atalian_stats_all.json' });
-  document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
-};
+async function fetchData(){
+  const limit=Math.max(50,parseInt($('#limit').value||'1000',10));
+  const url=new URL('/api/log',location.origin); url.searchParams.set('limit',String(limit));
+  const res=await fetch(url.toString()); if(!res.ok) throw new Error('HTTP '+res.status);
+  const json=await res.json(); const items=Array.isArray(json.items)? json.items.map(normalize) : [];
+  return items;
+}
 
-load();
+function applyDateFilter(items){
+  const f=$('#from').value? new Date($('#from').value).setHours(0,0,0,0):null;
+  const t=$('#to').value? new Date($('#to').value).setHours(23,59,59,999):null;
+  return items.filter(it=>(!f||it.ts>=f)&&(!t||it.ts<=t));
+}
+
+function mostCommon(obj){ const e=Object.entries(obj); if(!e.length) return 'nl'; e.sort((a,b)=>b[1]-a[1]); return e[0][0]; }
+function escapeHTML(s){ return (s||'').replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[c])); }
+
+// Bovenaan bij de helpers
+const SINCE_KEY = 'stats_since_ts';
+function getSinceTs(){
+  const v = localStorage.getItem(SINCE_KEY);
+  return v ? Number(v) : null;
+}
+function setSinceNow(){
+  localStorage.setItem(SINCE_KEY, String(Date.now()));
+}
+function clearSince(){
+  localStorage.removeItem(SINCE_KEY);
+}
+function renderSinceBadge(){
+  const s = getSinceTs();
+  const el = document.getElementById('since-badge');
+  if (!el) return;
+  el.textContent = s ? `telt vanaf: ${new Date(s).toLocaleString()}` : '';
+}
+
+// Breid je bestaande date-filter uit
+function applyDateFilter(items){
+  const f = $('#from').value ? new Date($('#from').value).setHours(0,0,0,0) : null;
+  const t = $('#to').value   ? new Date($('#to').value).setHours(23,59,59,999) : null;
+  const since = getSinceTs();
+  return items.filter(it =>
+    (!f     || it.ts >= f) &&
+    (!t     || it.ts <= t) &&
+    (!since || it.ts >= since)
+  );
+}
+
+// Na DOM geladen: knoppen laten werken
+document.getElementById('btn-reset-since').addEventListener('click', async ()=>{
+  if (!confirm('Teller starten vanaf dit moment? (Wis geen serverdata)')) return;
+  setSinceNow();
+  renderSinceBadge();
+  await load();
+});
+document.getElementById('btn-reset-clear').addEventListener('click', async ()=>{
+  clearSince();
+  renderSinceBadge();
+  await load();
+});
+
+// Roep bij init ook even aan:
+renderSinceBadge();
+
+
+// Bouw deelnemers-aggregatie
+function buildParticipants(items){
+  const map=new Map(); // key user|session -> agg
+  for(const it of items){
+    const key=(it.user||'unknown')+'|'+(it.session||'default');
+    let p=map.get(key);
+    if(!p){ p={ user:it.user, session:it.session, name:null, langs:{}, checked:false, steps:new Set(), tickets:[], first:it.ts, last:it.ts }; map.set(key,p); }
+    if(it.lang) p.langs[it.lang]=(p.langs[it.lang]||0)+1;
+    if(it.event==='name_set' && it.name && !p.name) p.name=it.name;
+    if(it.event==='checkin') p.checked=true;
+    if(it.event==='scenario_done' && it.step!=null) p.steps.add(String(it.step));
+    if(it.event==='ticket_submitted') p.tickets.push({ctx:it.context,urgent:it.urgent,ts:it.ts,photo:it.photo,desc_len:it.desc_len,lang:it.lang});
+    p.first=Math.min(p.first,it.ts); p.last=Math.max(p.last,it.ts);
+  }
+  return Array.from(map.values());
+}
+
+function renderKPIs(items, participants){
+  const visits  = items.filter(i => i.event === 'visit').length;
+  const tickets = items.filter(i => i.event === 'ticket_submitted').length;
+
+  const checkedList = participants.filter(p => p.checked);
+  const checked = checkedList.length;
+
+  // Volledig afgerond (4/4)
+  const completed = checkedList.filter(p => p.steps.size >= 4).length;
+
+  // 🔥 Gemiddelde voortgang over alle ingeschreven spelers
+  const sumSteps = checkedList.reduce((acc, p) => acc + Math.min(4, p.steps.size), 0);
+  const progressPct = checked ? (sumSteps / (checked * 4)) : 0;
+
+  // Deelnemers (uniek user×sessie – zoals je al had)
+  const participantsCount = participants.length;
+
+  // KPI-waarden
+  document.getElementById('k-visits').textContent       = visits;
+  document.getElementById('k-tickets').textContent      = tickets;
+  document.getElementById('k-checkins').textContent     = checked;
+  document.getElementById('k-participants').textContent = participantsCount;
+  document.getElementById('k-complete').textContent     = completed;
+
+  // Subtitels
+  document.getElementById('k-complete-sub').textContent =
+    checked
+      ? `${completed}/${checked} • ${fmtPct(completed/checked)} • Gem. voortgang: ${fmtPct(progressPct)}`
+      : '–';
+
+  document.getElementById('k-checkins-sub').textContent =
+    visits ? ('→ ' + fmtPct(checked/visits) + ' van bezoeken') : '–';
+}
+
+
+function renderFunnel(items, participants){
+  const start = participants.filter(p=>p.checked).length;
+  const steps = [
+    ['checkin','Ingeschreven'],
+    ['scenario_done','Scenario klaar (totaal)'],
+    ['ticket_submitted','Ticket ingediend (totaal)']
+  ];
+  const counts = Object.fromEntries(steps.map(([k])=>[k,0]));
+  for(const it of items){
+    if(it.event==='checkin') counts['checkin']++;
+    if(it.event==='scenario_done') counts['scenario_done']++;
+    if(it.event==='ticket_submitted') counts['ticket_submitted']++;
+  }
+  const rows = steps.map(([k,label])=>{
+    const n = counts[k]||0; const pct = start? ((n/start)*100).toFixed(0)+'%':'–';
+    return `<tr><td>${label}</td><td>${n}</td><td>${pct}</td></tr>`;
+  }).join('');
+  $('#tb-funnel').innerHTML = rows;
+}
+
+function renderTables(items){
+  const contexts = sortEntries(groupBy(items.filter(i=>i.event==='ticket_submitted'),'context')).slice(0,10)
+    .map(([k,v])=>`<tr><td>${k}</td><td>${v}</td></tr>`).join('');
+  $('#tb-context').innerHTML = contexts || '<tr><td colspan="2" class="muted">(geen data)</td></tr>';
+
+  const urgent = sortEntries(groupBy(items.filter(i=>i.event==='ticket_submitted'),'urgent'))
+    .map(([k,v])=>`<tr><td>${k}</td><td>${v}</td></tr>`).join('');
+  $('#tb-urgent').innerHTML = urgent || '<tr><td colspan="2" class="muted">(geen data)</td></tr>';
+
+  const langs = sortEntries(groupBy(items,'lang')).map(([k,v])=>`<tr><td>${k}</td><td>${v}</td></tr>`).join('');
+  $('#tb-lang').innerHTML = langs || '<tr><td colspan="2" class="muted">(geen data)</td></tr>';
+}
+
+function renderParticipants(list){
+  const onlyChecked = list.filter(p=>p.checked);
+  const rows = onlyChecked.map(p=>{
+    const langTop = mostCommon(p.langs);
+    const progress = Math.min(4, p.steps.size);
+    const label = (p.name? `${escapeHTML(p.name)} ` : '') + `<code>${(p.user||'').slice(0,12)}…</code>` + ` <span class="muted">#${escapeHTML(p.session||'default')}</span>`;
+    const ticketLines = (p.tickets.length? p.tickets.map(t=>(`<tr>
+        <td>${new Date(t.ts).toLocaleString()}</td><td>${escapeHTML(t.ctx)}</td><td>${escapeHTML(String(t.urgent))}</td>
+        <td>${t.photo?'📷':''}</td><td>${t.desc_len??'–'}</td><td>${escapeHTML(t.lang||'')}</td>
+      </tr>`)).join('') : `<tr><td colspan="6" class="muted">(geen tickets)</td></tr>`);
+    return `<tr>
+      <td><details><summary>${label}</summary>
+        <div class="muted">Eerste: ${new Date(p.first).toLocaleString()} • Laatste: ${new Date(p.last).toLocaleString()}</div>
+        <div style="margin-top:6px"><table>
+          <thead><tr><th>Moment</th><th>Context</th><th>Urgent</th><th>Foto</th><th>desc_len</th><th>Taal</th></tr></thead>
+          <tbody>${ticketLines}</tbody></table></div></details>
+      </td>
+      <td>${langTop}</td><td>${progress}/4</td><td>${p.tickets.length}</td></tr>`;
+  }).join('');
+  $('#tb-part').innerHTML = rows || '<tr><td colspan="4" class="muted">(nog geen ingeschreven deelnemers)</td></tr>';
+}
+
+function renderRaw(items){
+  const last = items.slice().sort((a,b)=>b.ts-a.ts).slice(0,50)
+    .map(it=>`<tr><td>${new Date(it.ts).toLocaleString()}</td><td>${it.event}</td><td>${it.context}</td><td>${it.urgent}</td><td>${it.lang}</td><td><code>${(it.user||'').slice(0,12)}…</code></td></tr>`).join('');
+  $('#tb-raw').innerHTML = last || '<tr><td colspan="6" class="muted">(geen data)</td></tr>';
+}
+
+function renderSpark(items){
+  const byDay={}; for(const it of items){ byDay[it.day]=(byDay[it.day]||0)+1; }
+  const days=Object.keys(byDay).sort((a,b)=>a-b).map(k=>({day:+k,count:byDay[k]})); if(!days.length){ $('#spark').innerHTML=''; return; }
+  const max=Math.max(...days.map(d=>d.count)); const W=600,H=48,pad=2,step=Math.max(1,(W-2*pad)/Math.max(1,days.length-1));
+  const points=days.map((d,i)=>{ const x=pad+i*step; const y=H-pad-(max? (d.count/max)*(H-2*pad):0); return `${x.toFixed(1)},${y.toFixed(1)}`; }).join(' ');
+  $('#spark').innerHTML=`<polyline fill="none" stroke="#38bdf8" stroke-width="2" points="${points}"/>`;
+}
+
+async function load(){
+  try{
+    const data=applyDateFilter(await fetchData());
+    const participants=buildParticipants(data);
+    renderKPIs(data,participants);
+    renderFunnel(data,participants);
+    renderTables(data);
+    renderRaw(data);
+    renderParticipants(participants);
+    renderSpark(data);
+  }catch(e){ alert('Laden mislukt: '+e.message); console.error(e); }
+}
+
+$('#btn-load').addEventListener('click',load);
+let timer=null; $('#auto').addEventListener('change',e=>{ if(e.target.checked){ timer=setInterval(load,30000);} else { clearInterval(timer); timer=null; }});
+
+// Presets
+function startOfWeek(d){ const c=new Date(d); const day=(c.getDay()+6)%7; c.setHours(0,0,0,0); c.setDate(c.getDate()-day); return c; }
+function endOfMonth(d){ const c=new Date(d.getFullYear(),d.getMonth()+1,0); c.setHours(23,59,59,999); return c; }
+function setPreset(name){
+  const now=new Date(); let from,to;
+  if(name==='today'){ from=new Date(now); from.setHours(0,0,0,0); to=new Date(now); to.setHours(23,59,59,999); }
+  else if(name==='7d'){ to=new Date(now); from=new Date(now.getTime()-6*24*3600*1000); }
+  else if(name==='14d'){ to=new Date(now); from=new Date(now.getTime()-13*24*3600*1000); }
+  else if(name==='thisweek'){ from=startOfWeek(now); to=new Date(from.getTime()+6*24*3600*1000); to.setHours(23,59,59,999); }
+  else if(name==='thismonth'){ from=new Date(now.getFullYear(),now.getMonth(),1); to=endOfMonth(now); }
+  else { from=new Date(2000,0,1); to=now; }
+  $('#from').value=from.toISOString().slice(0,10); $('#to').value=to.toISOString().slice(0,10);
+  document.querySelectorAll('.presets button').forEach(b=>b.classList.toggle('active',b.dataset.preset===name));
+}
+(document.querySelectorAll('.presets button')||[]).forEach(btn=>btn.addEventListener('click',()=>{ setPreset(btn.dataset.preset); load(); }));
+
+setPreset('14d'); load();
 </script>
 </body>
 </html>

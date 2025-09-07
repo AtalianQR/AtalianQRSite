@@ -1,20 +1,10 @@
-[functions]
-  directory = "netlify/functions"
+[build]
+  edge_functions = "netlify/edge-functions"
 
-# Zorg dat /api/log naar de function wijst
-[[redirects]]
-  from = "/api/log"
-  to = "/.netlify/functions/log"
-  status = 200
+[[edge_functions]]
+  path = "/api/health"
+  function = "health"
 
-# (optioneel) geen cache op demo-pagina's
-[[headers]]
-  for = "/game.html"
-  [headers.values]
-    Cache-Control = "no-store, no-cache, must-revalidate, max-age=0"
-
-[[headers]]
-  for = "/stats.html"
-  [headers.values]
-    Cache-Control = "no-store, no-cache, must-revalidate, max-age=0"
-
+[[edge_functions]]
+  path = "/api/log"
+  function = "api-log"
