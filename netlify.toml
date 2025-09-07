@@ -1,11 +1,13 @@
-[edge_functions]
-  directory = "netlify/edge-functions"
+[functions]
+  directory = "netlify/functions"
 
-[[edge_functions.routes]]
-  pattern = "/api/log"
-  function = "log"
+# Zorg dat /api/log naar de function wijst
+[[redirects]]
+  from = "/api/log"
+  to = "/.netlify/functions/log"
+  status = 200
 
-# Zorg dat game/stats niet gecached worden (optioneel maar handig bij demo’s)
+# (optioneel) geen cache op demo-pagina's
 [[headers]]
   for = "/game.html"
   [headers.values]
@@ -15,3 +17,4 @@
   for = "/stats.html"
   [headers.values]
     Cache-Control = "no-store, no-cache, must-revalidate, max-age=0"
+
