@@ -293,53 +293,60 @@ function logVisit(){ return logEvent('visit',{path:location.pathname+location.se
     await sleep(60); return email;
   }
 async function askPhoto(botuiInstance, label = t('photo_label'), compress = true){
-  await botuiInstance.message.add({ content: label });
-  const choice = await botuiInstance.action.button({
-    action: [
-      { text: '📷 Foto nemen', value: 'camera' },
-      { text: '🖼️ Kies uit galerij', value: 'gallery' },
-      { text: t('photo_skip'), value: 'skip' }
-    ]
-  });
+  while (true) {   // lus tot er gekozen of geskipt wordt
+    await botuiInstance.message.add({ content: label });
+    const choice = await botuiInstance.action.button({
+      action: [
+        { text: '📷 Foto nemen', value: 'camera' },
+        { text: '🖼️ Kies uit galerij', value: 'gallery' },
+        { text: t('photo_skip'), value: 'skip' }
+      ]
+    });
 
-  if (!choice || choice.value === 'skip') {
-    await botuiInstance.message.add({ content: t('photo_skip_msg') });
-    await sleep(80);
-    return null;
-  }
+    if (!choice || choice.value === 'skip') {
+      await botuiInstance.message.add({ content: t('photo_skip_msg') });
+      await sleep(80);
+      return null;   // stop lus
+    }
 
-  // ⬇︎ camera = forceren, gallery = vrije keuze (toont ook bestanden/fotobibliotheek)
-  const input = createHiddenFileInput(choice.value === 'camera' ? 'camera' : 'any');
+    const input = createHiddenFileInput(choice.value === 'camera' ? 'camera' : 'any');
 
-  const p = new Promise(resolve => {
-    input.onchange = async () => {
-      const file = input.files && input.files[0];
-      input.remove();
-      if (!file) { resolve(null); return; }
-      try {
-        let dataUrl = await fileToDataUrl(file);
-        try {
-          if (compress) dataUrl = await compressDataUrl(dataUrl, 1200, 0.8);
-        } catch (_) {
-          // fallback: sommige HEIC/codec combinaties kunnen niet naar canvas — neem dan de originele
+    const p = new Promise(resolve => {
+      input.onchange = async () => {
+        const file = input.files && input.files[0];
+        input.remove();
+        if (!file) {
+          resolve(null);   // niets gekozen → terug naar lus
+          return;
         }
-        await botuiInstance.message.add({
-          type: 'html',
-          content: `<div class='hint'>${t('photo_preview')}</div>
-                    <img src='${dataUrl}' alt='photo' style='max-width:100%;border-radius:10px;border:1px solid #ddd' />`
-        });
-        resolve(dataUrl);
-      } catch (e) {
-        console.error(e);
-        resolve(null);
-      }
-    };
-  });
+        try {
+          let dataUrl = await fileToDataUrl(file);
+          try {
+            if (compress) dataUrl = await compressDataUrl(dataUrl, 1200, 0.8);
+          } catch (_) {}
+          await botuiInstance.message.add({
+            type: 'html',
+            content: `<div class='hint'>${t('photo_preview')}</div>
+                      <img src='${dataUrl}' alt='photo'
+                      style='max-width:100%;border-radius:10px;border:1px solid #ddd' />`
+          });
+          resolve(dataUrl);
+        } catch (e) {
+          console.error(e);
+          resolve(null);
+        }
+      };
+    });
 
-  input.click();
-  await sleep(80);
-  return p;
+    input.click();
+    await sleep(80);
+    const result = await p;
+
+    if (result) return result; // foto gekozen → klaar
+    // anders → lus herhaalt: keuze wordt opnieuw aangeboden
+  }
 }
+
 
 
   // Ticket-flow
