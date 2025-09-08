@@ -292,8 +292,9 @@ function logVisit(){ return logEvent('visit',{path:location.pathname+location.se
     while(!emailRegex.test(email)){ await botui.message.add({content:t('invalid_email')}); const ans=await botui.action.text({action:{placeholder:LANG==='fr'?'vous@exemple.be':'jij@voorbeeld.be'}}); email=(ans && ans.value? String(ans.value).trim() : ''); }
     await sleep(60); return email;
   }
+  
 async function askPhoto(botuiInstance, label = t('photo_label'), compress = true){
-  while (true) {   // lus tot er gekozen of geskipt wordt
+  while (true) {
     await botuiInstance.message.add({ content: label });
     const choice = await botuiInstance.action.button({
       action: [
@@ -306,46 +307,68 @@ async function askPhoto(botuiInstance, label = t('photo_label'), compress = true
     if (!choice || choice.value === 'skip') {
       await botuiInstance.message.add({ content: t('photo_skip_msg') });
       await sleep(80);
-      return null;   // stop lus
+      return null;
     }
 
     const input = createHiddenFileInput(choice.value === 'camera' ? 'camera' : 'any');
 
-    const p = new Promise(resolve => {
+    const p = new Promise((resolve) => {
+      let resolved = false;
+      const cleanup = () => {
+        window.removeEventListener('focus', onFocus, true);
+        document.removeEventListener('visibilitychange', onVis, true);
+        if (input && input.parentNode) input.parentNode.removeChild(input);
+        clearTimeout(timer);
+      };
+      const safeResolve = (val) => { if (!resolved) { resolved = true; cleanup(); resolve(val); } };
+
+      // 1) Normale weg: user kiest een bestand
       input.onchange = async () => {
         const file = input.files && input.files[0];
-        input.remove();
-        if (!file) {
-          resolve(null);   // niets gekozen → terug naar lus
-          return;
-        }
+        if (!file) { safeResolve(null); return; }
         try {
           let dataUrl = await fileToDataUrl(file);
-          try {
-            if (compress) dataUrl = await compressDataUrl(dataUrl, 1200, 0.8);
-          } catch (_) {}
+          try { if (compress) dataUrl = await compressDataUrl(dataUrl, 1200, 0.8); } catch(_) {}
           await botuiInstance.message.add({
-            type: 'html',
-            content: `<div class='hint'>${t('photo_preview')}</div>
-                      <img src='${dataUrl}' alt='photo'
-                      style='max-width:100%;border-radius:10px;border:1px solid #ddd' />`
+            type:'html',
+            content:`<div class='hint'>${t('photo_preview')}</div>
+                     <img src='${dataUrl}' alt='photo' style='max-width:100%;border-radius:10px;border:1px solid #ddd'/>`
           });
-          resolve(dataUrl);
-        } catch (e) {
-          console.error(e);
-          resolve(null);
-        }
+          safeResolve(dataUrl);
+        } catch (e) { console.error(e); safeResolve(null); }
       };
+
+      // 2) Annuleren/terugkeren zonder keuze → resolve(null) zodat de loop herstart
+      const onFocus = () => {
+        // kleine debounce: geef OS 300ms om state te herstellen
+        setTimeout(() => {
+          if (resolved) return;
+          const hasFile = input.files && input.files.length > 0;
+          if (!hasFile) safeResolve(null);
+        }, 300);
+      };
+      const onVis = () => {
+        if (document.visibilityState === 'visible') onFocus();
+      };
+      window.addEventListener('focus', onFocus, true);
+      document.addEventListener('visibilitychange', onVis, true);
+
+      // 3) Safety net (bv. exotische browsers)
+      const timer = setTimeout(() => { safeResolve(null); }, 120000); // 2 min max
+
+      // start native picker
+      input.click();
     });
 
-    input.click();
     await sleep(80);
     const result = await p;
 
-    if (result) return result; // foto gekozen → klaar
-    // anders → lus herhaalt: keuze wordt opnieuw aangeboden
+    if (result) return result;          // foto gekozen → klaar
+    // geen foto gekozen → while(true) herhaalt en toont opnieuw de knoppen
+    await botuiInstance.message.add({ content: "Geen foto gekozen — kies opnieuw of sla over." });
   }
 }
+
 
 
 
