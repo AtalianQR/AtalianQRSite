@@ -347,7 +347,7 @@ function logVisit(){ return logEvent('visit',{path:location.pathname+location.se
     if(start && start.value==='start'){
       localStorage.setItem(CHECKED_KEY,'yes');
       await logEvent('checkin',{display_name:USERNAME});
-      await botui.message.add({content:t('intro_go')});
+      await botui.message.add({content:t('intro_line1')});
     }
   }
 

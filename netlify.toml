@@ -8,3 +8,15 @@
 [[edge_functions]]
   path = "/api/log"
   function = "api-log"
+# Forceer https
+[[redirects]]
+  from = "http://atalianqrportal.netlify.app/*"
+  to = "https://atalianqrportal.netlify.app/:splat"
+  status = 301
+  force = true
+
+# Normaliseer pad /game -> /game.html
+[[redirects]]
+  from = "/game"
+  to = "/game.html"
+  status = 200
