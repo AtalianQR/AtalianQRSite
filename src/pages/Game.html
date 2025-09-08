@@ -138,7 +138,7 @@
 	  photo_preview: 'Aperçu :',
 	  photo_take: '📷 Prendre une photo',
       photo_gallery: '🖼️ Choisir dans la galerie',
-	  photo_none: 'Aucune photo choisie — réessaie ou passe.'
+	  photo_none: 'Aucune photo choisie — réessaie ou passe.',
 	  thanks_sent: (ctx,id) => `Merci ! Ton <b>${ctx}</b> a été envoyé à Ultimo ✅<br><span class="hint">(Démo – ticket fictif) • réf: ${id}</span>`,
 	  summary_heading: 'Récapitulatif :',
 	  summary_urgent: u => `• Urgent : <b>${u==='ja'?'oui':'non'}</b>`,
@@ -380,7 +380,6 @@ async function askPhoto(botuiInstance, label = t('photo_label'), compress = true
   }
 }
 
-}
 
 
 
