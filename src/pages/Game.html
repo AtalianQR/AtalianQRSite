@@ -84,14 +84,17 @@
       photo_skip: '⏭️ Overslaan',
       photo_skip_msg: 'Oké, we gaan verder zonder foto 👍',
       photo_preview: 'Voorbeeld van je foto:',
+	  photo_take: '📷 Foto nemen',
+      photo_gallery: '🖼️ Kies uit galerij',
+	  photo_none: 'Geen foto gekozen — kies opnieuw of sla over.',
       thanks_sent: (ctx,id) => `Bedankt! Je <b>${ctx}</b> is verzonden naar Ultimo ✅<br><span class="hint">(Demo – geen echte ticket) • ref: ${id}</span>`,
       summary_heading: 'Samenvatting:',
       summary_urgent: u => `• Urgent: <b>${u==='ja'?'ja':'nee'}</b>`,
       summary_desc: d => `• Beschrijving: <b>${d||'-'}</b>`,
       summary_email: e => `• Contact: <b>${e}</b>`,
       summary_photo: '• Foto: <i>bijgevoegd</i>',
-      end_msg: 'Bedankt! Dit scenario is afgerond ✅. Scan nu een andere QR om verder te spelen.',
-      confetti_msg: '🎊 <b>Fantastisch!</b> Je hebt alle 4 scenario’s gedaan. Merci om mee te spelen 🙏',
+      end_msg: 'Bedankt! Scan een andere QR en vervolg je missie.🕵️‍♂️',
+      confetti_msg: '🏆 Topprestatie! Je ontdekte alle 4 QR’s en maakte meldingen. Zo simpel werkt het ook in het echt! 💡',
       scen1_q: 'Stel: je vindt een ruimte die niet netjes is 😱. Wat doe je?',
       scen1_opts: ['Direct melden via Ultimo 🖥️','Een emmer water halen 🪣','Je hebt het niet gezien 🙈'],
       scen1_feedback: n => `Met de QR pakt ons schoonmaakteam het direct op. Geen stress, ${n} 😅, we maken samen een melding.`,
@@ -107,6 +110,7 @@
       scen4_q: 'Een lamp is stuk in de vergaderzaal. Wat doe je?',
       scen4_opts: ['Ultimo inschakelen 🖥️','Zelf vervangen 🤕','Vergaderen in het donker 😎'],
       scen4_feedback: 'Ultimo is slimmer 🤓. Geen kopzorgen, laten we gewoon samen een melding maken.'
+	  
     },
 	  fr: {
 	  subtitle: '🎉 Événement du personnel – démo avec assistant IA · pas de vrais tickets',
@@ -132,14 +136,17 @@
 	  photo_skip: '⏭️ Passer',
 	  photo_skip_msg: 'D’accord, on continue sans photo 👍',
 	  photo_preview: 'Aperçu :',
-	  thanks_sent: (ctx,id) => `Merci ! Ton <b>${ctx}</b> a été envoyé à Ultimo ✅<br><span class="hint">(Démo – pas de vrai ticket) • réf: ${id}</span>`,
+	  photo_take: '📷 Prendre une photo',
+      photo_gallery: '🖼️ Choisir dans la galerie',
+	  photo_none: 'Aucune photo choisie — réessaie ou passe.'
+	  thanks_sent: (ctx,id) => `Merci ! Ton <b>${ctx}</b> a été envoyé à Ultimo ✅<br><span class="hint">(Démo – ticket fictif) • réf: ${id}</span>`,
 	  summary_heading: 'Récapitulatif :',
 	  summary_urgent: u => `• Urgent : <b>${u==='ja'?'oui':'non'}</b>`,
 	  summary_desc: d => `• Description : <b>${d||'-'}</b>`,
 	  summary_email: e => `• Contact : <b>${e}</b>`,
 	  summary_photo: '• Photo : <i>jointe</i>',
-	  end_msg: 'Merci ! Scanne un autre QR pour continuer.',
-	  confetti_msg: '🎊 <b>Génial !</b> Tu as fini les 4 scénarios. Merci 🙏',
+	  end_msg: 'Merci ! Trouve un autre QR et poursuis ta mission.🕵️‍♂️',
+	  confetti_msg: '🏆 Mission réussie ! Les 4 QR sont scannés, les signalements faits. En vrai, c’est si simple que ça! 💡',
 	  scen1_q: 'Tu trouves un local pas propre 😱. Que fais-tu ?',
 	  scen1_opts: ['Tu les signales vers Ultimo 🖥️',"Tu attrapes un seau d’eau 🪣","T'as rien vu... 🙈"],
 	  scen1_feedback: n => `Grâce au QR, notre équipe de nettoyage agit direct. Pas de stress, ${n} 😅, on crée le signalement.`,
@@ -296,11 +303,12 @@ function logVisit(){ return logEvent('visit',{path:location.pathname+location.se
   
 async function askPhoto(botuiInstance, label = t('photo_label'), compress = true){
   while (true) {
+    // Vraag + knoppen (i18n)
     await botuiInstance.message.add({ content: label });
     const choice = await botuiInstance.action.button({
       action: [
-        { text: '📷 Foto nemen', value: 'camera' },
-        { text: '🖼️ Kies uit galerij', value: 'gallery' },
+        { text: t('photo_take'), value: 'camera' },
+        { text: t('photo_gallery'), value: 'gallery' },
         { text: t('photo_skip'), value: 'skip' }
       ]
     });
@@ -313,8 +321,9 @@ async function askPhoto(botuiInstance, label = t('photo_label'), compress = true
 
     const input = createHiddenFileInput(choice.value === 'camera' ? 'camera' : 'any');
 
-    const p = new Promise((resolve) => {
+    const result = await new Promise((resolve) => {
       let resolved = false;
+
       const cleanup = () => {
         window.removeEventListener('focus', onFocus, true);
         document.removeEventListener('visibilitychange', onVis, true);
@@ -323,51 +332,54 @@ async function askPhoto(botuiInstance, label = t('photo_label'), compress = true
       };
       const safeResolve = (val) => { if (!resolved) { resolved = true; cleanup(); resolve(val); } };
 
-      // 1) Normale weg: user kiest een bestand
+      // Normale pad: bestand gekozen
       input.onchange = async () => {
         const file = input.files && input.files[0];
         if (!file) { safeResolve(null); return; }
         try {
           let dataUrl = await fileToDataUrl(file);
-          try { if (compress) dataUrl = await compressDataUrl(dataUrl, 1200, 0.8); } catch(_) {}
+          try { if (compress) dataUrl = await compressDataUrl(dataUrl, 1200, 0.8); } catch (_) {}
           await botuiInstance.message.add({
-            type:'html',
-            content:`<div class='hint'>${t('photo_preview')}</div>
-                     <img src='${dataUrl}' alt='photo' style='max-width:100%;border-radius:10px;border:1px solid #ddd'/>`
+            type: 'html',
+            content: `<div class='hint'>${t('photo_preview')}</div>
+                      <img src='${dataUrl}' alt='photo'
+                           style='max-width:100%;border-radius:10px;border:1px solid #ddd'/>`
           });
           safeResolve(dataUrl);
-        } catch (e) { console.error(e); safeResolve(null); }
+        } catch (e) {
+          console.error(e); safeResolve(null);
+        }
       };
 
-      // 2) Annuleren/terugkeren zonder keuze → resolve(null) zodat de loop herstart
+      // Annuleren/terugkeren → resolve(null) zodat lus herstart
       const onFocus = () => {
-        // kleine debounce: geef OS 300ms om state te herstellen
         setTimeout(() => {
           if (resolved) return;
           const hasFile = input.files && input.files.length > 0;
           if (!hasFile) safeResolve(null);
         }, 300);
       };
-      const onVis = () => {
-        if (document.visibilityState === 'visible') onFocus();
-      };
+      const onVis = () => { if (document.visibilityState === 'visible') onFocus(); };
+
       window.addEventListener('focus', onFocus, true);
       document.addEventListener('visibilitychange', onVis, true);
 
-      // 3) Safety net (bv. exotische browsers)
-      const timer = setTimeout(() => { safeResolve(null); }, 120000); // 2 min max
+      // Safety net
+      const timer = setTimeout(() => { safeResolve(null); }, 120000);
 
       // start native picker
       input.click();
     });
 
     await sleep(80);
-    const result = await p;
 
-    if (result) return result;          // foto gekozen → klaar
-    // geen foto gekozen → while(true) herhaalt en toont opnieuw de knoppen
-    await botuiInstance.message.add({ content: "Geen foto gekozen — kies opnieuw of sla over." });
+    if (result) return result; // foto gekozen → klaar
+
+    // geen foto gekozen → opnieuw opties tonen
+    await botuiInstance.message.add({ content: t('photo_none') });
   }
+}
+
 }
 
 
