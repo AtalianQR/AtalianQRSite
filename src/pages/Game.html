@@ -66,10 +66,10 @@
       hello_name: 'Welkom bij het onthaalloket 👋. Ik ben je <span style="color:var(--atalian-orange);font-weight:700">ATALIAN</span>-assistent 🤖. Hoe heet jij?',
       nice_to_meet: n => `Aangenaam, ${n}!`,
       intro_welcome: n => `Leuk dat je meedoet, ${n}!`,
-      intro_line1: 'Dit is onze speurtocht met AI + <b>Ultimo</b> 🕵️‍♀️. <br> Scan de 4 QR-codes in de zaal (schoonmaak, techniek, comfort).  Bij elke scan speel je klant en meld je een probleem via een ticket. 👉 Je missie is geslaagd zodra alle 4 meldingen gedaan zijn. Veel succes en plezier! 🚀',
+      intro_line1: 'Dit is onze speurtocht met AI + <b>Ultimo</b> 🕵️‍♀️. <br> Scan de 4 QR-codes in de zaal (schoonmaak, techniek, comfort).  Bij elke scan speel je klant en meld je een probleem via een ticket. 👉 Je missie is geslaagd zodra alle 4 meldingen gedaan zijn. ',
       intro_tip: '⚠️ Eerst inchecken hier bij het onthaal. Daarna pas werkt elke andere QR.',
       intro_progress: d => `Jouw voortgang: ${d}/4 scenario’s.`,
-      intro_go: 'Klaar? Druk op <b>Start spel</b> en scan daarna je volgende QR. 🚀',
+      intro_go: 'Klaar voor actie? Scoor 4 QR’s, 4 meldingen. Veel succes en plezier! 🚀',
       start_btn: '✅ Inchecken + Start spel',
       need_checkin: 'Ga eerst naar het onthaal om deel te nemen 🙏',
       ask_problem: 'Kun je kort beschrijven wat er aan de hand is?',
@@ -393,7 +393,7 @@ async function askPhoto(botuiInstance, label = t('photo_label'), compress = true
     if(start && start.value==='start'){
       localStorage.setItem(CHECKED_KEY,'yes');
       await logEvent('checkin',{display_name:USERNAME});
-      await botui.message.add({content:t('intro_line1')});
+      await botui.message.add({content:t('intro_go')});
     }
   }
 
