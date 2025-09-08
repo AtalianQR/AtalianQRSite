@@ -428,7 +428,7 @@ async function askPhoto(botuiInstance, label = t('photo_label'), compress = true
     await botui.message.add({content:t('intro_tip')});
 
     const done=countCompleted();
-    await botui.message.add({content:t('intro_progress',done)});
+    //await botui.message.add({content:t('intro_progress',done)});
 
     // Incheck-knop (zet gate open)
     const start = await botui.action.button({action:[{text:t('start_btn'),value:'start'}]});
