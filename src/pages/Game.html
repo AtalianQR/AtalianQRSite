@@ -416,7 +416,7 @@ async function askPhoto(botuiInstance, label = t('photo_label'), compress = true
   }
   
 
-  
+
 
   // Scenario’s
   async function intro(){
@@ -455,25 +455,30 @@ async function askPhoto(botuiInstance, label = t('photo_label'), compress = true
   async function scenarioCleaning(){ await askNameIfNeeded(); await botui.message.add({content:t('scen1_q')});
     await botui.action.button({action:[{text:I18N[LANG].scen1_opts[0],value:'ultimo'},{text:I18N[LANG].scen1_opts[1],value:'mop'},{text:I18N[LANG].scen1_opts[2],value:'niks'}]});
     await botui.message.add({content:t('scen1_feedback',USERNAME)});
-    try{ await ticketFlow(LANG==='fr'?'signalement nettoyage':'schoonmaak-melding'); await endMessage(); markScenarioDone(1);}catch(_){}
+    try{ await ticketFlow(LANG==='fr'?'signalement nettoyage':'schoonmaak-melding'); markScenarioDone(1); await endMessage(); }catch(_){}
   }
   async function scenarioCoffee(){ await askNameIfNeeded(); await botui.message.add({content:t('scen2_q')});
     await botui.action.button({action:[{text:I18N[LANG].scen2_opts[0],value:'bel'},{text:I18N[LANG].scen2_opts[1],value:'ultimo'},{text:I18N[LANG].scen2_opts[2],value:'thee'}]});
     await botui.message.add({content:t('scen2_feedback',USERNAME)});
-    try{ await ticketFlow(LANG==='fr'?'machine à café en panne':'koffiemachine-melding'); await endMessage(); markScenarioDone(2);}catch(_){}
+    try{ await ticketFlow(LANG==='fr'?'machine à café en panne':'koffiemachine-melding'); markScenarioDone(2); await endMessage();}catch(_){}
   }
   async function scenarioProgram(){ await askNameIfNeeded(); await botui.message.add({content:t('scen3_q')});
     await botui.action.button({action:[{text:t('scen3_btn'),value:'toon'}]});
     await botui.message.add({type:'html',content:t('scen3_info')});
     const wil=await botui.action.button({action:[{text:t('scen3_mk'),value:'ja'},{text:t('scen3_ok'),value:'nee'}]});
-    if(wil && wil.value==='ja'){ try{ await ticketFlow(LANG==='fr'?'programme de nettoyage':'poetsprogramma-melding'); await endMessage(); markScenarioDone(3);}catch(_){}} else { await botui.message.add({content:t('scen3_okreply')}); await endMessage(); markScenarioDone(3); }
+    if(wil && wil.value==='ja'){ try{ await ticketFlow(LANG==='fr'?'programme de nettoyage':'poetsprogramma-melding'); markScenarioDone(3); await endMessage(); }catch(_){}} else { await botui.message.add({content:t('scen3_okreply')}); await endMessage(); markScenarioDone(3); }
   }
   async function scenarioLamp(){ await askNameIfNeeded(); await botui.message.add({content:t('scen4_q')});
     await botui.action.button({action:[{text:I18N[LANG].scen4_opts[0],value:'ultimo'},{text:I18N[LANG].scen4_opts[1],value:'zelf'},{text:I18N[LANG].scen4_opts[2],value:'donker'}]});
     await botui.message.add({content:t('scen4_feedback')});
-    try{ await ticketFlow(LANG==='fr'?'lampe cassée':'lamp-melding'); await endMessage(); markScenarioDone(4);}catch(_){}
+    try{ await ticketFlow(LANG==='fr'?'lampe cassée':'lamp-melding'); markScenarioDone(4); await endMessage(); }catch(_){}
   }
-  async function endMessage(){ await botui.message.add({content:t('end_msg')}); }
+	async function endMessage(){
+	  // Toon geen eindboodschap als alle scenario’s reeds afgerond zijn
+	  if (localStorage.getItem(PROG_KEY) === 'yes') return;
+	  await botui.message.add({ content: t('end_msg') });
+	}
+
 
   // URL reset (bv. ?reset=1)
   if(qs.get('reset')==='1'){
