@@ -592,11 +592,11 @@ async function askPhoto(botuiInstance, label = t('photo_label'), compress = true
 		}
 
 		// Redirect alleen als je écht via de gate kwam en er een bedoelde step is
-		const next = localStorage.getItem('atalian_attempt_step');
-		if (fromGate && next) {
-		  window.location.replace(`${window.location.pathname}?step=${encodeURIComponent(next)}&lang=${LANG}`);
-		  return;
-		}
+		//const next = localStorage.getItem('atalian_attempt_step');
+		//if (fromGate && next) {
+		//  window.location.replace(`${window.location.pathname}?step=${encodeURIComponent(next)}&lang=${LANG}`);
+		//  return;
+		//}
 
 		// Anders blijf je gewoon op step=0 (zoals je vroeger had): geen redirect
 		// Desgewenst kan je hier nog voortgang tonen:

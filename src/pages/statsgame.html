@@ -77,10 +77,14 @@
 
 <script>
 /* ===== Helpers ===== */
-const API = 'https://atalianqr.workers.dev/api/log';
+const API =
+  location.hostname.includes('localhost') || location.hostname.includes('127.0.0.1')
+    ? '/api/log'
+    : 'https://atalian-logs.atalianqr.workers.dev/api/log';
+
 const $ = (s)=>document.querySelector(s);
 const fmtPct = (x)=> isFinite(x) ? (x*100).toFixed(0)+'%' : '–';
-const API = '/api/log';
+
 
 /* ===== Normalisatie (compatibel met je game-logger) ===== */
 function inferEvent(rec){
