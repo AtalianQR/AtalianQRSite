@@ -70,6 +70,7 @@
 <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
 
 <script>
+
   /* ===== i18n ===== */
   const I18N = {
     nl: {
@@ -294,24 +295,82 @@ function logVisit(){ return logEvent('visit',{path:location.pathname+location.se
   }
 
   // UI
-  async function askNameIfNeeded(){
-    if (USERNAME) return;
-    await botui.message.add({type:'html',content:t('hello_name')});
-    const res = await botui.action.text({action:{placeholder: LANG==='fr'?'Entrez votre nom…':'Typ je naam…'}});
-    USERNAME = (res && res.value ? String(res.value).trim() : '') || (LANG==='fr'?'collègue':'collega');
-    localStorage.setItem('atalian_name',USERNAME);
-    await logEvent('name_set',{display_name:USERNAME});
-    await botui.message.add({content:t('nice_to_meet',USERNAME)});
-    await sleep(60);
-  }
-  async function askProblem(){ await botui.message.add({content:t('ask_problem')});
-    const {value}=await botui.action.text({action:{placeholder:LANG==='fr'?'Décrivez brièvement…':'Schrijf kort je melding…'}}); await sleep(40); return (value||'').trim(); }
-  async function askEmail(){
-    await botui.message.add({content:t('ask_email')});
-    let {value}=await botui.action.text({action:{placeholder:LANG==='fr'?'vous@exemple.be':'jij@voorbeeld.be'}}); let email=(value||'').trim();
-    while(!emailRegex.test(email)){ await botui.message.add({content:t('invalid_email')}); const ans=await botui.action.text({action:{placeholder:LANG==='fr'?'vous@exemple.be':'jij@voorbeeld.be'}}); email=(ans && ans.value? String(ans.value).trim() : ''); }
-    await sleep(60); return email;
-  }
+	// kleine helpers
+	const KEY_NAME  = 'atalian_name';
+	const KEY_EMAIL = 'atalian_email';
+
+	function setStored(key, value) {
+	  try { localStorage.setItem(key, value); } catch(_) {}
+	  try { sessionStorage.setItem(key, value); } catch(_) {}
+	  document.cookie = `${key}=${encodeURIComponent(value)}; max-age=31536000; path=/; samesite=lax`;
+	}
+
+	function getStored(key) {
+	  try { const v = localStorage.getItem(key); if (v) return v; } catch(_) {}
+	  const m = document.cookie.split('; ').find(r => r.startsWith(key + '='));
+	  if (m) return decodeURIComponent(m.split('=')[1]);
+	  try { const v2 = sessionStorage.getItem(key); if (v2) return v2; } catch(_) {}
+	  return '';
+	}
+
+	async function askNameIfNeeded() {
+	  if (USERNAME) return;
+
+	  // eventueel vooraf opgeslagen naam tonen
+	  const pre = getStored(KEY_NAME);
+
+	  await botui.message.add({ type: 'html', content: t('hello_name') });
+
+	  const res = await botui.action.text({
+		action: {
+		  placeholder: LANG === 'fr' ? 'Entrez votre nom…' : 'Typ je naam…',
+		  value: pre || ''
+		}
+	  });
+
+	  USERNAME = (res && res.value ? String(res.value).trim() : '') || (LANG === 'fr' ? 'collègue' : 'collega');
+	  setStored(KEY_NAME, USERNAME);
+
+	  await logEvent('name_set', { display_name: USERNAME });
+	  await botui.message.add({ content: t('nice_to_meet', USERNAME) });
+	  await sleep(60);
+	}
+
+	async function askProblem() {
+	  await botui.message.add({ content: t('ask_problem') });
+
+	  const { value } = await botui.action.text({
+		action: { placeholder: LANG === 'fr' ? 'Décrivez brièvement…' : 'Schrijf kort je melding…' }
+	  });
+
+	  await sleep(40);
+	  return (value || '').trim();
+	}
+
+	async function askEmail() {
+	  const pre = getStored(KEY_EMAIL);
+
+	  await botui.message.add({ content: t('ask_email') });
+
+	  let { value } = await botui.action.text({
+		action: { placeholder: LANG === 'fr' ? 'vous@exemple.be' : 'jij@voorbeeld.be', value: pre || '' }
+	  });
+
+	  let email = (value || '').trim();
+
+	  while (!emailRegex.test(email)) {
+		await botui.message.add({ content: t('invalid_email') });
+		const ans = await botui.action.text({
+		  action: { placeholder: LANG === 'fr' ? 'vous@exemple.be' : 'jij@voorbeeld.be', value: email }
+		});
+		email = (ans && ans.value ? String(ans.value).trim() : '');
+	  }
+
+	  setStored(KEY_EMAIL, email);
+	  await sleep(60);
+	  return email;
+	}
+
   
 async function askPhoto(botuiInstance, label = t('photo_label'), compress = true){
   while (true) {
