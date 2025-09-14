@@ -45,6 +45,12 @@
 	  word-wrap: break-word;             /* breek lange woorden (oude syntax) */
 	  overflow-wrap: anywhere;           /* moderne fallback */
 	}
+	/* Zorg dat alle BotUI-knoppen hun tekst links uitlijnen */
+	.botui-actions-buttons button {
+	  text-align: left !important;
+	  justify-content: flex-start;  /* icoontjes ook netjes mee naar links */
+	}
+	
   </style>
 </head>
 <body>
