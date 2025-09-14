@@ -1,10 +1,11 @@
 name = "atalian-logs"
 main = "src/index.js"
 compatibility_date = "2024-09-01"
-# (optioneel, maar handig)
-# account_id = "Atalianqr@gmail.com (Google)"
+workers_dev = true
+# account_id = "<JE-ACCOUNT-ID>"   # optioneel; numeriek/UUID-achtig, geen e-mail
 
 [[kv_namespaces]]
-binding = "atalian_logs"
-id = "d90399a3861a402b9ffbe7d219f308da"                      # resultaat van de 'create' zonder --preview
+binding = "atalian_logs"           # matcht je code: env.atalian_logs
+id = "d90399a3861a402b9ffbe7d219f308da"
 preview_id = "2748950e64454872bbd42185ea601eda"
+
