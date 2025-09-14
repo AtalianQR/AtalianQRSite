@@ -5,6 +5,6 @@ compatibility_date = "2024-09-01"
 # account_id = "Atalianqr@gmail.com (Google)"
 
 [[kv_namespaces]]
-binding = ""atalian_logs"
+binding = "atalian_logs"
 id = "d90399a3861a402b9ffbe7d219f308da"                      # resultaat van de 'create' zonder --preview
 preview_id = "2748950e64454872bbd42185ea601eda"
