@@ -122,7 +122,7 @@
       scen2_feedback: n => `${n}, als je voor Ultimo kiest, komt dit bij onze technische dienst terecht 🧰. Dit is wellicht de beste optie.`,
       scen3_q: 'Benieuwd naar het poetsprogramma van deze ruimte? 📅 Dat tonen we via deze QR.',
       scen3_btn: 'Toon poetsprogramma 🧹',
-      scen3_info: '🌞 <b>Dagelijks</b> op werkdagen. Volgende beurt: <b>za 20-09-2025</b> (demo). <br> Wil je een melding maken rond het poetsprogramma of is het duidelijk?',
+      scen3_info: '🌞 <b>Dagelijks</b>. Volgende beurt: <b>za 20-09-2025</b> (demo). <br> Wil je een melding maken rond het poetsprogramma of is het duidelijk?',
       scen3_mk: '📩 Maak melding',
       scen3_ok: 'Het is duidelijk 👍',
       scen3_okreply: 'Top, onthouden 😎.',
@@ -174,7 +174,7 @@
 	  scen2_feedback: n => `Parfait, ${n} ! Dans Ultimo, ça arrive directement chez notre service technique 🧰. Faisons tout de suite un signalement pour ça.`,
 	  scen3_q: 'Curieux du programme de nettoyage de cet espace? 📅 On te le montre via ce QR.',
 	  scen3_btn: 'Afficher le programme 🧹',
-	  scen3_info: '🌞 <b>Quotidien</b> les jours ouvrables. Prochain passage : <b>sam 20-09-2025</b> (démo).<br> Veux-tu créer un signalement concernant le programme de nettoyage ou est-ce clair ?',
+	  scen3_info: '🌞 <b>Quotidien</b>. Prochain passage : <b>sam 20-09-2025</b> (démo).<br> Veux-tu créer un signalement concernant le programme de nettoyage ou est-ce clair ?',
 	  scen3_mk: '📩 Créer un signalement',
 	  scen3_ok: "C’est clair 👍",
 	  scen3_okreply: 'Ok, je le note 😎.',
@@ -362,6 +362,20 @@ function logVisit(){ return logEvent('visit',{path:location.pathname+location.se
 		action: { placeholder: LANG === 'fr' ? 'vous@exemple.be' : 'jij@voorbeeld.be', value: pre || '' }
 	  });
 
+	  // <<< hier injecteren we de attributen >>>
+	  setTimeout(() => {
+		const inputs = document.querySelectorAll('.botui-actions-text-input');
+		const inp = inputs[inputs.length - 1]; // pak het laatste inputveld
+		if (inp) {
+		  inp.setAttribute('type', 'email');
+		  inp.setAttribute('autocomplete', 'email');
+		  inp.setAttribute('inputmode', 'email');
+		  inp.setAttribute('autocapitalize', 'off');
+		  inp.setAttribute('spellcheck', 'false');
+		}
+	  }, 0);
+	  // <<< einde injectie >>>
+
 	  let email = (value || '').trim();
 
 	  while (!emailRegex.test(email)) {
@@ -369,6 +383,20 @@ function logVisit(){ return logEvent('visit',{path:location.pathname+location.se
 		const ans = await botui.action.text({
 		  action: { placeholder: LANG === 'fr' ? 'vous@exemple.be' : 'jij@voorbeeld.be', value: email }
 		});
+
+		// ook hier opnieuw attributen zetten (voor het nieuwe veld)
+		setTimeout(() => {
+		  const inputs = document.querySelectorAll('.botui-actions-text-input');
+		  const inp = inputs[inputs.length - 1];
+		  if (inp) {
+			inp.setAttribute('type', 'email');
+			inp.setAttribute('autocomplete', 'email');
+			inp.setAttribute('inputmode', 'email');
+			inp.setAttribute('autocapitalize', 'off');
+			inp.setAttribute('spellcheck', 'false');
+		  }
+		}, 0);
+
 		email = (ans && ans.value ? String(ans.value).trim() : '');
 	  }
 
@@ -376,6 +404,7 @@ function logVisit(){ return logEvent('visit',{path:location.pathname+location.se
 	  await sleep(60);
 	  return email;
 	}
+
 
   
 async function askPhoto(botuiInstance, label = t('photo_label'), compress = true){
