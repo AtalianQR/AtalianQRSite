@@ -419,25 +419,53 @@ async function askPhoto(botuiInstance, label = t('photo_label'), compress = true
 
 
   // Scenario’s
-  async function intro(){
-    // melding als iemand via QR hierheen werd teruggestuurd
-    if(qs.get('need_checkin')==='1'){ await botui.message.add({type:'html',content:t('need_checkin')}); }
-    await askNameIfNeeded();
-    await botui.message.add({type:'html',content:t('intro_welcome',USERNAME)});
-    await botui.message.add({type:'html',content:t('intro_line1')});
-    await botui.message.add({content:t('intro_tip')});
+	async function intro() {
+	  // melding als iemand via QR hierheen werd teruggestuurd
+	  const need = t('need_checkin');
+	  if (qs.get('need_checkin') === '1' && need && need.trim()) {
+		await botui.message.add({ type: 'html', content: need });
+	  }
 
-    const done=countCompleted();
-    //await botui.message.add({content:t('intro_progress',done)});
+	  await askNameIfNeeded();
 
-    // Incheck-knop (zet gate open)
-    const start = await botui.action.button({action:[{text:t('start_btn'),value:'start'}]});
-    if(start && start.value==='start'){
-      localStorage.setItem(CHECKED_KEY,'yes');
-      await logEvent('checkin',{display_name:USERNAME});
-      await botui.message.add({content:t('intro_go')});
-    }
-  }
+	  const welcome = t('intro_welcome', USERNAME);
+	  if (welcome && welcome.trim()) {
+		await botui.message.add({ type: 'html', content: welcome });
+	  }
+
+	  const line1 = t('intro_line1');
+	  if (line1 && line1.trim()) {
+		await botui.message.add({ type: 'html', content: line1 });
+	  }
+
+	  const tip = t('intro_tip');
+	  if (tip && tip.trim()) {
+		await botui.message.add({ type: 'html', content: tip });
+	  }
+
+	  // Incheck-knop (zet gate open)
+	  const start = await botui.action.button({
+		action: [{ text: t('start_btn'), value: 'start' }]
+	  });
+
+	  if (start && start.value === 'start') {
+		localStorage.setItem(CHECKED_KEY, 'yes');
+		await logEvent('checkin', { display_name: USERNAME });
+
+		const go = t('intro_go');
+		if (go && go.trim()) {
+		  await botui.message.add({ type: 'html', content: go });
+		}
+
+		// ga automatisch naar eerder geprobeerde step (optioneel, maar handig)
+		const next = localStorage.getItem('atalian_attempt_step');
+		if (next) {
+		  window.location.replace(`${window.location.pathname}?step=${encodeURIComponent(next)}&lang=${LANG}`);
+		  return;
+		}
+	  }
+	}
+
 
 	async function showCheckinGate(step){
 	  // log: iemand probeerde scenario zonder incheck
