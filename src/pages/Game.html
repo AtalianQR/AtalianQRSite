@@ -50,6 +50,26 @@
 	  text-align: left !important;
 	  justify-content: flex-start;  /* icoontjes ook netjes mee naar links */
 	}
+	/* Reset-effect: ripple + emoji-fall */
+	#reset-overlay{position:fixed;inset:0;pointer-events:none;z-index:9998;overflow:hidden}
+	.reset-ripple{
+	  position:absolute; left:50%; top:20px; width:24px; height:24px; border-radius:9999px;
+	  background:rgba(238,126,0,.25); transform:translate(-50%,-50%);
+	  animation:resetRipple 900ms ease-out forwards;
+	}
+	@keyframes resetRipple{
+	  0%{ transform:translate(-50%,-50%) scale(0.2); opacity:0.9 }
+	  70%{ opacity:0.6 }
+	  100%{ transform:translate(-50%,-50%) scale(40); opacity:0 }
+	}
+	.reset-emoji{
+	  position:absolute; top:-2rem; font-size:1.4rem; opacity:.95;
+	  animation:emojiFall 900ms ease-in forwards;
+	}
+	@keyframes emojiFall{
+	  to{ transform:translateY(110vh) rotate(20deg); opacity:0.1 }
+	}
+	
 	
   </style>
 </head>
@@ -134,7 +154,7 @@
 	  fr: {
 	  subtitle: '🎉 Employees Day – Discover, Play & AI',
 	  credit: 'Des questions ou des idées ? Parles-en à notre équipe FM 💬',
-	  hello_name: 'Bienvenue à cet événement 👋. Je suis ton ton assistant <span style="color:var(--atalian-orange);font-weight:700">ATALIAN</span> 🤖. Comment tu t’appelles ?',
+	  hello_name: 'Bienvenue à cet événement 👋. Je suis ton assistant <span style="color:var(--atalian-orange);font-weight:700">ATALIAN</span> 🤖. Comment tu t’appelles ?',
 	  nice_to_meet: n => `Ravi de te rencontrer, ${n} !`,
 	  intro_welcome: n => `Heureux que tu sois parmi nous, ${n} !`,
 	  intro_line1: `Voici notre chasse aux QR avec l’IA + <b>Ultimo</b> 🕵️‍♂️.<br> Scanne les 4 QR-codes dans la salle. À chaque scan, tu joues le client et tu crées un ticket pour signaler un problème. 👉 Ta mission est réussie quand les 4 signalements sont complétés.`,
@@ -526,14 +546,21 @@ async function askPhoto(botuiInstance, label = t('photo_label'), compress = true
 
   // Scenario’s
 	async function intro() {
-	  // melding als iemand via QR hierheen werd teruggestuurd
+	  // Kwam je van een geblokkeerde step? (need_checkin=1)
+	  const fromGate = (qs.get('need_checkin') === '1');
 	  const need = t('need_checkin');
-	  if (qs.get('need_checkin') === '1' && need && need.trim()) {
+
+	  if (fromGate && need && need.trim()) {
 		await botui.message.add({ type: 'html', content: need });
+	  } else {
+		// Gewone start: ruim oude intentie op, zodat we NIET automatisch doorsturen
+		localStorage.removeItem('atalian_attempt_step');
 	  }
 
+	  // Naam vragen (met prefill)
 	  await askNameIfNeeded();
 
+	  // Welkom & intro (met guards voor lege i18n-strings)
 	  const welcome = t('intro_welcome', USERNAME);
 	  if (welcome && welcome.trim()) {
 		await botui.message.add({ type: 'html', content: welcome });
@@ -563,26 +590,25 @@ async function askPhoto(botuiInstance, label = t('photo_label'), compress = true
 		  await botui.message.add({ type: 'html', content: go });
 		}
 
-		// ga automatisch naar eerder geprobeerde step (optioneel, maar handig)
+		// Redirect alleen als je écht via de gate kwam en er een bedoelde step is
 		const next = localStorage.getItem('atalian_attempt_step');
-		if (next) {
+		if (fromGate && next) {
 		  window.location.replace(`${window.location.pathname}?step=${encodeURIComponent(next)}&lang=${LANG}`);
 		  return;
 		}
+
+		// Anders blijf je gewoon op step=0 (zoals je vroeger had): geen redirect
+		// Desgewenst kan je hier nog voortgang tonen:
+		// const done = countCompleted();
+		// await botui.message.add({ content: t('intro_progress', done) });
 	  }
 	}
 
 
 	async function showCheckinGate(step){
-	  // log: iemand probeerde scenario zonder incheck
 	  try { await logEvent('blocked_without_checkin', { attempt_step: step }); } catch(_) {}
-
-	  // Alleen tonen, niet navigeren
-	  await botui.message.add({
-		type: 'html',
-		content: t('need_checkin') + ''
-	  });
-	  // Niets returnen, geen redirect. We blijven op de huidige pagina.
+	  localStorage.setItem('atalian_attempt_step', String(step)); // ← voeg toe
+	  await botui.message.add({ type:'html', content: t('need_checkin') + '' });
 	}
 
 
@@ -645,17 +671,83 @@ async function askPhoto(botuiInstance, label = t('photo_label'), compress = true
   window.addEventListener('load', ()=>{ logVisit(); flushPending(); (botui=new BotUI('botui-app')) && start(); });
 
   // Long-press reset op logo
-  window.addEventListener('DOMContentLoaded', ()=>{
-    const logo=document.querySelector('img.logo'); if(!logo) return;
-    let pressTimer=null;
-    function startP(){ cancelP(); pressTimer=setTimeout(()=>{ const lang=(localStorage.getItem('atalian_lang')||'nl');
-      ['atalian_scenario_1','atalian_scenario_2','atalian_scenario_3','atalian_scenario_4','atalian_all_done','atalian_name','atalian_demo_tickets',CHECKED_KEY].forEach(k=>localStorage.removeItem(k));
-      localStorage.setItem('atalian_lang',lang); startNewSession(lang);
-      const base=window.location.pathname; window.location.replace(`${base}?step=0&lang=${lang}&_=${Date.now()}`); },900); }
-    function cancelP(){ if(pressTimer){ clearTimeout(pressTimer); pressTimer=null; } }
-    logo.addEventListener('touchstart',startP,{passive:true}); logo.addEventListener('mousedown',startP);
-    logo.addEventListener('touchend',cancelP,{passive:true}); logo.addEventListener('mouseup',cancelP); logo.addEventListener('mouseleave',cancelP);
-  });
+ function launchResetEffect(){
+  // overlay
+  const ov=document.createElement('div');
+  ov.id='reset-overlay';
+  document.body.appendChild(ov);
+
+  // ripple vanaf logo-positie (ongeveer top)
+  const ripple=document.createElement('div');
+  ripple.className='reset-ripple';
+  ov.appendChild(ripple);
+
+  // emoji-regen
+  const EMO=['🧹','☕','💡','🔧','🛎️'];
+  const N=24;
+  for(let i=0;i<N;i++){
+    const s=document.createElement('div');
+    s.className='reset-emoji';
+    s.textContent=EMO[i%EMO.length];
+    const left=Math.random()*100;          // 0–100vw
+    const delay=Math.random()*0.35;        // 0–350ms
+    const dur=0.65+Math.random()*0.5;      // 650–1150ms
+    s.style.left=left+'vw';
+    s.style.animationDuration=dur+'s';
+    s.style.animationDelay=delay+'s';
+    ov.appendChild(s);
+  }
+
+  // haptic
+  try{ if(navigator.vibrate) navigator.vibrate(60); }catch(_){}
+
+  // opruimen na animatie
+  setTimeout(()=>{ ov.remove(); }, 1200);
+}
+ 
+	// Long-press reset op logo
+	window.addEventListener('DOMContentLoaded', ()=>{
+	  const logo=document.querySelector('img.logo'); 
+	  if(!logo) return;
+	  let pressTimer=null;
+
+	  function startP(){ 
+		cancelP(); 
+		pressTimer=setTimeout(()=>{ 
+		  // ✨ Speciaal effect
+		  launchResetEffect();
+
+		  const lang=(localStorage.getItem('atalian_lang')||'nl');
+		  [
+			'atalian_scenario_1','atalian_scenario_2','atalian_scenario_3','atalian_scenario_4',
+			'atalian_all_done','atalian_name','atalian_demo_tickets',CHECKED_KEY,'atalian_attempt_step'
+		  ].forEach(k=>localStorage.removeItem(k));
+
+		  localStorage.setItem('atalian_lang',lang); 
+		  startNewSession(lang);
+
+		  // korte delay zodat effect zichtbaar is
+		  setTimeout(()=>{
+			const base=window.location.pathname; 
+			window.location.replace(`${base}?step=0&lang=${lang}&_=${Date.now()}`);
+		  },650);
+		},900); 
+	  }
+
+	  function cancelP(){ 
+		if(pressTimer){ 
+		  clearTimeout(pressTimer); 
+		  pressTimer=null; 
+		} 
+	  }
+
+	  logo.addEventListener('touchstart',startP,{passive:true}); 
+	  logo.addEventListener('mousedown',startP);
+	  logo.addEventListener('touchend',cancelP,{passive:true}); 
+	  logo.addEventListener('mouseup',cancelP); 
+	  logo.addEventListener('mouseleave',cancelP);
+	});
+
 </script>
 </body>
 </html>
