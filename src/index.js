@@ -25,7 +25,7 @@ export default {
         };
         // per-dag keyspace
         const key = `events/${new Date(now).toISOString().slice(0,10)}/${now}-${Math.random().toString(36).slice(2)}.json`;
-        await env.LOGS.put(key, JSON.stringify(safe));
+        await env.atalian_logs.put(key, JSON.stringify(safe));
         return json({ ok:true, key });
       }
 
@@ -36,7 +36,7 @@ export default {
         // keys ophalen in “pages”
         let keys=[], cursor;
         while (keys.length < limit) {
-          const page = await env.LOGS.list({ prefix: "events/", cursor, limit: Math.min(1000, limit - keys.length) });
+          const page = await env.atalian_logs.list({ prefix: "events/", cursor, limit: ... });
           keys.push(...page.keys.map(k=>k.name));
           if (!page.list_complete) cursor = page.cursor; else break;
         }
@@ -47,7 +47,7 @@ export default {
 
         const items = [];
         for (const name of keys) {
-          const val = await env.LOGS.get(name, { type:"json" });
+          const val = await env.atalian_logs.get(name, { type:"json" });
           if (val && (!since || (val.server_ts||val.ts||0) >= since)) items.push(val);
         }
         return json({ items });
