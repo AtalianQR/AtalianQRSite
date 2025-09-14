@@ -106,8 +106,9 @@ async function handlePost(request, context, store) {
 // ---------- GET ----------
 async function handleGet(request, store) {
   const u = new URL(request.url);
-  const limit  = clampInt(u.searchParams.get('limit'), 50, 2000, 500);
+  const limit  = clampInt(u.searchParams.get('limit'), 50, 50000, 5000);
   const prefix = u.searchParams.get('prefix') || 'events/';
+  const page = await store.list({ prefix, cursor, limit: Math.min(1000, limit - items.length) });
 
   let items = [], cursor = undefined;
   do {
