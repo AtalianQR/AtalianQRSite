@@ -33,6 +33,18 @@
     .credit{margin-top:.75rem;text-align:center;font-size:.85rem;background:rgba(255,255,255,.92);
       padding:.4rem .8rem;border-radius:8px;border:1.5px solid var(--atalian-orange);color:#1a202c;display:inline-block}
     #confetti-canvas{position:fixed;inset:0;pointer-events:none;z-index:9999}
+	/* Maak de BotUI invoervelden wat breder */
+	.botui-actions-text-input {
+	  width: 90% !important;   /* standaard is ~60% */
+	  max-width: 500px;        /* optioneel: zet een max */
+	  font-size: 1rem;         /* iets leesbaarder */
+	  padding: 6px 10px;       /* meer lucht */
+	}
+	.botui-message-content {
+	  white-space: normal !important;    /* laat regels afbreken */
+	  word-wrap: break-word;             /* breek lange woorden (oude syntax) */
+	  overflow-wrap: anywhere;           /* moderne fallback */
+	}
   </style>
 </head>
 <body>
