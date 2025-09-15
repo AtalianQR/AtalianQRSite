@@ -2,11 +2,18 @@
   "name": "astro-netlify-platform-starter",
   "type": "module",
   "version": "0.1.0",
+  "private": true,
+  "engines": {
+    "node": ">=20.0.0"
+  },
   "scripts": {
-    "dev": "astro dev",
+    "dev": "netlify dev -p 4321",
     "start": "astro dev",
+    "astro:dev": "astro dev",
     "build": "astro build",
     "preview": "astro preview",
+    "deploy:staging": "astro build && netlify deploy --dir=dist",
+    "deploy:prod": "astro build && netlify deploy --dir=dist --prod",
     "astro": "astro"
   },
   "dependencies": {
@@ -30,6 +37,7 @@
   },
   "devDependencies": {
     "@types/blobshape": "^1.0.3",
-    "@types/node": "^20.12.7"
+    "@types/node": "^20.12.7",
+    "netlify-cli": "^17.0.0"
   }
 }
