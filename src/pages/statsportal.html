@@ -174,7 +174,7 @@
 
       const colOpenOnly = document.createElement('div');
       const openOnly = diffEntities(d.opened, d.submitted);
-      colOpenOnly.innerHTML = '<h4 class="muted">Opgeroepen, nog niet doorgestuurd</h4>';
+      colOpenOnly.innerHTML = '<h4 class="muted">Opgeroepen, maar niet doorgestuurd</h4>';
       if(!openOnly.length){ colOpenOnly.appendChild(note('(geen)')); }
       else { colOpenOnly.appendChild(listEntities(openOnly,'warn')); }
 
