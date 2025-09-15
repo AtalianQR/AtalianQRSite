@@ -1,374 +1,99 @@
 <!DOCTYPE html>
-<html lang="nl">
-<head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>ATALIAN • Statsportal (tickets tellen per periode)</title>
-  <link rel="icon" href="/AtalianFavicon.png" />
-  <style>
-    :root{--bg:#f7fafc;--card:#fff;--text:#0f172a;--muted:#475569;--accent:#ee7e00}
-    *{box-sizing:border-box}
-    html,body{height:100%}
-    body{
-      margin:0;color:var(--text);font-family:system-ui,-apple-system,Segoe UI,Roboto;
-      background-image:
-        linear-gradient(rgba(255,255,255,.78), rgba(255,255,255,.78)),
-        url('/building-cleaning.png');
-      background-size:cover;background-position:center;background-attachment:fixed
-    }
-    .wrap{max-width:1040px;margin:0 auto;padding:16px}
-    header{display:flex;align-items:center;gap:12px;margin-bottom:8px}
-    header img{height:42px;background:rgba(255,255,255,.9);padding:4px;border-radius:10px}
-    header .title{font-weight:800}
-
-    .pill{display:inline-flex;align-items:center;gap:6px;background:#fff;border:1px solid rgba(0,0,0,.08);padding:6px 10px;border-radius:999px}
-    .muted{color:var(--muted)}
-
-    .grid{display:grid;gap:12px}
-    .cards{grid-template-columns:repeat(3,minmax(0,1fr))}
-    @media(max-width:860px){.cards{grid-template-columns:1fr}}
-
-    .card{background:var(--card);border:1px solid rgba(0,0,0,.08);border-radius:14px;padding:14px;box-shadow:0 6px 24px rgba(0,0,0,.08)}
-    .kpi{display:flex;flex-direction:column;gap:2px}
-    .kpi .lbl{font-size:13px;color:var(--muted)}
-    .kpi .val{font-size:32px;font-weight:900}
-
-    .toolbar{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:8px 0 12px}
-    .toolbar select,.toolbar input[type="date"],.toolbar button{background:#fff;border:1px solid rgba(0,0,0,.15);border-radius:10px;padding:8px 10px}
-    .toolbar button.primary{background:#111827;color:#fff;border-color:#111827}
-    .right{margin-left:auto}
-
-    .bars{display:grid;grid-template-columns:1fr;gap:10px}
-    .bar{display:grid;grid-template-columns:180px 1fr 60px;align-items:center;gap:8px}
-    .bar .track{height:12px;background:#e5e7eb;border-radius:999px;overflow:hidden}
-    .bar .fill{height:100%;background:var(--accent)}
-    .bar .pct{font-size:13px;color:var(--muted);font-variant-numeric:tabular-nums}
-
-    table{width:100%;border-collapse:collapse}
-    th,td{padding:8px;border-bottom:1px solid #eef2f7;text-align:left}
-    th{font-size:12px;text-transform:uppercase;color:#64748b;letter-spacing:.02em}
-    .badge{font-size:12px;color:var(--muted)}
-
-    .roomtag{display:inline-flex;gap:8px;align-items:center;background:rgba(255,255,255,.95);padding:6px 10px;border-radius:12px;border:2px solid var(--accent)}
-    .roomtag small{display:block;color:#64748b;font-weight:600}
-  </style>
-</head>
-<body>
-  <div class="wrap">
-    <header>
-      <img src="/AtalianLogo.png" alt="Atalian" />
-      <div class="title">Statsportal – tickets per ruimte/installatie</div>
-      <span class="pill" id="entity-pill" title="QR-context" style="display:none"></span>
-      <span class="badge" id="since"></span>
-    </header>
-
-    <div class="toolbar">
-      <label>Periode
-        <select id="period">
-          <option value="7d">Laatste 7 dagen</option>
-          <option value="30d" selected>Laatste 30 dagen</option>
-          <option value="thism">Deze maand</option>
-          <option value="prevm">Vorige maand</option>
-          <option value="custom">Aangepast…</option>
-        </select>
-      </label>
-      <label>Van <input type="date" id="from" disabled></label>
-      <label>Tot <input type="date" id="to" disabled></label>
-      <label>Status
-        <select id="status">
-          <option value="all" selected>Alles</option>
-          <option value="open">Open</option>
-          <option value="closed">Afgesloten</option>
-        </select>
-      </label>
-      <button class="primary" id="btn-load">Vernieuw</button>
-      <button id="btn-export" title="Exporteer CSV">⬇️ CSV</button>
-      <label class="right"><input type="checkbox" id="auto"> Auto-refresh (30s)</label>
-    </div>
-
-    <div class="grid cards">
-      <div class="card kpi">
-        <div class="lbl">Tickets in periode</div>
-        <div class="val" id="k-total">–</div>
-      </div>
-      <div class="card kpi">
-        <div class="lbl">Open</div>
-        <div class="val" id="k-open">–</div>
-      </div>
-      <div class="card kpi">
-        <div class="lbl">Afgesloten</div>
-        <div class="val" id="k-closed">–</div>
-      </div>
-    </div>
-
-    <!-- Extra KPI-rij voor pogingen/attempts -->
-    <div class="grid cards" id="attempts-row">
-      <div class="card kpi">
-        <div class="lbl">Pogingen (niet ingediend)</div>
-        <div class="val" id="k-attempts">–</div>
-      </div>
-    </div>
-
-    <div class="card" style="margin-top:12px">
-      <h3 style="margin:0 0 8px">Tickets per dag/week</h3>
-      <div class="bars" id="bars"></div>
-      <div class="badge" id="hint-source"></div>
-    </div>
-
-    <!-- NIEUW: Waar haken ze af? (stap-distributie van niet-ingediende pogingen) -->
-    <div class="card" style="margin-top:12px">
-      <h3 style="margin:0 0 8px">Waar haken ze af? (pogingen per stap)</h3>
-      <div class="bars" id="bars-steps"></div>
-      <div class="badge">bron: prod_formstats (server)</div>
-    </div>
-
-    <div class="card" style="margin-top:12px">
-      <h3 style="margin:0 0 8px">Detail</h3>
-      <table id="tbl">
-        <thead>
-          <tr><th>Datum</th><th>Nr</th><th>Omschrijving</th><th>Status</th></tr>
-        </thead>
-        <tbody></tbody>
-      </table>
-    </div>
-  </div>
-
-<script type="module">
-// === QR-parser hergebruiken ===
-import { parseUltimoQR } from './CodeUrl.js';
-
+<script>
+(() => {
 const qs = new URLSearchParams(location.search);
-const code = qs.get('code') || '';
-const parsed = parseUltimoQR(code); // bepaalt ruimte vs installatie
+const code = qs.get('code') || 'unknown';
 
-const entityPill = document.getElementById('entity-pill');
-if(parsed){
-  entityPill.style.display='inline-flex';
-  entityPill.innerHTML = parsed.isEquipment
-    ? `🔧 <b>${parsed.typeStr}</b> <small>#${parsed.id}</small>`
-    : `🏢 <b>${parsed.typeStr}</b> <small>#${parsed.id}</small>`;
+
+const root = document.getElementById('botui-app');
+if (!root) return; // geen BotUI, niets te tracken
+
+
+// simpele UUIDv4
+function uuid(){ return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => {
+const r = Math.random()*16|0, v = c==='x'?r:(r&0x3|0x8); return v.toString(16);
+}); }
+const sid = uuid();
+
+
+const now = () => Date.now();
+const send = (type, extra={}) => {
+try {
+const blob = new Blob([JSON.stringify({ type, code, sid, path: location.pathname, ts: now(), ...extra })], {type:'application/json'});
+navigator.sendBeacon('/.netlify/functions/prod_formlog', blob);
+} catch {}
+};
+
+
+// Model: 0=dringend?, 1=probleem, 2=email
+const TOTAL = 3;
+let last = -1, submitted = false, lastActivity = now();
+
+
+function bump(step, reason){
+if (step > last) {
+last = step;
+const filled = last + 1;
+const pct = Math.round((filled / TOTAL) * 100);
+send('progress', { reason, filled, total: TOTAL, pct, lastIndex: last });
+}
+lastActivity = now();
 }
 
-// === UI refs ===
-const elPeriod = document.getElementById('period');
-const elFrom = document.getElementById('from');
-const elTo = document.getElementById('to');
-const elStatus = document.getElementById('status');
-const elBars = document.getElementById('bars');
-const elBarsSteps = document.getElementById('bars-steps');
-const elTbl = document.querySelector('#tbl tbody');
-const elSince = document.getElementById('since');
-const elHint = document.getElementById('hint-source');
 
-const KPI_TOTAL = document.getElementById('k-total');
-const KPI_OPEN   = document.getElementById('k-open');
-const KPI_CLOSED = document.getElementById('k-closed');
-const KPI_ATTEMPTS = document.getElementById('k-attempts');
+// 0) knop ja/nee
+root.addEventListener('click', (e) => {
+if (e.target.closest('.botui-actions-buttons-button')) bump(0, 'urgent_click');
+}, true);
 
-// === Periode helpers ===
-function fmt(d){return d.toISOString().slice(0,10)}
-function startOfMonth(d){return new Date(d.getFullYear(), d.getMonth(), 1)}
-function endOfMonth(d){return new Date(d.getFullYear(), d.getMonth()+1, 0)}
-function addDays(d,n){const x=new Date(d); x.setDate(x.getDate()+n); return x}
 
-function applyPeriodPreset(){
-  const today = new Date();
-  let a,b;
-  switch(elPeriod.value){
-    case '7d': a=addDays(today,-6); b=today; break;
-    case '30d': a=addDays(today,-29); b=today; break;
-    case 'thism': a=startOfMonth(today); b=endOfMonth(today); break;
-    case 'prevm': {
-      const m = new Date(today.getFullYear(), today.getMonth()-1, 1);
-      a=startOfMonth(m); b=endOfMonth(m); break;
-    }
-    case 'custom': default: {
-      elFrom.disabled=false; elTo.disabled=false; return;
-    }
-  }
-  elFrom.disabled=false; elTo.disabled=false;
-  elFrom.value = fmt(a); elTo.value = fmt(b);
+// 1/2) tekst inputs (placeholder check)
+root.addEventListener('input', (e) => {
+const el = e.target; if (!root.contains(el)) return;
+const ph = (el.getAttribute('placeholder') || '').toLowerCase();
+if (/@|e-mail|email/.test(ph)) bump(2, 'email_input'); else bump(1, 'desc_input');
+}, true);
+
+
+// idle + verlaten pagina → abandon
+setInterval(() => {
+if (submitted) return;
+const idle = now() - lastActivity;
+if (idle > 45000) { // 45 s
+const filled = last + 1, pct = Math.round((filled / TOTAL) * 100);
+send('idle_abandon', { filled, total: TOTAL, pct, lastIndex: last, inactiveMs: idle });
+lastActivity = now();
 }
+}, 5000);
 
-elPeriod.addEventListener('change', applyPeriodPreset);
-applyPeriodPreset();
 
-// === Data bron
-// 1) Proberen: server-side aggregatie (aanbevolen) via prod_stats
-//    Query: /.netlify/functions/prod_stats?code=...&from=YYYY-MM-DD&to=YYYY-MM-DD&status=all|open|closed
-// 2) Fallback demo: openstaande jobs via prod_jobs (beperkt) of synthetische data tonen
-
-async function fetchStats(from, to, status){
-  const params = new URLSearchParams({ code, from, to, status });
-  const url = `/.netlify/functions/prod_stats?${params}`;
-  try{
-    const r = await fetch(url);
-    if(r.ok){
-      const j = await r.json();
-      // verwacht formaat: { items:[{Id, Date:'YYYY-MM-DD', Description, Status:'open|closed'}], sinceTs }
-      elHint.textContent = 'bron: prod_stats (server)';
-      return j;
-    }
-  }catch(_){}
-
-  // fallback 1: prod_jobs (open tickets voor deze entiteit)
-  try{
-    const r = await fetch(`/.netlify/functions/prod_jobs?code=${encodeURIComponent(code)}`);
-    if(r.ok){
-      const j = await r.json();
-      const items = (j.Jobs||[]).map((x,i)=>({
-        Id: x.JobId || ('OPEN-'+i),
-        Date: (x.ReportDate||x.CreationDate||new Date()).toString().slice(0,10),
-        Description: x.Description || x.JobDescr || '-',
-        Status: 'open'
-      }));
-      elHint.textContent = 'bron: prod_jobs (alleen open)';
-      return { items, sinceTs: null };
-    }
-  }catch(_){}
-
-  // fallback 2: synthetisch (demo)
-  const today = new Date();
-  const items = Array.from({length: 18}, (_,i)=>{
-    const d = addDays(today, -Math.floor(Math.random()*26));
-    return { Id:'DEMO-'+i, Date: fmt(d), Description:'demo-ticket', Status: Math.random()>0.4?'closed':'open' };
-  });
-  elHint.textContent = 'bron: demo-data (geen server)';
-  return { items, sinceTs: null };
-}
-
-// === NIEUW: form-attempt stats (pogingen/abandons) ===
-async function fetchFormStats(from, to){
-  const params = new URLSearchParams({ code, from, to });
-  const url = `/.netlify/functions/prod_formstats?${params}`;
-  try{
-    const r = await fetch(url);
-    if(r.ok){
-      const j = await r.json(); // verwacht: { attempts, active, abandons, byStep: [{step,count}] }
-      j.byStep = Array.isArray(j.byStep) ? j.byStep : [];
-      return j;
-    }
-  }catch(_){/* negeer */}
-  return { attempts: 0, active: 0, abandons: 0, byStep: [] };
-}
-
-function groupByDay(items){
-  const map = new Map();
-  for(const it of items){
-    const k = it.Date?.slice(0,10) || '';
-    if(!k) continue;
-    map.set(k, (map.get(k)||0) + 1);
-  }
-  return Array.from(map.entries()).sort(([a],[b])=>a.localeCompare(b));
-}
-
-function renderBars(dayPairs){
-  elBars.innerHTML = '';
-  if(!dayPairs.length){elBars.innerHTML='<div class="muted">Geen data in deze periode.</div>'; return;}
-  const max = Math.max(...dayPairs.map(([,v])=>v));
-  for(const [label,val] of dayPairs){
-    const row = document.createElement('div'); row.className='bar';
-    const l = document.createElement('div'); l.textContent = label; l.className='muted';
-    const track = document.createElement('div'); track.className='track';
-    const fill = document.createElement('div'); fill.className='fill'; fill.style.width = (val/max*100).toFixed(0)+'%';
-    const p = document.createElement('div'); p.className='pct'; p.textContent = String(val)+'×';
-    track.appendChild(fill); row.appendChild(l); row.appendChild(track); row.appendChild(p); elBars.appendChild(row);
-  }
-}
-
-function renderStepBars(stepArr){
-  elBarsSteps.innerHTML='';
-  if(!stepArr.length){elBarsSteps.innerHTML='<div class="muted">Geen poging-data in deze periode.</div>'; return;}
-  const labels = { 0:'Stap 0 – Dringend? (Ja/Nee)', 1:'Stap 1 – Probleembeschrijving', 2:'Stap 2 – E‑mailadres' };
-  const max = Math.max(...stepArr.map(o=>o.count||0), 1);
-  for(const o of stepArr){
-    const row = document.createElement('div'); row.className='bar';
-    const l = document.createElement('div'); l.textContent = labels[o.step] || ('Stap '+o.step); l.className='muted';
-    const track = document.createElement('div'); track.className='track';
-    const fill = document.createElement('div'); fill.className='fill'; fill.style.width = ((o.count||0)/max*100).toFixed(0)+'%';
-    const p = document.createElement('div'); p.className='pct'; p.textContent = String(o.count||0)+'×';
-    track.appendChild(fill); row.appendChild(l); row.appendChild(track); row.appendChild(p); elBarsSteps.appendChild(row);
-  }
-}
-
-function renderTable(items){
-  elTbl.innerHTML='';
-  for(const it of items){
-    const tr=document.createElement('tr');
-    tr.innerHTML = `<td>${(it.Date||'').slice(0,10)}</td><td>${it.Id}</td><td>${it.Description||'-'}</td><td>${it.Status}</td>`;
-    elTbl.appendChild(tr);
-  }
-}
-
-function updateKPI(items){
-  const total = items.length;
-  const open = items.filter(x=>String(x.Status).toLowerCase()==='open').length;
-  const closed = total - open;
-  KPI_TOTAL.textContent = total;
-  KPI_OPEN.textContent = open;
-  KPI_CLOSED.textContent = closed;
-}
-
-function filterStatus(items, status){
-  if(status==='all') return items;
-  return items.filter(x=>String(x.Status).toLowerCase()===status);
-}
-
-async function load(){
-  const from = elFrom.value || fmt(addDays(new Date(), -29));
-  const to   = elTo.value   || fmt(new Date());
-  const status = elStatus.value;
-  const [statsRes, formRes] = await Promise.all([
-    fetchStats(from, to, status),
-    fetchFormStats(from, to)
-  ]);
-  const { items, sinceTs } = statsRes;
-
-  // filter client-side op periode (voor fallback-bronnen)
-  const inRange = items.filter(it=>{
-    const d = (it.Date||'').slice(0,10);
-    return d && d>=from && d<=to;
-  });
-  const items2 = filterStatus(inRange, status);
-
-  updateKPI(items2);
-  if (KPI_ATTEMPTS) KPI_ATTEMPTS.textContent = formRes.attempts ?? 0;
-  renderBars(groupByDay(items2));
-  renderTable(items2);
-  elSince.textContent = sinceTs ? ('telt vanaf: '+ new Date(sinceTs).toLocaleString()) : '';
-}
-
-// Export CSV
-function toCSV(rows){
-  const header = ['Date','Id','Description','Status'];
-  const esc = s=>('"'+String(s).replace(/"/g,'""')+'"');
-  return [header.join(','), ...rows.map(r=>[r.Date,r.Id,r.Description,r.Status].map(esc).join(','))].join('\n');
-}
-
-document.getElementById('btn-export').addEventListener('click', ()=>{
-  const rows=[...document.querySelectorAll('#tbl tbody tr')].map(tr=>{
-    const tds=[...tr.children].map(td=>td.textContent||'');
-    return {Date:tds[0], Id:tds[1], Description:tds[2], Status:tds[3]}
-  });
-  const blob = new Blob([toCSV(rows)], {type:'text/csv'});
-  const a = document.createElement('a');
-  a.href = URL.createObjectURL(blob);
-  a.download = 'tickets_'+(new Date().toISOString().slice(0,10))+'.csv';
-  a.click();
+window.addEventListener('pagehide', () => {
+if (submitted) return;
+const filled = last + 1, pct = Math.round((filled / TOTAL) * 100);
+send('pagehide_abandon', { filled, total: TOTAL, pct, lastIndex: last });
 });
 
-// Auto-refresh
-let timer=null;
-document.getElementById('auto').addEventListener('change', e=>{
-  if(e.target.checked){ timer=setInterval(load, 30000); }
-  else{ clearInterval(timer); timer=null; }
-});
 
-document.getElementById('btn-load').addEventListener('click', load);
+// submit hook (luister naar call naar prod_create_ticket via fetch-monkeypatch)
+(function patchFetch(){
+const _fetch = window.fetch;
+window.fetch = function(){
+try {
+const url = arguments[0];
+if (typeof url === 'string' && url.includes('/.netlify/functions/prod_create_ticket')) {
+submitted = true;
+const filled = TOTAL, pct = 100;
+send('submit', { filled, total: TOTAL, pct, lastIndex: 2 });
+}
+} catch {}
+return _fetch.apply(this, arguments);
+};
+})();
 
-// Init
-load();
 
+// Eerste momentopname (bestaande defaultwaarden?)
+send('progress', { reason:'load', filled: (last+1), total: TOTAL, pct: Math.max(0, Math.round(((last+1)/TOTAL)*100)), lastIndex: last });
+})();
 </script>
 </body>
 </html>
