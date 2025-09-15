@@ -21,47 +21,60 @@ export default async (req, context) => {
   const to   = (url.searchParams.get('to')   ?? defTo).slice(0, 10);
   const code = (url.searchParams.get('code') ?? '').trim();
   const debug = url.searchParams.get('debug') === '1';
+  const view  = (url.searchParams.get('view') || '').trim(); // bv. view=keys
 
   try {
-    // ✅ Blobs-store ALTIJD BINNEN DE HANDLER maken
-    //    + fallback voor lokaal/CLI via env-variabelen
     const store = createStore();
-
     const prefix = code ? `${code}/` : '';
 
-    // 1) keys ophalen (list → { blobs })
+    // 1) keys ophalen (zowel NDJSON als per-event JSON)
     const { blobs } = await store.list({ prefix });
-    const keys = [];
+    const ndjsonKeys = [];
+    const jsonEventKeys = [];
     for (const { key } of blobs) {
-      const m = key.match(/^(?<code>[^/]+)\/(?<day>\d{4}-\d{2}-\d{2})\.ndjson$/);
-      if (!m) continue;
-      const day = m.groups.day;
-      if (day >= from && day <= to) keys.push(key);
+      // A) oud formaat: <code>/<YYYY-MM-DD>.ndjson
+      const mA = key.match(/^[^/]+\/(?<day>\d{4}-\d{2}-\d{2})\.ndjson$/);
+      if (mA) {
+        const day = mA.groups.day;
+        if (day >= from && day <= to) ndjsonKeys.push(key);
+        continue;
+      }
+      // B) nieuw formaat: <code>/<YYYY-MM-DD>/<ts>-<rand>.json
+      const mB = key.match(/^[^/]+\/(?<day>\d{4}-\d{2}-\d{2})\/\d{13}-[a-z0-9]{6}\.json$/i);
+      if (mB) {
+        const day = mB.groups.day;
+        if (day >= from && day <= to) jsonEventKeys.push(key);
+      }
     }
 
-    // 2) NDJSON per key inlezen en aggregeren
+    // Optionele debug-weergave
+    if (debug && view === 'keys') {
+      return new Response(JSON.stringify({
+        ok: true, from, to, code,
+        ndjsonKeys, jsonEventKeys
+      }), { status: 200, headers: { ...headers, 'content-type': 'application/json' } });
+    }
+
+    // 2) Events inlezen en aggregeren
     const dayMap = new Map(); // day -> { opened:Set, submitted:Set }
-    for (const key of keys) {
+
+    // 2A) Oud NDJSON-archief
+    for (const key of ndjsonKeys) {
       const text = await store.get(key, { type: 'text' });
       if (!text) continue;
       for (const line of text.split('\n')) {
         const s = line.trim(); if (!s) continue;
         let ev; try { ev = JSON.parse(s); } catch { continue; }
-
-        // robuuste dagbepaling + id-fallback
-        const day = String(ev.ts_server || ev.ts || '').slice(0, 10);
-        if (!day || day < from || day > to) continue;
-
-        const id  = String(ev.id || ev.code || '');
-        if (!id) continue;
-
-        const entType = ev.isEquipment ? 'equip' : 'space';
-        const keyEnt = `${entType}|${id}`;
-
-        const bucket = ensureDay(dayMap, day);
-        if (ev.type === 'url_load') bucket.opened.add(keyEnt);
-        if (ev.type === 'submit_success') bucket.submitted.add(keyEnt);
+        aggregateEvent(dayMap, ev, from, to);
       }
+    }
+
+    // 2B) Nieuw: 1 event per JSON-bestand
+    for (const key of jsonEventKeys) {
+      const s = await store.get(key, { type: 'text' });
+      if (!s) continue;
+      let ev; try { ev = JSON.parse(s); } catch { continue; }
+      aggregateEvent(dayMap, ev, from, to);
     }
 
     // 3) volledige daterange + output shape
@@ -101,6 +114,24 @@ function createStore() {
     }
     throw e;
   }
+}
+
+// telt zowel url_load als submit_success
+function aggregateEvent(dayMap, ev, from, to) {
+  const day = String(ev.ts_server || ev.ts || '').slice(0, 10);
+  if (!day || day < from || day > to) return;
+
+  // Forceer strings (leading zeros blijven)
+  const code = String(ev.code ?? '');
+  const id   = String(ev.id   ?? code);
+  if (!id) return;
+
+  const entType = ev.isEquipment ? 'equip' : 'space';
+  const keyEnt  = `${entType}|${id}`;
+
+  const bucket = ensureDay(dayMap, day);
+  if (ev.type === 'url_load')       bucket.opened.add(keyEnt);
+  if (ev.type === 'submit_success') bucket.submitted.add(keyEnt);
 }
 
 function cors(){

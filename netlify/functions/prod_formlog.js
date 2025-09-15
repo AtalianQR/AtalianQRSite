@@ -1,7 +1,7 @@
 // netlify/functions/prod_formlog.js
 import { getStore } from '@netlify/blobs';
 
-export default async (req, ctx) => {
+export default async (req) => {
   const url = new URL(req.url);
   const method = req.method.toUpperCase();
 
@@ -13,44 +13,33 @@ export default async (req, ctx) => {
   try { data = await req.json(); } catch { return new Response(null, { status: 204, headers: cors() }); }
 
   const now  = new Date();
-  const code = String(data.code || 'unknown').slice(0, 64);
   const day  = now.toISOString().slice(0, 10);
-  const key  = `${code}/${day}.ndjson`;
+
+  // ⚠️ forceer strings, behoud leading zeros
+  const code = String(data.code ?? 'unknown');
+  const id   = String(data.id   ?? code);
+
+  // 🔑 nieuw sleutelpatroon: <code>/<YYYY-MM-DD>/<ts>-<rand>.json
+  const ts   = Date.now();
+  const rand = Math.random().toString(36).slice(2, 8);
+  const key  = `${code}/${day}/${ts}-${rand}.json`;
 
   try {
     const store = getStore('formlog'); // v2 + binnen handler
-    const line  = JSON.stringify({
+    const payload = {
       ...data,
-      ts_server: now.toISOString(),
+      code, id,
+      ts,                   // numeriek
+      ts_server: now.toISOString(), // ISO
       ua: req.headers.get('user-agent') || '',
       ip: req.headers.get('x-forwarded-for') || ''
-    }) + '\n';
-
-    // ---- NDJSON append zonder append() ----
-    // 1) Probeer aanmaken als nieuw
-    let wrote = false;
-    const created = await store.set(key, line, { onlyIfNew: true });
-    if (created?.modified) {
-      wrote = true;
-    } else {
-      // 2) Bestond al → optimistische append met ETag (max 3 pogingen)
-      for (let i = 0; i < 3 && !wrote; i++) {
-        const cur = await store.getWithMetadata(key, { type: 'text' });
-        const prev = cur?.data || '';
-        const etag = cur?.metadata?.etag;
-        const next = prev + line;
-        const res = await store.set(key, next, { onlyIfMatch: etag });
-        wrote = !!res?.modified;
-      }
-      // 3) Laatste redmiddel (heel klein race-risico): onvoorwaardelijk overschrijven
-      if (!wrote) {
-        const prev = (await store.get(key, { type: 'text' })) || '';
-        await store.set(key, prev + line);
-      }
-    }
+    };
+    await store.set(key, JSON.stringify(payload), {
+      contentType: 'application/json'
+    });
 
     if (url.searchParams.get('debug') === '1') {
-      return json({ ok: true, key, bytes: line.length }, 200);
+      return json({ ok: true, key }, 200);
     }
   } catch (err) {
     console.error('formlog error:', err);
@@ -65,4 +54,6 @@ function cors(){ return {
   'Access-Control-Allow-Methods': 'POST,GET,HEAD,OPTIONS',
   'Access-Control-Allow-Headers': 'Content-Type',
 };}
-function json(obj, status){ return new Response(JSON.stringify(obj), { status, headers: { ...cors(), 'content-type': 'application/json' } }); }
+function json(obj, status){
+  return new Response(JSON.stringify(obj), { status, headers: { ...cors(), 'content-type': 'application/json' } });
+}

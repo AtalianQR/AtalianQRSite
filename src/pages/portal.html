@@ -95,40 +95,34 @@ const endpointLoc = isEquipment
 /* ▸ 2. Telemetrie helper (sendBeacon, zelfde endpoint als statsportal) ◂ */
 const Telemetry = (()=>{
   const base = {
-    code,
+    code: String(code ?? ''),                     // ← forceer string
     path: location.pathname,
     lang,
-    id: (typeof id !== 'undefined' && id) ? id : code, // fallback
+    id: (typeof id !== 'undefined' && id) ? String(id) : String(code), // ← fallback als string
     isEquipment
   };
-
   async function send(type, extra = {}) {
     const payload = { type, ts: Date.now(), href: location.href, ...base, ...extra };
     const json = JSON.stringify(payload);
-
     try {
-      // 1) Probeer Beacon (non-blocking, ideaal voor navigatie)
       if (navigator.sendBeacon) {
         const ok = navigator.sendBeacon('/.netlify/functions/prod_formlog', new Blob([json], { type: 'application/json' }));
         if (ok) return;
       }
-      // 2) Fallback: fetch met keepalive (werkt ook bij unload)
       await fetch('/.netlify/functions/prod_formlog', {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
         body: json,
         keepalive: true,
         credentials: 'omit',
-        cache: 'no-store',
+        cache: 'no-store'
       }).catch(()=>{});
-    } catch (_) { /* stil falen, nooit UI blokkeren */ }
+    } catch(_) {}
   }
-
   return { send };
 })();
-
-// Verplicht: URL geladen loggen (zonder guards)
 Telemetry.send('url_load');
+
 
 // (optioneel) ook bij tab sluiten/weg navigeren
 addEventListener('pagehide', () => Telemetry.send('pagehide'), { capture: true });
