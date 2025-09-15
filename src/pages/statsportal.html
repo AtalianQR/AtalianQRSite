@@ -3,140 +3,111 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Statsportal – tickets per ruimte/installatie</title>
+  <title>Statsportal – per dag: opgeroepen ruimtes/installs + doorgestuurd</title>
   <link rel="icon" href="/AtalianFavicon.png" />
   <style>
-    :root{--bg:#f7fafc;--card:#fff;--text:#0f172a;--muted:#475569;--accent:#ee7e00;--ring:rgba(238,126,0,.14);--shadow:0 6px 24px rgba(15,23,42,.08)}
-    html,body{height:auto;min-height:100vh;margin:0;background:var(--bg);color:var(--text);font-family:system-ui,-apple-system,Segoe UI,Roboto,Inter,Arial,sans-serif}
-    body{background-image:linear-gradient(rgba(255,255,255,.82), rgba(255,255,255,.82)),url('/building-cleaning.png');background-size:cover;background-position:center;background-attachment:fixed}
-    .wrap{max-width:1100px;margin:0 auto;padding:20px}
+    :root{--bg:#f7fafc;--card:#fff;--text:#0f172a;--muted:#64748b;--accent:#ee7e00;--ok:#16a34a;--warn:#eab308;--ring:rgba(238,126,0,.14);--shadow:0 8px 28px rgba(2,6,23,.08)}
+    html,body{height:auto;min-height:100vh;margin:0;background:var(--bg);color:var(--text);
+      font-family:system-ui,-apple-system,Segoe UI,Roboto,Inter,Arial,sans-serif}
+    body{background-image:linear-gradient(rgba(255,255,255,.86), rgba(255,255,255,.86)),url('/building-cleaning.png');
+      background-size:cover;background-position:center;background-attachment:fixed}
+    .wrap{max-width:1200px;margin:0 auto;padding:20px}
     h1{font-size:20px;margin:6px 0 12px}
-    .row{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
-    .filters{display:flex;flex-wrap:wrap;gap:8px;align-items:center;background:var(--card);padding:10px;border-radius:12px;box-shadow:var(--shadow);border:1px solid #eaeef6}
-    .filters .group{display:flex;gap:6px;align-items:center}
-    .filters input[type="date"], .filters select{height:34px;border:1px solid #e5e7eb;border-radius:10px;padding:0 8px}
-    .filters button{height:34px;border-radius:10px;border:1px solid var(--accent);background:var(--accent);color:#fff;padding:0 10px;font-weight:600;cursor:pointer}
-    .filters .iconbtn{display:inline-flex;align-items:center;gap:6px;height:34px;border-radius:10px;border:1px solid #e5e7eb;background:#fff;padding:0 10px;cursor:pointer}
-    .filters label{font-size:12px;color:var(--muted)}
-
-    .entity-badge{display:none;align-items:center;gap:.5rem;background:rgba(255,255,255,.95);border:2px solid var(--accent);border-radius:12px;padding:.4rem .8rem;margin:.6rem 0;box-shadow:0 2px 8px rgba(238,126,0,.08);font-weight:600}
-    .entity-badge .type{font-weight:400;color:#6b7280}
-
-    .kpi{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin:10px 0}
-    .card{background:var(--card);border-radius:14px;box-shadow:var(--shadow);border:1px solid #eef2f9;padding:14px}
-    .kpi .value{font-size:28px;font-weight:800}
     .muted{color:var(--muted)}
 
-    .box{background:var(--card);border-radius:14px;box-shadow:var(--shadow);border:1px solid #eef2f9;margin:10px 0}
+    .filters{display:flex;flex-wrap:wrap;gap:10px;align-items:center;background:var(--card);
+      padding:12px;border-radius:14px;box-shadow:var(--shadow);border:1px solid #e9eef7}
+    .filters .group{display:flex;gap:6px;align-items:center}
+    .filters input[type="date"], .filters select{height:36px;border:1px solid #e5e7eb;border-radius:10px;padding:0 10px}
+    .filters button{height:36px;border-radius:10px;border:1px solid var(--accent);background:var(--accent);
+      color:#fff;padding:0 12px;font-weight:700;cursor:pointer}
+    .chip{display:inline-flex;align-items:center;gap:8px;padding:.25rem .6rem;border-radius:999px;border:1px solid #e5e7eb;background:#fff}
+    .chip.ok{border-color:#bbf7d0;background:#f0fdf4}
+    .chip.warn{border-color:#fde68a;background:#fffbeb}
+
+    .grid{display:grid;grid-template-columns:repeat(12,1fr);gap:10px}
+    .col-3{grid-column:span 3}
+    .col-9{grid-column:span 9}
+
+    .box{background:var(--card);border-radius:14px;box-shadow:var(--shadow);border:1px solid #eef2f9;margin:12px 0}
     .box h3{margin:0;padding:12px 14px;border-bottom:1px solid #eef2f9;font-size:16px}
-    .box .content{padding:10px 14px}
+    .box .content{padding:12px 14px}
 
-    /* Bars */
-    .barrow{display:grid;grid-template-columns:120px 1fr 46px;gap:10px;align-items:center;padding:6px 0}
-    .barrow .g{height:10px;background:#f3f4f6;border-radius:999px;overflow:hidden;border:1px solid #edf2f7}
-    .barrow .g>div{height:100%;background:var(--accent)}
+    .day{display:grid;grid-template-columns:160px 1fr 1fr;gap:12px;align-items:start;border-bottom:1px dashed #eef2f9;padding:10px 0}
+    .day:last-child{border-bottom:0}
+    .day h4{margin:0 0 6px 0;font-size:14px}
+    .pill{display:inline-block;margin:3px 6px 3px 0;padding:4px 8px;border-radius:999px;border:1px solid #e5e7eb;background:#fff;font-size:13px}
+    .pill .tag{font-weight:700;color:#0f172a}
+    .pill.ok{border-color:#bbf7d0;background:#f0fdf4}
+    .pill.warn{border-color:#fde68a;background:#fffbeb}
 
-    table{width:100%;border-collapse:collapse}
-    th,td{padding:10px 8px;border-bottom:1px solid #eef2f9;text-align:left;font-size:14px}
-    thead th{font-size:12px;text-transform:uppercase;letter-spacing:.02em;color:var(--muted)}
+    /* Tijdslijn (horizontale) */
+    .timeline{width:100%;height:220px}
+    .legend{display:flex;gap:10px;align-items:center}
+    .legend .boxl{width:10px;height:10px;background:var(--accent);border-radius:2px;border:1px solid #c2410c}
 
     .right{margin-left:auto}
     .switch{display:inline-flex;align-items:center;gap:6px}
     .switch input{accent-color:var(--accent)}
-
-    @media (max-width:720px){.kpi{grid-template-columns:1fr}.barrow{grid-template-columns:90px 1fr 42px}.filters{gap:6px}}
+    @media(max-width:900px){.day{grid-template-columns:1fr}.col-3,.col-9{grid-column:span 12}}
   </style>
 </head>
 <body>
   <div class="wrap">
     <img src="/AtalianLogo.png" alt="ATALIAN" style="height:46px;background:#fff;padding:4px;border-radius:10px;border:1px solid #eef2f9;box-shadow:var(--shadow)" />
-    <h1>Statsportal – tickets per ruimte/installatie</h1>
+    <h1>Statsportal – per dag: opgeroepen ruimtes/installs + doorgestuurd</h1>
 
-    <div id="entity" class="entity-badge"></div>
-
-    <div class="filters row" id="filters">
+    <div class="filters">
       <div class="group"><label>Periode</label>
-        <select id="period"><option value="30">Laatste 30 dagen</option><option value="7">Laatste 7 dagen</option><option value="0">Aangepast</option></select>
+        <select id="period">
+          <option value="30">Laatste 30 dagen</option>
+          <option value="7">Laatste 7 dagen</option>
+          <option value="0">Aangepast</option>
+        </select>
       </div>
       <div class="group"><label>Van</label><input type="date" id="from" /></div>
       <div class="group"><label>Tot</label><input type="date" id="to" /></div>
-      <div class="group"><label>Status</label>
-        <select id="status"><option value="all">Alles</option><option value="open">Open</option><option value="closed">Afgesloten</option></select>
-      </div>
       <button id="refresh">Vernieuw</button>
-      <button class="iconbtn" id="csv">📄 CSV</button>
+      <button id="csv">📄 CSV</button>
       <span class="right switch"><input type="checkbox" id="autoref" /> <label for="autoref">Auto-refresh (30s)</label></span>
     </div>
 
-    <div class="kpi">
-      <div class="card"><div class="muted">Tickets in periode</div><div class="value" id="k_total">–</div></div>
-      <div class="card"><div class="muted">Open</div><div class="value" id="k_open">–</div></div>
-      <div class="card"><div class="muted">Afgesloten</div><div class="value" id="k_closed">–</div></div>
-    </div>
-
-    <div class="kpi">
-      <div class="card" style="grid-column:1 / -1"><div class="muted">Pogingen (niet ingediend)</div><div class="value" id="k_attempts">–</div></div>
+    <div class="box">
+      <h3>Overzicht per dag</h3>
+      <div class="content" id="days"></div>
     </div>
 
     <div class="box">
-      <h3>Tickets per dag/week</h3>
-      <div class="content" id="bars"></div>
-    </div>
-
-    <div class="box">
-      <h3>Waar haken ze af? (pogingen per stap) <span class="muted" style="font-weight:400">bron: prod_formstats (server)</span></h3>
-      <div class="content"><div id="steps"></div></div>
-    </div>
-
-    <div class="box">
-      <h3>Detail</h3>
+      <h3>Tijdslijn – aantal doorgestuurd naar Ultimo per dag</h3>
       <div class="content">
-        <table>
-          <thead><tr><th>Datum</th><th>Nr</th><th>Omschrijving</th><th>Status</th></tr></thead>
-          <tbody id="tbody"></tbody>
-        </table>
+        <div class="legend"><div class="boxl"></div><span class="muted">Aantal doorgestuurde tickets</span></div>
+        <svg id="timeline" class="timeline" viewBox="0 0 1000 220" preserveAspectRatio="none" aria-label="Tijdslijn"></svg>
       </div>
     </div>
   </div>
 
 <script type="module">
-  import { parseUltimoQR } from '/js/CodeUrl.js';
+  // === Config ===
+  const endpoints = {
+    // Nieuw gewenste vorm: per dag de entiteiten (opened vs submitted)
+    formstats: '/.netlify/functions/prod_formstats',
+    // Fallback (alleen submitted rows; geen opened):
+    stats: '/.netlify/functions/prod_stats'
+  };
 
-  // 1) URL params + defaults
+  // === UI helpers ===
   const qs = new URLSearchParams(location.search);
-  const codeParam = qs.get('code') || '';
-  let lang = qs.get('lang') || ((navigator.language||'').startsWith('fr') ? 'fr' : 'nl');
-  const debug = qs.get('debug') === '1';
-
-  const parsed = codeParam ? parseUltimoQR(codeParam) : null;
-  const isEquipment = !!parsed?.isEquipment;
-  const id = parsed?.id || '';
-  const code = codeParam || 'DEMO'; // voorkom 400 op endpoints
-
-  // 2) Entity-badge (zoals portal)
-  const entity = document.getElementById('entity');
-  async function showEntity(){
-    if(!id){ entity.style.display='none'; return; }
-    const endpoint = isEquipment? '/.netlify/functions/prod_equipment' : '/.netlify/functions/prod_space';
-    try{
-      const r = await fetch(`${endpoint}?id=${encodeURIComponent(id)}&lang=${lang}`);
-      if(!r.ok) throw 0; const d = await r.json();
-      entity.innerHTML = `${isEquipment?'🔧 Installatie':'🏢 Ruimte'}: <b>${id}</b> — ${d.description||'-'} <span class="type">(${isEquipment?(lang==='fr'?'Installation':'Installatie'):(lang==='fr'?'Espace':'Ruimte')})</span>`;
-      entity.style.display='inline-flex';
-    }catch{ entity.innerHTML = `${isEquipment?'🔧 Installatie':'🏢 Ruimte'}: <b>${id||'—'}</b>`; entity.style.display='inline-flex'; }
-  }
-  showEntity();
-
-  // 3) Filters
+  const debug = qs.get('debug')==='1';
   const elFrom = document.getElementById('from');
   const elTo   = document.getElementById('to');
   const elPer  = document.getElementById('period');
-  const elSta  = document.getElementById('status');
   const elRef  = document.getElementById('refresh');
-  const elAut  = document.getElementById('autoref');
   const elCSV  = document.getElementById('csv');
+  const elAut  = document.getElementById('autoref');
+  const elDays = document.getElementById('days');
+  const elTL   = document.getElementById('timeline');
 
-  function fmt(d){ return d.toISOString().slice(0,10); }
+  const fmt = d => d.toISOString().slice(0,10);
   function setRange(days){
     const to = new Date();
     const from = new Date(to); from.setDate(to.getDate() - (days||30));
@@ -148,61 +119,174 @@
   elAut.addEventListener('change',()=>{ if(elAut.checked){ timer=startAuto(); } else { clearInterval(timer); }});
   elCSV.addEventListener('click', downloadCSV);
 
-  // 4) Render helpers
-  const K = { total:document.getElementById('k_total'), open:document.getElementById('k_open'), closed:document.getElementById('k_closed'), attempts:document.getElementById('k_attempts') };
-  const elBars = document.getElementById('bars');
-  const elSteps= document.getElementById('steps');
-  const elBody = document.getElementById('tbody');
+  // === Fetch helpers ===
+  async function fetchJSON(url){
+    try{ const r = await fetch(url,{cache:'no-store'}); if(!r.ok) throw new Error(String(r.status)); return await r.json(); }
+    catch(e){ if(debug) console.warn('fetch fail',url,e); return null; }
+  }
+  const uniqBy = (arr, keyFn) => Array.from(new Map(arr.map(x=>[keyFn(x),x])).values());
 
-  function toCSV(rows){ if(!rows.length) return 'Date,Id,Description,Status\n'; const header=Object.keys(rows[0]); const esc=s=>'"'+String(s).replace(/"/g,'""')+'"'; return [header.join(','), ...rows.map(r=>header.map(k=>esc(r[k]??'')).join(','))].join('\n'); }
-  function downloadCSV(){ const blob=new Blob([toCSV(state.rows)],{type:'text/csv'}); const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='tickets.csv'; a.click(); URL.revokeObjectURL(a.href); }
+  // === Kernlogica ===
+  const state = { daily: [], counts: [] };
 
-  function renderBars(pairs){ elBars.innerHTML=''; if(!pairs.length){ elBars.innerHTML='<div class="muted">Geen data in deze periode.</div>'; return; } const max=Math.max(...pairs.map(([,v])=>v)); for(const [label,val] of pairs){ const row=document.createElement('div'); row.className='barrow'; const l=document.createElement('div'); l.textContent=label; l.className='muted'; const g=document.createElement('div'); g.className='g'; const inner=document.createElement('div'); inner.style.width=`${(val/max)*100}%`; g.appendChild(inner); const v=document.createElement('div'); v.textContent=String(val); row.append(l,g,v); elBars.appendChild(row);} }
-  function renderSteps(obj){ elSteps.innerHTML=''; const keys=Object.keys(obj||{}); if(!keys.length){ elSteps.innerHTML='<div class="muted">(geen data)</div>'; return;} const ul=document.createElement('ul'); ul.style.listStyle='none'; ul.style.padding='0'; keys.sort((a,b)=> (obj[b]||0)-(obj[a]||0)); for(const k of keys){ const li=document.createElement('li'); li.textContent=`${mapStep(k)}: ${obj[k]}`; ul.appendChild(li);} elSteps.appendChild(ul); }
-  function mapStep(s){ const L={ start:'Start', flow_start:'Flow gestart', ask_urgent:'Vraag: dringend?', ask_description:'Vraag: omschrijving', ask_email:'Vraag: e‑mail', submit_attempt:'Verzenden geprobeerd', submit_success:'Verzonden', email_invalid:'Ongeldig e‑mail', open_jobs_shown:'Open meldingen getoond', poets_info_viewed:'Poetsinfo bekeken' }; return L[s]||s; }
-
-  // 5) Data state
-  const state={ rows:[], bars:[], steps:{}, attempts:0 };
-
-  async function fetchJSON(url){ try{ const r=await fetch(url,{cache:'no-store'}); if(!r.ok) throw new Error(String(r.status)); return await r.json(); }catch(e){ if(debug) console.warn('fetchJSON fail',url,e); return null; } }
-
-  function buildUrl(base){ const from=elFrom.value; const to=elTo.value; const st=elSta.value; const sp = new URLSearchParams({ code, from, to }); if(st && st!=='all') sp.set('status',st); return `${base}?${sp.toString()}`; }
-
-  async function loadStats(){
-    const url = buildUrl('/.netlify/functions/prod_stats');
-    const data = await fetchJSON(url);
-    if(!data){ // fallback demo
-      const today=new Date(elTo.value); const from=new Date(elFrom.value); const days=Math.ceil((today-from)/86400000)+1; const pairs=[]; for(let i=0;i<days;i++){ const d=new Date(from); d.setDate(from.getDate()+i); pairs.push([fmt(d), Math.random()<0.3?0:1]); }
-      state.rows = pairs.filter(([,v])=>v).map(([,v],i)=>({ Date:pairs[i][0], Id:`DEMO-${i}`, Description:'demo-ticket', Status:(i%2?'open':'closed') }));
-      K.total.textContent = String(state.rows.length); K.open.textContent = String(state.rows.filter(r=>r.Status==='open').length); K.closed.textContent = String(state.rows.filter(r=>r.Status==='closed').length);
-      state.bars = pairs; renderBars(state.bars); renderRows(); return; }
-
-    // shape tolerant
-    const rows = data.rows || data.Items || data.tickets || [];
-    state.rows = rows.map(x=>({ Date: x.Date||x.date||'', Id: x.Id||x.id||'', Description: x.Description||x.desc||x.text||'', Status: x.Status||x.status||'' }));
-    const daily = data.daily || data.DailyCounts || [];
-    state.bars = daily.map(p=>Array.isArray(p)?p:[p.date||p[0]||'', Number(p.count||p[1]||0)]);
-
-    K.total.textContent = String(data.total ?? state.rows.length ?? 0);
-    K.open.textContent  = String(data.open  ?? state.rows.filter(r=>r.Status==='open').length);
-    K.closed.textContent= String(data.closed?? state.rows.filter(r=>r.Status==='closed').length);
-    renderBars(state.bars); renderRows();
+  function buildQS(base){
+    const sp = new URLSearchParams({ from: elFrom.value, to: elTo.value, view: 'by_day_entities' });
+    return `${base}?${sp.toString()}`;
   }
 
-  async function loadFormStats(){
-    const url = buildUrl('/.netlify/functions/prod_formstats');
-    const data = await fetchJSON(url) || { attempts:0, successes:0, steps:{} };
-    state.attempts = Math.max(0, (data.attempts||0) - (data.successes||0));
-    K.attempts.textContent = String(state.attempts);
-    renderSteps(data.steps||{});
+  async function loadDaily(){
+    // 1) Proberen via formstats (nieuwe vorm)
+    const u1 = buildQS(endpoints.formstats);
+    const d1 = await fetchJSON(u1);
+    if(d1 && Array.isArray(d1.daily)){
+      return shapeDaily(d1.daily);
+    }
+    // 2) Fallback via stats: we hebben enkel submitted rows, geen opened
+    const u2 = `${endpoints.stats}?from=${elFrom.value}&to=${elTo.value}`;
+    const d2 = await fetchJSON(u2);
+    if(d2 && (Array.isArray(d2.rows) || Array.isArray(d2.Items))){
+      const rows = d2.rows || d2.Items;
+      const byDate = new Map();
+      for(const r of rows){
+        const date = (r.Date||r.date||'').slice(0,10); if(!date) continue;
+        const id = r.Id||r.id||''; const type = r.Type||r.type||''; const desc = r.Description||r.desc||r.text||'';
+        const entry = byDate.get(date) || { date, opened: [], submitted: [] };
+        entry.submitted.push({ id, type, description: desc });
+        byDate.set(date, entry);
+      }
+      return shapeDaily(Array.from(byDate.values()));
+    }
+    // 3) Geen data → genereer leegdagen
+    const dates = enumerateDays(elFrom.value, elTo.value);
+    return shapeDaily(dates.map(d=>({date:d, opened:[], submitted:[]})));
   }
 
-  function renderRows(){ elBody.innerHTML=''; for(const it of state.rows){ const tr=document.createElement('tr'); tr.innerHTML = `<td>${(it.Date||'').slice(0,10)}</td><td>${it.Id||''}</td><td>${it.Description||'-'}</td><td>${it.Status||''}</td>`; elBody.appendChild(tr);} }
+  function shapeDaily(dailyRaw){
+    // normaliseer + unique per dag
+    const daily = dailyRaw.map(x=>({
+      date: x.date,
+      opened: uniqBy((x.opened||[]).map(e=>normEnt(e)), e=>keyEnt(e)),
+      submitted: uniqBy((x.submitted||[]).map(e=>normEnt(e)), e=>keyEnt(e))
+    })).sort((a,b)=>a.date.localeCompare(b.date));
+    // counts voor tijdslijn
+    const counts = daily.map(d=>[d.date, (d.submitted||[]).length]);
+    return { daily, counts };
+  }
 
-  async function loadAll(){ await Promise.all([loadStats(), loadFormStats()]); }
+  function normEnt(e){
+    return {
+      id: e.id || e.Id || '',
+      type: e.type || e.Type || '',
+      description: e.description || e.Description || ''
+    };
+  }
+  function keyEnt(e){ return `${e.type}|${e.id}`; }
+
+  function enumerateDays(from,to){
+    const a = new Date(from), b = new Date(to), out=[]; a.setHours(0,0,0,0); b.setHours(0,0,0,0);
+    for(let d=new Date(a); d<=b; d.setDate(d.getDate()+1)) out.push(fmt(d));
+    return out;
+  }
+
+  function renderDays(){
+    elDays.innerHTML='';
+    const frag = document.createDocumentFragment();
+    state.daily.forEach(d=>{
+      const wrap = document.createElement('div'); wrap.className='day';
+      const colDate = document.createElement('div');
+      colDate.innerHTML = `<h4>${d.date}</h4><div class="muted">${d.opened.length+d.submitted.length} opgeroepen</div>`;
+
+      const colOpenOnly = document.createElement('div');
+      const openOnly = diffEntities(d.opened, d.submitted);
+      colOpenOnly.innerHTML = `<h4 class="muted">Opgeroepen, nog niet doorgestuurd</h4>`;
+      if(!openOnly.length){ colOpenOnly.appendChild(note('(geen)')); }
+      else { colOpenOnly.appendChild(listEntities(openOnly,'warn')); }
+
+      const colSubmitted = document.createElement('div');
+      colSubmitted.innerHTML = `<h4 class="muted">Doorgestuurd</h4>`;
+      if(!d.submitted.length){ colSubmitted.appendChild(note('(geen)')); }
+      else { colSubmitted.appendChild(listEntities(d.submitted,'ok')); }
+
+      wrap.append(colDate,colOpenOnly,colSubmitted);
+      frag.appendChild(wrap);
+    });
+    elDays.appendChild(frag);
+  }
+
+  function note(t){ const s=document.createElement('div'); s.className='muted'; s.textContent=t; return s; }
+  function listEntities(arr,cls){
+    const div=document.createElement('div');
+    arr.forEach(e=>{
+      const p=document.createElement('span'); p.className=`pill ${cls||''}`;
+      p.innerHTML = `<span class="tag">${e.id||'—'}</span> ${e.description?('— '+escapeHtml(e.description)) : ''}`;
+      div.appendChild(p);
+    });
+    return div;
+  }
+  function diffEntities(opened, submitted){
+    const set = new Set(submitted.map(keyEnt));
+    return opened.filter(e=>!set.has(keyEnt(e)));
+  }
+  function escapeHtml(s){ return String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[c])); }
+
+  function renderTimeline(){
+    const W=1000,H=220, P=30, AX=H-P-20; // chart area
+    elTL.setAttribute('viewBox',`0 0 ${W} ${H}`);
+    elTL.innerHTML='';
+    const data = state.counts;
+    if(!data.length){ return; }
+
+    const xs = data.map((_,i)=>i), ys = data.map(([,v])=>v);
+    const maxY = Math.max(1, ...ys);
+    const stepX = (W-2*P) / Math.max(1,(data.length-1));
+    // Axes
+    const gAx = document.createElementNS('http://www.w3.org/2000/svg','g');
+    const x0 = P, y0 = AX; // origin
+    const axisX = line(x0, AX, W-P, AX, '#cbd5e1');
+    const axisY = line(x0, P, x0, AX, '#cbd5e1');
+    gAx.append(axisX, axisY);
+    // ticks X (om de 7 dagen)
+    data.forEach(([d],i)=>{ if(i%7) return; const x=x0+i*stepX; gAx.append(line(x,AX,x,AX+6,'#cbd5e1')); gAx.append(text(d.slice(5), x, AX+18, 'middle', '10px', '#64748b')); });
+    // ticks Y
+    for(let t=0;t<=maxY;t+=Math.ceil(maxY/4)){
+      const y = AX - (t/maxY)*(AX-P);
+      gAx.append(line(x0-4,y,W-P,y,'#f1f5f9'));
+      gAx.append(text(String(t), x0-10, y+3, 'end', '10px', '#64748b'));
+    }
+    elTL.appendChild(gAx);
+    // polyline
+    const pts = data.map(([,v],i)=>`${x0+i*stepX},${AX - (v/maxY)*(AX-P)}`).join(' ');
+    const pl = document.createElementNS('http://www.w3.org/2000/svg','polyline');
+    pl.setAttribute('points', pts); pl.setAttribute('fill','none'); pl.setAttribute('stroke', '#ee7e00'); pl.setAttribute('stroke-width','2');
+    elTL.appendChild(pl);
+    // dots
+    data.forEach(([,v],i)=>{
+      const cx = x0+i*stepX, cy = AX - (v/maxY)*(AX-P);
+      const c = document.createElementNS('http://www.w3.org/2000/svg','circle'); c.setAttribute('cx',cx); c.setAttribute('cy',cy); c.setAttribute('r','3'); c.setAttribute('fill','#ee7e00'); elTL.appendChild(c);
+    });
+  }
+
+  function toCSV(){
+    const lines = ['date,type,id,description'];
+    for(const d of state.daily){
+      for(const e of d.opened){ lines.push(`${d.date},opened,${csv(e.id)},${csv(e.description)}`); }
+      for(const e of d.submitted){ lines.push(`${d.date},submitted,${csv(e.id)},${csv(e.description)}`); }
+    }
+    return lines.join('
+');
+  }
+  function csv(s){ return '"'+String(s??'').replace(/"/g,'""')+'"'; }
+  function downloadCSV(){ const blob=new Blob([toCSV()],{type:'text/csv'}); const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='stats_per_dag.csv'; a.click(); URL.revokeObjectURL(a.href); }
+
+  async function loadAll(){
+    const { daily, counts } = await loadDaily();
+    state.daily = daily; state.counts = counts;
+    renderDays();
+    renderTimeline();
+  }
 
   function startAuto(){ return setInterval(loadAll, 30000); }
-  let timer = null; if(document.getElementById('autoref').checked){ timer=startAuto(); }
+  let timer=null; if(elAut.checked){ timer=startAuto(); }
 
   // init
   loadAll();
