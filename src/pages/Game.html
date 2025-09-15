@@ -97,7 +97,14 @@
 
 <script>
 
-const API = 'https://atalianqr.workers.dev/api/log';
+// const API = 'https://atalianqr.workers.dev/api/log';
+
+// dynamische URL voor lokaal (wrangler dev) en productie (workers.dev)
+const LOG_URL =
+  (location.hostname === '127.0.0.1' || location.hostname === 'localhost')
+    ? 'http://127.0.0.1:8787/api/log'
+    : 'https://atalian-logs.atalianqr.workers.dev/api/log';
+
   /* ===== i18n ===== */
   const I18N = {
     nl: {
@@ -276,11 +283,35 @@ async function hashEmailToUserId(email){
 }
 
 // === Centrale logger + queue ===
-async function postCentral(url,data,timeoutMs=4000){
-  const controller=new AbortController(); const t=setTimeout(()=>controller.abort(),timeoutMs);
-  const res=await fetch(url,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(data),signal:controller.signal});
-  clearTimeout(t); if(!res.ok) throw new Error('HTTP '+res.status); return res.json().catch(()=>({ok:true}));
+async function postCentral(_url, data, timeoutMs = 4000) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+
+  try {
+    const res = await fetch(LOG_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+      signal: controller.signal
+    });
+
+    clearTimeout(timer);
+
+    if (!res.ok) {
+      throw new Error('HTTP ' + res.status);
+    }
+
+    // probeer JSON te lezen, maar vang fouten op
+    return await res.json().catch(() => ({ ok: true }));
+
+  } catch (err) {
+    clearTimeout(timer);
+    console.error('postCentral error', err);
+    return { ok: false, error: String(err) };
+  }
 }
+
+
 function queuePending(item){ try{ const k='atalian_pending'; const q=JSON.parse(localStorage.getItem(k)||'[]'); q.push(item); localStorage.setItem(k,JSON.stringify(q)); }catch(e){} }
 async function flushPending(){ try{ const k='atalian_pending'; const q=JSON.parse(localStorage.getItem(k)||'[]'); if(!q.length) return; const rest=[]; for(const it of q){ try{ await postCentral('/api/log',it,4000);}catch(e){rest.push(it);} } localStorage.setItem(k,JSON.stringify(rest)); }catch(e){} }
 async function logEvent(eventName,payload={}){ const base={event:eventName,visitor_id:VISITOR_ID,session_id:SESSION_ID,lang:(window.LANG||'nl'),ts:Date.now(),...payload}; try{ await postCentral('/api/log',base,3500);}catch(e){ queuePending(base);} }
