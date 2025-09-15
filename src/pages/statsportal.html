@@ -101,10 +101,25 @@
       </div>
     </div>
 
+    <!-- Extra KPI-rij voor pogingen/attempts -->
+    <div class="grid cards" id="attempts-row">
+      <div class="card kpi">
+        <div class="lbl">Pogingen (niet ingediend)</div>
+        <div class="val" id="k-attempts">–</div>
+      </div>
+    </div>
+
     <div class="card" style="margin-top:12px">
       <h3 style="margin:0 0 8px">Tickets per dag/week</h3>
       <div class="bars" id="bars"></div>
       <div class="badge" id="hint-source"></div>
+    </div>
+
+    <!-- NIEUW: Waar haken ze af? (stap-distributie van niet-ingediende pogingen) -->
+    <div class="card" style="margin-top:12px">
+      <h3 style="margin:0 0 8px">Waar haken ze af? (pogingen per stap)</h3>
+      <div class="bars" id="bars-steps"></div>
+      <div class="badge">bron: prod_formstats (server)</div>
     </div>
 
     <div class="card" style="margin-top:12px">
@@ -140,6 +155,7 @@ const elFrom = document.getElementById('from');
 const elTo = document.getElementById('to');
 const elStatus = document.getElementById('status');
 const elBars = document.getElementById('bars');
+const elBarsSteps = document.getElementById('bars-steps');
 const elTbl = document.querySelector('#tbl tbody');
 const elSince = document.getElementById('since');
 const elHint = document.getElementById('hint-source');
@@ -147,6 +163,7 @@ const elHint = document.getElementById('hint-source');
 const KPI_TOTAL = document.getElementById('k-total');
 const KPI_OPEN   = document.getElementById('k-open');
 const KPI_CLOSED = document.getElementById('k-closed');
+const KPI_ATTEMPTS = document.getElementById('k-attempts');
 
 // === Periode helpers ===
 function fmt(d){return d.toISOString().slice(0,10)}
@@ -220,6 +237,21 @@ async function fetchStats(from, to, status){
   return { items, sinceTs: null };
 }
 
+// === NIEUW: form-attempt stats (pogingen/abandons) ===
+async function fetchFormStats(from, to){
+  const params = new URLSearchParams({ code, from, to });
+  const url = `/.netlify/functions/prod_formstats?${params}`;
+  try{
+    const r = await fetch(url);
+    if(r.ok){
+      const j = await r.json(); // verwacht: { attempts, active, abandons, byStep: [{step,count}] }
+      j.byStep = Array.isArray(j.byStep) ? j.byStep : [];
+      return j;
+    }
+  }catch(_){/* negeer */}
+  return { attempts: 0, active: 0, abandons: 0, byStep: [] };
+}
+
 function groupByDay(items){
   const map = new Map();
   for(const it of items){
@@ -240,9 +272,7 @@ function renderBars(dayPairs){
     const track = document.createElement('div'); track.className='track';
     const fill = document.createElement('div'); fill.className='fill'; fill.style.width = (val/max*100).toFixed(0)+'%';
     const p = document.createElement('div'); p.className='pct'; p.textContent = String(val)+'×';
-    track.appendChild(fill); row.appendChild(l); row.appendChild(track); row.appendChild(p); elBars.appendChild(row);
-  }
-}
+    track.appendChild(fill); row.appendChild(l); row.appendChild(track); row.appe
 
 function renderTable(items){
   elTbl.innerHTML='';
@@ -271,7 +301,11 @@ async function load(){
   const from = elFrom.value || fmt(addDays(new Date(), -29));
   const to   = elTo.value   || fmt(new Date());
   const status = elStatus.value;
-  const { items, sinceTs } = await fetchStats(from, to, status);
+  const [statsRes, formRes] = await Promise.all([
+    fetchStats(from, to, status),
+    fetchFormStats(from, to)
+  ]);
+  const { items, sinceTs } = statsRes;
 
   // filter client-side op periode (voor fallback-bronnen)
   const inRange = items.filter(it=>{
@@ -281,6 +315,7 @@ async function load(){
   const items2 = filterStatus(inRange, status);
 
   updateKPI(items2);
+  if (KPI_ATTEMPTS) KPI_ATTEMPTS.textContent = formRes.attempts ?? 0;
   renderBars(groupByDay(items2));
   renderTable(items2);
   elSince.textContent = sinceTs ? ('telt vanaf: '+ new Date(sinceTs).toLocaleString()) : '';
