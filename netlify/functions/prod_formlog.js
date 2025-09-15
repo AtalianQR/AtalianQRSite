@@ -1,94 +1,47 @@
 // netlify/functions/prod_formlog.js
 import { getStore } from '@netlify/blobs';
 
-export const handler = async (event) => {
-  const method = (event.httpMethod || '').toUpperCase();
-  const q = event.queryStringParameters || {};
+export default async (req, ctx) => {
+  const url = new URL(req.url);
+  const method = req.method.toUpperCase();
 
-  // ✅ healthchecks: laat HEAD/OPTIONS/GET slagen
-  if (method === 'HEAD' || method === 'OPTIONS') {
-    return { statusCode: 204, headers: cors() };
-  }
-  if (method === 'GET') {
-    return {
-      statusCode: 200,
-      headers: { ...cors(), 'content-type': 'application/json' },
-      body: JSON.stringify({ ok: true })
-    };
-  }
-  if (method !== 'POST') {
-    return { statusCode: 405, headers: cors(), body: 'Method Not Allowed' };
-  }
+  if (method === 'HEAD' || method === 'OPTIONS') return new Response(null, { status: 204, headers: cors() });
+  if (method === 'GET')    return json({ ok: true }, 200);
 
-  // --- echte beacon logging (POST) ---
+  if (method !== 'POST')   return new Response('Method Not Allowed', { status: 405, headers: cors() });
+
   let data = {};
-  try {
-    data = JSON.parse(event.body || '{}');
-  } catch {
-    // slik JSON-fout (geen lawaai naar client)
-    return { statusCode: 204, headers: cors() };
-  }
+  try { data = await req.json(); } catch { return new Response(null, { status: 204, headers: cors() }); }
 
-  const now = new Date();
+  const now  = new Date();
   const code = String(data.code || 'unknown').slice(0, 64);
   const day  = now.toISOString().slice(0, 10);
   const key  = `${code}/${day}.ndjson`;
 
   try {
-    // ✅ store binnen de handler + fallback via env (lokaal)
-    const store = createStore();
-
-    const line = JSON.stringify({
+    const store = getStore('formlog');       // ✅ v2-injectie + binnen de handler
+    const line  = JSON.stringify({
       ...data,
       ts_server: now.toISOString(),
-      ua: event.headers?.['user-agent'] || '',
-      ip: event.headers?.['x-forwarded-for'] || event.headers?.['client-ip'] || ''
+      ua: req.headers.get('user-agent') || '',
+      ip: req.headers.get('x-forwarded-for') || ''
     });
-
     await store.append(key, line + '\n');
 
-    // Handige debug: ?debug=1 geeft 200 + details i.p.v. 204
-    if (q.debug === '1') {
-      return {
-        statusCode: 200,
-        headers: { ...cors(), 'content-type': 'application/json' },
-        body: JSON.stringify({ ok: true, key, bytes: (line + '\n').length })
-      };
+    if (url.searchParams.get('debug') === '1') {
+      return json({ ok: true, key, bytes: (line + '\n').length }, 200);
     }
   } catch (err) {
-    console.error('formlog error:', err); // check Netlify Function logs
-    if (q.debug === '1') {
-      return {
-        statusCode: 500,
-        headers: { ...cors(), 'content-type': 'application/json' },
-        body: JSON.stringify({ ok: false, error: String(err) })
-      };
-    }
+    console.error('formlog error:', err);
+    if (url.searchParams.get('debug') === '1') return json({ ok: false, error: String(err) }, 500);
   }
 
-  return { statusCode: 204, headers: cors() };
+  return new Response(null, { status: 204, headers: cors() });
 };
 
-// ===== helpers =====
-function createStore() {
-  try {
-    // In Netlify productie: automatisch geconfigureerd
-    return getStore('formlog');
-  } catch (e) {
-    // Lokaal / buiten Netlify: optionele fallback via env
-    if (String(e?.name || e).includes('MissingBlobsEnvironmentError')) {
-      const siteID = process.env.NETLIFY_SITE_ID || process.env.NF_SITE_ID;
-      const token  = process.env.NETLIFY_API_TOKEN || process.env.NETLIFY_AUTH_TOKEN;
-      if (siteID && token) return getStore('formlog', { siteID, token });
-    }
-    throw e;
-  }
-}
-
-function cors() {
-  return {
-    'Access-Control-Allow-Origin': '*',
-    'Access-Control-Allow-Methods': 'POST,GET,HEAD,OPTIONS',
-    'Access-Control-Allow-Headers': 'Content-Type',
-  };
-}
+function cors(){ return {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Methods': 'POST,GET,HEAD,OPTIONS',
+  'Access-Control-Allow-Headers': 'Content-Type',
+};}
+function json(obj, status){ return new Response(JSON.stringify(obj), { status, headers: { ...cors(), 'content-type': 'application/json' } }); }
