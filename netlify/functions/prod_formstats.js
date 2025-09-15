@@ -23,7 +23,10 @@ export default async (req, context) => {
   const debug = url.searchParams.get('debug') === '1';
 
   try {
-    const store = getStore('formlog');
+    // ✅ Blobs-store ALTIJD BINNEN DE HANDLER maken
+    //    + fallback voor lokaal/CLI via env-variabelen
+    const store = createStore();
+
     const prefix = code ? `${code}/` : '';
 
     // 1) keys ophalen (list → { blobs })
@@ -45,12 +48,15 @@ export default async (req, context) => {
         const s = line.trim(); if (!s) continue;
         let ev; try { ev = JSON.parse(s); } catch { continue; }
 
+        // robuuste dagbepaling + id-fallback
         const day = String(ev.ts_server || ev.ts || '').slice(0, 10);
         if (!day || day < from || day > to) continue;
 
-        const id  = ev.id || ev.code || ''; if (!id) continue;
-		const entType = ev.isEquipment ? 'equip' : 'space';
-		const keyEnt = `${entType}|${id}`;
+        const id  = String(ev.id || ev.code || '');
+        if (!id) continue;
+
+        const entType = ev.isEquipment ? 'equip' : 'space';
+        const keyEnt = `${entType}|${id}`;
 
         const bucket = ensureDay(dayMap, day);
         if (ev.type === 'url_load') bucket.opened.add(keyEnt);
@@ -74,7 +80,6 @@ export default async (req, context) => {
     return new Response(body, { status: 200, headers: { ...headers, 'content-type': 'application/json' } });
 
   } catch (err) {
-    // ✳︎ debug=1 toont de foutinhoud direct
     const payload = { ok: false, error: 'internal', message: String(err?.message || err) };
     return new Response(JSON.stringify(debug ? payload : { ok:false, error:'internal' }),
       { status: 500, headers: { ...headers, 'content-type': 'application/json' } });
@@ -82,6 +87,22 @@ export default async (req, context) => {
 };
 
 // ===== helpers =====
+function createStore() {
+  try {
+    // In productie (Netlify) werkt dit meteen
+    return getStore('formlog');
+  } catch (e) {
+    // Lokaal/extern: val terug op env-variabelen als die bestaan
+    // (NETLIFY_SITE_ID of NF_SITE_ID) + (NETLIFY_API_TOKEN of NETLIFY_AUTH_TOKEN)
+    if (String(e?.name || e).includes('MissingBlobsEnvironmentError')) {
+      const siteID = process.env.NETLIFY_SITE_ID || process.env.NF_SITE_ID;
+      const token  = process.env.NETLIFY_API_TOKEN || process.env.NETLIFY_AUTH_TOKEN;
+      if (siteID && token) return getStore('formlog', { siteID, token });
+    }
+    throw e;
+  }
+}
+
 function cors(){
   return {
     'Access-Control-Allow-Origin': '*',
