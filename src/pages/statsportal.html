@@ -135,7 +135,7 @@
 
 <script type="module">
 // === QR-parser hergebruiken ===
-import { parseUltimoQR } from './CodeUrl.js';
+import { parseUltimoQR } from '/CodeUrl.js';
 
 const qs = new URLSearchParams(location.search);
 const code = qs.get('code') || '';
@@ -254,25 +254,33 @@ async function fetchFormStats(from, to){
 
 function groupByDay(items){
   const map = new Map();
-  for(const it of items){
-    const k = it.Date?.slice(0,10) || '';
-    if(!k) continue;
-    map.set(k, (map.get(k)||0) + 1);
+  for (const it of items){
+    const d = (it.Date || it.date || '').slice(0,10);
+    map.set(d, (map.get(d) || 0) + 1);
   }
-  return Array.from(map.entries()).sort(([a],[b])=>a.localeCompare(b));
+  return Array.from(map.entries()).sort((a,b)=>a[0].localeCompare(b[0]));
 }
+
 
 function renderBars(dayPairs){
   elBars.innerHTML = '';
-  if(!dayPairs.length){elBars.innerHTML='<div class="muted">Geen data in deze periode.</div>'; return;}
+  if(!dayPairs.length){
+    elBars.innerHTML = '<div class="muted">Geen data in deze periode.</div>';
+    return;
+  }
   const max = Math.max(...dayPairs.map(([,v])=>v));
-  for(const [label,val] of dayPairs){
+  for (const [label,val] of dayPairs){
     const row = document.createElement('div'); row.className='bar';
     const l = document.createElement('div'); l.textContent = label; l.className='muted';
-    const track = document.createElement('div'); track.className='track';
-    const fill = document.createElement('div'); fill.className='fill'; fill.style.width = (val/max*100).toFixed(0)+'%';
-    const p = document.createElement('div'); p.className='pct'; p.textContent = String(val)+'×';
-    track.appendChild(fill); row.appendChild(l); row.appendChild(track); row.appe
+    const g = document.createElement('div'); g.className='g';
+    const inner = document.createElement('div'); inner.style.width = `${(val/max)*100}%`;
+    g.appendChild(inner);
+    const v = document.createElement('div'); v.textContent = String(val);
+    row.appendChild(l); row.appendChild(g); row.appendChild(v);
+    elBars.appendChild(row);
+  }
+}
+
 
 function renderTable(items){
   elTbl.innerHTML='';
@@ -323,10 +331,16 @@ async function load(){
 
 // Export CSV
 function toCSV(rows){
-  const header = ['Date','Id','Description','Status'];
-  const esc = s=>('"'+String(s).replace(/"/g,'""')+'"');
-  return [header.join(','), ...rows.map(r=>[r.Date,r.Id,r.Description,r.Status].map(esc).join(','))].join('\n');
+  if(!rows.length) return 'Date,Id,Description,Status\n';
+  const header = Object.keys(rows[0]);
+  const esc = s => '"' + String(s).replace(/"/g,'""') + '"';
+  const lines = [header.join(',')];
+  for (const r of rows){
+    lines.push(header.map(k => esc(r[k] ?? '')).join(','));
+  }
+  return lines.join('\n');
 }
+
 
 document.getElementById('btn-export').addEventListener('click', ()=>{
   const rows=[...document.querySelectorAll('#tbl tbody tr')].map(tr=>{
