@@ -38,25 +38,25 @@ export const handler = async (event) => {
     const view = (qs.view || 'by_day_entities');
     const code = (qs.code || '').trim(); // optioneel
 
-    // 1) Haal keys op uit Blobs
+    // 1) Haal keys op uit Blobs (correct gebruik van list)
     const store = getStore('formlog');
     const keys = [];
-
-    // Keys hebben de vorm `${code}/${YYYY-MM-DD}.ndjson`
-    // Als 'code' niet meegegeven is → we lopen over ALLE codes
     const prefix = code ? `${code}/` : '';
-    for await (const { key } of store.list({ prefix })) {
+    // Optie A: simpel (alle resultaten in 1 keer)
+    const { blobs } = await store.list({ prefix });
+    for (const { key } of blobs) {
       const m = key.match(/^(?<code>[^/]+)\/(?<day>\d{4}-\d{2}-\d{2})\.ndjson$/);
       if (!m) continue;
       const day = m.groups.day;
       if (day >= from && day <= to) keys.push(key);
     }
+    // (Alternatief bij véél keys: paginate:true en per page itereren – zie Netlify docs)
 
     // 2) Parse NDJSON per key en aggregeer per dag
     const dayMap = new Map(); // date -> { opened:Set<string>, submitted:Set<string>, byKey:Map }
 
     for (const key of keys) {
-      const text = await store.get(key);
+      const text = await store.get(key, { type: 'text' });
       if (!text) continue;
       for (const line of text.split('\n')) {
         if (!line.trim()) continue;
