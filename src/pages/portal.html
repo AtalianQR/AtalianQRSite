@@ -346,5 +346,77 @@ document.getElementById('btn-load').addEventListener('click', load);
 load();
 
 </script>
+
+<script>
+(() => {
+  const qs = new URLSearchParams(location.search);
+  const code = qs.get('code') || 'unknown';
+
+  // <- pas aan als jouw BotUI-root een andere id heeft
+  const root = document.getElementById('botui-app');
+  if (!root) { console.warn('BotUI root niet gevonden'); return; }
+
+  const now = () => Date.now();
+  const send = (type, extra={}) => {
+    try {
+      const blob = new Blob([JSON.stringify({
+        type, code, path: location.pathname, ts: now(), ...extra
+      })], { type: 'application/json' });
+      navigator.sendBeacon('/.netlify/functions/prod_formlog', blob);
+    } catch {}
+  };
+
+  // We modelleren 3 stappen: 0=dringend?, 1=probleem, 2=email
+  const TOTAL = 3;
+  let last = -1, submitted = false, lastActivity = now();
+
+  function bump(step, reason){
+    if (step > last) {
+      last = step;
+      const filled = last + 1;
+      const pct = Math.round((filled / TOTAL) * 100);
+      send('progress', { reason, filled, total: TOTAL, pct, lastIndex: last });
+    }
+    lastActivity = now();
+  }
+
+  // 0) klik op ja/nee-knoppen
+  root.addEventListener('click', (e) => {
+    if (e.target.closest('.botui-actions-buttons-button')) bump(0, 'urgent_click');
+  }, true);
+
+  // 1/2) input in chat: onderscheid probleem vs email via placeholder
+  root.addEventListener('input', (e) => {
+    const el = e.target;
+    if (!root.contains(el)) return;
+    const ph = (el.getAttribute('placeholder') || '').toLowerCase();
+    if (/@|e-mail|email/.test(ph)) bump(2, 'email_input');
+    else bump(1, 'desc_input');
+  }, true);
+
+  // Idle + verlaten pagina = abandon
+  setInterval(() => {
+    if (submitted) return;
+    const idle = now() - lastActivity;
+    if (idle > 45000) { // 45s
+      const filled = last + 1;
+      const pct = Math.round((filled / TOTAL) * 100);
+      send('idle_abandon', { filled, total: TOTAL, pct, lastIndex: last, inactiveMs: idle });
+      lastActivity = now();
+    }
+  }, 5000);
+
+  window.addEventListener('pagehide', () => {
+    if (submitted) return;
+    const filled = last + 1;
+    const pct = Math.round((filled / TOTAL) * 100);
+    send('pagehide_abandon', { filled, total: TOTAL, pct, lastIndex: last });
+  });
+
+  // Optioneel: roep dit aan na succesvolle submit in je bestaande flow
+  // send('submit', { filled: TOTAL, total: TOTAL, pct: 100, lastIndex: 2 });
+})();
+</script>
+
 </body>
 </html>
