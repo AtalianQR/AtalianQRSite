@@ -95,13 +95,21 @@ const endpointLoc = isEquipment
 /* ▸ 2. Telemetrie helper (sendBeacon, zelfde endpoint als statsportal) ◂ */
 const Telemetry = (()=>{
   const base = { code, path: location.pathname, lang, id, isEquipment };
-  function send(type, extra={}){
-    try{
-      const payload = { type, ts: Date.now(), href: location.href, ...base, ...extra };
-      const blob = new Blob([JSON.stringify(payload)], {type:'application/json'});
-      navigator.sendBeacon('/.netlify/functions/prod_formlog', blob);
-    }catch(_){}
-  }
+	function send(type, extra={}) {
+	  if (!_formlogOK) return;        // → niets versturen zolang endpoint faalt
+	  try {
+		const payload = { type, ts: Date.now(), href: location.href, ...base, ...extra };
+		const blob = new Blob([JSON.stringify(payload)], { type:'application/json' });
+		navigator.sendBeacon('/.netlify/functions/prod_formlog', blob);
+	  } catch(_) {}
+	}
+
+  let _formlogOK = false;
+(async () => {
+  try { _formlogOK = (await fetch('/.netlify/functions/prod_formlog', { method:'HEAD' })).ok; }
+  catch { _formlogOK = false; }
+})();
+
   return { send };
 })();
 
