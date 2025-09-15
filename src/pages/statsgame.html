@@ -76,17 +76,22 @@
 </div>
 
 <script>
-/* ===== Helpers ===== */
+/* ===== API-endpoint ===== */
 const API =
   location.hostname.includes('localhost') || location.hostname.includes('127.0.0.1')
     ? '/api/log'
     : 'https://atalian-logs.atalianqr.workers.dev/api/log';
 
+/* ===== DOM helpers ===== */
 const $ = (s)=>document.querySelector(s);
 const fmtPct = (x)=> isFinite(x) ? (x*100).toFixed(0)+'%' : '–';
 
+/* ===== Caches + optimistic buffer ===== */
+let itemsCache = [];   // laatste serveritems
+let lastResetTs = 0;   // server-resetanker
+window.__OPT = [];     // optionele, lokale “optimistic” events (indien ooit gebruikt)
 
-/* ===== Normalisatie (compatibel met je game-logger) ===== */
+/* ===== Normalisatie (compatibel met game-logger) ===== */
 function inferEvent(rec){
   if(!rec.event && (rec.contextLabel || rec.email_present!==undefined || rec.urgent)) return 'ticket_submitted';
   return rec.event || 'event';
@@ -102,10 +107,7 @@ function normalize(rec){
   };
 }
 
-/* ===== Server reset-anker =====
-   We loggen 'statsgame_reset' naar /api/log.
-   Bij het laden filteren we alle events NA de meest recente reset.
-*/
+/* ===== Server reset-anker ===== */
 async function postReset(){
   await fetch(API, {
     method:'POST',
@@ -114,13 +116,13 @@ async function postReset(){
   });
 }
 
-async function fetchAll(limit=5000){
+/* ===== Ophalen uit API ===== */
+async function fetchAll(limit=8000){
   const url = new URL(API, location.origin);
   url.searchParams.set('limit', String(limit));
-  const res = await fetch(url.toString());
+  const res = await fetch(url.toString(), { cache:'no-store' });
   if(!res.ok) throw new Error('HTTP '+res.status);
   const json = await res.json();
-  // accepteer zowel {items:[...]} als [...]
   const raw = Array.isArray(json) ? json : (Array.isArray(json.items) ? json.items : []);
   return raw.map(normalize);
 }
@@ -129,16 +131,11 @@ function latestResetTs(items){
   const r = items.filter(it => it.event==='statsgame_reset').sort((a,b)=>b.ts-a.ts)[0];
   return r ? r.ts : null;
 }
-
 function filterSince(items, sinceTs){
   return sinceTs ? items.filter(it => it.ts >= sinceTs) : items;
 }
 
-/* ===== Aggregaties =====
-   - Inschrijvingen = #checkin
-   - Gem. voortgang = gemiddelde (#scenario_done per user|session, max 4)
-   - Per step = % van ingeschrevenen dat step X haalde
-*/
+/* ===== Aggregaties ===== */
 function buildParticipants(items){
   const map = new Map(); // key: user|session
   for(const it of items){
@@ -153,14 +150,11 @@ function buildParticipants(items){
   }
   return Array.from(map.values());
 }
-
 function computeMetrics(items){
-  // Deelnemers + reach (éénmaal per step per deelnemer)
   const parts = buildParticipants(items);
   const checked = parts.filter(p=>p.checked);
   const checkins = checked.length;
 
-  // Ruwe pogingen per step: elk scenario_done telt mee
   const attemptsByStep = {1:0,2:0,3:0,4:0};
   for(const it of items){
     if(it.event==='scenario_done' && Number.isFinite(it.step)){
@@ -169,7 +163,6 @@ function computeMetrics(items){
     }
   }
 
-  // Gemiddelde voortgang (zoals vroeger – op basis van unieke steps per deelnemer)
   let totalCompleted=0, done=0;
   if(checkins>0){
     for(const p of checked){
@@ -180,7 +173,6 @@ function computeMetrics(items){
   }
   const avg = checkins ? totalCompleted/checkins : 0;
 
-  // Aandeel van alle pogingen (som = 100%)
   const totalAttempts = attemptsByStep[1]+attemptsByStep[2]+attemptsByStep[3]+attemptsByStep[4];
   const shareByStep = totalAttempts ? {
     1: attemptsByStep[1]/totalAttempts,
@@ -189,20 +181,20 @@ function computeMetrics(items){
     4: attemptsByStep[4]/totalAttempts
   } : {1:0,2:0,3:0,4:0};
 
-  // Gem. pogingen per deelnemer (kan >1 zijn)
-  const avgAttemptsPerStep = checkins ? {
-    1: attemptsByStep[1]/checkins,
-    2: attemptsByStep[2]/checkins,
-    3: attemptsByStep[3]/checkins,
-    4: attemptsByStep[4]/checkins
+  const avgAttemptsPerStep = checked.length ? {
+    1: attemptsByStep[1]/checked.length,
+    2: attemptsByStep[2]/checked.length,
+    3: attemptsByStep[3]/checked.length,
+    4: attemptsByStep[4]/checked.length
   } : {1:0,2:0,3:0,4:0};
 
   return {checkins, avg, done, attemptsByStep, shareByStep, avgAttemptsPerStep, totalAttempts};
 }
 
-
 /* ===== Render ===== */
-function render({checkins, avg, done, attemptsByStep, shareByStep, avgAttemptsPerStep}, sinceTs, allCount){
+function render(metrics, sinceTs, allCount){
+  const {checkins, avg, done, attemptsByStep, shareByStep, avgAttemptsPerStep} = metrics;
+
   $('#k-checkins').textContent = checkins;
 
   const avgInt = Math.round(avg);
@@ -226,35 +218,49 @@ function render({checkins, avg, done, attemptsByStep, shareByStep, avgAttemptsPe
   $('#meta').textContent = `events in venster: ${allCount}`;
 }
 
-
-/* ===== Load ===== */
-async function load(){
-  try{
-    const all = await fetchAll(8000);
-    const sinceTs = latestResetTs(all);
-    const windowed = filterSince(all, sinceTs);
-    const metrics = computeMetrics(windowed);
-    render(metrics, sinceTs, windowed.length);
-  }catch(e){
-    alert('Laden mislukt: '+e.message);
-    console.error(e);
-  }
+/* ===== Optimistic helpers ===== */
+async function refreshStats(){
+  const all = await fetchAll(8000);
+  itemsCache   = all;
+  lastResetTs  = latestResetTs(all) || 0;
+  const windowed = filterSince([...itemsCache, ...(window.__OPT||[])], lastResetTs);
+  const metrics = computeMetrics(windowed);
+  render(metrics, lastResetTs, windowed.length);
+}
+function applyOptimistic(ev){
+  window.__OPT ||= [];
+  window.__OPT.push(ev);
+  const merged = filterSince([...itemsCache, ...window.__OPT], lastResetTs);
+  render(computeMetrics(merged), lastResetTs, merged.length);
+}
+async function postAndRefresh(ev){
+  applyOptimistic(ev);                  // meteen feedback
+  setTimeout(refreshStats, 1500);
+  setTimeout(refreshStats, 5000);
+  setTimeout(refreshStats, 12000);
 }
 
 /* ===== UI ===== */
-document.getElementById('btn-refresh').addEventListener('click', load);
+document.getElementById('btn-refresh').addEventListener('click', () => {
+  refreshStats();
+});
 document.getElementById('btn-reset').addEventListener('click', async ()=>{
   if (!confirm('Teller resetten en server-anker plaatsen?')) return;
   await postReset();
-  setTimeout(load, 300);
+  // na reset geen optimistic events nodig; gewoon herhaald verversen
+  setTimeout(refreshStats, 300);
+  setTimeout(refreshStats, 2000);
+  setTimeout(refreshStats, 6000);
+  setTimeout(refreshStats, 15000);
 });
+
 let timer=null;
 document.getElementById('auto').addEventListener('change', e=>{
-  if(e.target.checked){ timer=setInterval(load, 30000); } else { clearInterval(timer); timer=null; }
+  if(e.target.checked){ timer=setInterval(refreshStats, 30000); } else { clearInterval(timer); timer=null; }
 });
 
 /* Init */
-load();
+refreshStats();
 </script>
 </body>
 </html>
