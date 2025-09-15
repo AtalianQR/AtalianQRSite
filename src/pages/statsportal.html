@@ -120,22 +120,6 @@
     if(d1 && Array.isArray(d1.daily)){
       return shapeDaily(d1.daily);
     }
-    const u2 = endpoints.stats + '?from=' + elFrom.value + '&to=' + elTo.value;
-    const d2 = await fetchJSON(u2);
-    if(d2 && (Array.isArray(d2.rows) || Array.isArray(d2.Items))){
-      const rows = d2.rows || d2.Items;
-      const byDate = new Map();
-      for(const r of rows){
-        const date = String(r.Date || r.date || '').slice(0,10); if(!date) continue;
-        const id = r.Id || r.id || '';
-        const type = r.Type || r.type || '';
-        const desc = r.Description || r.desc || r.text || '';
-        const entry = byDate.get(date) || { date:date, opened:[], submitted:[] };
-        entry.submitted.push({ id:id, type:type, description:desc });
-        byDate.set(date, entry);
-      }
-      return shapeDaily(Array.from(byDate.values()));
-    }
     const dates = enumerateDays(elFrom.value, elTo.value);
     return shapeDaily(dates.map(d=>({date:d, opened:[], submitted:[]})));
   }
