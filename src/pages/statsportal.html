@@ -3,369 +3,209 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>ATALIAN • Statsportal (tickets tellen per periode)</title>
+  <title>Statsportal – tickets per ruimte/installatie</title>
   <link rel="icon" href="/AtalianFavicon.png" />
   <style>
-    :root{--bg:#f7fafc;--card:#fff;--text:#0f172a;--muted:#475569;--accent:#ee7e00}
-    *{box-sizing:border-box}
-    html,body{height:100%}
-    body{
-      margin:0;color:var(--text);font-family:system-ui,-apple-system,Segoe UI,Roboto;
-      background-image:
-        linear-gradient(rgba(255,255,255,.78), rgba(255,255,255,.78)),
-        url('/building-cleaning.png');
-      background-size:cover;background-position:center;background-attachment:fixed
-    }
-    .wrap{max-width:1040px;margin:0 auto;padding:16px}
-    header{display:flex;align-items:center;gap:12px;margin-bottom:8px}
-    header img{height:42px;background:rgba(255,255,255,.9);padding:4px;border-radius:10px}
-    header .title{font-weight:800}
+    :root{--bg:#f7fafc;--card:#fff;--text:#0f172a;--muted:#475569;--accent:#ee7e00;--ring:rgba(238,126,0,.14);--shadow:0 6px 24px rgba(15,23,42,.08)}
+    html,body{height:auto;min-height:100vh;margin:0;background:var(--bg);color:var(--text);font-family:system-ui,-apple-system,Segoe UI,Roboto,Inter,Arial,sans-serif}
+    body{background-image:linear-gradient(rgba(255,255,255,.82), rgba(255,255,255,.82)),url('/building-cleaning.png');background-size:cover;background-position:center;background-attachment:fixed}
+    .wrap{max-width:1100px;margin:0 auto;padding:20px}
+    h1{font-size:20px;margin:6px 0 12px}
+    .row{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+    .filters{display:flex;flex-wrap:wrap;gap:8px;align-items:center;background:var(--card);padding:10px;border-radius:12px;box-shadow:var(--shadow);border:1px solid #eaeef6}
+    .filters .group{display:flex;gap:6px;align-items:center}
+    .filters input[type="date"], .filters select{height:34px;border:1px solid #e5e7eb;border-radius:10px;padding:0 8px}
+    .filters button{height:34px;border-radius:10px;border:1px solid var(--accent);background:var(--accent);color:#fff;padding:0 10px;font-weight:600;cursor:pointer}
+    .filters .iconbtn{display:inline-flex;align-items:center;gap:6px;height:34px;border-radius:10px;border:1px solid #e5e7eb;background:#fff;padding:0 10px;cursor:pointer}
+    .filters label{font-size:12px;color:var(--muted)}
 
-    .pill{display:inline-flex;align-items:center;gap:6px;background:#fff;border:1px solid rgba(0,0,0,.08);padding:6px 10px;border-radius:999px}
+    .entity-badge{display:none;align-items:center;gap:.5rem;background:rgba(255,255,255,.95);border:2px solid var(--accent);border-radius:12px;padding:.4rem .8rem;margin:.6rem 0;box-shadow:0 2px 8px rgba(238,126,0,.08);font-weight:600}
+    .entity-badge .type{font-weight:400;color:#6b7280}
+
+    .kpi{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin:10px 0}
+    .card{background:var(--card);border-radius:14px;box-shadow:var(--shadow);border:1px solid #eef2f9;padding:14px}
+    .kpi .value{font-size:28px;font-weight:800}
     .muted{color:var(--muted)}
 
-    .grid{display:grid;gap:12px}
-    .cards{grid-template-columns:repeat(3,minmax(0,1fr))}
-    @media(max-width:860px){.cards{grid-template-columns:1fr}}
+    .box{background:var(--card);border-radius:14px;box-shadow:var(--shadow);border:1px solid #eef2f9;margin:10px 0}
+    .box h3{margin:0;padding:12px 14px;border-bottom:1px solid #eef2f9;font-size:16px}
+    .box .content{padding:10px 14px}
 
-    .card{background:var(--card);border:1px solid rgba(0,0,0,.08);border-radius:14px;padding:14px;box-shadow:0 6px 24px rgba(0,0,0,.08)}
-    .kpi{display:flex;flex-direction:column;gap:2px}
-    .kpi .lbl{font-size:13px;color:var(--muted)}
-    .kpi .val{font-size:32px;font-weight:900}
-
-    .toolbar{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:8px 0 12px}
-    .toolbar select,.toolbar input[type="date"],.toolbar button{background:#fff;border:1px solid rgba(0,0,0,.15);border-radius:10px;padding:8px 10px}
-    .toolbar button.primary{background:#111827;color:#fff;border-color:#111827}
-    .right{margin-left:auto}
-
-    .bars{display:grid;grid-template-columns:1fr;gap:10px}
-    .bar{display:grid;grid-template-columns:180px 1fr 60px;align-items:center;gap:8px}
-    .bar .track{height:12px;background:#e5e7eb;border-radius:999px;overflow:hidden}
-    .bar .fill{height:100%;background:var(--accent)}
-    .bar .pct{font-size:13px;color:var(--muted);font-variant-numeric:tabular-nums}
+    /* Bars */
+    .barrow{display:grid;grid-template-columns:120px 1fr 46px;gap:10px;align-items:center;padding:6px 0}
+    .barrow .g{height:10px;background:#f3f4f6;border-radius:999px;overflow:hidden;border:1px solid #edf2f7}
+    .barrow .g>div{height:100%;background:var(--accent)}
 
     table{width:100%;border-collapse:collapse}
-    th,td{padding:8px;border-bottom:1px solid #eef2f7;text-align:left}
-    th{font-size:12px;text-transform:uppercase;color:#64748b;letter-spacing:.02em}
-    .badge{font-size:12px;color:var(--muted)}
+    th,td{padding:10px 8px;border-bottom:1px solid #eef2f9;text-align:left;font-size:14px}
+    thead th{font-size:12px;text-transform:uppercase;letter-spacing:.02em;color:var(--muted)}
 
-    .roomtag{display:inline-flex;gap:8px;align-items:center;background:rgba(255,255,255,.95);padding:6px 10px;border-radius:12px;border:2px solid var(--accent)}
-    .roomtag small{display:block;color:#64748b;font-weight:600}
+    .right{margin-left:auto}
+    .switch{display:inline-flex;align-items:center;gap:6px}
+    .switch input{accent-color:var(--accent)}
+
+    @media (max-width:720px){.kpi{grid-template-columns:1fr}.barrow{grid-template-columns:90px 1fr 42px}.filters{gap:6px}}
   </style>
 </head>
 <body>
   <div class="wrap">
-    <header>
-      <img src="/AtalianLogo.png" alt="Atalian" />
-      <div class="title">Statsportal – tickets per ruimte/installatie</div>
-      <span class="pill" id="entity-pill" title="QR-context" style="display:none"></span>
-      <span class="badge" id="since"></span>
-    </header>
+    <img src="/AtalianLogo.png" alt="ATALIAN" style="height:46px;background:#fff;padding:4px;border-radius:10px;border:1px solid #eef2f9;box-shadow:var(--shadow)" />
+    <h1>Statsportal – tickets per ruimte/installatie</h1>
 
-    <div class="toolbar">
-      <label>Periode
-        <select id="period">
-          <option value="7d">Laatste 7 dagen</option>
-          <option value="30d" selected>Laatste 30 dagen</option>
-          <option value="thism">Deze maand</option>
-          <option value="prevm">Vorige maand</option>
-          <option value="custom">Aangepast…</option>
-        </select>
-      </label>
-      <label>Van <input type="date" id="from" disabled></label>
-      <label>Tot <input type="date" id="to" disabled></label>
-      <label>Status
-        <select id="status">
-          <option value="all" selected>Alles</option>
-          <option value="open">Open</option>
-          <option value="closed">Afgesloten</option>
-        </select>
-      </label>
-      <button class="primary" id="btn-load">Vernieuw</button>
-      <button id="btn-export" title="Exporteer CSV">⬇️ CSV</button>
-      <label class="right"><input type="checkbox" id="auto"> Auto-refresh (30s)</label>
-    </div>
+    <div id="entity" class="entity-badge"></div>
 
-    <div class="grid cards">
-      <div class="card kpi">
-        <div class="lbl">Tickets in periode</div>
-        <div class="val" id="k-total">–</div>
+    <div class="filters row" id="filters">
+      <div class="group"><label>Periode</label>
+        <select id="period"><option value="30">Laatste 30 dagen</option><option value="7">Laatste 7 dagen</option><option value="0">Aangepast</option></select>
       </div>
-      <div class="card kpi">
-        <div class="lbl">Open</div>
-        <div class="val" id="k-open">–</div>
+      <div class="group"><label>Van</label><input type="date" id="from" /></div>
+      <div class="group"><label>Tot</label><input type="date" id="to" /></div>
+      <div class="group"><label>Status</label>
+        <select id="status"><option value="all">Alles</option><option value="open">Open</option><option value="closed">Afgesloten</option></select>
       </div>
-      <div class="card kpi">
-        <div class="lbl">Afgesloten</div>
-        <div class="val" id="k-closed">–</div>
+      <button id="refresh">Vernieuw</button>
+      <button class="iconbtn" id="csv">📄 CSV</button>
+      <span class="right switch"><input type="checkbox" id="autoref" /> <label for="autoref">Auto-refresh (30s)</label></span>
+    </div>
+
+    <div class="kpi">
+      <div class="card"><div class="muted">Tickets in periode</div><div class="value" id="k_total">–</div></div>
+      <div class="card"><div class="muted">Open</div><div class="value" id="k_open">–</div></div>
+      <div class="card"><div class="muted">Afgesloten</div><div class="value" id="k_closed">–</div></div>
+    </div>
+
+    <div class="kpi">
+      <div class="card" style="grid-column:1 / -1"><div class="muted">Pogingen (niet ingediend)</div><div class="value" id="k_attempts">–</div></div>
+    </div>
+
+    <div class="box">
+      <h3>Tickets per dag/week</h3>
+      <div class="content" id="bars"></div>
+    </div>
+
+    <div class="box">
+      <h3>Waar haken ze af? (pogingen per stap) <span class="muted" style="font-weight:400">bron: prod_formstats (server)</span></h3>
+      <div class="content"><div id="steps"></div></div>
+    </div>
+
+    <div class="box">
+      <h3>Detail</h3>
+      <div class="content">
+        <table>
+          <thead><tr><th>Datum</th><th>Nr</th><th>Omschrijving</th><th>Status</th></tr></thead>
+          <tbody id="tbody"></tbody>
+        </table>
       </div>
-    </div>
-
-    <!-- Extra KPI-rij voor pogingen/attempts -->
-    <div class="grid cards" id="attempts-row">
-      <div class="card kpi">
-        <div class="lbl">Pogingen (niet ingediend)</div>
-        <div class="val" id="k-attempts">–</div>
-      </div>
-    </div>
-
-    <div class="card" style="margin-top:12px">
-      <h3 style="margin:0 0 8px">Tickets per dag/week</h3>
-      <div class="bars" id="bars"></div>
-      <div class="badge" id="hint-source"></div>
-    </div>
-
-    <!-- NIEUW: Waar haken ze af? (stap-distributie van niet-ingediende pogingen) -->
-    <div class="card" style="margin-top:12px">
-      <h3 style="margin:0 0 8px">Waar haken ze af? (pogingen per stap)</h3>
-      <div class="bars" id="bars-steps"></div>
-      <div class="badge">bron: prod_formstats (server)</div>
-    </div>
-
-    <div class="card" style="margin-top:12px">
-      <h3 style="margin:0 0 8px">Detail</h3>
-      <table id="tbl">
-        <thead>
-          <tr><th>Datum</th><th>Nr</th><th>Omschrijving</th><th>Status</th></tr>
-        </thead>
-        <tbody></tbody>
-      </table>
     </div>
   </div>
 
 <script type="module">
-// === QR-parser hergebruiken ===
-import { parseUltimoQR } from '/js/CodeUrl.js';
+  import { parseUltimoQR } from '/js/CodeUrl.js';
 
-const qs = new URLSearchParams(location.search);
-const code = qs.get('code') || '';
-const parsed = parseUltimoQR(code); // bepaalt ruimte vs installatie
+  // 1) URL params + defaults
+  const qs = new URLSearchParams(location.search);
+  const codeParam = qs.get('code') || '';
+  let lang = qs.get('lang') || ((navigator.language||'').startsWith('fr') ? 'fr' : 'nl');
+  const debug = qs.get('debug') === '1';
 
-const entityPill = document.getElementById('entity-pill');
-if(parsed){
-  entityPill.style.display='inline-flex';
-  entityPill.innerHTML = parsed.isEquipment
-    ? `🔧 <b>${parsed.typeStr}</b> <small>#${parsed.id}</small>`
-    : `🏢 <b>${parsed.typeStr}</b> <small>#${parsed.id}</small>`;
-}
+  const parsed = codeParam ? parseUltimoQR(codeParam) : null;
+  const isEquipment = !!parsed?.isEquipment;
+  const id = parsed?.id || '';
+  const code = codeParam || 'DEMO'; // voorkom 400 op endpoints
 
-// === UI refs ===
-const elPeriod = document.getElementById('period');
-const elFrom = document.getElementById('from');
-const elTo = document.getElementById('to');
-const elStatus = document.getElementById('status');
-const elBars = document.getElementById('bars');
-const elBarsSteps = document.getElementById('bars-steps');
-const elTbl = document.querySelector('#tbl tbody');
-const elSince = document.getElementById('since');
-const elHint = document.getElementById('hint-source');
-
-const KPI_TOTAL = document.getElementById('k-total');
-const KPI_OPEN   = document.getElementById('k-open');
-const KPI_CLOSED = document.getElementById('k-closed');
-const KPI_ATTEMPTS = document.getElementById('k-attempts');
-
-// === Periode helpers ===
-function fmt(d){return d.toISOString().slice(0,10)}
-function startOfMonth(d){return new Date(d.getFullYear(), d.getMonth(), 1)}
-function endOfMonth(d){return new Date(d.getFullYear(), d.getMonth()+1, 0)}
-function addDays(d,n){const x=new Date(d); x.setDate(x.getDate()+n); return x}
-
-function applyPeriodPreset(){
-  const today = new Date();
-  let a,b;
-  switch(elPeriod.value){
-    case '7d': a=addDays(today,-6); b=today; break;
-    case '30d': a=addDays(today,-29); b=today; break;
-    case 'thism': a=startOfMonth(today); b=endOfMonth(today); break;
-    case 'prevm': {
-      const m = new Date(today.getFullYear(), today.getMonth()-1, 1);
-      a=startOfMonth(m); b=endOfMonth(m); break;
-    }
-    case 'custom': default: {
-      elFrom.disabled=false; elTo.disabled=false; return;
-    }
+  // 2) Entity-badge (zoals portal)
+  const entity = document.getElementById('entity');
+  async function showEntity(){
+    if(!id){ entity.style.display='none'; return; }
+    const endpoint = isEquipment? '/.netlify/functions/prod_equipment' : '/.netlify/functions/prod_space';
+    try{
+      const r = await fetch(`${endpoint}?id=${encodeURIComponent(id)}&lang=${lang}`);
+      if(!r.ok) throw 0; const d = await r.json();
+      entity.innerHTML = `${isEquipment?'🔧 Installatie':'🏢 Ruimte'}: <b>${id}</b> — ${d.description||'-'} <span class="type">(${isEquipment?(lang==='fr'?'Installation':'Installatie'):(lang==='fr'?'Espace':'Ruimte')})</span>`;
+      entity.style.display='inline-flex';
+    }catch{ entity.innerHTML = `${isEquipment?'🔧 Installatie':'🏢 Ruimte'}: <b>${id||'—'}</b>`; entity.style.display='inline-flex'; }
   }
-  elFrom.disabled=false; elTo.disabled=false;
-  elFrom.value = fmt(a); elTo.value = fmt(b);
-}
+  showEntity();
 
-elPeriod.addEventListener('change', applyPeriodPreset);
-applyPeriodPreset();
+  // 3) Filters
+  const elFrom = document.getElementById('from');
+  const elTo   = document.getElementById('to');
+  const elPer  = document.getElementById('period');
+  const elSta  = document.getElementById('status');
+  const elRef  = document.getElementById('refresh');
+  const elAut  = document.getElementById('autoref');
+  const elCSV  = document.getElementById('csv');
 
-// === Data bron
-// 1) Proberen: server-side aggregatie (aanbevolen) via prod_stats
-//    Query: /.netlify/functions/prod_stats?code=...&from=YYYY-MM-DD&to=YYYY-MM-DD&status=all|open|closed
-// 2) Fallback demo: openstaande jobs via prod_jobs (beperkt) of synthetische data tonen
-
-async function fetchStats(from, to, status){
-  const params = new URLSearchParams({ code, from, to, status });
-  const url = `/.netlify/functions/prod_stats?${params}`;
-  try{
-    const r = await fetch(url);
-    if(r.ok){
-      const j = await r.json();
-      // verwacht formaat: { items:[{Id, Date:'YYYY-MM-DD', Description, Status:'open|closed'}], sinceTs }
-      elHint.textContent = 'bron: prod_stats (server)';
-      return j;
-    }
-  }catch(_){}
-
-  // fallback 1: prod_jobs (open tickets voor deze entiteit)
-  try{
-    const r = await fetch(`/.netlify/functions/prod_jobs?code=${encodeURIComponent(code)}`);
-    if(r.ok){
-      const j = await r.json();
-      const items = (j.Jobs||[]).map((x,i)=>({
-        Id: x.JobId || ('OPEN-'+i),
-        Date: (x.ReportDate||x.CreationDate||new Date()).toString().slice(0,10),
-        Description: x.Description || x.JobDescr || '-',
-        Status: 'open'
-      }));
-      elHint.textContent = 'bron: prod_jobs (alleen open)';
-      return { items, sinceTs: null };
-    }
-  }catch(_){}
-
-  // fallback 2: synthetisch (demo)
-  const today = new Date();
-  const items = Array.from({length: 18}, (_,i)=>{
-    const d = addDays(today, -Math.floor(Math.random()*26));
-    return { Id:'DEMO-'+i, Date: fmt(d), Description:'demo-ticket', Status: Math.random()>0.4?'closed':'open' };
-  });
-  elHint.textContent = 'bron: demo-data (geen server)';
-  return { items, sinceTs: null };
-}
-
-// === NIEUW: form-attempt stats (pogingen/abandons) ===
-async function fetchFormStats(from, to){
-  const params = new URLSearchParams({ code, from, to });
-  const url = `/.netlify/functions/prod_formstats?${params}`;
-  try{
-    const r = await fetch(url);
-    if(r.ok){
-      const j = await r.json(); // verwacht: { attempts, active, abandons, byStep: [{step,count}] }
-      j.byStep = Array.isArray(j.byStep) ? j.byStep : [];
-      return j;
-    }
-  }catch(_){/* negeer */}
-  return { attempts: 0, active: 0, abandons: 0, byStep: [] };
-}
-
-function groupByDay(items){
-  const map = new Map();
-  for (const it of items){
-    const d = (it.Date || it.date || '').slice(0,10);
-    map.set(d, (map.get(d) || 0) + 1);
+  function fmt(d){ return d.toISOString().slice(0,10); }
+  function setRange(days){
+    const to = new Date();
+    const from = new Date(to); from.setDate(to.getDate() - (days||30));
+    elFrom.value = fmt(from); elTo.value = fmt(to);
   }
-  return Array.from(map.entries()).sort((a,b)=>a[0].localeCompare(b[0]));
-}
+  setRange(30);
+  elPer.addEventListener('change',()=>{ if(elPer.value!=='0') setRange(Number(elPer.value)); });
+  elRef.addEventListener('click', loadAll);
+  elAut.addEventListener('change',()=>{ if(elAut.checked){ timer=startAuto(); } else { clearInterval(timer); }});
+  elCSV.addEventListener('click', downloadCSV);
 
+  // 4) Render helpers
+  const K = { total:document.getElementById('k_total'), open:document.getElementById('k_open'), closed:document.getElementById('k_closed'), attempts:document.getElementById('k_attempts') };
+  const elBars = document.getElementById('bars');
+  const elSteps= document.getElementById('steps');
+  const elBody = document.getElementById('tbody');
 
-function renderBars(dayPairs){
-  elBars.innerHTML = '';
-  if(!dayPairs.length){
-    elBars.innerHTML = '<div class="muted">Geen data in deze periode.</div>';
-    return;
+  function toCSV(rows){ if(!rows.length) return 'Date,Id,Description,Status\n'; const header=Object.keys(rows[0]); const esc=s=>'"'+String(s).replace(/"/g,'""')+'"'; return [header.join(','), ...rows.map(r=>header.map(k=>esc(r[k]??'')).join(','))].join('\n'); }
+  function downloadCSV(){ const blob=new Blob([toCSV(state.rows)],{type:'text/csv'}); const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='tickets.csv'; a.click(); URL.revokeObjectURL(a.href); }
+
+  function renderBars(pairs){ elBars.innerHTML=''; if(!pairs.length){ elBars.innerHTML='<div class="muted">Geen data in deze periode.</div>'; return; } const max=Math.max(...pairs.map(([,v])=>v)); for(const [label,val] of pairs){ const row=document.createElement('div'); row.className='barrow'; const l=document.createElement('div'); l.textContent=label; l.className='muted'; const g=document.createElement('div'); g.className='g'; const inner=document.createElement('div'); inner.style.width=`${(val/max)*100}%`; g.appendChild(inner); const v=document.createElement('div'); v.textContent=String(val); row.append(l,g,v); elBars.appendChild(row);} }
+  function renderSteps(obj){ elSteps.innerHTML=''; const keys=Object.keys(obj||{}); if(!keys.length){ elSteps.innerHTML='<div class="muted">(geen data)</div>'; return;} const ul=document.createElement('ul'); ul.style.listStyle='none'; ul.style.padding='0'; keys.sort((a,b)=> (obj[b]||0)-(obj[a]||0)); for(const k of keys){ const li=document.createElement('li'); li.textContent=`${mapStep(k)}: ${obj[k]}`; ul.appendChild(li);} elSteps.appendChild(ul); }
+  function mapStep(s){ const L={ start:'Start', flow_start:'Flow gestart', ask_urgent:'Vraag: dringend?', ask_description:'Vraag: omschrijving', ask_email:'Vraag: e‑mail', submit_attempt:'Verzenden geprobeerd', submit_success:'Verzonden', email_invalid:'Ongeldig e‑mail', open_jobs_shown:'Open meldingen getoond', poets_info_viewed:'Poetsinfo bekeken' }; return L[s]||s; }
+
+  // 5) Data state
+  const state={ rows:[], bars:[], steps:{}, attempts:0 };
+
+  async function fetchJSON(url){ try{ const r=await fetch(url,{cache:'no-store'}); if(!r.ok) throw new Error(String(r.status)); return await r.json(); }catch(e){ if(debug) console.warn('fetchJSON fail',url,e); return null; } }
+
+  function buildUrl(base){ const from=elFrom.value; const to=elTo.value; const st=elSta.value; const sp = new URLSearchParams({ code, from, to }); if(st && st!=='all') sp.set('status',st); return `${base}?${sp.toString()}`; }
+
+  async function loadStats(){
+    const url = buildUrl('/.netlify/functions/prod_stats');
+    const data = await fetchJSON(url);
+    if(!data){ // fallback demo
+      const today=new Date(elTo.value); const from=new Date(elFrom.value); const days=Math.ceil((today-from)/86400000)+1; const pairs=[]; for(let i=0;i<days;i++){ const d=new Date(from); d.setDate(from.getDate()+i); pairs.push([fmt(d), Math.random()<0.3?0:1]); }
+      state.rows = pairs.filter(([,v])=>v).map(([,v],i)=>({ Date:pairs[i][0], Id:`DEMO-${i}`, Description:'demo-ticket', Status:(i%2?'open':'closed') }));
+      K.total.textContent = String(state.rows.length); K.open.textContent = String(state.rows.filter(r=>r.Status==='open').length); K.closed.textContent = String(state.rows.filter(r=>r.Status==='closed').length);
+      state.bars = pairs; renderBars(state.bars); renderRows(); return; }
+
+    // shape tolerant
+    const rows = data.rows || data.Items || data.tickets || [];
+    state.rows = rows.map(x=>({ Date: x.Date||x.date||'', Id: x.Id||x.id||'', Description: x.Description||x.desc||x.text||'', Status: x.Status||x.status||'' }));
+    const daily = data.daily || data.DailyCounts || [];
+    state.bars = daily.map(p=>Array.isArray(p)?p:[p.date||p[0]||'', Number(p.count||p[1]||0)]);
+
+    K.total.textContent = String(data.total ?? state.rows.length ?? 0);
+    K.open.textContent  = String(data.open  ?? state.rows.filter(r=>r.Status==='open').length);
+    K.closed.textContent= String(data.closed?? state.rows.filter(r=>r.Status==='closed').length);
+    renderBars(state.bars); renderRows();
   }
-  const max = Math.max(...dayPairs.map(([,v])=>v));
-  for (const [label,val] of dayPairs){
-    const row = document.createElement('div'); row.className='bar';
-    const l = document.createElement('div'); l.textContent = label; l.className='muted';
-    const g = document.createElement('div'); g.className='g';
-    const inner = document.createElement('div'); inner.style.width = `${(val/max)*100}%`;
-    g.appendChild(inner);
-    const v = document.createElement('div'); v.textContent = String(val);
-    row.appendChild(l); row.appendChild(g); row.appendChild(v);
-    elBars.appendChild(row);
+
+  async function loadFormStats(){
+    const url = buildUrl('/.netlify/functions/prod_formstats');
+    const data = await fetchJSON(url) || { attempts:0, successes:0, steps:{} };
+    state.attempts = Math.max(0, (data.attempts||0) - (data.successes||0));
+    K.attempts.textContent = String(state.attempts);
+    renderSteps(data.steps||{});
   }
-}
 
+  function renderRows(){ elBody.innerHTML=''; for(const it of state.rows){ const tr=document.createElement('tr'); tr.innerHTML = `<td>${(it.Date||'').slice(0,10)}</td><td>${it.Id||''}</td><td>${it.Description||'-'}</td><td>${it.Status||''}</td>`; elBody.appendChild(tr);} }
 
-function renderTable(items){
-  elTbl.innerHTML='';
-  for(const it of items){
-    const tr=document.createElement('tr');
-    tr.innerHTML = `<td>${(it.Date||'').slice(0,10)}</td><td>${it.Id}</td><td>${it.Description||'-'}</td><td>${it.Status}</td>`;
-    elTbl.appendChild(tr);
-  }
-}
+  async function loadAll(){ await Promise.all([loadStats(), loadFormStats()]); }
 
-function updateKPI(items){
-  const total = items.length;
-  const open = items.filter(x=>String(x.Status).toLowerCase()==='open').length;
-  const closed = total - open;
-  KPI_TOTAL.textContent = total;
-  KPI_OPEN.textContent = open;
-  KPI_CLOSED.textContent = closed;
-}
+  function startAuto(){ return setInterval(loadAll, 30000); }
+  let timer = null; if(document.getElementById('autoref').checked){ timer=startAuto(); }
 
-function filterStatus(items, status){
-  if(status==='all') return items;
-  return items.filter(x=>String(x.Status).toLowerCase()===status);
-}
-
-async function load(){
-  const from = elFrom.value || fmt(addDays(new Date(), -29));
-  const to   = elTo.value   || fmt(new Date());
-  const status = elStatus.value;
-  const [statsRes, formRes] = await Promise.all([
-    fetchStats(from, to, status),
-    fetchFormStats(from, to)
-  ]);
-  const { items, sinceTs } = statsRes;
-
-  // filter client-side op periode (voor fallback-bronnen)
-  const inRange = items.filter(it=>{
-    const d = (it.Date||'').slice(0,10);
-    return d && d>=from && d<=to;
-  });
-  const items2 = filterStatus(inRange, status);
-
-  updateKPI(items2);
-  if (KPI_ATTEMPTS) KPI_ATTEMPTS.textContent = formRes.attempts ?? 0;
-  renderBars(groupByDay(items2));
-  renderTable(items2);
-  elSince.textContent = sinceTs ? ('telt vanaf: '+ new Date(sinceTs).toLocaleString()) : '';
-}
-
-// Export CSV
-function toCSV(rows){
-  if(!rows.length) return 'Date,Id,Description,Status\n';
-  const header = Object.keys(rows[0]);
-  const esc = s => '"' + String(s).replace(/"/g,'""') + '"';
-  const lines = [header.join(',')];
-  for (const r of rows){
-    lines.push(header.map(k => esc(r[k] ?? '')).join(','));
-  }
-  return lines.join('\n');
-}
-
-
-document.getElementById('btn-export').addEventListener('click', ()=>{
-  const rows=[...document.querySelectorAll('#tbl tbody tr')].map(tr=>{
-    const tds=[...tr.children].map(td=>td.textContent||'');
-    return {Date:tds[0], Id:tds[1], Description:tds[2], Status:tds[3]}
-  });
-  const blob = new Blob([toCSV(rows)], {type:'text/csv'});
-  const a = document.createElement('a');
-  a.href = URL.createObjectURL(blob);
-  a.download = 'tickets_'+(new Date().toISOString().slice(0,10))+'.csv';
-  a.click();
-});
-
-// Auto-refresh
-let timer=null;
-document.getElementById('auto').addEventListener('change', e=>{
-  if(e.target.checked){ timer=setInterval(load, 30000); }
-  else{ clearInterval(timer); timer=null; }
-});
-
-document.getElementById('btn-load').addEventListener('click', load);
-
-// Init
-load();
-
+  // init
+  loadAll();
 </script>
 </body>
 </html>
