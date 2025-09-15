@@ -282,5 +282,113 @@ window.addEventListener('load',()=>{
 /* start chat */
 startChat();
 </script>
+<script>
+(() => {
+  // --- Context uit je QR / querystring (zelfde als elders)
+  const qs = new URLSearchParams(location.search);
+  const code = qs.get('code') || 'unknown';
+
+  // --- Pak het formulier + velden
+  const form = document.querySelector('form');
+  if (!form) return; // geen form = niets te tracken
+
+  // Velden die meetellen voor progress (alle required, of expliciet met data-track)
+  const fields = Array.from(form.querySelectorAll('input[required], select[required], textarea[required], [data-track]'));
+  const total = fields.length;
+
+  // Hulpfuncties
+  const nowTs = () => Date.now();
+  const payload = (type, extra={}) => ({
+    type,            // 'progress' | 'idle_abandon' | 'pagehide_abandon' | 'submit'
+    code,            // QR-context (ruimte/asset)
+    path: location.pathname,
+    ts: nowTs(),
+    ...extra
+  });
+  const beacon = (obj) => {
+    try {
+      const blob = new Blob([JSON.stringify(obj)], {type:'application/json'});
+      navigator.sendBeacon('/.netlify/functions/prod_formlog', blob);
+    } catch (e) { /* stil falen */ }
+  };
+
+  // Progress berekening
+  function computeProgress() {
+    const filled = fields.filter(el => {
+      if (el.type === 'checkbox' || el.type === 'radio') {
+        // radio-groepen: minstens 1 geselecteerd in dezelfde name
+        if (el.type === 'radio') {
+          return form.querySelector(`input[type="radio"][name="${el.name}"]:checked`);
+        }
+        return el.checked;
+      }
+      return (el.value != null && String(el.value).trim() !== '');
+    }).length;
+
+    const pct = total ? Math.round((filled / total) * 100) : 0;
+
+    // "laatste veld" = index van hoogst gevulde in DOM-volgorde
+    let lastIndex = -1;
+    for (let i=fields.length-1;i>=0;i--){
+      const el = fields[i];
+      const isFilled = (el.type==='checkbox') ? el.checked :
+                       (el.type==='radio') ? !!form.querySelector(`input[type="radio"][name="${el.name}"]:checked`) :
+                       (String(el.value||'').trim()!=='');
+      if (isFilled) { lastIndex = i; break; }
+    }
+
+    return { filled, total, pct, lastIndex };
+  }
+
+  // Verstuur progress (debounced)
+  let tDebounce = null;
+  function sendProgress(reason='input') {
+    clearTimeout(tDebounce);
+    tDebounce = setTimeout(() => {
+      const prog = computeProgress();
+      beacon(payload('progress', { reason, ...prog }));
+      lastActivity = nowTs();
+    }, 250);
+  }
+
+  // Listeners op inputs
+  form.addEventListener('input',  () => sendProgress('input'));
+  form.addEventListener('change', () => sendProgress('change'));
+  form.addEventListener('focusin', () => { lastActivity = nowTs(); }, true);
+
+  // Submit: expliciet succes-event (zodat abandons niet dubbel tellen)
+  form.addEventListener('submit', () => {
+    const prog = computeProgress();
+    beacon(payload('submit', { ...prog }));
+    submitted = true;
+  });
+
+  // Idle/abandon detectie
+  let submitted = false;
+  let lastActivity = nowTs();
+  const IDLE_MS = 45000; // 45 s (pas aan naar wens)
+
+  setInterval(() => {
+    if (submitted) return;
+    const inactive = nowTs() - lastActivity;
+    if (inactive > IDLE_MS) {
+      const prog = computeProgress();
+      beacon(payload('idle_abandon', { inactiveMs: inactive, ...prog }));
+      lastActivity = nowTs(); // één idle-event per periode
+    }
+  }, 5000);
+
+  // Page-leave abandon (tab sluiten/weg navigeren)
+  window.addEventListener('pagehide', () => {
+    if (submitted) return;
+    const prog = computeProgress();
+    beacon(payload('pagehide_abandon', { ...prog }));
+  });
+
+  // Eerste momentopname (0% vs reeds ingevulde defaults)
+  sendProgress('load');
+})();
+</script>
+
 </body>
 </html>
