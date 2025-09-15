@@ -48,11 +48,9 @@ export default async (req, context) => {
         const day = String(ev.ts_server || ev.ts || '').slice(0, 10);
         if (!day || day < from || day > to) continue;
 
-        const id = ev.id || ''; if (!id) continue;
-        const type = ev.isEquipment ? 'equip'
-                    : (ev.typeStr || ev.type === 'space') ? 'space'
-                    : (ev.isEquipment === false) ? 'space' : 'unknown';
-        const keyEnt = `${type}|${id}`;
+        const id  = ev.id || ev.code || ''; if (!id) continue;
+		const entType = ev.isEquipment ? 'equip' : 'space';
+		const keyEnt = `${entType}|${id}`;
 
         const bucket = ensureDay(dayMap, day);
         if (ev.type === 'url_load') bucket.opened.add(keyEnt);
