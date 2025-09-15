@@ -27,6 +27,11 @@
     .foot{display:flex;gap:10px;align-items:center}
     .badge{font-size:12px;color:var(--muted)}
     @media(max-width:720px){ .cards{grid-template-columns:1fr} }
+	.card.big { padding: 24px; text-align: center; }
+	.bigpct { font-size: 56px; font-weight: 900; line-height: 1; }
+	.bigpct small { font-size: 18px; font-weight: 600; color: var(--muted); margin-left: 8px; }
+	.bigsub { margin-top: 6px; color: var(--muted); font-variant-numeric: tabular-nums; }
+
   </style>
 </head>
 <body>
@@ -67,6 +72,14 @@
       <div class="bar"><div class="label">Step 3</div><div class="track"><div class="fill" id="b3" style="width:0%"></div></div><div class="pct" id="p3">–</div></div>
       <div class="bar"><div class="label">Step 4</div><div class="track"><div class="fill" id="b4" style="width:0%"></div></div><div class="pct" id="p4">–</div></div>
     </div>
+	<div class="card big" style="margin-top:10px">
+	  <div class="bigpct">
+		<span id="pct-big">–%</span>
+		<small id="pct-ratio">(0/0)</small>
+	  </div>
+	  <div class="bigsub">voltooid van inschrijvingen</div>
+	</div>
+
   </div>
 
   <div class="foot" style="margin-top:10px">
@@ -195,13 +208,10 @@ function computeMetrics(items){
 function render(metrics, sinceTs, allCount){
   const {checkins, avg, done, attemptsByStep, shareByStep, avgAttemptsPerStep} = metrics;
 
+  // bestaande KPI’s
   $('#k-checkins').textContent = checkins;
-
-  const avgInt = Math.round(avg);
-  $('#k-avg').textContent = `${avgInt} / 4`;
-  const pct = (avg/4)*100;
-  $('#k-avg-pct').textContent = `(${Math.round(pct)}%)`;
-
+  $('#k-avg').textContent = `${Math.round(avg)} / 4`;
+  $('#k-avg-pct').textContent = `(${Math.round((avg/4)*100)}%)`;
   $('#k-done').textContent = done;
 
   const upd = (i)=> {
@@ -214,9 +224,16 @@ function render(metrics, sinceTs, allCount){
   };
   upd(1); upd(2); upd(3); upd(4);
 
+  // nieuw: groot percentage onderaan
+  const pct = (checkins > 0) ? Math.round((done / checkins) * 100) : 0;
+  $('#pct-big').textContent   = `${pct}%`;
+  $('#pct-ratio').textContent = `(${done}/${checkins})`;
+
+  // meta
   $('#since').textContent = sinceTs ? ('telt vanaf: '+ new Date(sinceTs).toLocaleString()) : 'telt vanaf: (geen reset)';
-  $('#meta').textContent = `events in venster: ${allCount}`;
+  $('#meta').textContent  = `events in venster: ${allCount}`;
 }
+
 
 /* ===== Optimistic helpers ===== */
 async function refreshStats(){
