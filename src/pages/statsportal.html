@@ -3,59 +3,44 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Statsportal – per dag: opgeroepen ruimtes/installs + doorgestuurd</title>
+  <title>Statsportal – per dag: opgeroepen entiteiten + doorgestuurd</title>
   <link rel="icon" href="/AtalianFavicon.png" />
   <style>
-    :root{--bg:#f7fafc;--card:#fff;--text:#0f172a;--muted:#64748b;--accent:#ee7e00;--ok:#16a34a;--warn:#eab308;--ring:rgba(238,126,0,.14);--shadow:0 8px 28px rgba(2,6,23,.08)}
-    html,body{height:auto;min-height:100vh;margin:0;background:var(--bg);color:var(--text);
-      font-family:system-ui,-apple-system,Segoe UI,Roboto,Inter,Arial,sans-serif}
-    body{background-image:linear-gradient(rgba(255,255,255,.86), rgba(255,255,255,.86)),url('/building-cleaning.png');
-      background-size:cover;background-position:center;background-attachment:fixed}
+    :root{--bg:#f7fafc;--card:#fff;--text:#0f172a;--muted:#64748b;--accent:#ee7e00;--ring:rgba(238,126,0,.14);--shadow:0 8px 28px rgba(2,6,23,.08)}
+    html,body{height:auto;min-height:100vh;margin:0;background:var(--bg);color:var(--text);font-family:system-ui,-apple-system,Segoe UI,Roboto,Inter,Arial,sans-serif}
+    body{background-image:linear-gradient(rgba(255,255,255,.86), rgba(255,255,255,.86)),url('/building-cleaning.png');background-size:cover;background-position:center;background-attachment:fixed}
     .wrap{max-width:1200px;margin:0 auto;padding:20px}
     h1{font-size:20px;margin:6px 0 12px}
     .muted{color:var(--muted)}
-
-    .filters{display:flex;flex-wrap:wrap;gap:10px;align-items:center;background:var(--card);
-      padding:12px;border-radius:14px;box-shadow:var(--shadow);border:1px solid #e9eef7}
+    .filters{display:flex;flex-wrap:wrap;gap:10px;align-items:center;background:var(--card);padding:12px;border-radius:14px;box-shadow:var(--shadow);border:1px solid #e9eef7}
     .filters .group{display:flex;gap:6px;align-items:center}
     .filters input[type="date"], .filters select{height:36px;border:1px solid #e5e7eb;border-radius:10px;padding:0 10px}
-    .filters button{height:36px;border-radius:10px;border:1px solid var(--accent);background:var(--accent);
-      color:#fff;padding:0 12px;font-weight:700;cursor:pointer}
-    .chip{display:inline-flex;align-items:center;gap:8px;padding:.25rem .6rem;border-radius:999px;border:1px solid #e5e7eb;background:#fff}
-    .chip.ok{border-color:#bbf7d0;background:#f0fdf4}
-    .chip.warn{border-color:#fde68a;background:#fffbeb}
-
-    .grid{display:grid;grid-template-columns:repeat(12,1fr);gap:10px}
-    .col-3{grid-column:span 3}
-    .col-9{grid-column:span 9}
+    .filters button{height:36px;border-radius:10px;border:1px solid var(--accent);background:var(--accent);color:#fff;padding:0 12px;font-weight:700;cursor:pointer}
 
     .box{background:var(--card);border-radius:14px;box-shadow:var(--shadow);border:1px solid #eef2f9;margin:12px 0}
     .box h3{margin:0;padding:12px 14px;border-bottom:1px solid #eef2f9;font-size:16px}
     .box .content{padding:12px 14px}
 
-    .day{display:grid;grid-template-columns:160px 1fr 1fr;gap:12px;align-items:start;border-bottom:1px dashed #eef2f9;padding:10px 0}
+    .day{display:grid;grid-template-columns:180px 1fr 1fr;gap:12px;align-items:start;border-bottom:1px dashed #eef2f9;padding:10px 0}
     .day:last-child{border-bottom:0}
     .day h4{margin:0 0 6px 0;font-size:14px}
     .pill{display:inline-block;margin:3px 6px 3px 0;padding:4px 8px;border-radius:999px;border:1px solid #e5e7eb;background:#fff;font-size:13px}
-    .pill .tag{font-weight:700;color:#0f172a}
     .pill.ok{border-color:#bbf7d0;background:#f0fdf4}
     .pill.warn{border-color:#fde68a;background:#fffbeb}
 
-    /* Tijdslijn (horizontale) */
     .timeline{width:100%;height:220px}
     .legend{display:flex;gap:10px;align-items:center}
     .legend .boxl{width:10px;height:10px;background:var(--accent);border-radius:2px;border:1px solid #c2410c}
-
     .right{margin-left:auto}
     .switch{display:inline-flex;align-items:center;gap:6px}
     .switch input{accent-color:var(--accent)}
-    @media(max-width:900px){.day{grid-template-columns:1fr}.col-3,.col-9{grid-column:span 12}}
+    @media(max-width:900px){.day{grid-template-columns:1fr}}
   </style>
 </head>
 <body>
   <div class="wrap">
     <img src="/AtalianLogo.png" alt="ATALIAN" style="height:46px;background:#fff;padding:4px;border-radius:10px;border:1px solid #eef2f9;box-shadow:var(--shadow)" />
-    <h1>Statsportal – per dag: opgeroepen ruimtes/installs + doorgestuurd</h1>
+    <h1>Statsportal – per dag</h1>
 
     <div class="filters">
       <div class="group"><label>Periode</label>
@@ -68,7 +53,7 @@
       <div class="group"><label>Van</label><input type="date" id="from" /></div>
       <div class="group"><label>Tot</label><input type="date" id="to" /></div>
       <button id="refresh">Vernieuw</button>
-      <button id="csv">📄 CSV</button>
+      <button id="csv">CSV</button>
       <span class="right switch"><input type="checkbox" id="autoref" /> <label for="autoref">Auto-refresh (30s)</label></span>
     </div>
 
@@ -87,17 +72,14 @@
   </div>
 
 <script type="module">
-  // === Config ===
+  // ASCII-only JS om rare unicode tokens te vermijden
   const endpoints = {
-    // Nieuw gewenste vorm: per dag de entiteiten (opened vs submitted)
     formstats: '/.netlify/functions/prod_formstats',
-    // Fallback (alleen submitted rows; geen opened):
     stats: '/.netlify/functions/prod_stats'
   };
 
-  // === UI helpers ===
   const qs = new URLSearchParams(location.search);
-  const debug = qs.get('debug')==='1';
+  const debug = qs.get('debug') === '1';
   const elFrom = document.getElementById('from');
   const elTo   = document.getElementById('to');
   const elPer  = document.getElementById('period');
@@ -107,7 +89,7 @@
   const elDays = document.getElementById('days');
   const elTL   = document.getElementById('timeline');
 
-  const fmt = d => d.toISOString().slice(0,10);
+  function fmt(d){ return d.toISOString().slice(0,10); }
   function setRange(days){
     const to = new Date();
     const from = new Date(to); from.setDate(to.getDate() - (days||30));
@@ -119,95 +101,89 @@
   elAut.addEventListener('change',()=>{ if(elAut.checked){ timer=startAuto(); } else { clearInterval(timer); }});
   elCSV.addEventListener('click', downloadCSV);
 
-  // === Fetch helpers ===
   async function fetchJSON(url){
     try{ const r = await fetch(url,{cache:'no-store'}); if(!r.ok) throw new Error(String(r.status)); return await r.json(); }
     catch(e){ if(debug) console.warn('fetch fail',url,e); return null; }
   }
   const uniqBy = (arr, keyFn) => Array.from(new Map(arr.map(x=>[keyFn(x),x])).values());
 
-  // === Kernlogica ===
   const state = { daily: [], counts: [] };
 
-  function buildQS(base){
+  function qsFor(base){
     const sp = new URLSearchParams({ from: elFrom.value, to: elTo.value, view: 'by_day_entities' });
-    return `${base}?${sp.toString()}`;
+    return base + '?' + sp.toString();
   }
 
   async function loadDaily(){
-    // 1) Proberen via formstats (nieuwe vorm)
-    const u1 = buildQS(endpoints.formstats);
+    const u1 = qsFor(endpoints.formstats);
     const d1 = await fetchJSON(u1);
     if(d1 && Array.isArray(d1.daily)){
       return shapeDaily(d1.daily);
     }
-    // 2) Fallback via stats: we hebben enkel submitted rows, geen opened
-    const u2 = `${endpoints.stats}?from=${elFrom.value}&to=${elTo.value}`;
+    const u2 = endpoints.stats + '?from=' + elFrom.value + '&to=' + elTo.value;
     const d2 = await fetchJSON(u2);
     if(d2 && (Array.isArray(d2.rows) || Array.isArray(d2.Items))){
       const rows = d2.rows || d2.Items;
       const byDate = new Map();
       for(const r of rows){
-        const date = (r.Date||r.date||'').slice(0,10); if(!date) continue;
-        const id = r.Id||r.id||''; const type = r.Type||r.type||''; const desc = r.Description||r.desc||r.text||'';
-        const entry = byDate.get(date) || { date, opened: [], submitted: [] };
-        entry.submitted.push({ id, type, description: desc });
+        const date = String(r.Date || r.date || '').slice(0,10); if(!date) continue;
+        const id = r.Id || r.id || '';
+        const type = r.Type || r.type || '';
+        const desc = r.Description || r.desc || r.text || '';
+        const entry = byDate.get(date) || { date:date, opened:[], submitted:[] };
+        entry.submitted.push({ id:id, type:type, description:desc });
         byDate.set(date, entry);
       }
       return shapeDaily(Array.from(byDate.values()));
     }
-    // 3) Geen data → genereer leegdagen
     const dates = enumerateDays(elFrom.value, elTo.value);
     return shapeDaily(dates.map(d=>({date:d, opened:[], submitted:[]})));
   }
 
   function shapeDaily(dailyRaw){
-    // normaliseer + unique per dag
-    const daily = dailyRaw.map(x=>({
-      date: x.date,
-      opened: uniqBy((x.opened||[]).map(e=>normEnt(e)), e=>keyEnt(e)),
-      submitted: uniqBy((x.submitted||[]).map(e=>normEnt(e)), e=>keyEnt(e))
-    })).sort((a,b)=>a.date.localeCompare(b.date));
-    // counts voor tijdslijn
-    const counts = daily.map(d=>[d.date, (d.submitted||[]).length]);
-    return { daily, counts };
+    const daily = dailyRaw.map(function(x){
+      return {
+        date: x.date,
+        opened: uniqBy((x.opened||[]).map(normEnt), keyEnt),
+        submitted: uniqBy((x.submitted||[]).map(normEnt), keyEnt)
+      };
+    }).sort(function(a,b){ return a.date.localeCompare(b.date); });
+    const counts = daily.map(function(d){ return [d.date, (d.submitted||[]).length]; });
+    return { daily: daily, counts: counts };
   }
 
   function normEnt(e){
-    return {
-      id: e.id || e.Id || '',
-      type: e.type || e.Type || '',
-      description: e.description || e.Description || ''
-    };
+    return { id: e.id || e.Id || '', type: e.type || e.Type || '', description: e.description || e.Description || '' };
   }
-  function keyEnt(e){ return `${e.type}|${e.id}`; }
+  function keyEnt(e){ return (e.type||'') + '|' + (e.id||''); }
 
   function enumerateDays(from,to){
-    const a = new Date(from), b = new Date(to), out=[]; a.setHours(0,0,0,0); b.setHours(0,0,0,0);
-    for(let d=new Date(a); d<=b; d.setDate(d.getDate()+1)) out.push(fmt(d));
+    const A = new Date(from + 'T00:00:00');
+    const B = new Date(to   + 'T00:00:00');
+    const out=[]; for(let d=new Date(A); d<=B; d.setDate(d.getDate()+1)){ out.push(fmt(d)); }
     return out;
   }
 
   function renderDays(){
     elDays.innerHTML='';
     const frag = document.createDocumentFragment();
-    state.daily.forEach(d=>{
+    state.daily.forEach(function(d){
       const wrap = document.createElement('div'); wrap.className='day';
       const colDate = document.createElement('div');
-      colDate.innerHTML = `<h4>${d.date}</h4><div class="muted">${d.opened.length+d.submitted.length} opgeroepen</div>`;
+      colDate.innerHTML = '<h4>'+d.date+'</h4><div class="muted">'+(d.opened.length+d.submitted.length)+' opgeroepen</div>';
 
       const colOpenOnly = document.createElement('div');
       const openOnly = diffEntities(d.opened, d.submitted);
-      colOpenOnly.innerHTML = `<h4 class="muted">Opgeroepen, nog niet doorgestuurd</h4>`;
+      colOpenOnly.innerHTML = '<h4 class="muted">Opgeroepen, nog niet doorgestuurd</h4>';
       if(!openOnly.length){ colOpenOnly.appendChild(note('(geen)')); }
       else { colOpenOnly.appendChild(listEntities(openOnly,'warn')); }
 
       const colSubmitted = document.createElement('div');
-      colSubmitted.innerHTML = `<h4 class="muted">Doorgestuurd</h4>`;
+      colSubmitted.innerHTML = '<h4 class="muted">Doorgestuurd</h4>';
       if(!d.submitted.length){ colSubmitted.appendChild(note('(geen)')); }
       else { colSubmitted.appendChild(listEntities(d.submitted,'ok')); }
 
-      wrap.append(colDate,colOpenOnly,colSubmitted);
+      wrap.appendChild(colDate); wrap.appendChild(colOpenOnly); wrap.appendChild(colSubmitted);
       frag.appendChild(wrap);
     });
     elDays.appendChild(frag);
@@ -216,79 +192,63 @@
   function note(t){ const s=document.createElement('div'); s.className='muted'; s.textContent=t; return s; }
   function listEntities(arr,cls){
     const div=document.createElement('div');
-    arr.forEach(e=>{
-      const p=document.createElement('span'); p.className=`pill ${cls||''}`;
-      p.innerHTML = `<span class="tag">${e.id||'—'}</span> ${e.description?('— '+escapeHtml(e.description)) : ''}`;
+    arr.forEach(function(e){
+      const p=document.createElement('span'); p.className='pill ' + (cls||'');
+      const desc = e.description ? (' &mdash; ' + escapeHtml(e.description)) : '';
+      p.innerHTML = '<span class="tag">'+(e.id||'&mdash;')+'</span>' + desc;
       div.appendChild(p);
     });
     return div;
   }
   function diffEntities(opened, submitted){
     const set = new Set(submitted.map(keyEnt));
-    return opened.filter(e=>!set.has(keyEnt(e)));
+    return opened.filter(function(e){ return !set.has(keyEnt(e)); });
   }
-  function escapeHtml(s){ return String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[c])); }
+  function escapeHtml(s){ return String(s).replace(/[&<>"']/g,function(c){ return ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;','\'':'&#39;'}[c]); }); }
 
   function renderTimeline(){
-    const W=1000,H=220, P=30, AX=H-P-20; // chart area
-    elTL.setAttribute('viewBox',`0 0 ${W} ${H}`);
+    const W=1000,H=220,P=30,BASE=H-P-20;
+    elTL.setAttribute('viewBox','0 0 '+W+' '+H);
     elTL.innerHTML='';
-    const data = state.counts;
-    if(!data.length){ return; }
-
-    const xs = data.map((_,i)=>i), ys = data.map(([,v])=>v);
-    const maxY = Math.max(1, ...ys);
+    const data = state.counts; if(!data.length) return;
+    const maxY = Math.max(1, ...data.map(function(p){return p[1];}));
     const stepX = (W-2*P) / Math.max(1,(data.length-1));
-    // Axes
-    const gAx = document.createElementNS('http://www.w3.org/2000/svg','g');
-    const x0 = P, y0 = AX; // origin
-    const axisX = line(x0, AX, W-P, AX, '#cbd5e1');
-    const axisY = line(x0, P, x0, AX, '#cbd5e1');
-    gAx.append(axisX, axisY);
-    // ticks X (om de 7 dagen)
-    data.forEach(([d],i)=>{ if(i%7) return; const x=x0+i*stepX; gAx.append(line(x,AX,x,AX+6,'#cbd5e1')); gAx.append(text(d.slice(5), x, AX+18, 'middle', '10px', '#64748b')); });
-    // ticks Y
-    for(let t=0;t<=maxY;t+=Math.ceil(maxY/4)){
-      const y = AX - (t/maxY)*(AX-P);
-      gAx.append(line(x0-4,y,W-P,y,'#f1f5f9'));
-      gAx.append(text(String(t), x0-10, y+3, 'end', '10px', '#64748b'));
+
+    const gAx = svgEl('g');
+    gAx.appendChild(line(P,BASE,W-P,BASE,'#cbd5e1'));
+    gAx.appendChild(line(P,P,P,BASE,'#cbd5e1'));
+    data.forEach(function(p,i){ if(i%7) return; const x=P+i*stepX; gAx.appendChild(line(x,BASE,x,BASE+6,'#cbd5e1')); gAx.appendChild(txt(p[0].slice(5), x, BASE+18, 'middle', '10px', '#64748b')); });
+    for(var t=0;t<=maxY;t+=Math.ceil(maxY/4)){
+      const y = BASE - (t/maxY)*(BASE-P);
+      gAx.appendChild(line(P-4,y,W-P,y,'#f1f5f9'));
+      gAx.appendChild(txt(String(t), P-10, y+3, 'end', '10px', '#64748b'));
     }
     elTL.appendChild(gAx);
-    // polyline
-    const pts = data.map(([,v],i)=>`${x0+i*stepX},${AX - (v/maxY)*(AX-P)}`).join(' ');
-    const pl = document.createElementNS('http://www.w3.org/2000/svg','polyline');
-    pl.setAttribute('points', pts); pl.setAttribute('fill','none'); pl.setAttribute('stroke', '#ee7e00'); pl.setAttribute('stroke-width','2');
-    elTL.appendChild(pl);
-    // dots
-    data.forEach(([,v],i)=>{
-      const cx = x0+i*stepX, cy = AX - (v/maxY)*(AX-P);
-      const c = document.createElementNS('http://www.w3.org/2000/svg','circle'); c.setAttribute('cx',cx); c.setAttribute('cy',cy); c.setAttribute('r','3'); c.setAttribute('fill','#ee7e00'); elTL.appendChild(c);
-    });
+
+    const pts = data.map(function(p,i){ return (P+i*stepX)+','+(BASE - (p[1]/maxY)*(BASE-P)); }).join(' ');
+    const pl = svgEl('polyline'); pl.setAttribute('points', pts); pl.setAttribute('fill','none'); pl.setAttribute('stroke','#ee7e00'); pl.setAttribute('stroke-width','2'); elTL.appendChild(pl);
+    data.forEach(function(p,i){ const cx=P+i*stepX, cy=BASE - (p[1]/maxY)*(BASE-P); const c=svgEl('circle'); c.setAttribute('cx',cx); c.setAttribute('cy',cy); c.setAttribute('r','3'); c.setAttribute('fill','#ee7e00'); elTL.appendChild(c); });
   }
+
+  function svgEl(n){ return document.createElementNS('http://www.w3.org/2000/svg', n); }
+  function line(x1,y1,x2,y2,stroke){ const l=svgEl('line'); l.setAttribute('x1',x1); l.setAttribute('y1',y1); l.setAttribute('x2',x2); l.setAttribute('y2',y2); l.setAttribute('stroke',stroke); return l; }
+  function txt(t,x,y,anchor,size,color){ const el=svgEl('text'); el.textContent=t; el.setAttribute('x',x); el.setAttribute('y',y); el.setAttribute('text-anchor',anchor); el.setAttribute('font-size',size); el.setAttribute('fill',color); return el; }
 
   function toCSV(){
     const lines = ['date,type,id,description'];
     for(const d of state.daily){
-      for(const e of d.opened){ lines.push(`${d.date},opened,${csv(e.id)},${csv(e.description)}`); }
-      for(const e of d.submitted){ lines.push(`${d.date},submitted,${csv(e.id)},${csv(e.description)}`); }
+      for(const e of d.opened){ lines.push(d.date+',opened,'+csv(e.id)+','+csv(e.description)); }
+      for(const e of d.submitted){ lines.push(d.date+',submitted,'+csv(e.id)+','+csv(e.description)); }
     }
-    return lines.join('
-');
+    return lines.join('\n');
   }
-  function csv(s){ return '"'+String(s??'').replace(/"/g,'""')+'"'; }
+  function csv(s){ return '"'+String(s||'').replace(/"/g,'""')+'"'; }
   function downloadCSV(){ const blob=new Blob([toCSV()],{type:'text/csv'}); const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='stats_per_dag.csv'; a.click(); URL.revokeObjectURL(a.href); }
 
-  async function loadAll(){
-    const { daily, counts } = await loadDaily();
-    state.daily = daily; state.counts = counts;
-    renderDays();
-    renderTimeline();
-  }
-
+  async function loadAll(){ const shaped = await loadDaily(); state.daily=shaped.daily; state.counts=shaped.counts; renderDays(); renderTimeline(); }
   function startAuto(){ return setInterval(loadAll, 30000); }
   let timer=null; if(elAut.checked){ timer=startAuto(); }
 
-  // init
   loadAll();
 </script>
 </body>
