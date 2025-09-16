@@ -169,43 +169,50 @@
     });
   }
 
-  function renderDays(){
-    elDays.innerHTML='';
-    const frag = document.createDocumentFragment();
+	function renderDays(){
+	  elDays.innerHTML = '';
+	  const frag = document.createDocumentFragment();
 
-    state.daily.sort((a,b) => b.date.localeCompare(a.date)).forEach((d) => {
-  const wrap = document.createElement('div'); wrap.className='day';
-      const head = document.createElement('h4'); head.textContent = `${d.date} — ${sumDay(d.timeline)} oproepen`;
-      wrap.appendChild(head);
+	  // sorteer: recent eerst
+	  [...state.daily]
+		.sort((a, b) => b.date.localeCompare(a.date))
+		.forEach((d) => {
+		  const wrap = document.createElement('div'); 
+		  wrap.className = 'day';
 
-      const tbl = document.createElement('table');
-      tbl.innerHTML = `<thead><tr>
-        <th>Tijd opgeroepen</th>
-        <th>Tijd doorgestuurd</th>
-        <th class="t-right">Δ (mm:ss)</th>
-        <th>Type</th>
-        <th>ID / omschrijving</th>
-      </tr></thead><tbody></tbody>`;
-      const tb = tbl.querySelector('tbody');
+		  const head = document.createElement('h4'); 
+		  head.textContent = `${d.date} — ${sumDay(d.timeline)} oproepen`;
+		  wrap.appendChild(head);
 
-      (d.details||[]).forEach(row => {
-        const tr = document.createElement('tr');
-        tr.innerHTML = `
-          <td>${fmtTime(row.time_open)}</td>
-          <td>${fmtTime(row.time_submit) || '—'}</td>
-          <td class="t-right">${fmtDelta(row.delta_seconds)}</td>
-          <td>${tag(row.type)}</td>
-          <td><strong>${escapeHtml(row.id)}</strong>${row.description? ' — '+escapeHtml(row.description):''}</td>
-        `;
-        tb.appendChild(tr);
-      });
+		  const tbl = document.createElement('table');
+		  tbl.innerHTML = `<thead><tr>
+			<th>Tijd opgeroepen</th>
+			<th>Tijd doorgestuurd</th>
+			<th class="t-right">Δ (mm:ss)</th>
+			<th>Type</th>
+			<th>ID / omschrijving</th>
+		  </tr></thead><tbody></tbody>`;
+		  const tb = tbl.querySelector('tbody');
 
-      wrap.appendChild(tbl);
-      frag.appendChild(wrap);
-    });
+		  (d.details || []).forEach(row => {
+			const tr = document.createElement('tr');
+			tr.innerHTML = `
+			  <td>${fmtTime(row.time_open)}</td>
+			  <td>${fmtTime(row.time_submit) || '—'}</td>
+			  <td class="t-right">${fmtDelta(row.delta_seconds)}</td>
+			  <td>${tag(row.type)}</td>
+			  <td><strong>${escapeHtml(row.id)}</strong>${row.description ? ' — ' + escapeHtml(row.description) : ''}</td>
+			`;
+			tb.appendChild(tr);
+		  });
 
-    elDays.appendChild(frag);
-  }
+		  wrap.appendChild(tbl);
+		  frag.appendChild(wrap);
+		});
+
+	  elDays.appendChild(frag);
+	}
+
 
   function sumDay(t){ return (t.equip_opened + t.space_opened); }
 	function fmtTime(s){
