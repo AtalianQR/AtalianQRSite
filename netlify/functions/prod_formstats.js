@@ -83,48 +83,42 @@ export default async (req, context) => {
     const daily = dates.map((d) => {
       const bucket = dayMap.get(d) || { perKey:new Map(), list:[] };
 
-      // detailregels: sorteer op firstOpen
+      // detailregels: flatten ALLE occurrences en sorteer op open (fallback submit)
       const details = Array.from(bucket.perKey.values())
-        .sort((a,b) => (a.firstOpen||'').localeCompare(b.firstOpen||''))
-        .map((x) => ({
-          id: x.id,
-          type: x.type, // 'equip' | 'space'
-          description: x.desc || '',
-          time_open: x.firstOpen || null,
-          time_submit: x.firstSubmit || null,
-          delta_seconds: (x.firstOpen && x.firstSubmit) ? Math.max(0, Math.floor((new Date(x.firstSubmit) - new Date(x.firstOpen))/1000)) : null
-        }));
+        .flatMap((rec) => (rec.occ||[]).map(o => ({
+          id: rec.id,
+          type: rec.type,
+          description: rec.desc || '',
+          time_open: o.open || null,
+          time_submit: o.submit || null,
+          delta_seconds: (o.open && o.submit) ? Math.max(0, Math.floor((new Date(o.submit) - new Date(o.open))/1000)) : null
+        })))
+        .sort((a,b)=>{
+          const ka = a.time_open || a.time_submit || '';
+          const kb = b.time_open || b.time_submit || '';
+          return ka.localeCompare(kb);
+        });
 
-      // tellingen voor 4-balken
+      // tellingen voor 4-balken: PER OCCURRENCE
       let equip_opened=0, equip_forwarded=0, space_opened=0, space_forwarded=0;
-      for (const v of bucket.perKey.values()) {
-        const isEq = v.type === 'equip';
-        const opened = Boolean(v.firstOpen);
-        const fwd    = Boolean(v.firstSubmit);
-        if (isEq) {
-          equip_opened   += opened ? 1 : 0;
-          equip_forwarded+= fwd    ? 1 : 0;
-        } else {
-          space_opened   += opened ? 1 : 0;
-          space_forwarded+= fwd    ? 1 : 0;
+      for (const rec of bucket.perKey.values()){
+        const isEq = rec.type === 'equip';
+        for (const o of (rec.occ||[])){
+          if (isEq){
+            if (o.open)   equip_opened++;
+            if (o.submit) equip_forwarded++;
+          } else {
+            if (o.open)   space_opened++;
+            if (o.submit) space_forwarded++;
+          }
         }
       }
 
-      return {
-        date: d,
-        timeline: { equip_opened, equip_forwarded, space_opened, space_forwarded },
-        details
-      };
+      return { date: d, timeline: { equip_opened, equip_forwarded, space_opened, space_forwarded }, details };
     });
 
-    // Ook een "counts"-array voorzien voor backward-compat, maar nu 4 waarden
-    const counts = daily.map((d) => [
-      d.date,
-      d.timeline.equip_opened,
-      d.timeline.equip_forwarded,
-      d.timeline.space_opened,
-      d.timeline.space_forwarded
-    ]);
+    // backward-compat counts (4 waarden)
+    const counts = daily.map((d) => [ d.date, d.timeline.equip_opened, d.timeline.equip_forwarded, d.timeline.space_opened, d.timeline.space_forwarded ]);
 
     return json({ ok:true, from, to, daily, counts });
 
@@ -165,9 +159,11 @@ function enumerateDays(from,to){
   return out;
 }
 
-// Aggregatie: bewaar earliest open en earliest submit per entiteit per dag
+// Aggregatie: registreer ALLE oproepen per entiteit per dag en koppel eerste volgende submit
 function aggregateEvent(dayMap, ev, from, to){
-  const day = String(ev.ts_server || ev.ts || '').slice(0,10);
+  const isoTs = toIso(ev.ts_server || ev.ts);
+  if (!isoTs) return;
+  const day = toLocalDateISO(isoTs, 'Europe/Brussels');
   if (!day || day < from || day > to) return;
 
   const code = String(ev.code ?? '');
@@ -180,18 +176,30 @@ function aggregateEvent(dayMap, ev, from, to){
   let bucket = dayMap.get(day);
   if (!bucket) { bucket = { perKey:new Map(), list:[] }; dayMap.set(day,bucket); }
 
-  const isoTs = toIso(ev.ts_server || ev.ts);
   const desc  = String(ev.description || ev.Description || ev.desc || '');
 
   let rec = bucket.perKey.get(keyEnt);
-  if (!rec) { rec = { type, id, firstOpen:null, firstSubmit:null, desc }; bucket.perKey.set(keyEnt, rec); }
-  if (desc && !rec.desc) rec.desc = desc; // vul aan indien later beschikbaar
+  if (!rec) { rec = { type, id, desc:'', occ:[] }; bucket.perKey.set(keyEnt, rec); }
+  if (desc && !rec.desc) rec.desc = desc; // aanvullen indien later bekend
 
   if (ev.type === 'url_load') {
-    if (!rec.firstOpen || isoTs < rec.firstOpen) rec.firstOpen = isoTs;
+    // elke "open" is een NIEUWE occurrence
+    rec.occ.push({ open: isoTs, submit: null });
   }
   if (ev.type === 'submit_success') {
-    if (!rec.firstSubmit || isoTs < rec.firstSubmit) rec.firstSubmit = isoTs;
+    // koppel aan eerste occurrence zonder submit met open <= submit
+    const dtSubmit = new Date(isoTs).getTime();
+    let linked = false;
+    for (const o of rec.occ) {
+      const tOpen = o.open ? new Date(o.open).getTime() : null;
+      if (!o.submit && tOpen!=null && tOpen <= dtSubmit) {
+        o.submit = isoTs; linked = true; break;
+      }
+    }
+    if (!linked) {
+      // vangnet: er was geen open; registreer losse submit
+      rec.occ.push({ open: null, submit: isoTs });
+    }
   }
 }
 function toIso(x){
@@ -201,6 +209,13 @@ function toIso(x){
     if (typeof x === 'number') return new Date(x).toISOString();
     const d = new Date(x); return isNaN(d) ? null : d.toISOString();
   } catch { return null; }
+}
+function toLocalDateISO(ts, tz='Europe/Brussels'){
+  try{
+    const d = new Date(ts);
+    return new Intl.DateTimeFormat('en-CA', { timeZone: tz, year:'numeric', month:'2-digit', day:'2-digit' }).format(d); // YYYY-MM-DD
+  }catch{ return String(ts).slice(0,10); }
+}
 }
 
 

@@ -213,7 +213,12 @@
   }
 
   function sumDay(t){ return (t.equip_opened + t.space_opened); }
-  function fmtTime(s){ if(!s) return ''; try { return new Date(s).toISOString().slice(11,19); } catch { return ''; } }
+  function fmtTime(s){
+    if(!s) return '';
+    try {
+      const d = new Date(s);
+      // Toon expliciet in Europe/Brussels om UTC-drift (bv. 04:40 vs 07:40) te vermijden
+      return new Intl.DateTimeFormat('nl-BE', { timeZone:'Europe/Brussels', hour:'2-digit', catch { return ''; } }
   function fmtDelta(sec){ if(sec==null) return ''; const m = Math.floor(sec/60); const s=sec%60; return String(m).padStart(2,'0')+':'+String(s).padStart(2,'0'); }
   function tag(type){ const isEq = type==='equip'; return `<span class="pill ${isEq?'tag-eq':'tag-sp'}">${isEq?'installatie':'ruimte'}</span>`; }
   function escapeHtml(s){ return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;','\'':'&#39;'}[c])); }
