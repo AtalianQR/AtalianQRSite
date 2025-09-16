@@ -180,23 +180,23 @@
 		  const wrap = document.createElement('div');
 		  wrap.className = 'day';
 
-		  // — Samenvatting: tel per ID (type|id)
-		  const counts = new Map();
+		  // 1) Totals per ID (type|id) voor deze dag
+		  const totals = new Map();
 		  for (const r of (d.details || [])) {
 			const k = `${r.type}|${r.id}`;
-			counts.set(k, (counts.get(k) || 0) + 1);
+			totals.set(k, (totals.get(k) || 0) + 1);
 		  }
-		  const top = [...counts.entries()]
+
+		  // optioneel: top van meest opgeroepen IDs
+		  const top = [...totals.entries()]
 			.sort((a,b) => b[1]-a[1])
-			.slice(0,5) // toon top 5
-			.map(([k,c]) => {
-			  const [, id] = k.split('|');
-			  return `${id}×${c}`;
-			})
+			.slice(0,5)
+			.map(([k,c]) => `${k.split('|')[1]}×${c}`)
 			.join(' · ');
 
 		  const head = document.createElement('h4');
-		  head.textContent = `${d.date} — ${sumDay(d.timeline)} oproepen${top ? ` — meest opgeroepen: ${top}` : ''}`;
+		  head.textContent =
+			`${d.date} — ${sumDay(d.timeline)} oproepen${top ? ` — meest opgeroepen: ${top}` : ''}`;
 		  wrap.appendChild(head);
 
 		  const tbl = document.createElement('table');
@@ -209,19 +209,19 @@
 		  </tr></thead><tbody></tbody>`;
 		  const tb = tbl.querySelector('tbody');
 
-		  // — Binnen de dag: recentste eerst
+		  // 2) Binnen de dag: recentste eerst
 		  const rows = (d.details || []).slice().sort((a, b) => {
 			const ta = new Date(a.time_open || a.time_submit || 0).getTime();
 			const tbm = new Date(b.time_open || b.time_submit || 0).getTime();
 			return tbm - ta; // desc
 		  });
 
-		  // — Sequentienummer per ID in de weergegeven volgorde
-		  const seqMap = new Map(); // key: type|id -> teller
+		  // 3) Teller laten aftellen vanaf totalen
+		  const used = new Map(); // hoeveel we al gerenderd hebben per key
 		  rows.forEach(row => {
 			const key = `${row.type}|${row.id}`;
-			const seq = (seqMap.get(key) || 0) + 1;
-			seqMap.set(key, seq);
+			const seq = (totals.get(key) || 0) - (used.get(key) || 0); // bvb 5,4,3,...
+			used.set(key, (used.get(key) || 0) + 1);
 
 			const tr = document.createElement('tr');
 			tr.innerHTML = `
