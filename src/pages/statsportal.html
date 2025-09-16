@@ -227,6 +227,13 @@
 
   function tag(type){ const isEq = type==='equip'; return `<span class="pill ${isEq?'tag-eq':'tag-sp'}">${isEq?'installatie':'ruimte'}</span>`; }
   function escapeHtml(s){ return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;','\'':'&#39;'}[c])); }
+  function fmtDelta(sec){
+  if (sec == null || Number.isNaN(sec)) return '';
+  const m = Math.floor(sec / 60);
+  const s = Math.floor(sec % 60);
+  return String(m).padStart(2, '0') + ':' + String(s).padStart(2, '0');
+}
+
 
   function toCSV(){
     const lines = ['date,time_open,time_submit,delta_seconds,type,id,description'];
