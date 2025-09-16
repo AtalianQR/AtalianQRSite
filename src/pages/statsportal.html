@@ -180,23 +180,31 @@
 		  const wrap = document.createElement('div');
 		  wrap.className = 'day';
 
-		  // 1) Totals per ID (type|id) voor deze dag
-		  const totals = new Map();
-		  for (const r of (d.details || [])) {
-			const k = `${r.type}|${r.id}`;
-			totals.set(k, (totals.get(k) || 0) + 1);
+		  // 1) Groepeer per (type|id) en bepaal:
+		  //    - count = #occurrences
+		  //    - latest = meest recente occurrence (op basis van open, fallback submit)
+		  const groups = new Map(); // key -> { count, latestRow, latestTs }
+		  for (const row of (d.details || [])) {
+			const key = `${row.type}|${row.id}`;
+			const ts = new Date(row.time_open || row.time_submit || 0).getTime();
+			const g = groups.get(key);
+			if (!g) {
+			  groups.set(key, { count: 1, latestRow: row, latestTs: ts });
+			} else {
+			  g.count += 1;
+			  if (ts >= g.latestTs) { g.latestRow = row; g.latestTs = ts; }
+			}
 		  }
 
-		  // optioneel: top van meest opgeroepen IDs
-		  const top = [...totals.entries()]
-			.sort((a,b) => b[1]-a[1])
+		  // optioneel: top meest opgeroepen
+		  const top = [...groups.entries()]
+			.sort((a,b) => b[1].count - a[1].count)
 			.slice(0,5)
-			.map(([k,c]) => `${k.split('|')[1]}×${c}`)
+			.map(([k,g]) => `${k.split('|')[1]}×${g.count}`)
 			.join(' · ');
 
 		  const head = document.createElement('h4');
-		  head.textContent =
-			`${d.date} — ${sumDay(d.timeline)} oproepen${top ? ` — meest opgeroepen: ${top}` : ''}`;
+		  head.textContent = `${d.date} — ${groups.size} unieke items — meest opgeroepen: ${top || '—'}`;
 		  wrap.appendChild(head);
 
 		  const tbl = document.createElement('table');
@@ -209,27 +217,18 @@
 		  </tr></thead><tbody></tbody>`;
 		  const tb = tbl.querySelector('tbody');
 
-		  // 2) Binnen de dag: recentste eerst
-		  const rows = (d.details || []).slice().sort((a, b) => {
-			const ta = new Date(a.time_open || a.time_submit || 0).getTime();
-			const tbm = new Date(b.time_open || b.time_submit || 0).getTime();
-			return tbm - ta; // desc
-		  });
+		  // 2) Enkel de meest recente occurrence per ID tonen, gesorteerd recent → oud
+		  const rows = [...groups.values()]
+			.sort((a,b) => b.latestTs - a.latestTs);
 
-		  // 3) Teller laten aftellen vanaf totalen
-		  const used = new Map(); // hoeveel we al gerenderd hebben per key
-		  rows.forEach(row => {
-			const key = `${row.type}|${row.id}`;
-			const seq = (totals.get(key) || 0) - (used.get(key) || 0); // bvb 5,4,3,...
-			used.set(key, (used.get(key) || 0) + 1);
-
+		  rows.forEach(({ latestRow, count }) => {
 			const tr = document.createElement('tr');
 			tr.innerHTML = `
-			  <td>${fmtTime(row.time_open)}</td>
-			  <td>${fmtTime(row.time_submit) || '—'}</td>
-			  <td class="t-right">${fmtDelta(row.delta_seconds)}</td>
-			  <td>${tag(row.type)}</td>
-			  <td><strong>${escapeHtml(row.id)}/${seq}</strong>${row.description ? ' — ' + escapeHtml(row.description) : ''}</td>
+			  <td>${fmtTime(latestRow.time_open)}</td>
+			  <td>${fmtTime(latestRow.time_submit) || '—'}</td>
+			  <td class="t-right">${fmtDelta(latestRow.delta_seconds)}</td>
+			  <td>${tag(latestRow.type)}</td>
+			  <td><strong>${escapeHtml(latestRow.id)}/${count}</strong>${latestRow.description ? ' — ' + escapeHtml(latestRow.description) : ''}</td>
 			`;
 			tb.appendChild(tr);
 		  });
