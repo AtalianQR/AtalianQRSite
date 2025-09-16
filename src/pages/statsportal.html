@@ -1,46 +1,62 @@
+// ==============================
+// FILE 2/2: /statsportal.html (client)
+// Doel: UI met tijdslijn bovenaan (4 balken/dag) en daaronder detail per dag met tijden en delta
+// ==============================
+
 <!DOCTYPE html>
 <html lang="nl">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Statsportal – per dag: opgeroepen entiteiten + doorgestuurd</title>
+  <title>Statsportal – Tijdslijn & detail</title>
   <link rel="icon" href="/AtalianFavicon.png" />
   <style>
-    :root{--bg:#f7fafc;--card:#fff;--text:#0f172a;--muted:#64748b;--accent:#ee7e00;--ring:rgba(238,126,0,.14);--shadow:0 8px 28px rgba(2,6,23,.08)}
-    html,body{height:auto;min-height:100vh;margin:0;background:var(--bg);color:var(--text);font-family:system-ui,-apple-system,Segoe UI,Roboto,Inter,Arial,sans-serif}
+    :root{
+      --bg:#f7fafc;--card:#fff;--text:#0f172a;--muted:#64748b;--accent:#ee7e00;--ring:rgba(238,126,0,.14);--shadow:0 8px 28px rgba(2,6,23,.08);
+      --bl-light:#93c5fd; /* lichtblauw: installatie opgeroepen */
+      --bl-dark:#1d4ed8;  /* donkerblauw: installatie doorgestuurd */
+      --or-light:#fdba74; /* lichtoranje: ruimte opgeroepen */
+      --or-dark:#c2410c;  /* donkeroranje: ruimte doorgestuurd */
+    }
+    html,body{min-height:100vh;margin:0;background:var(--bg);color:var(--text);font-family:system-ui,-apple-system,Segoe UI,Roboto,Inter,Arial,sans-serif}
     body{background-image:linear-gradient(rgba(255,255,255,.86), rgba(255,255,255,.86)),url('/building-cleaning.png');background-size:cover;background-position:center;background-attachment:fixed}
     .wrap{max-width:1200px;margin:0 auto;padding:20px}
     h1{font-size:20px;margin:6px 0 12px}
     .muted{color:var(--muted)}
+
     .filters{display:flex;flex-wrap:wrap;gap:10px;align-items:center;background:var(--card);padding:12px;border-radius:14px;box-shadow:var(--shadow);border:1px solid #e9eef7}
     .filters .group{display:flex;gap:6px;align-items:center}
     .filters input[type="date"], .filters select{height:36px;border:1px solid #e5e7eb;border-radius:10px;padding:0 10px}
     .filters button{height:36px;border-radius:10px;border:1px solid var(--accent);background:var(--accent);color:#fff;padding:0 12px;font-weight:700;cursor:pointer}
+    .right{margin-left:auto}
 
     .box{background:var(--card);border-radius:14px;box-shadow:var(--shadow);border:1px solid #eef2f9;margin:12px 0}
     .box h3{margin:0;padding:12px 14px;border-bottom:1px solid #eef2f9;font-size:16px}
     .box .content{padding:12px 14px}
 
-    .day{display:grid;grid-template-columns:180px 1fr 1fr;gap:12px;align-items:start;border-bottom:1px dashed #eef2f9;padding:10px 0}
-    .day:last-child{border-bottom:0}
-    .day h4{margin:0 0 6px 0;font-size:14px}
-    .pill{display:inline-block;margin:3px 6px 3px 0;padding:4px 8px;border-radius:999px;border:1px solid #e5e7eb;background:#fff;font-size:13px}
-    .pill.ok{border-color:#bbf7d0;background:#f0fdf4}
-    .pill.warn{border-color:#fde68a;background:#fffbeb}
+    /* Tijdslijn */
+    .timeline{width:100%;height:260px}
+    .legend{display:flex;gap:14px;flex-wrap:wrap;align-items:center;margin-bottom:8px}
+    .legend .i{display:inline-flex;align-items:center;gap:6px}
+    .legend .sw{width:14px;height:14px;border-radius:3px;border:1px solid #0f172a22}
 
-    .timeline{width:100%;height:220px}
-    .legend{display:flex;gap:10px;align-items:center}
-    .legend .boxl{width:10px;height:10px;background:var(--accent);border-radius:2px;border:1px solid #c2410c}
-    .right{margin-left:auto}
-    .switch{display:inline-flex;align-items:center;gap:6px}
-    .switch input{accent-color:var(--accent)}
-    @media(max-width:900px){.day{grid-template-columns:1fr}}
+    /* Detail per dag */
+    .day{margin:10px 0 18px;border:1px solid #eef2f9;border-radius:12px;box-shadow:var(--shadow)}
+    .day h4{margin:0;padding:10px 12px;border-bottom:1px solid #eef2f9}
+    table{width:100%;border-collapse:collapse}
+    th,td{padding:8px 10px;border-bottom:1px solid #f1f5f9;font-size:14px}
+    th{background:#f8fafc;text-align:left}
+    .t-right{text-align:right}
+    .pill{display:inline-block;margin:0;padding:2px 8px;border-radius:999px;border:1px solid #e5e7eb;background:#fff;font-size:12px}
+    .tag-eq{background:var(--bl-light);border-color:#1d4ed826}
+    .tag-sp{background:var(--or-light);border-color:#c2410c26}
+    @media (max-width:900px){ th:nth-child(3), td:nth-child(3){display:none} }
   </style>
 </head>
 <body>
   <div class="wrap">
     <img src="/AtalianLogo.png" alt="ATALIAN" style="height:46px;background:#fff;padding:4px;border-radius:10px;border:1px solid #eef2f9;box-shadow:var(--shadow)" />
-    <h1>Statsportal – per dag</h1>
+    <h1>Statsportal – Tijdslijn & detail</h1>
 
     <div class="filters">
       <div class="group"><label>Periode</label>
@@ -54,30 +70,30 @@
       <div class="group"><label>Tot</label><input type="date" id="to" /></div>
       <button id="refresh">Vernieuw</button>
       <button id="csv">CSV</button>
-      <span class="right switch"><input type="checkbox" id="autoref" /> <label for="autoref">Auto-refresh (30s)</label></span>
+      <span class="right"><label><input type="checkbox" id="autoref" /> Auto-refresh (30s)</label></span>
     </div>
 
     <div class="box">
-      <h3>Overzicht per dag</h3>
-      <div class="content" id="days"></div>
-    </div>
-
-    <div class="box">
-      <h3>Tijdslijn – aantal doorgestuurd naar Ultimo per dag</h3>
+      <h3>Tijdslijn – 4 balken per dag</h3>
       <div class="content">
-        <div class="legend"><div class="boxl"></div><span class="muted">Aantal doorgestuurde tickets</span></div>
-        <svg id="timeline" class="timeline" viewBox="0 0 1000 220" preserveAspectRatio="none" aria-label="Tijdslijn"></svg>
+        <div class="legend">
+          <span class="i"><span class="sw" style="background:var(--bl-light)"></span> Installatie: opgeroepen</span>
+          <span class="i"><span class="sw" style="background:var(--bl-dark)"></span> Installatie: opgeroepen + doorgestuurd</span>
+          <span class="i"><span class="sw" style="background:var(--or-light)"></span> Ruimte: opgeroepen</span>
+          <span class="i"><span class="sw" style="background:var(--or-dark)"></span> Ruimte: opgeroepen + doorgestuurd</span>
+        </div>
+        <svg id="timeline" class="timeline" viewBox="0 0 1200 260" preserveAspectRatio="none" aria-label="Tijdslijn"></svg>
       </div>
+    </div>
+
+    <div class="box">
+      <h3>Detail per dag</h3>
+      <div id="days" class="content"></div>
     </div>
   </div>
 
 <script type="module">
-  // ASCII-only JS om rare unicode tokens te vermijden
-  const endpoints = {
-    formstats: '/.netlify/functions/prod_formstats',
-    stats: '/.netlify/functions/prod_stats'
-  };
-
+  const endpoints = { formstats: '/.netlify/functions/prod_formstats' };
   const qs = new URLSearchParams(location.search);
   const debug = qs.get('debug') === '1';
   const elFrom = document.getElementById('from');
@@ -90,11 +106,7 @@
   const elTL   = document.getElementById('timeline');
 
   function fmt(d){ return d.toISOString().slice(0,10); }
-  function setRange(days){
-    const to = new Date();
-    const from = new Date(to); from.setDate(to.getDate() - (days||30));
-    elFrom.value = fmt(from); elTo.value = fmt(to);
-  }
+  function setRange(days){ const to = new Date(); const from = new Date(to); from.setDate(to.getDate() - (days||30)); elFrom.value = fmt(from); elTo.value = fmt(to); }
   setRange(30);
   elPer.addEventListener('change',()=>{ if(elPer.value!=='0') setRange(Number(elPer.value)); });
   elRef.addEventListener('click', loadAll);
@@ -105,134 +117,125 @@
     try{ const r = await fetch(url,{cache:'no-store'}); if(!r.ok) throw new Error(String(r.status)); return await r.json(); }
     catch(e){ if(debug) console.warn('fetch fail',url,e); return null; }
   }
-  const uniqBy = (arr, keyFn) => Array.from(new Map(arr.map(x=>[keyFn(x),x])).values());
+  function qsFor(base){ const sp = new URLSearchParams({ from: elFrom.value, to: elTo.value }); return base + '?' + sp.toString(); }
 
   const state = { daily: [], counts: [] };
 
-  function qsFor(base){
-    const sp = new URLSearchParams({ from: elFrom.value, to: elTo.value, view: 'by_day_entities' });
-    return base + '?' + sp.toString();
+  async function loadAll(){
+    const d = await fetchJSON(qsFor(endpoints.formstats));
+    if(!d || !Array.isArray(d.daily)) return;
+    state.daily = d.daily; state.counts = d.counts || [];
+    renderTimeline(); renderDays();
   }
-
-  async function loadDaily(){
-    const u1 = qsFor(endpoints.formstats);
-    const d1 = await fetchJSON(u1);
-    if(d1 && Array.isArray(d1.daily)){
-      return shapeDaily(d1.daily);
-    }
-    const dates = enumerateDays(elFrom.value, elTo.value);
-    return shapeDaily(dates.map(d=>({date:d, opened:[], submitted:[]})));
-  }
-
-  function shapeDaily(dailyRaw){
-    const daily = dailyRaw.map(function(x){
-      return {
-        date: x.date,
-        opened: uniqBy((x.opened||[]).map(normEnt), keyEnt),
-        submitted: uniqBy((x.submitted||[]).map(normEnt), keyEnt)
-      };
-    }).sort(function(a,b){ return a.date.localeCompare(b.date); });
-    const counts = daily.map(function(d){ return [d.date, (d.submitted||[]).length]; });
-    return { daily: daily, counts: counts };
-  }
-
-  function normEnt(e){
-    return { id: e.id || e.Id || '', type: e.type || e.Type || '', description: e.description || e.Description || '' };
-  }
-  function keyEnt(e){ return (e.type||'') + '|' + (e.id||''); }
-
-  function enumerateDays(from,to){
-    const A = new Date(from + 'T00:00:00');
-    const B = new Date(to   + 'T00:00:00');
-    const out=[]; for(let d=new Date(A); d<=B; d.setDate(d.getDate()+1)){ out.push(fmt(d)); }
-    return out;
-  }
-
-  function renderDays(){
-    elDays.innerHTML='';
-    const frag = document.createDocumentFragment();
-    state.daily.forEach(function(d){
-      const wrap = document.createElement('div'); wrap.className='day';
-      const colDate = document.createElement('div');
-      colDate.innerHTML = '<h4>'+d.date+'</h4><div class="muted">'+(d.opened.length+d.submitted.length)+' opgeroepen</div>';
-
-      const colOpenOnly = document.createElement('div');
-      const openOnly = diffEntities(d.opened, d.submitted);
-      colOpenOnly.innerHTML = '<h4 class="muted">Opgeroepen, maar niet doorgestuurd</h4>';
-      if(!openOnly.length){ colOpenOnly.appendChild(note('(geen)')); }
-      else { colOpenOnly.appendChild(listEntities(openOnly,'warn')); }
-
-      const colSubmitted = document.createElement('div');
-      colSubmitted.innerHTML = '<h4 class="muted">Doorgestuurd</h4>';
-      if(!d.submitted.length){ colSubmitted.appendChild(note('(geen)')); }
-      else { colSubmitted.appendChild(listEntities(d.submitted,'ok')); }
-
-      wrap.appendChild(colDate); wrap.appendChild(colOpenOnly); wrap.appendChild(colSubmitted);
-      frag.appendChild(wrap);
-    });
-    elDays.appendChild(frag);
-  }
-
-  function note(t){ const s=document.createElement('div'); s.className='muted'; s.textContent=t; return s; }
-  function listEntities(arr,cls){
-    const div=document.createElement('div');
-    arr.forEach(function(e){
-      const p=document.createElement('span'); p.className='pill ' + (cls||'');
-      const desc = e.description ? (' &mdash; ' + escapeHtml(e.description)) : '';
-      p.innerHTML = '<span class="tag">'+(e.id||'&mdash;')+'</span>' + desc;
-      div.appendChild(p);
-    });
-    return div;
-  }
-  function diffEntities(opened, submitted){
-    const set = new Set(submitted.map(keyEnt));
-    return opened.filter(function(e){ return !set.has(keyEnt(e)); });
-  }
-  function escapeHtml(s){ return String(s).replace(/[&<>"']/g,function(c){ return ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;','\'':'&#39;'}[c]); }); }
 
   function renderTimeline(){
-    const W=1000,H=220,P=30,BASE=H-P-20;
+    const W=1200,H=260,P=40,BASE=H-P-20, MAX_BAR=BASE-P; // bar max hoogte
     elTL.setAttribute('viewBox','0 0 '+W+' '+H);
     elTL.innerHTML='';
-    const data = state.counts; if(!data.length) return;
-    const maxY = Math.max(1, ...data.map(function(p){return p[1];}));
-    const stepX = (W-2*P) / Math.max(1,(data.length-1));
+    const data = state.daily; if(!data.length) return;
 
+    // y-schaal = max van alle 4 categorieën.
+    let maxY = 1;
+    for (const d of data){ const t=d.timeline; maxY = Math.max(maxY, t.equip_opened, t.equip_forwarded, t.space_opened, t.space_forwarded); }
+
+    const groupWidth = (W-2*P)/data.length;
+    const barW = Math.max(3, Math.min(18, (groupWidth-12)/4)); // 4 bars + spacing
+
+    // assen
     const gAx = svgEl('g');
     gAx.appendChild(line(P,BASE,W-P,BASE,'#cbd5e1'));
     gAx.appendChild(line(P,P,P,BASE,'#cbd5e1'));
-    data.forEach(function(p,i){ if(i%7) return; const x=P+i*stepX; gAx.appendChild(line(x,BASE,x,BASE+6,'#cbd5e1')); gAx.appendChild(txt(p[0].slice(5), x, BASE+18, 'middle', '10px', '#64748b')); });
-    for(var t=0;t<=maxY;t+=Math.ceil(maxY/4)){
-      const y = BASE - (t/maxY)*(BASE-P);
+    data.forEach((d,i)=>{ if(i%7) return; const x=P+i*groupWidth; gAx.appendChild(line(x,BASE,x,BASE+6,'#cbd5e1')); gAx.appendChild(txt(d.date.slice(5), x, BASE+18, 'middle', '10px', '#64748b')); });
+    for(let t=0;t<=maxY;t+=Math.ceil(maxY/4)){
+      const y = BASE - (t/maxY)*(MAX_BAR);
       gAx.appendChild(line(P-4,y,W-P,y,'#f1f5f9'));
       gAx.appendChild(txt(String(t), P-10, y+3, 'end', '10px', '#64748b'));
     }
     elTL.appendChild(gAx);
 
-    const pts = data.map(function(p,i){ return (P+i*stepX)+','+(BASE - (p[1]/maxY)*(BASE-P)); }).join(' ');
-    const pl = svgEl('polyline'); pl.setAttribute('points', pts); pl.setAttribute('fill','none'); pl.setAttribute('stroke','#ee7e00'); pl.setAttribute('stroke-width','2'); elTL.appendChild(pl);
-    data.forEach(function(p,i){ const cx=P+i*stepX, cy=BASE - (p[1]/maxY)*(BASE-P); const c=svgEl('circle'); c.setAttribute('cx',cx); c.setAttribute('cy',cy); c.setAttribute('r','3'); c.setAttribute('fill','#ee7e00'); elTL.appendChild(c); });
+    // bars
+    data.forEach((d,i)=>{
+      const x0 = P + i*groupWidth + 6; // linker offset in groep
+      const vals = [
+        {v:d.timeline.equip_opened,   color:'var(--bl-light)'},
+        {v:d.timeline.equip_forwarded,color:'var(--bl-dark)' },
+        {v:d.timeline.space_opened,   color:'var(--or-light)'},
+        {v:d.timeline.space_forwarded,color:'var(--or-dark)' }
+      ];
+      vals.forEach((o,idx)=>{
+        const h = (o.v/maxY)*MAX_BAR;
+        const x = x0 + idx*(barW+3);
+        const y = BASE - h;
+        const r = svgEl('rect'); r.setAttribute('x',x); r.setAttribute('y',y); r.setAttribute('width',barW); r.setAttribute('height',h);
+        r.setAttribute('fill', o.color); r.setAttribute('rx','3'); r.setAttribute('ry','3');
+        r.setAttribute('aria-label', `${d.date} – ${o.v}`);
+        elTL.appendChild(r);
+      });
+    });
   }
+
+  function renderDays(){
+    elDays.innerHTML='';
+    const frag = document.createDocumentFragment();
+
+    state.daily.forEach((d)=>{
+      const wrap = document.createElement('div'); wrap.className='day';
+      const head = document.createElement('h4'); head.textContent = `${d.date} — ${sumDay(d.timeline)} oproepen`;
+      wrap.appendChild(head);
+
+      const tbl = document.createElement('table');
+      tbl.innerHTML = `<thead><tr>
+        <th>Tijd opgeroepen</th>
+        <th>Tijd doorgestuurd</th>
+        <th class="t-right">Δ (mm:ss)</th>
+        <th>Type</th>
+        <th>ID / omschrijving</th>
+      </tr></thead><tbody></tbody>`;
+      const tb = tbl.querySelector('tbody');
+
+      (d.details||[]).forEach(row => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td>${fmtTime(row.time_open)}</td>
+          <td>${fmtTime(row.time_submit) || '—'}</td>
+          <td class="t-right">${fmtDelta(row.delta_seconds)}</td>
+          <td>${tag(row.type)}</td>
+          <td><strong>${escapeHtml(row.id)}</strong>${row.description? ' — '+escapeHtml(row.description):''}</td>
+        `;
+        tb.appendChild(tr);
+      });
+
+      wrap.appendChild(tbl);
+      frag.appendChild(wrap);
+    });
+
+    elDays.appendChild(frag);
+  }
+
+  function sumDay(t){ return (t.equip_opened + t.space_opened); }
+  function fmtTime(s){ if(!s) return ''; try { return new Date(s).toISOString().slice(11,19); } catch { return ''; } }
+  function fmtDelta(sec){ if(sec==null) return ''; const m = Math.floor(sec/60); const s=sec%60; return String(m).padStart(2,'0')+':'+String(s).padStart(2,'0'); }
+  function tag(type){ const isEq = type==='equip'; return `<span class="pill ${isEq?'tag-eq':'tag-sp'}">${isEq?'installatie':'ruimte'}</span>`; }
+  function escapeHtml(s){ return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;','\'':'&#39;'}[c])); }
+
+  function toCSV(){
+    const lines = ['date,time_open,time_submit,delta_seconds,type,id,description'];
+    for(const d of state.daily){
+      for(const r of (d.details||[])){
+        lines.push([d.date, r.time_open||'', r.time_submit||'', r.delta_seconds??'', r.type, csv(r.id), csv(r.description||'')].join(','));
+      }
+    }
+    return lines.join('\n');
+  }
+  function csv(s){ return '"'+String(s||'').replace(/"/g,'""')+'"'; }
+  function downloadCSV(){ const blob=new Blob([toCSV()],{type:'text/csv'}); const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='stats_tijdslijn_detail.csv'; a.click(); URL.revokeObjectURL(a.href); }
 
   function svgEl(n){ return document.createElementNS('http://www.w3.org/2000/svg', n); }
   function line(x1,y1,x2,y2,stroke){ const l=svgEl('line'); l.setAttribute('x1',x1); l.setAttribute('y1',y1); l.setAttribute('x2',x2); l.setAttribute('y2',y2); l.setAttribute('stroke',stroke); return l; }
   function txt(t,x,y,anchor,size,color){ const el=svgEl('text'); el.textContent=t; el.setAttribute('x',x); el.setAttribute('y',y); el.setAttribute('text-anchor',anchor); el.setAttribute('font-size',size); el.setAttribute('fill',color); return el; }
 
-  function toCSV(){
-    const lines = ['date,type,id,description'];
-    for(const d of state.daily){
-      for(const e of d.opened){ lines.push(d.date+',opened,'+csv(e.id)+','+csv(e.description)); }
-      for(const e of d.submitted){ lines.push(d.date+',submitted,'+csv(e.id)+','+csv(e.description)); }
-    }
-    return lines.join('\n');
-  }
-  function csv(s){ return '"'+String(s||'').replace(/"/g,'""')+'"'; }
-  function downloadCSV(){ const blob=new Blob([toCSV()],{type:'text/csv'}); const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='stats_per_dag.csv'; a.click(); URL.revokeObjectURL(a.href); }
-
-  async function loadAll(){ const shaped = await loadDaily(); state.daily=shaped.daily; state.counts=shaped.counts; renderDays(); renderTimeline(); }
   function startAuto(){ return setInterval(loadAll, 30000); }
   let timer=null; if(elAut.checked){ timer=startAuto(); }
-
   loadAll();
 </script>
 </body>
