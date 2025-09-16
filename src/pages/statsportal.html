@@ -173,15 +173,30 @@
 	  elDays.innerHTML = '';
 	  const frag = document.createDocumentFragment();
 
-	  // sorteer: recent eerst
+	  // sorteer dagen: recent eerst
 	  [...state.daily]
 		.sort((a, b) => b.date.localeCompare(a.date))
 		.forEach((d) => {
-		  const wrap = document.createElement('div'); 
+		  const wrap = document.createElement('div');
 		  wrap.className = 'day';
 
-		  const head = document.createElement('h4'); 
-		  head.textContent = `${d.date} — ${sumDay(d.timeline)} oproepen`;
+		  // — Samenvatting: tel per ID (type|id)
+		  const counts = new Map();
+		  for (const r of (d.details || [])) {
+			const k = `${r.type}|${r.id}`;
+			counts.set(k, (counts.get(k) || 0) + 1);
+		  }
+		  const top = [...counts.entries()]
+			.sort((a,b) => b[1]-a[1])
+			.slice(0,5) // toon top 5
+			.map(([k,c]) => {
+			  const [, id] = k.split('|');
+			  return `${id}×${c}`;
+			})
+			.join(' · ');
+
+		  const head = document.createElement('h4');
+		  head.textContent = `${d.date} — ${sumDay(d.timeline)} oproepen${top ? ` — meest opgeroepen: ${top}` : ''}`;
 		  wrap.appendChild(head);
 
 		  const tbl = document.createElement('table');
@@ -194,14 +209,27 @@
 		  </tr></thead><tbody></tbody>`;
 		  const tb = tbl.querySelector('tbody');
 
-		  (d.details || []).forEach(row => {
+		  // — Binnen de dag: recentste eerst
+		  const rows = (d.details || []).slice().sort((a, b) => {
+			const ta = new Date(a.time_open || a.time_submit || 0).getTime();
+			const tbm = new Date(b.time_open || b.time_submit || 0).getTime();
+			return tbm - ta; // desc
+		  });
+
+		  // — Sequentienummer per ID in de weergegeven volgorde
+		  const seqMap = new Map(); // key: type|id -> teller
+		  rows.forEach(row => {
+			const key = `${row.type}|${row.id}`;
+			const seq = (seqMap.get(key) || 0) + 1;
+			seqMap.set(key, seq);
+
 			const tr = document.createElement('tr');
 			tr.innerHTML = `
 			  <td>${fmtTime(row.time_open)}</td>
 			  <td>${fmtTime(row.time_submit) || '—'}</td>
 			  <td class="t-right">${fmtDelta(row.delta_seconds)}</td>
 			  <td>${tag(row.type)}</td>
-			  <td><strong>${escapeHtml(row.id)}</strong>${row.description ? ' — ' + escapeHtml(row.description) : ''}</td>
+			  <td><strong>${escapeHtml(row.id)}/${seq}</strong>${row.description ? ' — ' + escapeHtml(row.description) : ''}</td>
 			`;
 			tb.appendChild(tr);
 		  });
@@ -212,6 +240,7 @@
 
 	  elDays.appendChild(frag);
 	}
+
 
 
   function sumDay(t){ return (t.equip_opened + t.space_opened); }
