@@ -207,9 +207,13 @@ function toIso(x){
 function toLocalDateISO(ts, tz='Europe/Brussels'){
   try{
     const d = new Date(ts);
-    return new Intl.DateTimeFormat('en-CA', { timeZone: tz, year:'numeric', month:'2-digit', day:'2-digit' }).format(d); // YYYY-MM-DD
-  }catch{ return String(ts).slice(0,10); }
+    return new Intl.DateTimeFormat('en-CA', {
+      timeZone: tz, year:'numeric', month:'2-digit', day:'2-digit'
+    }).format(d); // YYYY-MM-DD
+  } catch {
+    return String(ts).slice(0,10);
+  }
 }
-}
+
 
 
