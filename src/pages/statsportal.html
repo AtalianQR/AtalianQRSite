@@ -173,8 +173,8 @@
     elDays.innerHTML='';
     const frag = document.createDocumentFragment();
 
-    state.daily.forEach((d)=>{
-      const wrap = document.createElement('div'); wrap.className='day';
+    state.daily.sort((a,b) => b.date.localeCompare(a.date)).forEach((d) => {
+  const wrap = document.createElement('div'); wrap.className='day';
       const head = document.createElement('h4'); head.textContent = `${d.date} — ${sumDay(d.timeline)} oproepen`;
       wrap.appendChild(head);
 
