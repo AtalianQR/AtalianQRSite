@@ -1,9 +1,3 @@
-// ==============================
-// FILE 1/2: netlify/functions/prod_formstats.js
-// Doel: API uitbreiden met 4-balken-tijdslijn per dag + detailregels met tijden en doorlooptijd
-// ==============================
-
-// netlify/functions/prod_formstats.js
 import { getStore } from '@netlify/blobs';
 
 export default async (req, context) => {
