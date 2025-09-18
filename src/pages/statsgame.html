@@ -1,312 +1,359 @@
 <!doctype html>
 <html lang="nl">
 <head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1"/>
-  <title>ATALIAN • Game Stats (compact)</title>
+  <meta charset="utf-8" />
+  <meta http-equiv="Cache-Control" content="no-store" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Statsgame – robuuste versie (zonder sorteren)</title>
+  <link rel="icon" href="data:;base64,iVBORw0KGgo=" />
   <style>
-	:root{
-	  --bg:#f7fafc;--card:#fff;--text:#0f172a;--muted:#475569;--accent:#ee7e00
-	}
-	*{box-sizing:border-box}
-	/* === Achtergrond in dezelfde stijl als game === */
-	html,body{height:100%}
-	body{
-	  margin:0;color:var(--text);font-family:system-ui,-apple-system,Segoe UI,Roboto;
-	  background-image:
-		linear-gradient(rgba(255,255,255,.78), rgba(255,255,255,.78)),
-		url('/building-cleaning.png');
-	  background-size:cover;
-	  background-position:center;
-	  background-attachment:fixed;
-	}
-
-	.wrap{max-width:880px;margin:0 auto;padding:16px}
-	h1{margin:0 0 6px;font-size:20px}
-	.muted{color:var(--muted)}
-
-	.grid{display:grid;gap:10px}
-	.cards{grid-template-columns:repeat(3,minmax(0,1fr))}
-
-	.card{
-	  background:var(--card);
-	  border:1px solid rgba(0,0,0,.08);
-	  border-radius:14px;
-	  padding:14px;
-	  box-shadow:0 4px 18px rgba(0,0,0,.10);
-	  backdrop-filter:saturate(120%) blur(.5px);
-	}
-
-	.kpi{display:flex;flex-direction:column;gap:6px}
-	.kpi .val{font-size:28px;font-weight:800}
-	.kpi .vals{display:flex;gap:10px;align-items:baseline}
-
-	.toolbar{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin:8px 0 12px}
-	button{background:#fff;border:1px solid rgba(0,0,0,.15);border-radius:10px;padding:8px 12px;cursor:pointer}
-	button.primary{background:#111827;color:#fff;border-color:#111827}
-	.right{margin-left:auto}
-
-	/* Bars layout */
-	.bars{display:grid;grid-template-columns:1fr;gap:14px}
-	.card h3{font-size:18px;margin-bottom:16px} /* titel breder en met meer ruimte */
-	.bar{
-	  display:grid;
-	  grid-template-columns:260px 1fr 60px; /* label breder, track smaller */
-	  align-items:center;
-	  gap:10px;
-	}
-	.bar .label{
-	  text-align:left;
-	  font-size:14px;
-	  line-height:1.3;
-	}
-	.bar .track{
-	  max-width:420px;
-	  height:12px;
-	  background:#e5e7eb;
-	  border-radius:999px;
-	  overflow:hidden;
-	}
-	.bar .fill{height:100%;background:var(--accent)}
-	.bar .pct{font-size:13px;color:var(--muted);font-variant-numeric:tabular-nums}
-
-	.foot{display:flex;gap:10px;align-items:center}
-	.badge{font-size:12px;color:var(--muted)}
-
-	/* Grote percentage-kaart */
-	.card.big { padding: 24px; text-align: center; }
-	.bigpct { font-size: 56px; font-weight: 900; line-height: 1; }
-	.bigpct small { font-size: 18px; font-weight: 600; color: var(--muted); margin-left: 8px; }
-	.bigsub { margin-top: 6px; color: var(--muted); font-variant-numeric: tabular-nums; }
-
-	@media(max-width:720px){
-	  .cards{grid-template-columns:1fr}
-	  .bigpct{font-size:46px}
-	}
-
+    :root{
+      --bg:#f8fafc;--card:#fff;--text:#0f172a;--muted:#64748b;--accent:#ee7e00;
+      --ok:#16a34a;--err:#ef4444
+    }
+    *{box-sizing:border-box}
+    html,body{height:100%}
+    body{margin:0;background:var(--bg);color:var(--text);font-family:system-ui,-apple-system,Segoe UI,Roboto,Inter,Arial}
+    header{position:sticky;top:0;background:#fff;border-bottom:1px solid #e5e7eb;padding:12px 16px;z-index:10}
+    h1{margin:0;font-size:18px}
+    .wrap{max-width:940px;margin:0 auto;padding:16px}
+    .row{display:flex;gap:10px;flex-wrap:wrap;align-items:end}
+    label{font-size:12px;color:var(--muted);display:block;margin:0 0 4px}
+    input[type="date"]{padding:8px 10px;border:1px solid #cbd5e1;border-radius:10px;background:#fff}
+    button{padding:10px 14px;border:0;border-radius:10px;background:var(--accent);color:#fff;font-weight:600;cursor:pointer}
+    button.secondary{background:#334155}
+    button:disabled{opacity:.6;cursor:not-allowed}
+    .badge{display:inline-block;padding:2px 8px;border-radius:999px;background:#e2e8f0;color:#0f172a;font-size:12px}
+    .status{margin:10px 0 0;color:var(--muted);font-size:13px}
+    .status.ok{color:var(--ok)} .status.err{color:var(--err)}
+    .cards{display:grid;gap:12px;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));margin-top:14px}
+    .card{background:var(--card);border-radius:14px;padding:14px;box-shadow:0 1px 2px rgba(0,0,0,.06),0 8px 24px -16px rgba(0,0,0,.25)}
+    .title{font-weight:700;margin-bottom:6px}
+    .muted{color:var(--muted)}
+    .kv{display:flex;justify-content:space-between;margin:4px 0}
+    .kv b{font-variant-numeric:tabular-nums}
+    .loglist{margin-top:8px;border-top:1px dashed #e5e7eb;padding-top:8px;max-height:360px;overflow:auto}
+    .logitem{display:flex;gap:8px;align-items:center;padding:6px 0;border-bottom:1px solid #f1f5f9}
+    .pill{font-size:11px;border-radius:999px;padding:2px 8px;background:#f1f5f9}
+    .dot{width:8px;height:8px;border-radius:999px;background:var(--ok)}
+    .seprow{height:1px;background:#e5e7eb;margin:10px 0}
+    .foot{margin-top:18px;color:var(--muted);font-size:12px}
   </style>
 </head>
 <body>
-<div class="wrap">
-  <h1>ATALIAN • Game Stats</h1>
-  <div class="muted">Statistiek deelname Atalian QR Game</div>
+  <header><h1>🎯 Statsgame</h1></header>
 
-  <div class="toolbar">
-    <button id="btn-refresh" class="primary">Vernieuw</button>
-    <button id="btn-reset">Reset teller (server)</button>
-    <label class="right"><input type="checkbox" id="auto"/> Auto-refresh (30s)</label>
-  </div>
-
-  <div class="grid cards">
-    <div class="card kpi">
-      <div class="lbl muted">Inschrijvingen</div>
-      <div class="val" id="k-checkins">–</div>
-    </div>
-    <div class="card kpi">
-      <div class="lbl muted">Gem. voortgang</div>
-      <div class="vals">
-        <span class="val" id="k-avg">–</span>
-        <span class="val" id="k-avg-pct">(–%)</span>
+  <main class="wrap">
+    <section class="row">
+      <div>
+        <label for="from">Van</label>
+        <input id="from" type="date" />
       </div>
-      <div class="muted" id="k-avg-sub">van ingeschrevenen</div>
+      <div>
+        <label for="to">Tot</label>
+        <input id="to" type="date" />
+      </div>
+      <div class="row" style="gap:8px">
+        <button id="btnLoad">Vernieuwen</button>
+        <button id="btnReset" class="secondary">Reset teller</button>
+        <label class="badge"><input type="checkbox" id="chkAuto" /> auto-refresh (30s)</label>
+      </div>
+    </section>
+
+    <div id="status" class="status">Klaar.</div>
+    <section class="cards" id="cards"></section>
+
+    <div class="foot">
+      Geen sortering: we tonen in de volgorde waarin de server levert.  
+      Health check? Vraag je function met <code>?view=keys&debug=1</code>.
     </div>
-    <div class="card kpi">
-      <div class="lbl muted">Voltooid (4/4)</div>
-      <div class="val" id="k-done">–</div>
-    </div>
-  </div>
+  </main>
 
-  <div class="card" style="margin-top:10px">
-    <h3 style="margin:0 0 8px">Pogingen per step (aandeel van alle pogingen)</h3>
-    <div class="bars">
-      <div class="bar"><div class="label">Ruimte niet netjes / Local pas propre</div><div class="track"><div class="fill" id="b1" style="width:0%"></div></div><div class="pct" id="p1">–</div></div>
-      <div class="bar"><div class="label">Koffiemachine / Machine à café</div><div class="track"><div class="fill" id="b2" style="width:0%"></div></div><div class="pct" id="p2">–</div></div>
-      <div class="bar"><div class="label">Schoonmaakprogramma / Programme de nettoyage</div><div class="track"><div class="fill" id="b3" style="width:0%"></div></div><div class="pct" id="p3">–</div></div>
-      <div class="bar"><div class="label">Lamp stuk / Lampe cassée</div><div class="track"><div class="fill" id="b4" style="width:0%"></div></div><div class="pct" id="p4">–</div></div>
-    </div>
-  </div>
+  <script type="module">
+    // ====== CONFIG ======
+    const API = '/.netlify/functions/logs'; // proxy – geen CORS
+    const TIMEOUT = 8000;                   // ms
+    const AUTO_MS = 30000;                  // auto-refresh
+    const MAX_RENDER = 600;                 // safety cap
 
-  <!-- Grote teller onderaan -->
-  <div class="card big" style="margin-top:10px">
-    <div class="bigpct">
-      <span id="pct-big">–%</span>
-      <small id="pct-ratio">(0/0)</small>
-    </div>
-    <div class="bigsub">voltooid van inschrijvingen</div>
-  </div>
+    // ====== ELEMENTS ======
+    const $ = (s)=>document.querySelector(s);
+    const elFrom = $('#from'), elTo = $('#to');
+    const elBtnLoad = $('#btnLoad'), elBtnReset = $('#btnReset');
+    const elStatus = $('#status'), elCards = $('#cards');
+    const elAuto = $('#chkAuto');
 
-  <div class="foot" style="margin-top:10px">
-    <span class="badge" id="since">telt vanaf: (geen reset)</span>
-    <span class="badge" id="meta"></span>
-  </div>
-</div>
+    // ====== INIT ======
+    setDefaultRange(7);
+    elBtnLoad.addEventListener('click', refreshStats);
+    elBtnReset.addEventListener('click', postReset);
+    elAuto.addEventListener('change', toggleAuto);
+    let autoTimer = null;
+    refreshStats();
 
-<script>
-/* ===== API-endpoint ===== */
-//const API =
-//  location.hostname.includes('localhost') || location.hostname.includes('127.0.0.1')
-//    ? '/api/log'
-//    : 'https://atalian-logs.atalianqr.workers.dev/api/log';
-
-const API = '/.netlify/functions/logs'; // i.p.v. workers.dev
-
-
-/* ===== Utils ===== */
-const $ = (s)=>document.querySelector(s);
-
-/* ===== Normalisatie ===== */
-function inferEvent(rec){
-  if(!rec.event && (rec.contextLabel || rec.email_present!==undefined || rec.urgent)) return 'ticket_submitted';
-  return rec.event || 'event';
-}
-function normalize(rec){
-  return {
-    event: inferEvent(rec),
-    ts: Number(rec.server_ts || rec.ts || Date.now()),
-    user: rec.user_id || rec.visitor_id || 'unknown',
-    session: rec.session_id || 'default',
-    step: (rec.step != null ? Number(rec.step) : null),
-    lang: rec.lang || 'nl'
-  };
-}
-
-/* ===== Reset (server-anker) ===== */
-async function postReset(){
-  await fetch(API, {
-    method:'POST',
-    headers:{'Content-Type':'application/json'},
-    body: JSON.stringify({event:'statsgame_reset', ts: Date.now()})
-  });
-}
-async function fetchAll(limit=8000){
-  const url = new URL(API, location.origin);
-  url.searchParams.set('limit', String(limit));
-  const res = await fetch(url.toString(), { cache:'no-store' });
-  if(!res.ok) throw new Error('HTTP '+res.status);
-  const json = await res.json();
-  const raw = Array.isArray(json) ? json : (Array.isArray(json.items) ? json.items : []);
-  return raw.map(normalize);
-}
-function latestResetTs(items){
-  const r = items.filter(it => it.event==='statsgame_reset').sort((a,b)=>b.ts-a.ts)[0];
-  return r ? r.ts : null;
-}
-function filterSince(items, sinceTs){
-  return sinceTs ? items.filter(it => it.ts >= sinceTs) : items;
-}
-
-/* ===== Aggregaties ===== */
-function buildParticipants(items){
-  const map = new Map(); // key: user|session
-  for(const it of items){
-    const key = (it.user||'unknown') + '|' + (it.session||'default');
-    let p = map.get(key);
-    if(!p){ p = {checked:false, steps:new Set(), lang:it.lang||'nl'}; map.set(key,p); }
-    if(it.event==='checkin') p.checked = true;
-    if(it.event==='scenario_done' && Number.isFinite(it.step)){
-      const s = Math.max(1, Math.min(4, it.step));
-      p.steps.add(s);
+    // ====== HELPERS ======
+    function setDefaultRange(daysBack=7){
+      const today = new Date();
+      elFrom.value = toISO(today, -daysBack);
+      elTo.value   = toISO(today, 0);
     }
-  }
-  return Array.from(map.values());
-}
-function computeMetrics(items){
-  const parts = buildParticipants(items);
-  const checked = parts.filter(p=>p.checked);
-  const checkins = checked.length;
-
-  const attemptsByStep = {1:0,2:0,3:0,4:0};
-  for(const it of items){
-    if(it.event==='scenario_done' && Number.isFinite(it.step)){
-      const s = Math.max(1, Math.min(4, it.step));
-      attemptsByStep[s] += 1;
+    function toISO(baseDate, offsetDays=0){
+      const d = new Date(baseDate.getTime() + offsetDays*86400000);
+      const y=d.getFullYear(), m=String(d.getMonth()+1).padStart(2,'0'), dd=String(d.getDate()).padStart(2,'0');
+      return `${y}-${m}-${dd}`;
     }
-  }
-
-  let totalCompleted=0, done=0;
-  if(checkins>0){
-    for(const p of checked){
-      const c = Math.min(4, p.steps.size);
-      totalCompleted += c;
-      if(c>=4) done++;
+    function status(msg, cls=''){ elStatus.textContent = msg; elStatus.className = 'status '+cls; }
+    function safeNum(n){ return Number.isFinite(+n) ? +n : 0; }
+    function toLocalDateISO(ts, tz='Europe/Brussels'){
+      try{
+        return new Intl.DateTimeFormat('en-CA',{timeZone:tz,year:'numeric',month:'2-digit',day:'2-digit'})
+               .format(new Date(Number(ts)));
+      }catch{ return null }
     }
-  }
-  const avg = checkins ? totalCompleted/checkins : 0;
+    function normalize(x){
+      const t = Number(x?.server_ts ?? x?.ts ?? NaN);
+      return {
+        t, day: Number.isFinite(t) ? toLocalDateISO(t) : null,
+        event: String(x?.event ?? 'event'),
+        urgent: !!x?.urgent,
+        photo: !!x?.photo,
+        desc_len: safeNum(x?.desc_len),
+        visitor_id: x?.visitor_id ?? null,
+        session_id: x?.session_id ?? null,
+        user_id: x?.user_id ?? null,
+        contextLabel: x?.contextLabel ?? null
+      };
+    }
 
-  const totalAttempts = attemptsByStep[1]+attemptsByStep[2]+attemptsByStep[3]+attemptsByStep[4];
-  const shareByStep = totalAttempts ? {
-    1: attemptsByStep[1]/totalAttempts,
-    2: attemptsByStep[2]/totalAttempts,
-    3: attemptsByStep[3]/totalAttempts,
-    4: attemptsByStep[4]/totalAttempts
-  } : {1:0,2:0,3:0,4:0};
+    // ====== CORE ======
+    async function fetchLogs(limit = 8000) {
+      const url = new URL(API, location.origin);
+      url.searchParams.set('limit', String(limit));
+      const from = elFrom.value?.slice(0,10) || '';
+      const to   = elTo.value?.slice(0,10) || '';
+      if (from) url.searchParams.set('from', from);
+      if (to)   url.searchParams.set('to', to);
 
-  const avgAttemptsPerStep = checkins ? {
-    1: attemptsByStep[1]/checkins,
-    2: attemptsByStep[2]/checkins,
-    3: attemptsByStep[3]/checkins,
-    4: attemptsByStep[4]/checkins
-  } : {1:0,2:0,3:0,4:0};
+      const ctrl = new AbortController();
+      const t = setTimeout(() => ctrl.abort(), TIMEOUT); // timeout (MDN AbortController)
 
-  return {checkins, avg, done, attemptsByStep, shareByStep, avgAttemptsPerStep, totalAttempts};
-}
+      try {
+        const res = await fetch(url.toString(), {
+          method: 'GET',
+          headers: { 'Accept':'application/json' },
+          cache: 'no-store',
+          signal: ctrl.signal
+        });
 
-/* ===== Render ===== */
-function render(metrics, sinceTs, allCount){
-  const {checkins, avg, done, attemptsByStep, shareByStep, avgAttemptsPerStep} = metrics;
+        // Niet crashen op 4xx/5xx of HTML error pages
+        if (!res.ok) {
+          const txt = await res.text().catch(()=> '');
+          status(`Upstream fout ${res.status}: ${res.statusText} — ${txt.slice(0,120)}`, 'err');
+          return [];
+        }
 
-  $('#k-checkins').textContent = checkins;
-  $('#k-avg').textContent = `${Math.round(avg)} / 4`;
-  $('#k-avg-pct').textContent = `(${Math.round((avg/4)*100)}%)`;
-  $('#k-done').textContent = done;
+        // Probeer JSON; als het geen JSON is -> leeg
+        const json = await res.json().catch(()=> ({}));
+        const raw  = Array.isArray(json) ? json
+                   : Array.isArray(json.items) ? json.items
+                   : [];
+        return raw.map(normalize);
+      } catch (e) {
+        status(`Netwerk/timeout: ${e?.message||e}`, 'err');
+        return [];
+      } finally {
+        clearTimeout(t);
+      }
+    }
 
-  const upd = (i)=> {
-    const share = shareByStep[i] || 0;
-    const attempts = attemptsByStep[i] || 0;
-    const perUser = avgAttemptsPerStep[i] || 0;
-    $('#b'+i).style.width = (share*100).toFixed(0)+'%';
-    $('#p'+i).textContent = `${attempts}× • ${(share*100).toFixed(0)}%`;
-    $('#p'+i).title = `gem. pogingen per deelnemer: ${perUser.toFixed(2)}`;
-  };
-  upd(1); upd(2); upd(3); upd(4);
+    async function postReset(){
+      elBtnReset.disabled = true;
+      status('Reset aan het posten…', '');
+      try{
+        const body = { event:'reset', ts:Date.now(), contextLabel:'statsgame' };
+        const ctrl = new AbortController();
+        const tm = setTimeout(()=>ctrl.abort(), TIMEOUT);
 
-  // Grote teller onderaan
-  const pct = (checkins > 0) ? Math.round((done / checkins) * 100) : 0;
-  $('#pct-big').textContent   = `${pct}%`;
-  $('#pct-ratio').textContent = `(${done}/${checkins})`;
+        const url = new URL(API, location.origin);
+        const res = await fetch(url.toString(), {
+          method: 'POST',
+          headers: { 'Content-Type':'application/json', 'Accept':'application/json' },
+          body: JSON.stringify(body),
+          signal: ctrl.signal
+        });
+        clearTimeout(tm);
 
-  $('#since').textContent = sinceTs ? ('telt vanaf: '+ new Date(sinceTs).toLocaleString()) : 'telt vanaf: (geen reset)';
-  $('#meta').textContent  = `events in venster: ${allCount}`;
-}
+        if(!res.ok){
+          const txt = await res.text().catch(()=> '');
+          throw new Error(`HTTP ${res.status} ${res.statusText} — ${txt.slice(0,160)}`);
+        }
+        status('Reset geregistreerd ✅  (even verversen)', 'ok');
+        await refreshStats();
+      } catch(e){
+        console.error(e);
+        status('Reset mislukt: '+(e?.message||e), 'err');
+      } finally {
+        elBtnReset.disabled = false;
+      }
+    }
 
-/* ===== Snelle reload helpers (latency KV) ===== */
-async function refreshStats(){
-  const all = await fetchAll(8000);
-  const sinceTs = latestResetTs(all);
-  const windowed = filterSince(all, sinceTs);
-  const metrics = computeMetrics(windowed);
-  render(metrics, sinceTs, windowed.length);
-}
+    function latestResetTs(items){
+      let max=0;
+      for(const e of items){
+        if ((e.event === 'reset' || e.event === 'stats_reset') && Number.isFinite(e.t)) {
+          if (e.t > max) max = e.t;
+        }
+      }
+      return max; // 0 = geen anchor
+    }
 
-/* ===== UI ===== */
-document.getElementById('btn-refresh').addEventListener('click', refreshStats);
-document.getElementById('btn-reset').addEventListener('click', async ()=>{
-  if (!confirm('Teller resetten en server-anker plaatsen?')) return;
-  await postReset();
-  setTimeout(refreshStats, 400);
-  setTimeout(refreshStats, 2000);
-  setTimeout(refreshStats, 5000);
-  setTimeout(refreshStats, 12000);
-});
+    function filterSince(items, sinceTs){
+      if(!sinceTs) return items;
+      const out=[];
+      for(const e of items){
+        if (!Number.isFinite(e.t)) continue;
+        if (e.t >= sinceTs) out.push(e);
+      }
+      return out;
+    }
 
-let timer=null;
-document.getElementById('auto').addEventListener('change', e=>{
-  if(e.target.checked){ timer=setInterval(refreshStats, 5000); }
-  else { clearInterval(timer); timer=null; }
-});
+    function computeMetrics(items){
+      const m = {
+        total: 0, urgent: 0, photo: 0,
+        byEvent: Object.create(null),
+        uniqueVisitors: 0, uniqueSessions: 0,
+        days: new Map() // day -> { total, urgent, photo, byEvent:{} }
+      };
+      const vs = new Set(), ss = new Set();
 
-/* Init */
-refreshStats();
-</script>
+      for(const e of items){
+        m.total++;
+        if (e.urgent) m.urgent++;
+        if (e.photo)  m.photo++;
+        if (e.visitor_id) vs.add(e.visitor_id);
+        if (e.session_id) ss.add(e.session_id);
+
+        m.byEvent[e.event] = (m.byEvent[e.event] || 0) + 1;
+
+        if (e.day){
+          if (!m.days.has(e.day)) m.days.set(e.day, { day:e.day, total:0, urgent:0, photo:0, byEvent:{} });
+          const d = m.days.get(e.day);
+          d.total++; if (e.urgent) d.urgent++; if (e.photo) d.photo++;
+          d.byEvent[e.event] = (d.byEvent[e.event] || 0) + 1;
+        }
+      }
+      m.uniqueVisitors = vs.size;
+      m.uniqueSessions = ss.size;
+      return m;
+    }
+
+    function render(metrics, sinceTs, sampleItems){
+      elCards.innerHTML = '';
+
+      // Kaart 1: Overzicht
+      const k1 = card('Totaal sinds reset');
+      k1.append(kv('Totaal events', metrics.total));
+      k1.append(kv('Urgent', metrics.urgent));
+      k1.append(kv('Met foto', metrics.photo));
+      k1.append(kv('Unieke bezoekers', metrics.uniqueVisitors));
+      k1.append(kv('Sessions', metrics.uniqueSessions));
+      k1.append(sep());
+      k1.append(kv('Reset anchor', sinceTs ? new Date(sinceTs).toLocaleString('nl-BE') : 'geen'));
+      elCards.append(k1);
+
+      // Kaart 2: Per dag (in aangeleverde volgorde)
+      const k2 = card('Per dag (zonder sorteren)');
+      const listDays = document.createElement('div');
+      listDays.className = 'loglist';
+      let i=0;
+      for (const d of metrics.days.values()){
+        if (i++ > 60) { listDays.append(row('…', 'cap bereikt')); break; }
+        listDays.append(row(`📅 ${d.day}`, `${d.total}`));
+      }
+      k2.append(listDays);
+      elCards.append(k2);
+
+      // Kaart 3: Per eventtype
+      const k3 = card('Per eventtype');
+      const byEvt = document.createElement('div'); byEvt.className = 'loglist';
+      let c=0;
+      for (const k in metrics.byEvent){
+        if (!Object.hasOwn(metrics.byEvent, k)) continue;
+        byEvt.append(row(k, String(metrics.byEvent[k])));
+        if (++c > 60) { byEvt.append(row('…','cap bereikt')); break; }
+      }
+      k3.append(byEvt);
+      elCards.append(k3);
+
+      // Kaart 4: Laatste items (servervolgorde)
+      const k4 = card('Laatste items');
+      const lst = document.createElement('div'); lst.className = 'loglist';
+      const N = Math.min(sampleItems.length, MAX_RENDER);
+      for (let i=0;i<N;i++){
+        const e = sampleItems[i];
+        lst.append(logRow(e));
+      }
+      k4.append(lst);
+      elCards.append(k4);
+    }
+
+    // UI bouwsteentjes
+    function logRow(e){
+      const d = document.createElement('div'); d.className = 'logitem';
+      const dot = document.createElement('div'); dot.className = 'dot';
+      const when = Number.isFinite(e.t) ? new Date(e.t).toLocaleString('nl-BE') : '-';
+      const pill = document.createElement('span'); pill.className='pill'; pill.textContent = e.event;
+      const rest = document.createElement('div'); rest.className='muted';
+      rest.textContent = `${when} — ${e.day ?? '-'}`;
+      d.append(dot, pill, rest);
+      return d;
+    }
+    function card(title){
+      const c = document.createElement('div'); c.className = 'card';
+      const t = document.createElement('div'); t.className = 'title'; t.textContent = title;
+      c.append(t); return c;
+    }
+    function kv(a,b){
+      const r = document.createElement('div'); r.className = 'kv';
+      const l = document.createElement('span'); l.textContent = a;
+      const v = document.createElement('b'); v.textContent = String(b);
+      r.append(l,v); return r;
+    }
+    function sep(){ const s=document.createElement('div'); s.className='seprow'; return s; }
+    function row(a,b){ const r=document.createElement('div'); r.className='kv'; r.append(Object.assign(document.createElement('span'),{textContent:a}), Object.assign(document.createElement('b'),{textContent:b})); return r; }
+
+    async function refreshStats(){
+      const from = elFrom.value?.slice(0,10);
+      const to   = elTo.value?.slice(0,10);
+      if (!from || !to) { status('Kies een geldige datumrange.', 'err'); return; }
+
+      elBtnLoad.disabled = true;
+      status('Data laden… ⏳', '');
+      try{
+        const items = await fetchLogs(8000); // servervolgorde
+        const anchor = latestResetTs(items);
+        const windowed = filterSince(items, anchor);
+        const metrics = computeMetrics(windowed);
+        render(metrics, anchor, windowed);
+        status(windowed.length ? `OK — ${windowed.length} events sinds reset` : 'Geen data (of upstream fout) in dit bereik.', windowed.length ? 'ok' : '');
+      } catch(e){
+        console.error(e);
+        elCards.innerHTML = '';
+        status(`Fout bij laden: ${e?.message||e}`, 'err');
+      } finally {
+        elBtnLoad.disabled = false;
+      }
+    }
+
+    function toggleAuto(){
+      if (elAuto.checked){
+        if (autoTimer) clearInterval(autoTimer);
+        autoTimer = setInterval(refreshStats, AUTO_MS);
+      } else {
+        if (autoTimer) clearInterval(autoTimer);
+        autoTimer = null;
+      }
+    }
+  </script>
 </body>
 </html>
