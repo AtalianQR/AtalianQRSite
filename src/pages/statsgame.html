@@ -178,6 +178,36 @@ async function postReset(){
     body: JSON.stringify({event:'statsgame_reset', ts: Date.now()})
   });
 }
+async function fetchLogs(limit = 8000) {
+  const API = '/.netlify/functions/logs'; // gebruik de proxy, niet rechtstreeks workers.dev
+  const url = new URL(API, location.origin); // absolute of relative: beide ok (MDN URL)
+  url.searchParams.set('limit', String(limit));
+
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), 8000); // harde timeout (MDN AbortController)
+
+  try {
+    const res = await fetch(url.toString(), {
+      method: 'GET',
+      headers: { 'Accept': 'application/json' },
+      cache: 'no-store',
+      signal: ctrl.signal
+    });
+
+    if (!res.ok) {
+      const body = await res.text().catch(() => '');
+      throw new Error(`HTTP ${res.status} ${res.statusText} — ${body.slice(0,160)}`);
+    }
+
+    const json = await res.json().catch(() => ({}));
+    const raw  = Array.isArray(json) ? json
+               : Array.isArray(json.items) ? json.items
+               : [];
+    return raw.map(normalize); // jouw bestaande normalizer
+  } finally {
+    clearTimeout(timer);
+  }
+}
 async function fetchAll(limit=8000){
   const url = new URL(API, location.origin);
   url.searchParams.set('limit', String(limit));
