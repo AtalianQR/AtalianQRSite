@@ -1,83 +1,96 @@
-\
 /**
- * Netlify Function v1 (CommonJS): /.netlify/functions/logs
- * Robuuste proxy met CORS en defensieve JSON-normalisatie.
+ * Netlify Function v1 (CommonJS) — ultra-compat
+ * - Geen ESM
+ * - Geen AbortController
+ * - Lazy require van node-fetch binnen handler
+ * - Altijd JSON response { items: [], error?: any }
  */
-const fetch = global.fetch || require('node-fetch'); // voor oudere runtimes
-const UPSTREAM = process.env.UPSTREAM_LOGS_URL || 'https://atalian-logs.atalianqr.workers.dev/api/log';
-const TIMEOUT_MS = 8000;
-
-const CORS = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Methods': 'GET,POST,OPTIONS,HEAD',
-  'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Requested-With',
-  'Cache-Control': 'no-store',
-  'Content-Type': 'application/json'
-};
-
 exports.handler = async function(event, context) {
+  // CORS headers
+  var CORS = {
+    'Access-Control-Allow-Origin': '*',
+    'Access-Control-Allow-Methods': 'GET,POST,OPTIONS,HEAD',
+    'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Requested-With',
+    'Cache-Control': 'no-store',
+    'Content-Type': 'application/json'
+  };
+
   try {
-    // Preflight
     if (event.httpMethod === 'OPTIONS' || event.httpMethod === 'HEAD') {
       return { statusCode: 204, headers: CORS, body: '' };
     }
 
-    // Querystring doorgeven
-    const qs = event.rawQuery ? ('?' + event.rawQuery) : '';
+    // Upstream URL
+    var upstream = process.env.UPSTREAM_LOGS_URL || 'https://atalian-logs.atalianqr.workers.dev/api/log';
 
-    // Headers doorgeven
-    const headersOut = { 'Accept': 'application/json' };
-    if (event.headers && event.headers['content-type']) {
-      headersOut['Content-Type'] = event.headers['content-type'];
-    }
-    if (event.headers && (event.headers['authorization'] || event.headers['Authorization'])) {
-      headersOut['Authorization'] = event.headers['authorization'] || event.headers['Authorization'];
-    }
+    // Build outbound request
+    var qs = event.rawQuery ? ('?' + event.rawQuery) : '';
+    var headersOut = { 'Accept': 'application/json' };
+    if (event.headers && event.headers['content-type']) headersOut['Content-Type'] = event.headers['content-type'];
+    if (event.headers && event.headers['authorization']) headersOut['Authorization'] = event.headers['authorization'];
+    if (event.headers && event.headers['Authorization']) headersOut['Authorization'] = event.headers['Authorization'];
 
-    // Body doorgeven voor niet-GET
-    const init = { method: event.httpMethod || 'GET', headers: headersOut };
+    var init = { method: event.httpMethod || 'GET', headers: headersOut };
     if (init.method !== 'GET' && init.method !== 'HEAD') {
       init.body = event.body || '';
     }
 
-    // Timeout
-    const ctrl = new AbortController();
-    const tm = setTimeout(()=>ctrl.abort(), TIMEOUT_MS);
-    init.signal = ctrl.signal;
-
-    // Fetch naar upstream
-    let payload;
-    const res = await fetch(UPSTREAM + qs, init).catch(err => {
-      return { ok:false, status:599, statusText:'FETCH_ERROR', json:async()=>{throw err;}, text:async()=>String(err) };
-    });
-
-    // Decodeer JSON of tekst
-    try {
-      payload = await res.json();
-    } catch (_) {
+    // Prepare fetch (lazy require node-fetch indien nodig)
+    var _fetch = (typeof fetch !== 'undefined') ? fetch : null;
+    if (!_fetch) {
       try {
-        const t = await res.text();
-        payload = { ok:false, proxy:'html-fallback', status:res.status, statusText:res.statusText, body:String(t).slice(0,800) };
-      } catch (e2) {
-        payload = { ok:false, proxy:'no-body', status:res.status, statusText:res.statusText };
+        _fetch = require('node-fetch');
+        if (_fetch && _fetch.default) _fetch = _fetch.default; // ESM default interop
+      } catch (e) {
+        var err = { ok:false, proxy:'node-fetch-missing', error:String(e && e.message ? e.message : e) };
+        return { statusCode: 200, headers: CORS, body: JSON.stringify({ items: [], error: err }) };
       }
-    } finally {
-      clearTimeout(tm);
     }
 
-    // Normaliseer output: altijd { items: [...] , error?: any }
-    const normalized = Array.isArray(payload) ? { items: payload }
-                     : (Array.isArray(payload.items) ? { items: payload.items }
-                     : (Array.isArray(payload.logs) ? { items: payload.logs }
-                     : { items: [], error: payload }));
+    // Timeout via Promise.race
+    var TIMEOUT_MS = 8000;
+    var timeoutPromise = new Promise(function(resolve){
+      setTimeout(function(){ resolve({ _timeout:true }); }, TIMEOUT_MS);
+    });
 
-    return {
-      statusCode: 200,
-      headers: CORS,
-      body: JSON.stringify(normalized)
-    };
+    var upstreamPromise = _fetch(upstream + qs, init).then(function(res){
+      return res.text().then(function(txt){
+        return { _timeout:false, status: res.status, statusText: res.statusText, bodyText: txt };
+      });
+    }).catch(function(e){
+      return { _timeout:false, status: 599, statusText: 'FETCH_ERROR', bodyText: String(e && e.message ? e.message : e) };
+    });
+
+    var outcome = await Promise.race([timeoutPromise, upstreamPromise]);
+
+    // Handle outcomes
+    if (outcome._timeout) {
+      return { statusCode: 200, headers: CORS, body: JSON.stringify({ items: [], error: { ok:false, proxy:'timeout', ms: TIMEOUT_MS } }) };
+    }
+
+    // Try parse JSON
+    var payload;
+    try {
+      payload = JSON.parse(outcome.bodyText);
+    } catch (ejson) {
+      payload = { ok:false, proxy:'html-fallback', status: outcome.status, statusText: outcome.statusText, body: String(outcome.bodyText).slice(0,800) };
+    }
+
+    // Normalize
+    var normalized;
+    if (Array.isArray(payload)) {
+      normalized = { items: payload };
+    } else if (payload && Array.isArray(payload.items)) {
+      normalized = { items: payload.items };
+    } else if (payload && Array.isArray(payload.logs)) {
+      normalized = { items: payload.logs };
+    } else {
+      normalized = { items: [], error: payload };
+    }
+
+    return { statusCode: 200, headers: CORS, body: JSON.stringify(normalized) };
   } catch (e) {
-    const error = { ok:false, proxy:'exception', error: String(e && e.message ? e.message : e) };
-    return { statusCode: 200, headers: CORS, body: JSON.stringify({ items: [], error }) };
+    var error = { ok:false, proxy:'exception', error: String(e && e.message ? e.message : e) };
+    return { statusCode: 200, headers: CORS, body: JSON.stringify({ items: [], error: error }) };
   }
 };
