@@ -143,10 +143,13 @@
 
 <script>
 /* ===== API-endpoint ===== */
-const API =
-  location.hostname.includes('localhost') || location.hostname.includes('127.0.0.1')
-    ? '/api/log'
-    : 'https://atalian-logs.atalianqr.workers.dev/api/log';
+//const API =
+//  location.hostname.includes('localhost') || location.hostname.includes('127.0.0.1')
+//    ? '/api/log'
+//    : 'https://atalian-logs.atalianqr.workers.dev/api/log';
+
+const API = '/.netlify/functions/logs'; // i.p.v. workers.dev
+
 
 /* ===== Utils ===== */
 const $ = (s)=>document.querySelector(s);
