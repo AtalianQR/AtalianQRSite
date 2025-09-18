@@ -1,8 +1,12 @@
 \
 /**
- * Netlify Function: /.netlify/functions/logs
- * Proxy naar Cloudflare Worker met robuuste JSON-normalisatie en CORS.
+ * Netlify Function v1 (CommonJS): /.netlify/functions/logs
+ * Robuuste proxy met CORS en defensieve JSON-normalisatie.
  */
+const fetch = global.fetch || require('node-fetch'); // voor oudere runtimes
+const UPSTREAM = process.env.UPSTREAM_LOGS_URL || 'https://atalian-logs.atalianqr.workers.dev/api/log';
+const TIMEOUT_MS = 8000;
+
 const CORS = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Methods': 'GET,POST,OPTIONS,HEAD',
@@ -11,67 +15,69 @@ const CORS = {
   'Content-Type': 'application/json'
 };
 
-const UPSTREAM = 'https://atalian-logs.atalianqr.workers.dev/api/log';
-const TIMEOUT_MS = 8000;
-
-export default async (req /*, context */) => {
-  if (req.method === 'OPTIONS') {
-    return new Response(null, { status: 204, headers: CORS });
-  }
-
-  // Querystring doorgeven
-  const u = new URL(req.url);
-  const qs = u.search || '';
-
-  // Headers meenemen (Authorization indien aanwezig)
-  const headersOut = {
-    'Accept': 'application/json',
-  };
-  const ct = req.headers.get('Content-Type');
-  if (ct) headersOut['Content-Type'] = ct;
-  const auth = req.headers.get('Authorization');
-  if (auth) headersOut['Authorization'] = auth;
-
-  // Body doorgeven voor niet-GET/HEAD
-  const init = { method: req.method, headers: headersOut };
-
-  if (req.method !== 'GET' && req.method !== 'HEAD') {
-    try {
-      init.body = await req.text();
-    } catch { init.body = ''; }
-  }
-
-  // Timeout
-  const ctrl = new AbortController();
-  const tm = setTimeout(() => ctrl.abort(), TIMEOUT_MS);
-  init.signal = ctrl.signal;
-
-  // Fetch naar upstream
-  let status = 200;
-  let payload;
-
+exports.handler = async function(event, context) {
   try {
-    const r = await fetch(UPSTREAM + qs, init);
-    status = r.status;
-
-    // Probeer JSON
-    try {
-      payload = await r.json();
-    } catch {
-      const txt = await r.text().catch(()=>''); // HTML of tekst-fout
-      payload = { ok:false, proxy:'html-fallback', status:r.status, statusText:r.statusText, body: String(txt).slice(0, 800) };
+    // Preflight
+    if (event.httpMethod === 'OPTIONS' || event.httpMethod === 'HEAD') {
+      return { statusCode: 204, headers: CORS, body: '' };
     }
 
-    // Normaliseer naar array of {items:[]}
-    const normalized = Array.isArray(payload) ? payload
-                      : (Array.isArray(payload.items) ? payload
-                      : (Array.isArray(payload.logs) ? { items: payload.logs } : { items: [] , error: payload }));
+    // Querystring doorgeven
+    const qs = event.rawQuery ? ('?' + event.rawQuery) : '';
 
-    clearTimeout(tm);
-    return new Response(JSON.stringify(normalized), { status: 200, headers: CORS });
+    // Headers doorgeven
+    const headersOut = { 'Accept': 'application/json' };
+    if (event.headers && event.headers['content-type']) {
+      headersOut['Content-Type'] = event.headers['content-type'];
+    }
+    if (event.headers && (event.headers['authorization'] || event.headers['Authorization'])) {
+      headersOut['Authorization'] = event.headers['authorization'] || event.headers['Authorization'];
+    }
+
+    // Body doorgeven voor niet-GET
+    const init = { method: event.httpMethod || 'GET', headers: headersOut };
+    if (init.method !== 'GET' && init.method !== 'HEAD') {
+      init.body = event.body || '';
+    }
+
+    // Timeout
+    const ctrl = new AbortController();
+    const tm = setTimeout(()=>ctrl.abort(), TIMEOUT_MS);
+    init.signal = ctrl.signal;
+
+    // Fetch naar upstream
+    let payload;
+    const res = await fetch(UPSTREAM + qs, init).catch(err => {
+      return { ok:false, status:599, statusText:'FETCH_ERROR', json:async()=>{throw err;}, text:async()=>String(err) };
+    });
+
+    // Decodeer JSON of tekst
+    try {
+      payload = await res.json();
+    } catch (_) {
+      try {
+        const t = await res.text();
+        payload = { ok:false, proxy:'html-fallback', status:res.status, statusText:res.statusText, body:String(t).slice(0,800) };
+      } catch (e2) {
+        payload = { ok:false, proxy:'no-body', status:res.status, statusText:res.statusText };
+      }
+    } finally {
+      clearTimeout(tm);
+    }
+
+    // Normaliseer output: altijd { items: [...] , error?: any }
+    const normalized = Array.isArray(payload) ? { items: payload }
+                     : (Array.isArray(payload.items) ? { items: payload.items }
+                     : (Array.isArray(payload.logs) ? { items: payload.logs }
+                     : { items: [], error: payload }));
+
+    return {
+      statusCode: 200,
+      headers: CORS,
+      body: JSON.stringify(normalized)
+    };
   } catch (e) {
-    clearTimeout(tm);
-    payload = { ok:false, proxy:'exception', error: String(e && e.message ? e.message : e) };
-    return new Response(JSON.stringify({ items: [], error: payload }), { status: 200, headers: CORS });
+    const error = { ok:false, proxy:'exception', error: String(e && e.message ? e.message : e) };
+    return { statusCode: 200, headers: CORS, body: JSON.stringify({ items: [], error }) };
   }
 };
