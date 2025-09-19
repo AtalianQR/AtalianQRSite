@@ -1,25 +1,30 @@
 [build]
   edge_functions = "netlify/edge-functions"
 
+# Alleen health via Edge Function
 [[edge_functions]]
   path = "/api/health"
   function = "health"
 
-[[edge_functions]]
-  path = "/api/log"
-  function = "api-log"
-# Forceer https
+# Forceer https (optioneel; Netlify doet dit vaak al zelf)
 [[redirects]]
   from = "http://atalianqrportal.netlify.app/*"
-  to = "https://atalianqrportal.netlify.app/:splat"
+  to   = "https://atalianqrportal.netlify.app/:splat"
   status = 301
   force = true
+
+# Proxy /api/log naar de Netlify Function (rewrite)
+[[redirects]]
+  from = "/api/log"
+  to   = "/.netlify/functions/proxy_logs"
+  status = 200
 
 # Normaliseer pad /game -> /game.html
 [[redirects]]
   from = "/game"
-  to = "/game.html"
+  to   = "/game.html"
   status = 200
+
 [functions]
   node_bundler = "esbuild"
   external_node_modules = ["@netlify/blobs"]
