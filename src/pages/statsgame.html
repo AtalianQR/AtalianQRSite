@@ -1,4 +1,3 @@
-\
 <!doctype html>
 <html lang="nl">
 <head>
@@ -10,6 +9,7 @@
 	  --bg:#f7fafc;--card:#fff;--text:#0f172a;--muted:#475569;--accent:#ee7e00
 	}
 	*{box-sizing:border-box}
+	/* === Achtergrond in dezelfde stijl als game === */
 	html,body{height:100%}
 	body{
 	  margin:0;color:var(--text);font-family:system-ui,-apple-system,Segoe UI,Roboto;
@@ -46,11 +46,12 @@
 	button.primary{background:#111827;color:#fff;border-color:#111827}
 	.right{margin-left:auto}
 
+	/* Bars layout */
 	.bars{display:grid;grid-template-columns:1fr;gap:14px}
-	.card h3{font-size:18px;margin-bottom:16px}
+	.card h3{font-size:18px;margin-bottom:16px} /* titel breder en met meer ruimte */
 	.bar{
 	  display:grid;
-	  grid-template-columns:260px 1fr 60px;
+	  grid-template-columns:260px 1fr 60px; /* label breder, track smaller */
 	  align-items:center;
 	  gap:10px;
 	}
@@ -72,6 +73,7 @@
 	.foot{display:flex;gap:10px;align-items:center}
 	.badge{font-size:12px;color:var(--muted)}
 
+	/* Grote percentage-kaart */
 	.card.big { padding: 24px; text-align: center; }
 	.bigpct { font-size: 56px; font-weight: 900; line-height: 1; }
 	.bigpct small { font-size: 18px; font-weight: 600; color: var(--muted); margin-left: 8px; }
@@ -82,7 +84,6 @@
 	  .bigpct{font-size:46px}
 	}
 
-	.error{color:#b91c1c;background:#fee2e2;border:1px solid #fecaca;padding:8px 12px;border-radius:10px;display:none;margin-top:8px}
   </style>
 </head>
 <body>
@@ -95,8 +96,6 @@
     <button id="btn-reset">Reset teller (server)</button>
     <label class="right"><input type="checkbox" id="auto"/> Auto-refresh (30s)</label>
   </div>
-
-  <div id="err" class="error"></div>
 
   <div class="grid cards">
     <div class="card kpi">
@@ -127,6 +126,7 @@
     </div>
   </div>
 
+  <!-- Grote teller onderaan -->
   <div class="card big" style="margin-top:10px">
     <div class="bigpct">
       <span id="pct-big">–%</span>
@@ -143,41 +143,27 @@
 
 <script>
 /* ===== API-endpoint ===== */
-const API = '/.netlify/functions/logs';
+const API =
+  location.hostname.includes('localhost') || location.hostname.includes('127.0.0.1')
+    ? '/api/log'
+    : 'https://atalian-logs.atalianqr.workers.dev/api/log';
 
 /* ===== Utils ===== */
 const $ = (s)=>document.querySelector(s);
-const showErr = (msg)=>{ const el = $('#err'); el.textContent = msg; el.style.display = msg ? 'block' : 'none'; };
 
 /* ===== Normalisatie ===== */
 function inferEvent(rec){
-  const ev = (rec.event || '').toLowerCase();
-  if (ev.includes('reset')) return 'statsgame_reset';
-  if (ev.includes('check')) return 'checkin';
-  if (ev.includes('done') || ev.includes('step') || ev.includes('scenario')) return 'scenario_done';
   if(!rec.event && (rec.contextLabel || rec.email_present!==undefined || rec.urgent)) return 'ticket_submitted';
   return rec.event || 'event';
-}
-function inferStep(rec){
-  const cands = [rec.step, rec.scenario_step, rec.scene, rec.level, rec.stage];
-  for (const c of cands){
-    const n = Number(c);
-    if (Number.isFinite(n)) return Math.max(1, Math.min(4, n));
-  }
-  // soms in event bv "step=3"
-  const ev = String(rec.event||'');
-  const m = ev.match(/(\d)/);
-  if (m) return Math.max(1, Math.min(4, Number(m[1])));
-  return null;
 }
 function normalize(rec){
   return {
     event: inferEvent(rec),
     ts: Number(rec.server_ts || rec.ts || Date.now()),
-    user: rec.user_id || rec.visitor_id || rec.userid || 'unknown',
-    session: rec.session_id || rec.session || 'default',
-    step: inferStep(rec),
-    lang: rec.lang || rec.locale || 'nl'
+    user: rec.user_id || rec.visitor_id || 'unknown',
+    session: rec.session_id || 'default',
+    step: (rec.step != null ? Number(rec.step) : null),
+    lang: rec.lang || 'nl'
   };
 }
 
@@ -190,38 +176,20 @@ async function postReset(){
   });
 }
 async function fetchAll(limit=8000){
-  try{
-    const url = new URL(API, location.origin);
-    url.searchParams.set('limit', String(limit));
-    const res = await fetch(url.toString(), { cache:'no-store' });
-    if(!res.ok) throw new Error('HTTP '+res.status);
-    const json = await res.json();
-    const raw = Array.isArray(json) ? json
-              : (Array.isArray(json.items) ? json.items
-              : (Array.isArray(json.logs) ? json.logs : []));
-    return raw.map(normalize);
-  }catch(e){
-    showErr('Kon logs niet laden: '+ (e && e.message ? e.message : e));
-    return [];
-  }
+  const url = new URL(API, location.origin);
+  url.searchParams.set('limit', String(limit));
+  const res = await fetch(url.toString(), { cache:'no-store' });
+  if(!res.ok) throw new Error('HTTP '+res.status);
+  const json = await res.json();
+  const raw = Array.isArray(json) ? json : (Array.isArray(json.items) ? json.items : []);
+  return raw.map(normalize);
 }
 function latestResetTs(items){
-  // lineaire scan i.p.v. sorteren
-  let maxTs = null;
-  for (const it of items){
-    if (it.event === 'statsgame_reset'){
-      if (maxTs==null || it.ts > maxTs) maxTs = it.ts;
-    }
-  }
-  return maxTs;
+  const r = items.filter(it => it.event==='statsgame_reset').sort((a,b)=>b.ts-a.ts)[0];
+  return r ? r.ts : null;
 }
 function filterSince(items, sinceTs){
-  if (!sinceTs) return items;
-  const out = [];
-  for (const it of items){
-    if (it.ts >= sinceTs) out.push(it);
-  }
-  return out;
+  return sinceTs ? items.filter(it => it.ts >= sinceTs) : items;
 }
 
 /* ===== Aggregaties ===== */
@@ -233,7 +201,8 @@ function buildParticipants(items){
     if(!p){ p = {checked:false, steps:new Set(), lang:it.lang||'nl'}; map.set(key,p); }
     if(it.event==='checkin') p.checked = true;
     if(it.event==='scenario_done' && Number.isFinite(it.step)){
-      p.steps.add(it.step);
+      const s = Math.max(1, Math.min(4, it.step));
+      p.steps.add(s);
     }
   }
   return Array.from(map.values());
@@ -246,7 +215,8 @@ function computeMetrics(items){
   const attemptsByStep = {1:0,2:0,3:0,4:0};
   for(const it of items){
     if(it.event==='scenario_done' && Number.isFinite(it.step)){
-      attemptsByStep[it.step] += 1;
+      const s = Math.max(1, Math.min(4, it.step));
+      attemptsByStep[s] += 1;
     }
   }
 
@@ -283,7 +253,7 @@ function render(metrics, sinceTs, allCount){
   const {checkins, avg, done, attemptsByStep, shareByStep, avgAttemptsPerStep} = metrics;
 
   $('#k-checkins').textContent = checkins;
-  $('#k-avg').textContent = `${avg.toFixed(1)} / 4`;
+  $('#k-avg').textContent = `${Math.round(avg)} / 4`;
   $('#k-avg-pct').textContent = `(${Math.round((avg/4)*100)}%)`;
   $('#k-done').textContent = done;
 
@@ -297,6 +267,7 @@ function render(metrics, sinceTs, allCount){
   };
   upd(1); upd(2); upd(3); upd(4);
 
+  // Grote teller onderaan
   const pct = (checkins > 0) ? Math.round((done / checkins) * 100) : 0;
   $('#pct-big').textContent   = `${pct}%`;
   $('#pct-ratio').textContent = `(${done}/${checkins})`;
@@ -305,9 +276,8 @@ function render(metrics, sinceTs, allCount){
   $('#meta').textContent  = `events in venster: ${allCount}`;
 }
 
-/* ===== Refresh ===== */
+/* ===== Snelle reload helpers (latency KV) ===== */
 async function refreshStats(){
-  showErr('');
   const all = await fetchAll(8000);
   const sinceTs = latestResetTs(all);
   const windowed = filterSince(all, sinceTs);
@@ -328,7 +298,7 @@ document.getElementById('btn-reset').addEventListener('click', async ()=>{
 
 let timer=null;
 document.getElementById('auto').addEventListener('change', e=>{
-  if(e.target.checked){ timer=setInterval(refreshStats, 30000); }
+  if(e.target.checked){ timer=setInterval(refreshStats, 5000); }
   else { clearInterval(timer); timer=null; }
 });
 
