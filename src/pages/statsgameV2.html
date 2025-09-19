@@ -104,18 +104,6 @@ async function fetchItems(limit){
   throw lastErr || new Error('API fail');
 }
 
-// gebruik in jouw fetchAll():
-async function fetchAll(){
-  for (const lim of [1000, 500, 200]) {
-    try {
-      const items = await fetchItems(lim);
-      return items.map(normalize).sort((a,b)=>(b.ts||0)-(a.ts||0));
-    } catch (e) {
-      console.warn('retry met lagere limiet…', lim, e.message);
-    }
-  }
-  throw new Error('API blijft falen');
-}
 
 
     /* ===== Utils ===== */
@@ -136,15 +124,18 @@ async function fetchAll(){
       };
     }
 
+// gebruik in jouw fetchAll():
 async function fetchAll(){
-  const url = `${API}?limit=4000`;
-  console.debug('→ fetch', url);
-  const res = await fetch(url, { cache:'no-store' });
-  console.debug('← status', res.status);
-  if(!res.ok) throw new Error(`HTTP ${res.status}`);
-  const {items=[]} = await res.json();
-  console.debug('items:', items.length);
-  return items.map(normalize).sort(byTsDesc);
+  for (const lim of [1000, 500, 200]) {
+    try {
+      const items = await fetchItems(lim);
+      return items.map(normalize).sort((a,b)=>(b.ts||0)-(a.ts||0));
+    } catch (e) {
+      console.warn('retry met lagere limiet…', lim, e.message);
+    }
+  }
+  throw new Error('API blijft falen');
+}
 }
 
 
