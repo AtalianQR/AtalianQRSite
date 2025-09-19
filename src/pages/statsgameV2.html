@@ -85,6 +85,38 @@
   <script>
     /* ===== API-endpoint (same-origin via Netlify rewrite) ===== */
     const API = '/api/log';
+	const API_PRIMARY   = '/api/log';                       // via rewrite
+const API_FALLBACK  = '/.netlify/functions/proxy_logs'; // directe function
+
+async function fetchItems(limit){
+  const urls = [`${API_PRIMARY}?limit=${limit}`, `${API_FALLBACK}?limit=${limit}`];
+  let lastErr;
+  for (const url of urls){
+    try{
+      console.debug('→ fetch', url);
+      const r = await fetch(url, { cache:'no-store' });
+      if(!r.ok) throw new Error(`HTTP ${r.status}`);
+      const j = await r.json();
+      console.debug('← ok', url, 'items:', (j.items||[]).length);
+      return j.items || [];
+    }catch(e){ console.warn('fail', url, e.message); lastErr = e; }
+  }
+  throw lastErr || new Error('API fail');
+}
+
+// gebruik in jouw fetchAll():
+async function fetchAll(){
+  for (const lim of [1000, 500, 200]) {
+    try {
+      const items = await fetchItems(lim);
+      return items.map(normalize).sort((a,b)=>(b.ts||0)-(a.ts||0));
+    } catch (e) {
+      console.warn('retry met lagere limiet…', lim, e.message);
+    }
+  }
+  throw new Error('API blijft falen');
+}
+
 
     /* ===== Utils ===== */
     const $ = (s)=>document.querySelector(s);
