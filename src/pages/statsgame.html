@@ -5,305 +5,238 @@
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <title>ATALIAN • Game Stats (compact)</title>
   <style>
-	:root{
-	  --bg:#f7fafc;--card:#fff;--text:#0f172a;--muted:#475569;--accent:#ee7e00
-	}
-	*{box-sizing:border-box}
-	/* === Achtergrond in dezelfde stijl als game === */
-	html,body{height:100%}
-	body{
-	  margin:0;color:var(--text);font-family:system-ui,-apple-system,Segoe UI,Roboto;
-	  background-image:
-		linear-gradient(rgba(255,255,255,.78), rgba(255,255,255,.78)),
-		url('/building-cleaning.png');
-	  background-size:cover;
-	  background-position:center;
-	  background-attachment:fixed;
-	}
+    :root{
+      --bg:#f7fafc;--card:#fff;--text:#0f172a;--muted:#475569;--accent:#ee7e00
+    }
+    *{box-sizing:border-box}
+    html,body{height:100%}
+    body{
+      margin:0;color:var(--text);font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;
+      background: linear-gradient(180deg,#ffffff 0%, #f6f8fb 100%);
+    }
+    .wrap{max-width:980px;margin:0 auto;padding:16px}
+    h1{margin:0 0 4px;font-size:20px;font-weight:700}
+    .muted{color:var(--muted);font-size:14px}
+    .row{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+    .badge{display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:999px;background:#eef2ff;font-size:13px}
+    .badge b{font-weight:700}
+    .health{font-size:18px}
 
-	.wrap{max-width:880px;margin:0 auto;padding:16px}
-	h1{margin:0 0 6px;font-size:20px}
-	.muted{color:var(--muted)}
+    .grid{display:grid;gap:12px;margin-top:12px}
+    .cards{grid-template-columns:repeat(4,minmax(0,1fr))}
+    .card{
+      background:var(--card);border-radius:14px;box-shadow:0 6px 20px rgba(0,0,0,.06);
+      padding:14px;min-height:76px;display:flex;flex-direction:column;justify-content:center
+    }
+    .k{font-size:13px;color:var(--muted);margin-bottom:2px}
+    .v{font-size:26px;font-weight:800;line-height:1}
 
-	.grid{display:grid;gap:10px}
-	.cards{grid-template-columns:repeat(3,minmax(0,1fr))}
+    .panel{display:grid;grid-template-columns:1fr;gap:10px}
+    .list{
+      background:var(--card);border-radius:14px;box-shadow:0 6px 20px rgba(0,0,0,.06);
+      padding:12px;min-height:180px
+    }
+    .list h2{font-size:16px;margin:0 0 8px}
+    ul.ev{list-style:none;margin:0;padding:0;max-height:420px;overflow:auto}
+    ul.ev li{padding:8px 6px;border-bottom:1px solid #eef2f7;font-size:14px;display:flex;justify-content:space-between;gap:10px}
+    ul.ev li:last-child{border-bottom:none}
+    .evt{font-weight:600}
+    .ctx{color:var(--muted)}
+    .ts{white-space:nowrap;color:var(--muted)}
+    .toolbar{display:flex;gap:8px;align-items:center;margin-top:8px}
+    button{background:var(--accent);border:none;color:#fff;border-radius:999px;padding:8px 12px;font-weight:700;cursor:pointer}
+    button.ghost{background:#e2e8f0;color:#0f172a}
+    code{background:#f1f5f9;padding:2px 6px;border-radius:6px}
 
-	.card{
-	  background:var(--card);
-	  border:1px solid rgba(0,0,0,.08);
-	  border-radius:14px;
-	  padding:14px;
-	  box-shadow:0 4px 18px rgba(0,0,0,.10);
-	  backdrop-filter:saturate(120%) blur(.5px);
-	}
-
-	.kpi{display:flex;flex-direction:column;gap:6px}
-	.kpi .val{font-size:28px;font-weight:800}
-	.kpi .vals{display:flex;gap:10px;align-items:baseline}
-
-	.toolbar{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin:8px 0 12px}
-	button{background:#fff;border:1px solid rgba(0,0,0,.15);border-radius:10px;padding:8px 12px;cursor:pointer}
-	button.primary{background:#111827;color:#fff;border-color:#111827}
-	.right{margin-left:auto}
-
-	/* Bars layout */
-	.bars{display:grid;grid-template-columns:1fr;gap:14px}
-	.card h3{font-size:18px;margin-bottom:16px} /* titel breder en met meer ruimte */
-	.bar{
-	  display:grid;
-	  grid-template-columns:260px 1fr 60px; /* label breder, track smaller */
-	  align-items:center;
-	  gap:10px;
-	}
-	.bar .label{
-	  text-align:left;
-	  font-size:14px;
-	  line-height:1.3;
-	}
-	.bar .track{
-	  max-width:420px;
-	  height:12px;
-	  background:#e5e7eb;
-	  border-radius:999px;
-	  overflow:hidden;
-	}
-	.bar .fill{height:100%;background:var(--accent)}
-	.bar .pct{font-size:13px;color:var(--muted);font-variant-numeric:tabular-nums}
-
-	.foot{display:flex;gap:10px;align-items:center}
-	.badge{font-size:12px;color:var(--muted)}
-
-	/* Grote percentage-kaart */
-	.card.big { padding: 24px; text-align: center; }
-	.bigpct { font-size: 56px; font-weight: 900; line-height: 1; }
-	.bigpct small { font-size: 18px; font-weight: 600; color: var(--muted); margin-left: 8px; }
-	.bigsub { margin-top: 6px; color: var(--muted); font-variant-numeric: tabular-nums; }
-
-	@media(max-width:720px){
-	  .cards{grid-template-columns:1fr}
-	  .bigpct{font-size:46px}
-	}
-
+    @media (max-width:800px){
+      .cards{grid-template-columns:repeat(2,minmax(0,1fr))}
+    }
   </style>
 </head>
 <body>
-<div class="wrap">
-  <h1>ATALIAN • Game Stats</h1>
-  <div class="muted">Statistiek deelname Atalian QR Game</div>
-
-  <div class="toolbar">
-    <button id="btn-refresh" class="primary">Vernieuw</button>
-    <button id="btn-reset">Reset teller (server)</button>
-    <label class="right"><input type="checkbox" id="auto"/> Auto-refresh (30s)</label>
-  </div>
-
-  <div class="grid cards">
-    <div class="card kpi">
-      <div class="lbl muted">Inschrijvingen</div>
-      <div class="val" id="k-checkins">–</div>
+  <div class="wrap">
+    <div class="row">
+      <h1>ATALIAN • Game Stats</h1>
+      <span class="badge">Status: <b id="status">opstarten…</b></span>
+      <span class="badge">API health: <span id="health" class="health">?</span></span>
     </div>
-    <div class="card kpi">
-      <div class="lbl muted">Gem. voortgang</div>
-      <div class="vals">
-        <span class="val" id="k-avg">–</span>
-        <span class="val" id="k-avg-pct">(–%)</span>
+    <div class="muted">Live tellingen uit de QR-game. Verversing elke 5 s. </div>
+
+    <div class="grid cards">
+      <div class="card"><div class="k">Totaal events</div><div class="v" id="kpi-total">0</div></div>
+      <div class="card"><div class="k">Tickets</div><div class="v" id="kpi-tickets">0</div></div>
+      <div class="card"><div class="k">Bezoeken</div><div class="v" id="kpi-visits">0</div></div>
+      <div class="card"><div class="k">Scenario klaar</div><div class="v" id="kpi-done">0</div></div>
+    </div>
+
+    <div class="grid panel" style="margin-top:12px">
+      <div class="list">
+        <h2>Laatst 50 events</h2>
+        <ul class="ev" id="events"></ul>
+        <div class="toolbar">
+          <button id="btn-refresh" class="ghost">Herlaad</button>
+          <button id="btn-reset"  title="Stuurt een reset-event via dezelfde proxy">Reset teller</button>
+          <span class="muted">Endpoint: <code id="ep"></code></span>
+        </div>
       </div>
-      <div class="muted" id="k-avg-sub">van ingeschrevenen</div>
-    </div>
-    <div class="card kpi">
-      <div class="lbl muted">Voltooid (4/4)</div>
-      <div class="val" id="k-done">–</div>
     </div>
   </div>
 
-  <div class="card" style="margin-top:10px">
-    <h3 style="margin:0 0 8px">Pogingen per step (aandeel van alle pogingen)</h3>
-    <div class="bars">
-      <div class="bar"><div class="label">Ruimte niet netjes / Local pas propre</div><div class="track"><div class="fill" id="b1" style="width:0%"></div></div><div class="pct" id="p1">–</div></div>
-      <div class="bar"><div class="label">Koffiemachine / Machine à café</div><div class="track"><div class="fill" id="b2" style="width:0%"></div></div><div class="pct" id="p2">–</div></div>
-      <div class="bar"><div class="label">Schoonmaakprogramma / Programme de nettoyage</div><div class="track"><div class="fill" id="b3" style="width:0%"></div></div><div class="pct" id="p3">–</div></div>
-      <div class="bar"><div class="label">Lamp stuk / Lampe cassée</div><div class="track"><div class="fill" id="b4" style="width:0%"></div></div><div class="pct" id="p4">–</div></div>
-    </div>
-  </div>
+  <script>
+    /* ===== API-endpoint (same-origin via Netlify rewrite) ===== */
+    const API = '/api/log';
+	const API_PRIMARY   = '/api/log';                       // via rewrite
+const API_FALLBACK  = '/.netlify/functions/proxy_logs'; // directe function
 
-  <!-- Grote teller onderaan -->
-  <div class="card big" style="margin-top:10px">
-    <div class="bigpct">
-      <span id="pct-big">–%</span>
-      <small id="pct-ratio">(0/0)</small>
-    </div>
-    <div class="bigsub">voltooid van inschrijvingen</div>
-  </div>
-
-  <div class="foot" style="margin-top:10px">
-    <span class="badge" id="since">telt vanaf: (geen reset)</span>
-    <span class="badge" id="meta"></span>
-  </div>
-</div>
-
-<script>
-/* ===== API-endpoint ===== */
-const API =
-  location.hostname.includes('localhost') || location.hostname.includes('127.0.0.1')
-    ? '/api/log'
-    : 'https://atalian-logs.atalianqr.workers.dev/api/log';
-
-/* ===== Utils ===== */
-const $ = (s)=>document.querySelector(s);
-
-/* ===== Normalisatie ===== */
-function inferEvent(rec){
-  if(!rec.event && (rec.contextLabel || rec.email_present!==undefined || rec.urgent)) return 'ticket_submitted';
-  return rec.event || 'event';
-}
-function normalize(rec){
-  return {
-    event: inferEvent(rec),
-    ts: Number(rec.server_ts || rec.ts || Date.now()),
-    user: rec.user_id || rec.visitor_id || 'unknown',
-    session: rec.session_id || 'default',
-    step: (rec.step != null ? Number(rec.step) : null),
-    lang: rec.lang || 'nl'
-  };
+async function fetchItems(limit){
+  const urls = [`${API_PRIMARY}?limit=${limit}`, `${API_FALLBACK}?limit=${limit}`];
+  let lastErr;
+  for (const url of urls){
+    try{
+      console.debug('→ fetch', url);
+      const r = await fetch(url, { cache:'no-store' });
+      if(!r.ok) throw new Error(`HTTP ${r.status}`);
+      const j = await r.json();
+      console.debug('← ok', url, 'items:', (j.items||[]).length);
+      return j.items || [];
+    }catch(e){ console.warn('fail', url, e.message); lastErr = e; }
+  }
+  throw lastErr || new Error('API fail');
 }
 
-/* ===== Reset (server-anker) ===== */
-async function postReset(){
-  await fetch(API, {
-    method:'POST',
-    headers:{'Content-Type':'application/json'},
-    body: JSON.stringify({event:'statsgame_reset', ts: Date.now()})
-  });
-}
-async function fetchAll(limit=8000){
-  const url = new URL(API, location.origin);
-  url.searchParams.set('limit', String(limit));
-  const res = await fetch(url.toString(), { cache:'no-store' });
-  if(!res.ok) throw new Error('HTTP '+res.status);
-  const json = await res.json();
-  const raw = Array.isArray(json) ? json : (Array.isArray(json.items) ? json.items : []);
-  return raw.map(normalize);
-}
-function latestResetTs(items){
-  const r = items.filter(it => it.event==='statsgame_reset').sort((a,b)=>b.ts-a.ts)[0];
-  return r ? r.ts : null;
-}
-function filterSince(items, sinceTs){
-  return sinceTs ? items.filter(it => it.ts >= sinceTs) : items;
-}
 
-/* ===== Aggregaties ===== */
-function buildParticipants(items){
-  const map = new Map(); // key: user|session
-  for(const it of items){
-    const key = (it.user||'unknown') + '|' + (it.session||'default');
-    let p = map.get(key);
-    if(!p){ p = {checked:false, steps:new Set(), lang:it.lang||'nl'}; map.set(key,p); }
-    if(it.event==='checkin') p.checked = true;
-    if(it.event==='scenario_done' && Number.isFinite(it.step)){
-      const s = Math.max(1, Math.min(4, it.step));
-      p.steps.add(s);
+
+    /* ===== Utils ===== */
+    const $ = (s)=>document.querySelector(s);
+    const byTsDesc = (a,b)=> (Number(b.ts||0) - Number(a.ts||0));
+
+    function inferEvent(rec){
+      if(!rec.event && (rec.contextLabel || rec.email_present !== undefined || rec.urgent)) return 'ticket_submitted';
+      return rec.event || 'event';
+    }
+    function normalize(rec){
+      return {
+        event: inferEvent(rec),
+        ts: Number(rec.server_ts || rec.ts || Date.now()),
+        contextLabel: rec.contextLabel ?? null,
+        lang: rec.lang ?? null,
+        urgent: rec.urgent ?? null
+      };
+    }
+
+// gebruik in jouw fetchAll():
+async function fetchAll(){
+  for (const lim of [1000, 500, 200]) {
+    try {
+      const items = await fetchItems(lim);
+      return items.map(normalize).sort((a,b)=>(b.ts||0)-(a.ts||0));
+    } catch (e) {
+      console.warn('retry met lagere limiet…', lim, e.message);
     }
   }
-  return Array.from(map.values());
+  throw new Error('API blijft falen');
 }
-function computeMetrics(items){
-  const parts = buildParticipants(items);
-  const checked = parts.filter(p=>p.checked);
-  const checkins = checked.length;
+}
 
-  const attemptsByStep = {1:0,2:0,3:0,4:0};
-  for(const it of items){
-    if(it.event==='scenario_done' && Number.isFinite(it.step)){
-      const s = Math.max(1, Math.min(4, it.step));
-      attemptsByStep[s] += 1;
+
+
+    /* ===== Data ===== */
+	async function fetchAll(){
+	  for (const lim of [1000, 500, 200]){
+		try{
+		  const r = await fetch(`${API}?limit=${lim}`, { cache:'no-store' });
+		  if(!r.ok) throw new Error(`HTTP ${r.status}`);
+		  const {items=[]} = await r.json();
+		  return items.map(normalize).sort(byTsDesc);
+		}catch(e){ console.warn('retry met lagere limiet…', lim, e); }
+	  }
+	  throw new Error('API blijft falen');
+	}
+
+
+    function saveSnapshot(items){ try{ localStorage.setItem('stats_snapshot', JSON.stringify(items.slice(0,500))); }catch{} }
+    function loadSnapshot(){ try{ return JSON.parse(localStorage.getItem('stats_snapshot')||'[]'); }catch{ return []; } }
+
+    /* ===== Render ===== */
+    function render(items){
+      const total   = items.length;
+      const tickets = items.filter(x=>x.event==='ticket_submitted').length;
+      const visits  = items.filter(x=>x.event==='visit').length;
+      const done    = items.filter(x=>x.event==='scenario_done').length;
+
+      $('#kpi-total').textContent   = total.toLocaleString('nl-BE');
+      $('#kpi-tickets').textContent = tickets.toLocaleString('nl-BE');
+      $('#kpi-visits').textContent  = visits.toLocaleString('nl-BE');
+      $('#kpi-done').textContent    = done.toLocaleString('nl-BE');
+
+      const ul = $('#events'); ul.innerHTML='';
+      items.slice(0,50).forEach(x=>{
+        const li=document.createElement('li');
+        const left = document.createElement('div');
+        left.innerHTML = `<span class="evt">${x.event}</span> · <span class="ctx">${x.contextLabel ?? '-'}</span>`;
+        const right = document.createElement('div');
+        right.className='ts';
+        right.textContent = new Date(x.ts).toLocaleString('nl-BE');
+        li.append(left,right);
+        ul.appendChild(li);
+      });
     }
-  }
 
-  let totalCompleted=0, done=0;
-  if(checkins>0){
-    for(const p of checked){
-      const c = Math.min(4, p.steps.size);
-      totalCompleted += c;
-      if(c>=4) done++;
+    /* ===== Healthcheck (Edge Function /api/health indien aanwezig) ===== */
+    async function pingHealth(){
+      try{
+        const r = await fetch('/api/health',{cache:'no-store'});
+        $('#health').textContent = r.ok ? '🟢' : '🟠';
+      }catch{ $('#health').textContent = '🔴'; }
     }
-  }
-  const avg = checkins ? totalCompleted/checkins : 0;
 
-  const totalAttempts = attemptsByStep[1]+attemptsByStep[2]+attemptsByStep[3]+attemptsByStep[4];
-  const shareByStep = totalAttempts ? {
-    1: attemptsByStep[1]/totalAttempts,
-    2: attemptsByStep[2]/totalAttempts,
-    3: attemptsByStep[3]/totalAttempts,
-    4: attemptsByStep[4]/totalAttempts
-  } : {1:0,2:0,3:0,4:0};
+    /* ===== Orchestratie ===== */
+    async function refreshStats(){
+      $('#status').textContent = '⏳ laden...';
+      try{
+        const items = await fetchAll(4000); // demo: iets lager voor snelheid
+        saveSnapshot(items);
+        render(items);
+        $('#status').textContent = '✅ live';
+      }catch(e){
+        console.error(e);
+        const snap = loadSnapshot();
+        if(snap.length){
+          render(snap);
+          $('#status').textContent = '🟠 offline – snapshot';
+        }else{
+          $('#status').textContent = '🔴 geen data';
+        }
+      }
+    }
 
-  const avgAttemptsPerStep = checkins ? {
-    1: attemptsByStep[1]/checkins,
-    2: attemptsByStep[2]/checkins,
-    3: attemptsByStep[3]/checkins,
-    4: attemptsByStep[4]/checkins
-  } : {1:0,2:0,3:0,4:0};
+    async function resetCounter(){
+      $('#status').textContent = '⏳ reset...';
+      try{
+        const r = await fetch(API, {
+          method:'POST',
+          headers:{'Content-Type':'application/json'},
+          body: JSON.stringify({ event:'statsgame_reset', ts: Date.now() })
+        });
+        if(!r.ok) throw new Error(`HTTP ${r.status}`);
+        await refreshStats();
+      }catch(e){
+        console.error(e);
+        $('#status').textContent = '⚠️ reset mislukt';
+      }
+    }
 
-  return {checkins, avg, done, attemptsByStep, shareByStep, avgAttemptsPerStep, totalAttempts};
-}
-
-/* ===== Render ===== */
-function render(metrics, sinceTs, allCount){
-  const {checkins, avg, done, attemptsByStep, shareByStep, avgAttemptsPerStep} = metrics;
-
-  $('#k-checkins').textContent = checkins;
-  $('#k-avg').textContent = `${Math.round(avg)} / 4`;
-  $('#k-avg-pct').textContent = `(${Math.round((avg/4)*100)}%)`;
-  $('#k-done').textContent = done;
-
-  const upd = (i)=> {
-    const share = shareByStep[i] || 0;
-    const attempts = attemptsByStep[i] || 0;
-    const perUser = avgAttemptsPerStep[i] || 0;
-    $('#b'+i).style.width = (share*100).toFixed(0)+'%';
-    $('#p'+i).textContent = `${attempts}× • ${(share*100).toFixed(0)}%`;
-    $('#p'+i).title = `gem. pogingen per deelnemer: ${perUser.toFixed(2)}`;
-  };
-  upd(1); upd(2); upd(3); upd(4);
-
-  // Grote teller onderaan
-  const pct = (checkins > 0) ? Math.round((done / checkins) * 100) : 0;
-  $('#pct-big').textContent   = `${pct}%`;
-  $('#pct-ratio').textContent = `(${done}/${checkins})`;
-
-  $('#since').textContent = sinceTs ? ('telt vanaf: '+ new Date(sinceTs).toLocaleString()) : 'telt vanaf: (geen reset)';
-  $('#meta').textContent  = `events in venster: ${allCount}`;
-}
-
-/* ===== Snelle reload helpers (latency KV) ===== */
-async function refreshStats(){
-  const all = await fetchAll(8000);
-  const sinceTs = latestResetTs(all);
-  const windowed = filterSince(all, sinceTs);
-  const metrics = computeMetrics(windowed);
-  render(metrics, sinceTs, windowed.length);
-}
-
-/* ===== UI ===== */
-document.getElementById('btn-refresh').addEventListener('click', refreshStats);
-document.getElementById('btn-reset').addEventListener('click', async ()=>{
-  if (!confirm('Teller resetten en server-anker plaatsen?')) return;
-  await postReset();
-  setTimeout(refreshStats, 400);
-  setTimeout(refreshStats, 2000);
-  setTimeout(refreshStats, 5000);
-  setTimeout(refreshStats, 12000);
-});
-
-let timer=null;
-document.getElementById('auto').addEventListener('change', e=>{
-  if(e.target.checked){ timer=setInterval(refreshStats, 5000); }
-  else { clearInterval(timer); timer=null; }
-});
-
-/* Init */
-refreshStats();
-</script>
+    /* ===== Init ===== */
+    document.addEventListener('DOMContentLoaded', () => {
+      $('#ep').textContent = API;
+      console.debug('Statsgame API endpoint:', API);
+      $('#btn-refresh').addEventListener('click', refreshStats);
+      $('#btn-reset').addEventListener('click', resetCounter);
+      pingHealth();
+      refreshStats();
+      setInterval(refreshStats, 5000);
+      setInterval(pingHealth, 10000);
+    });
+  </script>
 </body>
 </html>
