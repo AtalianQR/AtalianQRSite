@@ -3,783 +3,1093 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>ATALIAN – De Missie van de Assistent (Demo)</title>
+  <title>ATALIAN – QR Demo</title>
   <link rel="icon" href="/AtalianFavicon.png" />
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/botui/build/botui.min.css" />
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/botui/build/botui-theme-default.css" />
   <style>
-    :root{ --atalian-orange:#EE7E00; --bg:#f4f6fa; --text:#1a202c; }
-    html,body{
-      height:auto;min-height:100vh;width:100%;margin:0;padding:0;box-sizing:border-box;
-      font-family:'Segoe UI',system-ui,-apple-system,sans-serif;background-color:var(--bg);overflow-y:auto}
+	:root{
+	  /* merk & basis */
+	  --bg:#f4f6fa;
+	  --atalian-orange:#EE7E00;
+
+	  /* bubbels */
+	  --bubble-radius:16px;
+
+	  /* BOT (links) – leesbaar licht oranje */
+	  --bubble-bot-bg:#FFF4E8;
+	  --bubble-bot-border:#F6C791;
+	  --bubble-bot-text:#1a202c;
+
+	  /* GEBRUIKER (rechts) – donker grijs */
+	  --bubble-human-bg:#C85E00;
+	  --bubble-human-border:#3b4450;
+	  --bubble-human-text:#ffffff;
+
+	  /* rechterzijde schaduw/gradient */
+	  --right-shade-a: rgba(15,23,42,.38);
+	  --right-shade-b: rgba(15,23,42,.26);
+	  --right-shade-c: rgba(15,23,42,.12);
+	}
+
+	/* schoonmaak-kaart met regels per tijdsblok */
+	.info-card{
+	  background:#FFF7ED; border:1.5px solid #F6C791;
+	  border-radius:14px; padding:10px 12px; box-shadow:0 1px 6px rgba(0,0,0,.06);
+	}
+	.info-title{ display:flex; align-items:center; gap:8px; font-weight:800; color:#1A202C; margin:0 0 6px 0; }
+	.info-sub{ color:#475569; font-size:.92rem; margin-top:6px; }
+	.badge-now{
+	  margin-left:auto; font-size:.82rem; font-weight:700;
+	  background:#22c55e1A; color:#166534; border:1px solid #22c55e55;
+	  padding:2px 8px; border-radius:999px;
+	}
+
+	/* >>> per-regel lay-out + kalender-icoon */
+	.info-list{ display:flex; flex-direction:column; gap:4px; margin:6px 0 0 0; }
+	.info-row{ display:flex; align-items:baseline; gap:8px; }
+	.info-row .ico{ font-size:1.05rem; line-height:1; }
+	.info-row .txt{ font-weight:700; color:#1A202C; }
+
+  html,body{
+    height:auto;min-height:100vh;width:100%;margin:0;padding:0;box-sizing:border-box;
+    font-family:'Segoe UI',system-ui,-apple-system,sans-serif;background-color:var(--bg);overflow-y:auto;
+  }
+
+  /* Achtergrond via pseudo-laag + fel-pulse klasse */
+  body{
+    position: relative;
+    background-color: var(--bg);
+    overflow-y:auto;
+  }
     body{background-image:url('/building-cleaning.png');background-size:cover;background-repeat:no-repeat;background-position:center}
-    *{box-sizing:border-box}
-    header{display:flex;flex-direction:column;align-items:center;gap:.5rem;margin:1rem 0;position:relative}
-    img.logo{max-height:60px;height:auto;width:auto;display:block;margin:0 auto;background:rgba(255,255,255,.85);
-      padding:.15rem .4rem;border-radius:12px}
-    .subtitle{background:rgba(255,255,255,.95);padding:.35rem .8rem;border-radius:10px;border:2.5px solid var(--atalian-orange);
-      color:#334155;font-size:.95rem;box-shadow:0 2px 8px rgba(238,126,0,.08)}
-    .lang-toggle{margin-top:.5rem;display:flex;gap:8px;justify-content:center}
-    .lang-btn{cursor:pointer;background:#fff;border:1.5px solid var(--atalian-orange);border-radius:999px;padding:.25rem .6rem;font-weight:600;font-size:.9rem}
-    .wrap{max-width:640px;margin:0 auto;padding:0 1rem 2rem}
-    .botui-container{max-width:640px;margin:0 auto;background:linear-gradient(120deg,#fff 85%,#f4f6fa 100%);
-      border:2px solid var(--atalian-orange);box-shadow:0 6px 32px rgba(0,0,0,.12),0 1.5px 8px rgba(238,126,0,.10);
-      border-radius:12px;padding:1rem;opacity:0;animation:fadeIn .9s ease forwards}
-    .botui-container,.botui-message-content{font-family:'Segoe UI',system-ui,-apple-system,sans-serif}
-    .botui-actions-buttons-button{font-weight:600;border:none;box-shadow:0 2px 6px rgba(238,126,0,.07);transition:transform .06s ease}
-    .botui-actions-buttons-button:active{transform:scale(.98)}
-    .hint{font-size:.9rem;color:#475569}
-    @keyframes fadeIn{to{opacity:1}}
-    .credit{margin-top:.75rem;text-align:center;font-size:.85rem;background:rgba(255,255,255,.92);
-      padding:.4rem .8rem;border-radius:8px;border:1.5px solid var(--atalian-orange);color:#1a202c;display:inline-block}
-    #confetti-canvas{position:fixed;inset:0;pointer-events:none;z-index:9999}
-	/* Maak de BotUI invoervelden wat breder */
-	.botui-actions-text-input {
-	  width: 90% !important;   /* standaard is ~60% */
-	  max-width: 500px;        /* optioneel: zet een max */
-	  font-size: 1rem;         /* iets leesbaarder */
-	  padding: 6px 10px;       /* meer lucht */
+
+  /* ⇩ Donkere overlay aan de rechterkant van de pagina */
+  body::after{
+    content:"";
+    position: fixed;
+    inset: 0;
+    z-index: -1;              /* onder de UI */
+    pointer-events: none;
+    background: linear-gradient(
+      to left,
+      var(--right-shade-a) 0%,
+      var(--right-shade-b) 22%,
+      var(--right-shade-c) 44%,
+      rgba(15,23,42,0) 64%
+    );
+    transition: opacity .6s ease;
+    opacity: 1;
+  }
+  @media (max-width: 480px){
+    body::after{ opacity:.85; }
+  }
+
+  /* wanneer demo klaar is → kort feller */
+  body.demo-bright::before{
+    box-shadow: inset 0 0 0 9999px rgba(255,255,255,.10);
+    filter:saturate(1.14) brightness(1.10);
+  }
+
+  *{box-sizing:border-box}
+  header{display:flex;flex-direction:column;align-items:center;gap:.5rem;margin:1rem 0;position:relative}
+  img.logo{max-height:60px;height:auto;width:auto;display:block;margin:0 auto;background:rgba(255,255,255,.85);
+    padding:.15rem .4rem;border-radius:12px}
+  .subtitle{background:rgba(255,255,255,.95);padding:.35rem .8rem;border-radius:10px;border:2.5px solid var(--atalian-orange);
+    color:#334155;font-size:.95rem;box-shadow:0 2px 8px rgba(238,126,0,.08)}
+  .lang-toggle{margin-top:.5rem;display:flex;gap:8px;justify-content:center}
+  .lang-btn{cursor:pointer;background:#fff;border:1.5px solid #e2e8f0;border-radius:999px;padding:.25rem .6rem;font-weight:600;font-size:.9rem}
+  .wrap{max-width:640px;margin:0 auto;padding:0 1rem 2rem}
+
+  .botui-container{
+    max-width:640px;margin:0 auto;
+    /* transparanter zodat achtergrond zichtbaar kan pulsen */
+    background:linear-gradient(120deg, rgba(255,255,255,.92) 85%, rgba(244,246,250,.86) 100%);
+    border:2px solid var(--atalian-orange);
+    box-shadow:0 6px 32px rgba(0,0,0,.12),0 1.5px 8px rgba(238,126,0,.10);
+    border-radius:12px;padding:1rem;opacity:0;animation:fadeIn .9s ease forwards;
+    transition: background .5s ease, box-shadow .5s ease;
+    backdrop-filter: blur(1px);
+  }
+  /* tijdens bright pulse nog iets transparanter */
+  body.demo-bright .botui-container{
+    background:linear-gradient(120deg, rgba(255,255,255,.84) 80%, rgba(244,246,250,.74) 100%);
+    box-shadow:0 10px 38px rgba(0,0,0,.18),0 2px 10px rgba(238,126,0,.14);
+  }
+  .botui-container .botui-message{border-radius:10px}
+
+  /* default (wordt overschreven door selectors hieronder) */
+  .botui-message-content{
+    background:#ffffff; color:#1f2937;
+    border-radius:10px; border:1px solid #e5e7f0;
+  }
+
+  /* Highlight voor “Klaar met deze demo.” */
+  .botui-message-content:has(.end-highlight){
+    border:2px solid var(--atalian-orange);
+    box-shadow:0 0 0 4px rgba(238,126,0,.12), 0 6px 24px rgba(238,126,0,.18);
+  }
+  .end-highlight{ display:inline-block; padding:2px 2px; }
+
+  /* Donkere, rechthoekige actieknoppen (hoog contrast) */
+/* Donkere knop met oranje rand – goed contrast voor tekst + emoji */
+.botui-actions-buttons-button{
+  background:#4B5563;            /* zacht donkergrijs (slate-600) */
+  color:#F1F5F9;                 /* heel licht grijs, geen fel wit */
+  border:2px solid #EE7E00;      /* Atalian-oranje rand */
+  border-radius:10px;
+  padding:10px 14px;
+  font-weight:700; letter-spacing:.1px;
+  box-shadow:0 2px 10px rgba(0,0,0,.16);
+  transition:filter .15s ease, transform .05s ease, box-shadow .15s ease;
+}
+.botui-actions-buttons-button:hover{
+  filter:brightness(1.05);       /* subtiel, niet schreeuwerig */
+  box-shadow:0 4px 14px rgba(0,0,0,.18);
+}
+.botui-actions-buttons-button:active{ transform:translateY(1px); }
+.botui-actions-buttons-button:focus{ outline:2px solid #F59E0B; outline-offset:2px; }
+
+.img-card{
+  background:#fff; border:1.5px solid #F6C791; border-radius:12px;
+  padding:6px; box-shadow:0 1px 6px rgba(0,0,0,.06);
+}
+.img-card img{ width:100%; height:auto; display:block; border-radius:8px; }
+.img-caption{ font-size:.9rem; color:#475569; margin-top:6px; }
+
+
+
+  /* Tekstveld duidelijk anders dan knoppen */
+  .botui-actions-text-input{
+    background:#ffffff; color:#0f172a;
+    border:2px solid #cbd5e1; border-radius:4px;
+  }
+  .botui-actions-text-input:focus{
+    border-color:#3b82f6; box-shadow:0 0 0 2px rgba(59,130,246,.25);
+  }
+  /* breder invulveld */
+	.botui-actions-text{ display:flex; }         /* laat het element de rij vullen */
+	.botui-actions-text-input{
+	  width:60% !important;                     /* volle breedte binnen de container */
+	  max-width:60% !important;
+	  box-sizing:border-box;                      /* borders meetellen in die 100% */
 	}
-	.botui-message-content {
-	  white-space: normal !important;    /* laat regels afbreken */
-	  word-wrap: break-word;             /* breek lange woorden (oude syntax) */
-	  overflow-wrap: anywhere;           /* moderne fallback */
-	}
-	/* Zorg dat alle BotUI-knoppen hun tekst links uitlijnen */
-	.botui-actions-buttons button {
-	  text-align: left !important;
-	  justify-content: flex-start;  /* icoontjes ook netjes mee naar links */
-	}
-	/* Reset-effect: ripple + emoji-fall */
-	#reset-overlay{position:fixed;inset:0;pointer-events:none;z-index:9998;overflow:hidden}
-	.reset-ripple{
-	  position:absolute; left:50%; top:20px; width:24px; height:24px; border-radius:9999px;
-	  background:rgba(238,126,0,.25); transform:translate(-50%,-50%);
-	  animation:resetRipple 900ms ease-out forwards;
-	}
-	@keyframes resetRipple{
-	  0%{ transform:translate(-50%,-50%) scale(0.2); opacity:0.9 }
-	  70%{ opacity:0.6 }
-	  100%{ transform:translate(-50%,-50%) scale(40); opacity:0 }
-	}
-	.reset-emoji{
-	  position:absolute; top:-2rem; font-size:1.4rem; opacity:.95;
-	  animation:emojiFall 900ms ease-in forwards;
-	}
-	@keyframes emojiFall{
-	  to{ transform:translateY(110vh) rotate(20deg); opacity:0.1 }
-	}
-	
-	
+
+  .botui-actions-buttons, .botui-actions-text{ margin-top:10px; }
+
+  #confetti-canvas{position:fixed;inset:0;pointer-events:none}
+  @keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+
+  /* =========================
+     BUBBLES (definitieve overrides)
+     ========================= */
+
+  /* BOT (links) – licht oranje
+     Gebruik :not(.human) omdat BotUI de ‘human’ class op het content-element zet */
+  .botui-message .botui-message-content:not(.human){
+    background:
+      linear-gradient(180deg, rgba(238,126,0,.06), rgba(238,126,0,.04)),
+      var(--bubble-bot-bg) !important;
+    color:var(--bubble-bot-text) !important;
+    border:1px solid var(--bubble-bot-border) !important;
+    border-radius:var(--bubble-radius) !important;
+  }
+
+  /* GEBRUIKER (rechts) – donker
+     Dek beide varianten af: .human op content én .botui-message-human op wrapper */
+  .botui-message-content.human,
+  .botui-message.botui-message-human .botui-message-content{
+    background:var(--bubble-human-bg) !important;
+    color:var(--bubble-human-text) !important;
+    border:1px solid var(--bubble-human-border) !important;
+    border-radius:var(--bubble-radius) !important;
+  }
+
+  /* Links in bubbels: goed leesbaar */
+  .botui-message-content a{
+    color:#0f172a;
+    text-decoration: underline;
+  }
+
+  /* Reset-overlay (long-press) */
+  #reset-overlay{position:fixed;inset:0;background:rgba(17,24,39,.75);display:flex;align-items:center;justify-content:center;z-index:9999}
+  .reset-ripple{position:absolute;top:20px;left:calc(50% - 60px);width:120px;height:120px;border-radius:50%;
+    background:radial-gradient(circle,rgba(255,255,255,.35),transparent 60%);animation:ripple .8s ease-out}
+  @keyframes ripple{from{transform:scale(.7);opacity:.9}to{transform:scale(1.4);opacity:0}}
+  .reset-emoji{position:absolute;top:-10px;font-size:28px;animation:drop 1.3s ease forwards}
+  @keyframes drop{0%{opacity:0;transform:translateY(-40px)}30%{opacity:1}100%{transform:translateY(180px);opacity:0}}
   </style>
 </head>
 <body>
 <header>
-  <img src="/AtalianLogo.png" alt="Atalian Logo" class="logo" />
+  <img src="/AtalianLogo.png" alt="Atalian Logo" class="logo" title="Lang drukken om demo te resetten" />
   <div class="lang-toggle">
-    <button class="lang-btn" id="btn-nl">🇳🇱 NL</button>
-    <button class="lang-btn" id="btn-fr">🇫🇷 FR</button>
+    <button class="lang-btn" id="btn-nl" aria-label="Nederlands">NL</button>
+    <button class="lang-btn" id="btn-fr" aria-label="Français">FR</button>
   </div>
-  <div class="subtitle" id="subtitle">🎉 Personeelsevent – demo met AI-assistent · geen echte tickets</div>
+  <div class="subtitle" id="subtitle">Productdemo – QR-codes in FM · geen echte tickets</div>
 </header>
 
 <canvas id="confetti-canvas"></canvas>
 
 <div class="wrap">
   <div id="botui-app"><bot-ui></bot-ui></div>
-  <div class="credit" id="foot-credit">Vragen of ideeën? Spreek ons FM-team aan 💬</div>
 </div>
 
-<!-- Dependencies -->
 <script src="https://cdn.jsdelivr.net/npm/vue@2"></script>
 <script src="https://cdn.jsdelivr.net/npm/botui/build/botui.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
-
 <script>
+  /* ===== helpers & storage ===== */
+  const qs=new URLSearchParams(location.search);
+  const LANG=(qs.get('lang')||localStorage.getItem('atalian_lang')||'nl').toLowerCase().startsWith('fr')?'fr':'nl';
+  const KEY_NAME='atalian_name';
+  const KEY_MAIL='atalian_email';
+  const PROG_KEY='atalian_all_done';
+  const CHECKED_KEY='atalian_checkedin';
 
-// const API = 'https://atalianqr.workers.dev/api/log';
-
-// dynamische URL voor lokaal (wrangler dev) en productie (workers.dev)
-const LOG_URL =
-  (location.hostname === '127.0.0.1' || location.hostname === 'localhost')
-    ? 'http://127.0.0.1:8787/api/log'
-    : 'https://atalian-logs.atalianqr.workers.dev/api/log';
+  // In dev geen logging
+  const LOG_URL = (location.hostname === '127.0.0.1' || location.hostname === 'localhost')
+    ? '' : 'https://atalian-logs.atalianqr.workers.dev/api/log';
 
   /* ===== i18n ===== */
   const I18N = {
     nl: {
-      subtitle: '🎉 Employees Day – Discover, Play & AI',
-      credit: 'Vragen of ideeën? Spreek ons FM-team aan 💬',
-      hello_name: 'Welkom op deze event 👋. Ik ben je <span style="color:var(--atalian-orange);font-weight:700">ATALIAN</span>-assistent 🤖. Hoe heet jij?',
-      nice_to_meet: n => `Hey ${n}!`,
-      intro_welcome: n => `Leuk dat je meedoet, ${n}!`,
-      intro_line1: 'Dit is onze speurtocht met AI + <b>Ultimo</b> 🕵️‍♀️. <br> Scan de 4 QR-codes in de zaal.  Bij elke scan speel je klant en meld je een probleem via een ticket. 👉 Je missie is geslaagd zodra alle 4 meldingen gedaan zijn. ',
-      intro_tip: '',
-      intro_progress: d => `Jouw voortgang: ${d}/4 scenario’s.`,
-      intro_go: 'Zoek de 4 QR’s en meld het probleem. Vandaag is het spel 🎮, maar normaal lossen we het zo op. Veel succes en plezier! 🚀',
-      start_btn: '✅ Start het spel',
-      need_checkin: 'Wil je deelnemen? Scan dan de oranje QR-code 👍.',
+      subtitle: 'Interactieve Demo – QR-codes voor Facility Management',
+      hello_name: 'Hartelijk welkom bij de <b>ATALIAN QR-demo</b>! Hier ontdek je hoe eenvoudig Facility Management meldingen worden via QR-codes. Om te beginnen: hoe heet jij?',
+      nice_to_meet: n => `Aangenaam, ${n}.`,
+      intro_welcome: n => `Welkom, ${n}. Dit is een simulatie van onze QR-processen. In de demo-stappen zal je vier veelvoorkomende situaties doorlopen.`,
+      intro_line1: 'Het doel: <b>snel, duidelijk en direct</b> melden wat er aan de hand is. Geen apps, geen telefoonnummers.',
+      intro_list_title: 'Wat je in de demo kan verwachten:',
+      intro_list_1: '• **Registratie:** Direct een ticket aanmaken (technisch defect, schoonmaak, comfort).',
+      intro_list_2: '• **Informatie:** Onmiddellijk relevante info krijgen (schoonmaakprogramma, wifi-codes).',
+      start_btn: 'Start de demo',
       ask_problem: 'Kan je in het kort zeggen wat je wilt melden?',
       ask_email: 'Wat is je e-mailadres?',
-      invalid_email: 'Hm, dat lijkt geen geldig adres. Probeer nog eens 😥',
+      invalid_email: 'Hm, dat lijkt geen geldig adres. Probeer nog eens',
       urgent_q: n => `${n}, is dit dringend of mag het op de to-do-lijst?`,
-      urgent_yes: '🚨 Dringend!',
+      urgent_yes: '🔥 Dringend!',
       urgent_no: '⏱️ To-do mag',
-      servicedesk_note: 'Normaal zou je nu het nummer van de servicedesk krijgen ☎️, maar omdat zij meedoen aan het event laten we ze vandaag met rust 😇.',
-      photo_label: 'Wil je een foto toevoegen van het probleem? 📷',
-      photo_btn: '📷 Foto nemen/kiezen',
-      photo_skip: '⏭️ Overslaan',
-      photo_skip_msg: 'Oké, we gaan verder zonder foto 👍',
+confirm_urgent: n => `Oké ${n}, mag ik meteen een <b>dringende</b> oproep aanmaken?`,
+fast_thanks: (ctx,id,n) => `Bedankt, ${n}. Je <b>${ctx}</b> is <b>dringend</b> verstuurd. <span class="hint">(Demo) • ref: ${id}</span>`,
+fast_cancel: n => `Geen probleem, ${n}. We maken nu geen dringende oproep aan.`,
+      servicedesk_note: 'Omdat dit “Dringend” is: in productie bellen we meteen de servicedesk om prioriteit te geven. In deze demo tonen we enkel de flow.',
       photo_preview: 'Voorbeeld van je foto:',
-	  photo_take: '📷 Foto nemen',
+      photo_take: '📸 Foto nemen',
       photo_gallery: '🖼️ Kies uit galerij',
-	  photo_none: 'Geen foto gekozen — kies opnieuw of sla over.',
-      thanks_sent: (ctx,id) => `Bedankt! Je <b>${ctx}</b> is verzonden naar Ultimo ✅<br><span class="hint">(Demo – geen echte ticket) • ref: ${id}</span>`,
+      photo_skip: '➖ Overslaan',
+      photo_skip_msg: 'Oké, we gaan verder zonder foto',
+      photo_none: 'Geen foto gekozen — kies opnieuw of sla over.',
+      thanks_sent: (ctx,id) => `Bedankt! Je <b>${ctx}</b> is verstuurd. <span class="hint">(Demo – geen echte ticket) • ref: ${id}</span>`,
       summary_heading: 'Samenvatting:',
       summary_urgent: u => `• Urgent: <b>${u==='ja'?'ja':'nee'}</b>`,
       summary_desc: d => `• Beschrijving: <b>${d||'-'}</b>`,
       summary_email: e => `• Contact: <b>${e}</b>`,
       summary_photo: '• Foto: <i>bijgevoegd</i>',
-      end_msg: 'Bedankt! Scan een andere QR en vervolg je missie.🕵️‍♂️',
-      confetti_msg: '🏆 Topprestatie! Je ontdekte alle 4 QR’s en maakte meldingen. Zo simpel werkt het ook in het echt! 💡',
-      scen1_q: 'Stel: je vindt een ruimte die niet netjes is 😱. Wat doe je?',
-      scen1_opts: ['Direct melden via Ultimo 🖥️','Een emmer water halen 🪣','Je hebt het niet gezien 🙈'],
-      scen1_feedback: n => `Met de QR pakt ons schoonmaakteam het direct op. Geen stress, ${n} 😅, we maken samen een melding.`,
-      scen2_q: 'In de refter is de koffiemachine defect 🚫☕. Wat nu?',
-      scen2_opts: ['De technieker bellen? 📞','Ik maak een QR-ticket naar Ultimo? 🛠️','Ik neem een theetje? 🍵'],
-      scen2_feedback: n => `${n}, als je voor Ultimo kiest, komt dit bij onze technische dienst terecht 🧰. Dit is wellicht de beste optie.`,
-      scen3_q: 'Benieuwd naar het poetsprogramma van deze ruimte? 📅 Dat tonen we via deze QR.',
-      scen3_btn: 'Toon poetsprogramma 🧹',
-      scen3_info: '🌞 <b>Dagelijks</b>. Volgende beurt: <b>za 20-09-2025</b> (demo). <br> Wil je een melding maken rond het poetsprogramma of is het duidelijk?',
-      scen3_mk: '📩 Maak melding',
-      scen3_ok: 'Het is duidelijk 👍',
-      scen3_okreply: 'Top, onthouden 😎.',
-      scen4_q: 'Een lamp is stuk in de vergaderzaal. Wat doe je?',
-      scen4_opts: ['Ultimo inschakelen 🖥️','Zelf vervangen 🤕','Vergaderen in het donker 😎'],
-      scen4_feedback: 'Ultimo is slimmer 🤓. Geen kopzorgen, laten we gewoon samen een melding maken.'
-	  
+      end_msg: 'Bedankt. Klaar met deze demo.',
+      scen1_q: 'Wat wil je melden in dit lokaal?',
+      scen1_opts: ['🛠️ Technisch', '🧹 Schoonmaak'],
+      scen1_feedback: (n) => `Helder, ${n}. We maken een korte melding aan.`,
+      // SCENARIO 2
+      scen2_q: 'Wat is er aan de hand met de koffiemachine? ☕️',
+      scen2_opts: ['Koffiebonen zijn op', 'Melk/bekers zijn op', 'Toestel is defect'],
+      scen2_feedback: (n, selection)=> `Prima, ${n}. Melding aangemaakt voor: ${selection}.`,
+      scen2_context: 'Koffiemachine-ticket',
+      // EINDE SCENARIO 2
+		scen3_q: 'Wil je het schoonmaakprogramma voor deze zone zien?',
+		scen3_btn: 'Toon programma',
+		scen3_badge: '2×/week',
+		scen3_info: 'Schoonmaak gebeurt <b>2× per week</b>: <b>di 08:00–12:00</b> en <b>do 13:00–17:00</b>.',
+		scen3_next: (dStr)=> `Volgende poetsbeurt: <b>${dStr}</b>`,
+		scen3_now: 'We zitten nu in het voorziene tijdsblok — de poetsbeurt is voorzien. 🧼',
+		scen3_list_title: 'Komende 4 weken:',
+		scen3_holiday: '(feestdag – geen poetsbeurt)',
+		scen3_done: 'Genoteerd. Programma getoond (demo).',
+		scen4_q: 'We zitten in een vergaderruimte 🖥️👥💬. Wat wil je doen?',
+		scen4_opts: ['Wifi-code', 'TV verbinden', 'Ander probleem'],
+		wifi_hint: 'Zoek het netwerk <b>GUEST</b> en gebruik het wachtwoord <b>BeMyGuest</b>.',
+		wifi_ok_q: 'Is het gelukt om te verbinden?',
+		wifi_ok_yes: 'Ja, gelukt 👍',
+		wifi_ok_no: 'Nee, nog steeds niet',
+		wifi_done: 'Mooi zo! We gaan verder. ✅',
+		wifi_escalate: n => `Oké ${n}, we maken een melding aan.`,
+		tv_q_power: 'Staat de TV aan?',
+		tv_fix_power: 'Zoek de afstandsbediening (onder de TV of op de tafel) en zet de TV aan.',
+		tv_q_hdmi: 'Is de HDMI-kabel verbonden met je laptop?',
+		tv_fix_hdmi: 'Verbind de HDMI-kabel met je laptop.',
+		tv_q_source: 'Is de bron van de TV ingesteld op <b>HDMI1</b>?',
+		tv_fix_source: 'Kies op de TV met Source/Input voor <b>HDMI1</b>.',
+		tv_q_result: 'Zie je nu beeld op de TV?',
+		tv_ok: 'Top, TV werkt. ✅',
+		tv_escalate:  n => `Lukt het niet, ${n}? We maken een <b>dringende</b> melding aan.`,
+		tv_step_power_hint: '🔋 Zet de TV aan met de afstandsbediening (onder de TV of op de tafel).',
+		tv_step_hdmi_hint: '🔌 Verbind de HDMI-kabel met je laptop.',
+		tv_step_source_hint: '🔀 Kies op de TV de bron <b>HDMI1</b> (knop Source/Input).',
+		ok_now_q: 'Is het nu in orde?',
+		other_context: 'ander probleem in vergaderruimte',
     },
-	  fr: {
-	  subtitle: '🎉 Employees Day – Discover, Play & AI',
-	  credit: 'Des questions ou des idées ? Parles-en à notre équipe FM 💬',
-	  hello_name: 'Bienvenue à cet événement 👋. Je suis ton assistant <span style="color:var(--atalian-orange);font-weight:700">ATALIAN</span> 🤖. Comment tu t’appelles ?',
-	  nice_to_meet: n => `Ravi de te rencontrer, ${n} !`,
-	  intro_welcome: n => `Heureux que tu sois parmi nous, ${n} !`,
-	  intro_line1: `Voici notre chasse aux QR avec l’IA + <b>Ultimo</b> 🕵️‍♂️.<br> Scanne les 4 QR-codes dans la salle. À chaque scan, tu joues le client et tu crées un ticket pour signaler un problème. 👉 Ta mission est réussie quand les 4 signalements sont complétés.`,
-	  intro_tip: '',
-	  intro_progress: d => `Ta progression : ${d}/4 scénarios.`,
-	  intro_go: 'Repère les 4 QR et signale le problème. Aujourd’hui c’est un jeu 🎮, mais en réalité c’est exactement comme ça que ça marche. Bonne chance et profite de l’expérience ! 🚀',
-	  start_btn: '✅ Démarrez le jeu',
-	  need_checkin: 'Pour participer, commence par scanner le code QR orange. 👍',
-	  ask_problem: 'Peux-tu décrire brièvement ce que tu veux signaler ?',
-	  ask_email: 'Quelle est ton adresse e-mail ?',
-	  invalid_email: 'Hmm, ça ne ressemble pas à une adresse valide 😥',
-	  urgent_q: n => `Dis ${n}, c’est pour tout de suite ou ça peut attendre ?`,
-	  urgent_yes: '🚨 Tout de suite !',
-	  urgent_no: '⏱️ Ca peut attendre',
-	  servicedesk_note: 'Normalement tu verrais le numéro de la helpdesk ☎️, mais aujourd’hui on les laisse tranquilles 😇.',
-	  photo_label: 'Tu veux ajouter une photo du problème ? 📷',
-	  photo_btn: '📷 Prendre/choisir une photo',
-	  photo_skip: '⏭️ Passer',
-	  photo_skip_msg: 'D’accord, on continue sans photo 👍',
-	  photo_preview: 'Aperçu :',
-	  photo_take: '📷 Prendre une photo',
+    fr: {
+      subtitle: 'Démo Interactive – Codes QR pour le Facility Management',
+      hello_name: 'Bienvenue à la <b>démo QR d’ATALIAN</b> ! Découvrez la simplicité des signalements en Facility Management via un simple code QR. Pour commencer : comment vous appelez-vous ?',
+      nice_to_meet: n => `Enchanté, ${n}.`,
+      intro_welcome: n => `Bienvenue, ${n}. Ceci est une simulation de nos processus QR. Vous allez parcourir quatre scénarios fréquents.`,
+      intro_line1: 'L’objectif : <b>signaler le problème rapidement, clairement et directement</b>. Pas d’application, pas d’appel téléphonique.',
+      intro_list_title: 'Ce que vous allez expérimenter dans cette démo :',
+      intro_list_1: '• **Enregistrement :** Créer immédiatement un ticket (technique, nettoyage, confort).',
+      intro_list_2: '• **Information :** Obtenir des informations pertinentes instantanément (programme de nettoyage, codes Wi-Fi).',
+      start_btn: 'Démarrer la démo',
+      ask_problem: 'Que souhaitez-vous signaler en quelques mots ?',
+      ask_email: 'Quelle est votre adresse e-mail ?',
+      invalid_email: 'Adresse invalide. Réessayez',
+      urgent_q: n => `${n}, est-ce urgent ou peut-on planifier ?`,
+      urgent_yes: '🚨 Urgent',
+      urgent_no: '⏳ Pas urgent',
+confirm_urgent: n => `D’accord ${n}, puis-je créer tout de suite un signalement <b>urgent</b> ?`,
+fast_thanks: (ctx,id,n) => `Merci, ${n}. Votre <b>${ctx}</b> a été envoyé en <b>urgent</b>. <span class="hint">(Démo) • réf : ${id}</span>`,
+fast_cancel: n => `Pas de souci, ${n}. Pas de signalement urgent pour l’instant.`,
+      servicedesk_note: 'Puisque c’est “Urgent” : en production, nous appelons immédiatement le service desk pour prioriser. Ici, c’est une démo.',
+      photo_preview: 'Aperçu :',
+      photo_take: '📸 Prendre une photo',
       photo_gallery: '🖼️ Choisir dans la galerie',
-	  photo_none: 'Aucune photo choisie — réessaie ou passe.',
-	  thanks_sent: (ctx,id) => `Merci ! Ton <b>${ctx}</b> a été envoyé à Ultimo ✅<br><span class="hint">(Démo – ticket fictif) • réf: ${id}</span>`,
-	  summary_heading: 'Récapitulatif :',
-	  summary_urgent: u => `• Urgent : <b>${u==='ja'?'oui':'non'}</b>`,
-	  summary_desc: d => `• Description : <b>${d||'-'}</b>`,
-	  summary_email: e => `• Contact : <b>${e}</b>`,
-	  summary_photo: '• Photo : <i>jointe</i>',
-	  end_msg: 'Merci ! Trouve un autre QR et poursuis ta mission.🕵️‍♂️',
-	  confetti_msg: '🏆 Mission réussie ! Les 4 QR sont scannés, les signalements faits. En vrai, c’est si simple que ça! 💡',
-	  scen1_q: 'Tu trouves un local pas propre 😱. Que fais-tu ?',
-	  scen1_opts: ['Tu les signales vers Ultimo 🖥️',"Tu attrapes un seau d’eau 🪣","T'as rien vu... 🙈"],
-	  scen1_feedback: n => `Grâce au QR, notre équipe de nettoyage agit direct. Pas de stress, ${n} 😅, on crée le signalement.`,
-	  scen2_q: 'La machine à café est en panne 🚫☕. Et maintenant, que faire?',
-	  scen2_opts: ['Appeler un technicien 📞','Remplir ce QR vers Ultimo 🛠️',"Boire du thé à l'aise 🍵"],
-	  scen2_feedback: n => `Parfait, ${n} ! Dans Ultimo, ça arrive directement chez notre service technique 🧰. Faisons tout de suite un signalement pour ça.`,
-	  scen3_q: 'Curieux du programme de nettoyage de cet espace? 📅 On te le montre via ce QR.',
-	  scen3_btn: 'Afficher le programme 🧹',
-	  scen3_info: '🌞 <b>Quotidien</b>. Prochain passage : <b>sam 20-09-2025</b> (démo).<br> Veux-tu créer un signalement concernant le programme de nettoyage ou est-ce clair ?',
-	  scen3_mk: '📩 Créer un signalement',
-	  scen3_ok: "C’est clair 👍",
-	  scen3_okreply: 'Ok, je le note 😎.',
-	  scen4_q: 'Une lampe est cassée en salle de réunion. Que fais-tu ?',
-	  scen4_opts: ['Activer Ultimo 🖥️','Remplacer toi-même 🤕','Réunion dans le noir 😎'],
-	  scen4_feedback: 'Ultimo est plus malin 🤓. Ne te casse pas la tête, faisons un signalement ensemble.'
-	}
-
+      photo_skip: '➖ Passer',
+      photo_skip_msg: 'Ok, on continue sans photo',
+      photo_none: 'Aucune photo — réessayez ou passez.',
+      thanks_sent: (ctx,id) => `Merci ! Votre <b>${ctx}</b> a été envoyé. <span class="hint">(Démo – pas de vrai ticket) • réf: ${id}</span>`,
+      summary_heading: 'Récapitulatif :',
+      summary_urgent: u => `• Urgent : <b>${u==='ja'?'oui':'non'}</b>`,
+      summary_desc: d => `• Description : <b>${d||'-'}</b>`,
+      summary_email: e => `• Contact: <b>${e}</b>`,
+      summary_photo: '• Photo : <i>jointe</i>',
+      end_msg: 'Merci. Démo terminée.',
+      scen1_q: 'Que souhaitez-vous signaler pour ce local?',
+      scen1_opts: ['Technique', 'Nettoyage', 'Rien – info seulement'],
+      scen1_feedback: (n) => `Parfait, ${n}. Nous créons un signalement (démo).`,
+      // SCENARIO 2
+      scen2_q: 'Quel est le problème avec la machine à café ? ☕️',
+      scen2_opts: ['Plus de grains de café', 'Plus de lait/gobelets', 'Machine défectueuse'],
+      scen2_feedback: (n, selection)=> `Très bien, ${n}. Signalement créé pour : ${selection}.`,
+      scen2_context: 'Ticket machine à café',
+      // EINDE SCENARIO 2
+		scen3_q: 'Voulez-vous voir le programme de nettoyage voor deze zone ?',
+		scen3_btn: 'Afficher le programme',
+		scen3_badge: '2×/semaine',
+		scen3_info: 'Le nettoyage a lieu <b>2× par semaine</b> : <b>mar 08:00–12:00</b> et <b>jeu 13:00–17:00</b>.',
+		scen3_next: (dStr)=> `Prochain passage : <b>${dStr}</b>`,
+		scen3_now: 'Bonne nouvelle : nous sommes dans le créneau prévu — le nettoyage est programmé. 🧼',
+		scen3_list_title: 'Prochaines 4 semaines :',
+		scen3_holiday: '(jour férié – pas de nettoyage)',
+		scen3_done: 'C’est noté. Programme affiché (démo).',
+		scen4_q: 'Nous sommes dans une salle de réunion 🖥️👥💬. Que souhaitez-vous faire ?',
+		scen4_opts: ['Code Wi-Fi', 'Connecter la TV', 'Autre problème'],
+		wifi_hint: 'Cherchez le réseau <b>GUEST</b> et utilisez le mot de passe <b>BeMyGuest</b>.',
+		wifi_ok_q: 'La connexion a-t-elle réussi ?',
+		wifi_ok_yes: 'Oui, c’est bon 👍',
+		wifi_ok_no: 'Non, pas encore',
+		wifi_done: 'Parfait ! On continue. ✅',
+		wifi_escalate: n => `D’accord ${n}, on crée un signalement.`,
+		tv_q_power: 'La TV est-elle allumée ?',
+		tv_fix_power: 'Trouvez la télécommande (sous la TV ou sur la table) et allumez la TV.',
+		tv_q_hdmi: 'Le câble HDMI est-il branché à votre laptop ?',
+		tv_fix_hdmi: 'Branchez le câble HDMI sur votre laptop.',
+		tv_q_source: 'La source de la TV est-elle réglée sur <b>HDMI1</b> ?',
+		tv_fix_source: 'Choisissez <b>HDMI1</b> avec la touche Source/Input.',
+		tv_q_result: 'Voyez-vous l’image maintenant ?',
+		tv_ok: 'Super, la TV fonctionne. ✅',
+		tv_escalate:  n => `Sinon, ${n}, on crée un signalement <b>urgent</b>.`,
+		tv_step_power_hint: '🔋 Allumez la TV met de afstandsbediening (onder de TV of op de tafel).',
+		tv_step_hdmi_hint: '🔌 Verbind de HDMI-kabel met je laptop.',
+		tv_step_source_hint: '🔀 Kies op de TV de bron <b>HDMI1</b> (knop Source/Input).',
+		ok_now_q: 'Is het nu in orde?',
+		other_context: 'autre problème en salle de réunion'
+    }
   };
 
-  const qs = new URLSearchParams(window.location.search);
-  let LANG = (qs.get('lang') || localStorage.getItem('atalian_lang') || 'nl').toLowerCase();
-  if (!['nl','fr'].includes(LANG)) LANG='nl';
-  localStorage.setItem('atalian_lang', LANG);
-  window.LANG = LANG;
+  function t(key, ...args){
+    const src = I18N[LANG] && I18N[LANG][key];
+    if(!src) return '';
+    if(typeof src === 'function') return src(...args);
+    return src;
+  }
 
-  function t(key, ...args){ const txt = I18N[LANG][key]; return typeof txt==='function' ? txt(...args) : txt; }
+  function setStored(key,value){ try{ localStorage.setItem(key, value);}catch(_){} }
+  function getStored(key){
+    try{ const v=localStorage.getItem(key); if (v) return v; }catch(_){}
+    try{ const v2 = sessionStorage.getItem(key); if (v2) return v2; } catch(_) {}
+    return '';
+  }
 
-  window.addEventListener('DOMContentLoaded', ()=>{
-    document.getElementById('subtitle').innerHTML = t('subtitle');
-    document.getElementById('foot-credit').textContent = t('credit');
-    document.getElementById('btn-nl').onclick = ()=> switchLang('nl');
-    document.getElementById('btn-fr').onclick = ()=> switchLang('fr');
-  });
+  let botui=null, USERNAME=getStored(KEY_NAME)||'', EMAIL=getStored(KEY_MAIL)||'';
 
-  function switchLang(lang){
-    localStorage.setItem('atalian_lang', lang);
-    const step = qs.get('step') || '0';
-    const base = window.location.pathname;
+  /* logging */
+  function logEvent(type, extra={}){
     try{
-      const payload = { event:'lang_change', visitor_id: VISITOR_ID, session_id: SESSION_ID, lang, ts: Date.now() };
-      const blob = new Blob([JSON.stringify(payload)], { type:'application/json' });
-      navigator.sendBeacon && navigator.sendBeacon('/api/log', blob);
-    }catch(e){}
-    window.location.href = `${base}?step=${step}&lang=${lang}`;
+      if(!LOG_URL) return;
+      const payload={ type, ts:Date.now(), lang:LANG, name_set: !!USERNAME, ...extra };
+      if(navigator.sendBeacon){
+        const blob=new Blob([JSON.stringify(payload)],{type:'application/json'});
+        navigator.sendBeacon(LOG_URL, blob);
+      }
+    }catch(_){}
   }
-</script>
+  function logVisit(){ logEvent('visit'); }
+  function sleep(ms){ return new Promise(r=>setTimeout(r,ms)); }
 
-<script>
-  /* ===== Foto helpers ===== */
-  function createHiddenFileInput(mode='any'){
-	  const i = document.createElement('input');
-	  i.type = 'file';
-	  i.accept = 'image/*';          // laat alle fototypes toe
-	  if (mode === 'camera') {       // enkel forceren als de user camera kiest
-		i.setAttribute('capture', 'environment');
+  /* confetti */
+  const Confetti=function(){
+    const canvas=document.getElementById('confetti-canvas');
+    const ctx=canvas.getContext('2d');
+    let W,H,parts=[],running=false;
+    function resize(){ W=canvas.width=window.innerWidth; H=canvas.height=window.innerHeight; }
+    function add(n){
+      for(let i=0;i<n;i++){
+        parts.push({x:Math.random()*W,y:-10,r:2+Math.random()*4,dx:-1+Math.random()*2,dy:2+Math.random()*2,ttl:220+Math.random()*120});
+      }
+    }
+    function tick(){
+      ctx.clearRect(0,0,W,H);
+      parts.forEach(p=>{ p.x+=p.dx; p.y+=p.dy; p.ttl-=1; ctx.fillStyle='rgba(255,165,0,.85)'; ctx.beginPath(); ctx.arc(p.x,p.y,p.r,0,Math.PI*2); ctx.fill();});
+      parts=parts.filter(p=>p.ttl>0);
+      if(running) requestAnimationFrame(tick);
+    }
+    return {
+      start(){ running=true; resize(); add(140); tick(); window.addEventListener('resize',resize); },
+      stop(){ running=false; window.removeEventListener('resize',resize); ctx.clearRect(0,0,W,H); }
+    };
+  }();
+
+  /* background boost */
+  function bgBoost(ms=2200){
+    document.body.classList.add('demo-bright');
+    setTimeout(()=>document.body.classList.remove('demo-bright'), ms);
+  }
+  
+	async function askYesNo(questionHtml){
+	  await botui.message.add({ type:'html', content: questionHtml });
+	  const res = await botui.action.button({
+		action: [{ text:'Ja', value:'yes' }, { text:'Nee', value:'no' }]
+	  });
+	  return res?.value === 'yes';
+	}
+
+// --- schedule helpers voor schoonmaak step=3 ---
+// --- Config vaste vensters (di/do) ---
+const CLEAN_WINDOWS = [
+  { dow: 2, startH: 8,  endH: 12, labelNL: 'di 08:00–12:00', labelFR: 'mar 08:00–12:00' },
+  { dow: 4, startH: 13, endH: 17, labelNL: 'do 13:00–17:00', labelFR: 'jeu 13:00–17:00' }
+];
+
+// --- Instelling: feestdagen overslaan ---
+const SKIP_ON_HOLIDAYS = true;
+// Voeg hier je feestdagen toe in ISO 'YYYY-MM-DD' (Belgische 2025 voorbeelden):
+const HOLIDAYS = new Set([
+  '2025-01-01','2025-04-21','2025-05-01','2025-05-29','2025-06-09',
+  '2025-07-21','2025-08-15','2025-11-01','2025-11-11','2025-12-25'
+]);
+
+const DOW_NL = ['zo','ma','di','wo','do','vr','za'];
+const DOW_FR = ['dim','lun','mar','mer','jeu','ven','sam'];
+
+function pad2(n){ return n<10?('0'+n):(''+n); }
+
+function fmtWindow(dt, win, lang){
+  const dOw = lang==='fr' ? DOW_FR[ dt.getDay() ] : DOW_NL[ dt.getDay() ];
+  const d   = `${pad2(dt.getDate())}/${pad2(dt.getMonth()+1)}/${dt.getFullYear()}`;
+  const range = `${pad2(win.startH)}:00–${pad2(win.endH)}:00`;
+  return `${dOw} ${d}, ${range}`;
+}
+
+function isHoliday(date){
+  const key = `${date.getFullYear()}-${pad2(date.getMonth()+1)}-${pad2(date.getDate())}`;
+  return HOLIDAYS.has(key);
+}
+
+function isWithinWindow(now, win){
+  if (now.getDay() !== win.dow) return false;
+  const h = now.getHours() + now.getMinutes()/60;
+  return h >= win.startH && h < win.endH;
+}
+
+function nextStartFrom(now, win){
+  // eerstvolgende start (vandaag of later), ex. di 08:00
+  const base = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0,0,0,0);
+  const delta = (win.dow - now.getDay() + 7) % 7;
+  const t = new Date(base);
+  t.setDate(base.getDate() + delta);
+  t.setHours(win.startH,0,0,0);
+  // als voorbij → +7d
+  if (t <= now) t.setDate(t.getDate() + 7);
+  return t;
+}
+
+function getNextCleaning(now){
+  // indien we NU in een venster zitten → report 'inWindow'
+  for (const w of CLEAN_WINDOWS){
+    if (isWithinWindow(now, w) && (!SKIP_ON_HOLIDAYS || !isHoliday(now))) {
+      const nextAfter = nextStartFrom(new Date(now.getTime()+1), w);
+      return { inWindow:true, next: nextAfter, win: w };
+    }
+  }
+  // anders: dichtste toekomstige venster, sla feestdag over
+  let candidate = null, cwin = null;
+  for (const w of CLEAN_WINDOWS){
+    let t = nextStartFrom(now, w);
+    // overslaan indien feestdag: schuif door telkens +7d
+    if (SKIP_ON_HOLIDAYS){
+      while (isHoliday(t)) t.setDate(t.getDate()+7);
+    }
+    if (!candidate || t < candidate){ candidate = t; cwin = w; }
+  }
+  return { inWindow:false, next: candidate, win: cwin };
+}
+
+
+
+  /* naam */
+  async function askNameIfNeeded() {
+    if (USERNAME) return;
+    await botui.message.add({ type: 'html', content: t('hello_name') });
+    const res = await botui.action.text({
+      action: {
+        placeholder: LANG === 'fr' ? 'Entrez votre nom…' : 'Typ je naam…',
+        value: getStored(KEY_NAME) || ''
+      }
+    });
+    USERNAME = (res && res.value ? String(res.value).trim() : '') || (LANG === 'fr' ? 'collègue' : 'collega');
+    setStored(KEY_NAME, USERNAME);
+    await logEvent('name_set', { display_name: USERNAME });
+    await botui.message.add({ content: t('nice_to_meet', USERNAME) });
+    await sleep(60);
+  }
+
+  async function askProblem() {
+    await botui.message.add({ content: t('ask_problem') });
+    const { value } = await botui.action.text({
+      action: { placeholder: LANG==='fr' ? 'Décrivez brièvement…' : 'Omschrijf kort…' }
+    });
+    return (value||'').trim();
+  }
+
+  async function askEmail() {
+    await botui.message.add({ content: t('ask_email') });
+    let email='';
+    while(true){
+      const res = await botui.action.text({
+        action: { type:'email', placeholder: 'naam@bedrijf.be', value: getStored(KEY_MAIL) || '' }
+      });
+      email = (res && res.value || '').trim();
+      if(!email || /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) break;
+      await botui.message.add({ content: t('invalid_email') });
+    }
+    if(email){ EMAIL=email; setStored(KEY_MAIL,email); }
+    return email;
+  }
+
+  /* ticket flow */
+	async function ticketFlow(context, opts={}){
+	  const forceUrgent = !!opts.forceUrgent;
+	  const skipDetails = !!opts.skipDetails;
+	  const presetDesc  = opts.presetDesc || '';
+
+	  let urgent = 'nee';
+	  if (forceUrgent) urgent = 'ja';
+	  else {
+		await botui.message.add({ content: t('urgent_q', USERNAME) });
+		urgent = (await botui.action.button({
+		  action: [{ text: t('urgent_yes'), value:'ja' }, { text: t('urgent_no'), value:'nee' }]
+		}))?.value || 'nee';
 	  }
-	  i.style.display = 'none';
-	  document.body.appendChild(i);
-	  return i;
-}
 
-  function fileToDataUrl(file){
-    return new Promise((resolve,reject)=>{ const fr=new FileReader(); fr.onload=()=>resolve(fr.result); fr.onerror=reject; fr.readAsDataURL(file); });
-  }
-  function compressDataUrl(dataUrl,maxW=1200,quality=0.8){
-    return new Promise(res=>{ const img=new Image(); img.onload=function(){ const s=Math.min(1,maxW/img.width); const w=Math.round(img.width*s),h=Math.round(img.height*s);
-      const c=document.createElement('canvas'); c.width=w; c.height=h; const ctx=c.getContext('2d'); ctx.drawImage(img,0,0,w,h); res(c.toDataURL('image/jpeg',quality)); }; img.src=dataUrl; });
-  }
-</script>
+	  let desc = '';
+	  let photoChosen = false;
+	  let email = '';
 
-<script>
-// === Identifiers & sessions ===
-function uuidv4(){
-  return ([1e7]+-1e3+-4e3+-8e3+-1e11).replace(/[018]/g,c=>(c^crypto.getRandomValues(new Uint8Array(1))[0]&15>>c/4).toString(16));
-}
-const VISITOR_KEY='atalian_visitor_id'; let VISITOR_ID=localStorage.getItem(VISITOR_KEY); if(!VISITOR_ID){ VISITOR_ID=uuidv4(); localStorage.setItem(VISITOR_KEY,VISITOR_ID); }
-const SESSION_KEY='atalian_session_id'; let SESSION_ID=localStorage.getItem(SESSION_KEY);
-if(!SESSION_ID){ SESSION_ID=uuidv4(); localStorage.setItem(SESSION_KEY,SESSION_ID);
-  try{ const payload={event:'session_start',visitor_id:VISITOR_ID,session_id:SESSION_ID,lang:(window.LANG||'nl'),ts:Date.now()};
-    const blob=new Blob([JSON.stringify(payload)],{type:'application/json'}); navigator.sendBeacon && navigator.sendBeacon('/api/log',blob);}catch(_){}
-}
-const CHECKED_KEY='atalian_checkedin';
+	  if (!skipDetails){
+		// klassieke flow
+		desc = await askProblem();
 
-async function hashEmailToUserId(email){
-  const data=new TextEncoder().encode((email||'').trim().toLowerCase()); const buf=await crypto.subtle.digest('SHA-256',data);
-  const b=Array.from(new Uint8Array(buf)).map(x=>String.fromCharCode(x)).join(''); return btoa(b).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
-}
+		const photoChoice = (await botui.action.button({
+		  action: [
+			{ text: t('photo_take'), value: 'take' },
+			{ text: t('photo_gallery'), value: 'gallery' },
+			{ text: t('photo_skip'), value: 'skip' }
+		  ]
+		}))?.value;
 
-// === Centrale logger + queue ===
-async function postCentral(_url, data, timeoutMs = 4000) {
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), timeoutMs);
+		if (photoChoice === 'take' || photoChoice === 'gallery') {
+		  const pickPhoto = (capture=false) => new Promise(resolve => {
+			const input = document.createElement('input');
+			input.type = 'file'; input.accept = 'image/*';
+			if (capture) input.setAttribute('capture', 'environment');
+			input.onchange = () => {
+			  const file = input.files && input.files[0]; if (!file) return resolve(null);
+			  const reader = new FileReader();
+			  reader.onload = () => resolve({ dataUrl: reader.result, file });
+			  reader.onerror = () => resolve(null);
+			  reader.readAsDataURL(file);
+			};
+			input.click();
+		  });
+		  const picked = await pickPhoto(photoChoice === 'take');
+		  if (picked && picked.dataUrl) {
+			photoChosen = true;
+			await botui.message.add({ type:'html', content: t('photo_preview') });
+			await botui.message.add({ type:'html',
+			  content:`<div style="border:1px solid #e2e8f0;border-radius:8px;padding:6px;text-align:center;background:#fff">
+				<img alt="preview" src="${picked.dataUrl}" style="max-width:100%;height:auto;border-radius:6px"/>
+			  </div>`});
+		  } else {
+			await botui.message.add({ content: t('photo_none') });
+		  }
+		} else {
+		  await botui.message.add({ content: t('photo_skip_msg') });
+		}
 
-  try {
-    const res = await fetch(LOG_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(data),
-      signal: controller.signal
+		email = await askEmail();
+	  } else {
+		// snelle flow: geen vragen
+		desc  = presetDesc || '(auto)';
+		
+		// Vraag om e-mail als deze nog niet bekend is (EMAIL is de globale variabele)
+		if (!EMAIL) {
+            email = await askEmail(); // askEmail() vult de globale EMAIL en return de waarde
+        } else {
+            email = EMAIL;
+        }
+	  }
+
+	  const id = Math.random().toString(36).slice(2,8).toUpperCase();
+
+	  // Bedank/overzicht
+	  if (skipDetails && urgent==='ja' && I18N[LANG].fast_thanks){
+		await botui.message.add({ type:'html', content: t('fast_thanks', context, id, USERNAME) });
+	  } else {
+		await botui.message.add({ type:'html', content: t('thanks_sent', context, id) });
+	  }
+
+	  await botui.message.add({
+		type:'html',
+		content:
+		  `<div>${t('summary_heading')}</div>
+		   <div>${t('summary_urgent', urgent)}</div>
+		   <div>${t('summary_desc', desc)}</div>
+		   <div>${t('summary_email', email || '-' )}</div>
+		   <div>${photoChosen ? t('summary_photo') : ''}</div>`
+	  });
+
+	  if (urgent === 'ja') await botui.message.add({ content: t('servicedesk_note') });
+
+	  await logEvent('ticket_submitted', { context, urgent, has_photo: photoChosen, skip_details: skipDetails });
+	}
+
+
+
+  /* scenario's */
+  async function intro() {
+    await askNameIfNeeded();
+    const hi = t('intro_welcome', USERNAME);
+    if (hi) await botui.message.add({ type:'html', content: hi });
+    const line1 = t('intro_line1');
+    if (line1) await botui.message.add({ type:'html', content: line1 });
+
+    // Gebruik de nieuwe, opgesplitste i18n keys voor de bullet points
+    await botui.message.add({ type:'html', content:
+        `<b>${t('intro_list_title')}</b><br>` +
+        t('intro_list_1') + `<br>` +
+        t('intro_list_2')
     });
 
-    clearTimeout(timer);
+    const start = await botui.action.button({
+      action: [{ text: t('start_btn'), value: 'start' }]
+    });
 
-    if (!res.ok) {
-      throw new Error('HTTP ' + res.status);
+    if (start && start.value === 'start') {
+      localStorage.setItem('atalian_checkedin', 'yes');
+      const lang = LANG || 'nl';
+      window.location.href = `${window.location.pathname}?step=1&lang=${lang}`;
     }
-
-    // probeer JSON te lezen, maar vang fouten op
-    return await res.json().catch(() => ({ ok: true }));
-
-  } catch (err) {
-    clearTimeout(timer);
-    console.error('postCentral error', err);
-    return { ok: false, error: String(err) };
-  }
-}
-
-
-function queuePending(item){ try{ const k='atalian_pending'; const q=JSON.parse(localStorage.getItem(k)||'[]'); q.push(item); localStorage.setItem(k,JSON.stringify(q)); }catch(e){} }
-async function flushPending(){ try{ const k='atalian_pending'; const q=JSON.parse(localStorage.getItem(k)||'[]'); if(!q.length) return; const rest=[]; for(const it of q){ try{ await postCentral('/api/log',it,4000);}catch(e){rest.push(it);} } localStorage.setItem(k,JSON.stringify(rest)); }catch(e){} }
-async function logEvent(eventName,payload={}){ const base={event:eventName,visitor_id:VISITOR_ID,session_id:SESSION_ID,lang:(window.LANG||'nl'),ts:Date.now(),...payload}; try{ await postCentral('/api/log',base,3500);}catch(e){ queuePending(base);} }
-function logScenarioDone(step){ return logEvent('scenario_done',{step}); }
-function logVisit(){ return logEvent('visit',{path:location.pathname+location.search}); }
-</script>
-
-<script>
-  /* ===== Kern-logica + gate ===== */
-  let botui;
-  const emailRegex=/^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-  let USERNAME=localStorage.getItem('atalian_name')||'';
-
-  function sleep(ms){ return new Promise(r=>setTimeout(r,ms)); }
-  function launchConfetti(){ const end=Date.now()+800; (function frame(){ confetti({particleCount:80,spread:70,origin:{y:0.2}}); if(Date.now()<end) requestAnimationFrame(frame); })(); }
-
-  // voortgang
-  const PROG_KEY='atalian_all_done';
-  function markScenarioDone(step){ try{ localStorage.setItem('atalian_scenario_'+step,'done'); logScenarioDone(step); checkAllScenarios(); }catch(e){} }
-  function countCompleted(){ let n=0; for(let i=1;i<=4;i++){ if(localStorage.getItem('atalian_scenario_'+i)==='done') n++; } return n; }
-  function checkAllScenarios(){ try{ const all=[1,2,3,4].every(i=>localStorage.getItem('atalian_scenario_'+i)==='done'); const fired=localStorage.getItem(PROG_KEY)==='yes';
-    if(all && !fired){ localStorage.setItem(PROG_KEY,'yes'); launchConfetti(); botui && botui.message.add({type:'html',content:t('confetti_msg')}); } }catch(e){} }
-
-  // gate helpers
-  function isCheckedIn(){ return localStorage.getItem(CHECKED_KEY)==='yes'; }
-  function enforceGateOrRedirect(step){
-    if(step>0 && !isCheckedIn()){
-      logEvent('blocked_without_checkin',{attempt_step:step});
-      const base=window.location.pathname;
-      window.location.replace(`${base}?step=0&lang=${LANG}&need_checkin=1`);
-      return false;
-    }
-    return true;
-  }
-  function startNewSession(lang){
-    const sid=uuidv4(); localStorage.setItem(SESSION_KEY,sid); SESSION_ID=sid;
-    try{ const payload={event:'session_start',visitor_id:VISITOR_ID,session_id:sid,lang,ts:Date.now()};
-      const blob=new Blob([JSON.stringify(payload)],{type:'application/json'}); navigator.sendBeacon && navigator.sendBeacon('/api/log',blob);}catch(_){}
   }
 
-  // UI
-	// kleine helpers
-	const KEY_NAME  = 'atalian_name';
-	const KEY_EMAIL = 'atalian_email';
+  async function scenario1(){
+    await askNameIfNeeded();
+    await botui.message.add({content:t('scen1_q')});
+    await botui.action.button({action:[
+      {text:I18N[LANG].scen1_opts[0],value:'tech'},
+      {text:I18N[LANG].scen1_opts[1],value:'clean'}]});
+    await botui.message.add({content:t('scen1_feedback',USERNAME)});
+    await ticketFlow(LANG==='fr'?'signalement local/asset':'melding lokaal/asset');
+    markScenarioDone(1);
+    await endMessage(1);
+  }
 
-	function setStored(key, value) {
-	  try { localStorage.setItem(key, value); } catch(_) {}
-	  try { sessionStorage.setItem(key, value); } catch(_) {}
-	  document.cookie = `${key}=${encodeURIComponent(value)}; max-age=31536000; path=/; samesite=lax`;
-	}
-
-	function getStored(key) {
-	  try { const v = localStorage.getItem(key); if (v) return v; } catch(_) {}
-	  const m = document.cookie.split('; ').find(r => r.startsWith(key + '='));
-	  if (m) return decodeURIComponent(m.split('=')[1]);
-	  try { const v2 = sessionStorage.getItem(key); if (v2) return v2; } catch(_) {}
-	  return '';
-	}
-
-	async function askNameIfNeeded() {
-	  if (USERNAME) return;
-
-	  // eventueel vooraf opgeslagen naam tonen
-	  const pre = getStored(KEY_NAME);
-
-	  await botui.message.add({ type: 'html', content: t('hello_name') });
-
-	  const res = await botui.action.text({
-		action: {
-		  placeholder: LANG === 'fr' ? 'Entrez votre nom…' : 'Typ je naam…',
-		  value: pre || ''
-		}
-	  });
-
-	  USERNAME = (res && res.value ? String(res.value).trim() : '') || (LANG === 'fr' ? 'collègue' : 'collega');
-	  setStored(KEY_NAME, USERNAME);
-
-	  await logEvent('name_set', { display_name: USERNAME });
-	  await botui.message.add({ content: t('nice_to_meet', USERNAME) });
-	  await sleep(60);
-	}
-
-	async function askProblem() {
-	  await botui.message.add({ content: t('ask_problem') });
-
-	  const { value } = await botui.action.text({
-		action: { placeholder: LANG === 'fr' ? 'Décrivez brièvement…' : 'Schrijf kort je melding…' }
-	  });
-
-	  await sleep(40);
-	  return (value || '').trim();
-	}
-
-	async function askEmail() {
-	  const pre = getStored(KEY_EMAIL);
-
-	  await botui.message.add({ content: t('ask_email') });
-
-	  let { value } = await botui.action.text({
-		action: { placeholder: LANG === 'fr' ? 'vous@exemple.be' : 'jij@voorbeeld.be', value: pre || '' }
-	  });
-
-	  // <<< hier injecteren we de attributen >>>
-	  setTimeout(() => {
-		const inputs = document.querySelectorAll('.botui-actions-text-input');
-		const inp = inputs[inputs.length - 1]; // pak het laatste inputveld
-		if (inp) {
-		  inp.setAttribute('type', 'email');
-		  inp.setAttribute('autocomplete', 'email');
-		  inp.setAttribute('inputmode', 'email');
-		  inp.setAttribute('autocapitalize', 'off');
-		  inp.setAttribute('spellcheck', 'false');
-		}
-	  }, 0);
-	  // <<< einde injectie >>>
-
-	  let email = (value || '').trim();
-
-	  while (!emailRegex.test(email)) {
-		await botui.message.add({ content: t('invalid_email') });
-		const ans = await botui.action.text({
-		  action: { placeholder: LANG === 'fr' ? 'vous@exemple.be' : 'jij@voorbeeld.be', value: email }
-		});
-
-		// ook hier opnieuw attributen zetten (voor het nieuwe veld)
-		setTimeout(() => {
-		  const inputs = document.querySelectorAll('.botui-actions-text-input');
-		  const inp = inputs[inputs.length - 1];
-		  if (inp) {
-			inp.setAttribute('type', 'email');
-			inp.setAttribute('autocomplete', 'email');
-			inp.setAttribute('inputmode', 'email');
-			inp.setAttribute('autocapitalize', 'off');
-			inp.setAttribute('spellcheck', 'false');
-		  }
-		}, 0);
-
-		email = (ans && ans.value ? String(ans.value).trim() : '');
-	  }
-
-	  setStored(KEY_EMAIL, email);
-	  await sleep(60);
-	  return email;
-	}
-
-
-  
-async function askPhoto(botuiInstance, label = t('photo_label'), compress = true){
-  while (true) {
-    // Vraag + knoppen (i18n)
-    await botuiInstance.message.add({ content: label });
-    const choice = await botuiInstance.action.button({
-      action: [
-        { text: t('photo_take'), value: 'camera' },
-        { text: t('photo_gallery'), value: 'gallery' },
-        { text: t('photo_skip'), value: 'skip' }
+  // GEPASTE SCENARIO 2 FUNCTIE
+  async function scenario2(){
+    await askNameIfNeeded();
+    await botui.message.add({content:t('scen2_q')});
+    
+    const options = I18N[LANG].scen2_opts;
+    const choice = await botui.action.button({
+      action:[
+        {text: options[0], value:'bonen'},
+        {text: options[1], value:'melk'},
+        {text: options[2], value:'defect'}
       ]
     });
 
-    if (!choice || choice.value === 'skip') {
-      await botuiInstance.message.add({ content: t('photo_skip_msg') });
-      await sleep(80);
-      return null;
+    const selectedText = choice ? choice.text : (LANG === 'fr' ? 'Annulé' : 'Geannuleerd');
+    await botui.message.add({content:t('scen2_feedback', USERNAME, selectedText)});
+    
+    // Bepaal de beschrijving en flow
+    let description = selectedText;
+    let isUrgent = false;
+    let skipDetails = true; // Default: snelle flow (bonen, melk)
+
+    if (choice.value === 'defect') {
+        // Defect: is dringend en heeft een volledige beschrijving/foto nodig
+        description = (LANG === 'fr' ? 'Machine à café entièrement en panne' : 'Koffiemachine volledig defect');
+        isUrgent = true; 
+        skipDetails = false; // <-- Forceert de volledige ticket flow
+    } else if (choice.value === 'bonen') {
+        description = (LANG === 'fr' ? 'Grains de café épuisés' : 'Koffiebonen zijn op');
+    } else if (choice.value === 'melk') {
+        description = (LANG === 'fr' ? 'Lait/gobelets épuisés' : 'Melk/bekers zijn op');
     }
 
-    const input = createHiddenFileInput(choice.value === 'camera' ? 'camera' : 'any');
-
-    const result = await new Promise((resolve) => {
-      let resolved = false;
-
-      const cleanup = () => {
-        window.removeEventListener('focus', onFocus, true);
-        document.removeEventListener('visibilitychange', onVis, true);
-        if (input && input.parentNode) input.parentNode.removeChild(input);
-        clearTimeout(timer);
-      };
-      const safeResolve = (val) => { if (!resolved) { resolved = true; cleanup(); resolve(val); } };
-
-      // Normale pad: bestand gekozen
-      input.onchange = async () => {
-        const file = input.files && input.files[0];
-        if (!file) { safeResolve(null); return; }
-        try {
-          let dataUrl = await fileToDataUrl(file);
-          try { if (compress) dataUrl = await compressDataUrl(dataUrl, 1200, 0.8); } catch (_) {}
-          await botuiInstance.message.add({
-            type: 'html',
-            content: `<div class='hint'>${t('photo_preview')}</div>
-                      <img src='${dataUrl}' alt='photo'
-                           style='max-width:100%;border-radius:10px;border:1px solid #ddd'/>`
-          });
-          safeResolve(dataUrl);
-        } catch (e) {
-          console.error(e); safeResolve(null);
-        }
-      };
-
-      // Annuleren/terugkeren → resolve(null) zodat lus herstart
-      const onFocus = () => {
-        setTimeout(() => {
-          if (resolved) return;
-          const hasFile = input.files && input.files.length > 0;
-          if (!hasFile) safeResolve(null);
-        }, 300);
-      };
-      const onVis = () => { if (document.visibilityState === 'visible') onFocus(); };
-
-      window.addEventListener('focus', onFocus, true);
-      document.addEventListener('visibilitychange', onVis, true);
-
-      // Safety net
-      const timer = setTimeout(() => { safeResolve(null); }, 120000);
-
-      // start native picker
-      input.click();
+    // Roep de ticket flow aan, nu met dynamische skipDetails
+    await ticketFlow(t('scen2_context'), {
+      skipDetails: skipDetails,
+      forceUrgent: isUrgent,
+      presetDesc: description // Wordt alleen gebruikt als skipDetails: true
     });
 
-    await sleep(80);
-
-    if (result) return result; // foto gekozen → klaar
-
-    // geen foto gekozen → opnieuw opties tonen
-    await botuiInstance.message.add({ content: t('photo_none') });
+    markScenarioDone(2);
+    await endMessage(2);
   }
+  // EINDE GEPASTE SCENARIO 2 FUNCTIE
+
+	async function scenario3(){
+	  await askNameIfNeeded();
+
+	  await botui.message.add({ content: t('scen3_q') });
+	  await botui.action.button({ action:[{ text:t('scen3_btn'), value:'show' }] });
+
+	  // Kaartje met emoji + chips + "Nu bezig" badge
+	const now = new Date();
+	// haal alles op wat je later nodig hebt
+	const { inWindow, next, win } = getNextCleaning(now);
+	const nowBadge = inWindow ? `<span class="badge-now">${LANG==='fr'?'En cours':'Nu bezig'}</span>` : '';
+
+
+	await botui.message.add({
+	  type:'html',
+	  content: `
+		<div class="info-card">
+		  <div class="info-title">🧹 <span>${LANG==='fr'?'Programme de nettoyage - 2× par semaine':'Schoonmaakprogramma - 2× per week'}</span>${nowBadge}</div>
+		  <div class="info-sub"><span> <br></span>     </div>
+		  <div class="info-list">
+			<div class="info-row">
+			  <span class="ico">📅</span>
+			  <span class="txt">${LANG==='fr'?'mar':'di'} 08:00–12:00</span>
+			</div>
+			<div class="info-row">
+			  <span class="ico">📅</span>
+			  <span class="txt">${LANG==='fr'?'jeu':'do'} 13:00–17:00</span>
+			</div>
+		  </div>
+		  
+		</div>`
+	});
+
+
+	  // Volgende poetsbeurt (één regel)
+	  const nextStr = fmtWindow(next, win, LANG);
+	  await botui.message.add({ type:'html', content: t('scen3_next', nextStr) });
+
+	  await botui.message.add({ content: t('scen3_done') });
+	  markScenarioDone(3);
+	  await endMessage(3);
+	}
+
+
+
+
+async function scenario4(){
+  await askNameIfNeeded();
+
+  await botui.message.add({ content: t('scen4_q') });
+
+  const choice = await botui.action.button({
+    action: [
+      { text: I18N[LANG].scen4_opts[0], value:'wifi' },
+      { text: I18N[LANG].scen4_opts[1], value:'tv'   },
+      { text: I18N[LANG].scen4_opts[2], value:'other'}
+    ]
+  });
+
+  if (!choice) { await endMessage(4); return; }
+
+	// --- WIFI PAD ---
+	if (choice.value === 'wifi'){
+	  // Toon SSID + paswoord
+	  await botui.message.add({ type:'html', content: t('wifi_hint') });
+
+	  // Gelukt?
+	  const ok = await botui.action.button({
+		action: [
+		  { text: t('wifi_ok_yes'), value:'yes' },
+		  { text: t('wifi_ok_no'),  value:'no'  }
+		]
+	  });
+
+	  if (ok?.value === 'yes'){
+		await botui.message.add({ content: t('wifi_done') });
+		markScenarioDone(4); await endMessage(4); return;
+	  }
+
+	  // Mislukt → vraag of we meteen DRINGEND mogen aanmaken (zonder extra velden)
+	  const goUrgent = await askYesNo( t('confirm_urgent', USERNAME) );
+	  if (!goUrgent){
+		await botui.message.add({ type:'html', content: t('fast_cancel', USERNAME) });
+		markScenarioDone(4); await endMessage(4); return;
+	  }
+
+	  await ticketFlow(
+		(LANG==='fr'
+		  ? `Wi-Fi invité – salle de réunion — ${USERNAME}`
+		  : `Wifi-guest – vergaderruimte — ${USERNAME}`),
+		{
+		  forceUrgent: true,
+		  skipDetails: true,
+		  presetDesc: (LANG==='fr'
+			? 'Connexion GUEST (BeMyGuest) échouée'
+			: 'Verbinding GUEST (BeMyGuest) mislukt')
+		}
+	  );
+
+	  markScenarioDone(4); await endMessage(4); return;
+	}
+
+
+// --- TV PAD ---
+if (choice.value === 'tv'){
+  // 1) Staat de TV aan?
+  const isOn = await askYesNo( t('tv_q_power') );
+  if (!isOn){
+    await botui.message.add({ type:'html', content: t('tv_step_power_hint') });
+
+    // Foto: afstandsbediening
+    await botui.message.add({
+      type:'html',
+      content: `
+        <div class="img-card">
+          <img src="/TV_RC.png"
+               alt="${LANG==='fr'?'Télécommande sur la table':'Afstandsbediening op de tafel'}"
+               loading="lazy" />
+          <div class="img-caption">
+            ${LANG==='fr'
+              ? 'Astuce : la télécommande se trouve souvent au centre de la table.'
+              : 'Tip: de afstandsbediening ligt vaak in het midden van de tafel.'}
+          </div>
+        </div>`
+    });
+
+    const okAfterPower = await askYesNo( t('ok_now_q') );
+    if (okAfterPower){
+      await botui.message.add({ content: t('tv_ok') });
+      markScenarioDone(4); await endMessage(4); return;
+    }
+  }
+
+  // 2) Is de HDMI-kabel verbonden met je laptop?
+  const hdmiOk = await askYesNo( t('tv_q_hdmi') );
+  if (!hdmiOk){
+    await botui.message.add({ type:'html', content: t('tv_step_hdmi_hint') });
+
+    // Foto: HDMI-verbinding
+    await botui.message.add({
+      type:'html',
+      content: `
+        <div class="img-card">
+          <img src="/TV_HDMI.png"
+               alt="${LANG==='fr'
+                  ? 'Branchez le câble HDMI entre le laptop et la TV'
+                  : 'Verbind de HDMI-kabel tussen laptop en TV'}"
+               loading="lazy" />
+          <div class="img-caption">
+            ${LANG==='fr'
+              ? 'Astuce : poussez bien le connecteur jusqu’au “clic”.'
+              : 'Tip: duw de stekker goed door tot je een “klik” voelt.'}
+          </div>
+        </div>`
+    });
+
+    const okAfterHdmi = await askYesNo( t('ok_now_q') );
+    if (okAfterHdmi){
+      await botui.message.add({ content: t('tv_ok') });
+      markScenarioDone(4); await endMessage(4); return;
+    }
+  }
+
+  // 3) Is de bron van de TV ingesteld op HDMI1?
+  const srcOk = await askYesNo( t('tv_q_source') );
+  if (!srcOk){
+    await botui.message.add({ type:'html', content: t('tv_step_source_hint') });
+    const okAfterSrc = await askYesNo( t('ok_now_q') );
+    if (okAfterSrc){
+      await botui.message.add({ content: t('tv_ok') });
+      markScenarioDone(4); await endMessage(4); return;
+    }
+  }
+
+  // 4) Eindcheck: zie je nu beeld?
+  const finalOk = await askYesNo( t('tv_q_result') );
+  if (finalOk){
+    await botui.message.add({ content: t('tv_ok') });
+    markScenarioDone(4); await endMessage(4); return;
+  }
+
+  // 5) Escalatie → eerst toestemming; bij JA: direct DRINGEND (zonder extra velden)
+  const goUrgentTV = await askYesNo( t('confirm_urgent', USERNAME) );
+  if (!goUrgentTV){
+    await botui.message.add({ type:'html', content: t('fast_cancel', USERNAME) });
+    markScenarioDone(4); await endMessage(4); return;
+  }
+
+  await ticketFlow(
+    (LANG==='fr'
+      ? `TV – connexion laptop (salle de réunion) — ${USERNAME}`
+      : `TV – laptop verbinden (vergaderruimte) — ${USERNAME}`),
+    {
+      forceUrgent: true,
+      skipDetails: true,
+      presetDesc: (LANG==='fr'
+        ? 'TV sans image après essais (alimentation/HDMI/source)'
+        : 'TV geen beeld na checks (aan/HDMI/bron)')
+    }
+  );
+
+  markScenarioDone(4); await endMessage(4); return;
 }
 
 
 
 
 
-  // Ticket-flow
-  async function ticketFlow(contextLabel){
-    try{
-      await botui.message.add({content:t('urgent_q',USERNAME)});
-      const urgentChoice=await botui.action.button({action:[{text:t('urgent_yes'),value:'ja'},{text:t('urgent_no'),value:'nee'}]});
-      const urgentVal=(urgentChoice && urgentChoice.value) ? urgentChoice.value : 'nee'; await sleep(60);
 
-      const desc=await askProblem();
-      const photoDataUrl=await askPhoto(botui);
-      const email=await askEmail();
+  // --- ANDER PROBLEEM ---
+  await ticketFlow(t('other_context'));
+  markScenarioDone(4);
+  await endMessage(4);
+}
 
-      if(urgentVal==='ja'){ await botui.message.add({type:'html',content:t('servicedesk_note')}); await sleep(40); }
 
-      const fakeId='TCK-'+Math.random().toString(36).slice(2,6).toUpperCase();
-      try{ const key='atalian_demo_tickets'; const arr=JSON.parse(localStorage.getItem(key)||'[]');
-        arr.push({contextLabel,urgent:urgentVal,desc,email,photo:!!photoDataUrl,lang:LANG,ts:Date.now()});
-        localStorage.setItem(key,JSON.stringify(arr)); }catch(_){}
-      const user_id=email ? await hashEmailToUserId(email) : null;
-
-      await logEvent('ticket_submitted',{contextLabel,urgent:urgentVal,photo:!!photoDataUrl,desc_len:(desc||'').length,email_present:!!email,user_id});
-
-      await botui.message.add({type:'html',content:t('thanks_sent',contextLabel,fakeId)});
-      await botui.message.add({type:'html',content:`<span class="hint">${t('summary_heading')}</span><br>${t('summary_urgent',urgentVal)}<br>${t('summary_desc',desc)}<br>${t('summary_email',email)}${photoDataUrl?'<br>'+t('summary_photo'):''}`});
-      await sleep(50);
-    }catch(err){
-      console.error('ticketFlow error',err);
-      await botui.message.add({type:'html',content: LANG==='fr' ? "Oups, une erreur s’est produite. Réessayez ou faites un reset (appui long sur le logo). 🙏" : "Oei, er ging iets mis. Probeer nog eens, of reset (lang drukken op het logo). 🙏"});
-      throw err;
+  function countCompleted(){
+    let n=0; for(let i=1;i<=4;i++){ if(localStorage.getItem('atalian_scenario_'+i)==='yes') n++; } return n;
+  }
+  function markScenarioDone(i){
+    localStorage.setItem('atalian_scenario_'+i,'yes');
+    if(countCompleted()>=4 && localStorage.getItem(PROG_KEY)!=='yes'){
+      localStorage.setItem(PROG_KEY,'yes');
+      bgBoost(2600);
+      Confetti.start();
+      setTimeout(()=>Confetti.stop(),2200);
     }
   }
-  
 
+	async function endMessage(currStep){
+	  bgBoost();
+	  await botui.message.add({ type:'html', content: `<span class="end-highlight">${t('end_msg')}</span>` });
 
-
-  // Scenario’s
-	async function intro() {
-	  // Kwam je van een geblokkeerde step? (need_checkin=1)
-	  const fromGate = (qs.get('need_checkin') === '1');
-	  const need = t('need_checkin');
-
-	  if (fromGate && need && need.trim()) {
-		await botui.message.add({ type: 'html', content: need });
-	  } else {
-		// Gewone start: ruim oude intentie op, zodat we NIET automatisch doorsturen
-		localStorage.removeItem('atalian_attempt_step');
-	  }
-
-	  // Naam vragen (met prefill)
-	  await askNameIfNeeded();
-
-	  // Welkom & intro (met guards voor lege i18n-strings)
-	  const welcome = t('intro_welcome', USERNAME);
-	  if (welcome && welcome.trim()) {
-		await botui.message.add({ type: 'html', content: welcome });
-	  }
-
-	  const line1 = t('intro_line1');
-	  if (line1 && line1.trim()) {
-		await botui.message.add({ type: 'html', content: line1 });
-	  }
-
-	  const tip = t('intro_tip');
-	  if (tip && tip.trim()) {
-		await botui.message.add({ type: 'html', content: tip });
-	  }
-
-	  // Incheck-knop (zet gate open)
-	  const start = await botui.action.button({
-		action: [{ text: t('start_btn'), value: 'start' }]
+	  const res = await botui.action.button({
+		action: [
+		  { text: (LANG==='fr' ? 'Voir une autre démo' : 'Nog een demo zien?'), value: 'next' },
+		  { text: (LANG==='fr' ? 'Recharger l’écran' : 'Herbeginnen'),        value: 'reload' },
+		  { text: (LANG==='fr' ? 'Aller sur atalian.be' : 'Ga naar atalian.be'), value: 'site' }
+		]
 	  });
+	  if (!res) return;
 
-	  if (start && start.value === 'start') {
-		localStorage.setItem(CHECKED_KEY, 'yes');
-		await logEvent('checkin', { display_name: USERNAME });
-
-		const go = t('intro_go');
-		if (go && go.trim()) {
-		  await botui.message.add({ type: 'html', content: go });
-		}
-
-		// Redirect alleen als je écht via de gate kwam en er een bedoelde step is
-		//const next = localStorage.getItem('atalian_attempt_step');
-		//if (fromGate && next) {
-		//  window.location.replace(`${window.location.pathname}?step=${encodeURIComponent(next)}&lang=${LANG}`);
-		//  return;
-		//}
-
-		// Anders blijf je gewoon op step=0 (zoals je vroeger had): geen redirect
-		// Desgewenst kan je hier nog voortgang tonen:
-		// const done = countCompleted();
-		// await botui.message.add({ content: t('intro_progress', done) });
+	  if (res.value === 'next') {
+		const next = (currStep >= 4) ? 1 : (currStep + 1);
+		const lang = LANG || 'nl';
+		window.location.href = `${window.location.pathname}?step=${next}&lang=${lang}`;
+		return;
 	  }
+
+	  if (res.value === 'reload') {
+		const lang = localStorage.getItem('atalian_lang') || LANG || 'nl';
+		const step = isNaN(currStep) ? 0 : currStep;     // wil je altijd vanaf start? zet hier 0.
+		// enkel herladen, niks wissen:
+		window.location.href = `${window.location.pathname}?step=${step}&lang=${lang}&_=${Date.now()}`;
+		// of: window.location.reload();  // simpele reload zonder query-aanpassing
+		return;
+	  }
+
+	  window.location.href = 'https://www.atalian.be';
 	}
 
 
-	async function showCheckinGate(step){
-	  try { await logEvent('blocked_without_checkin', { attempt_step: step }); } catch(_) {}
-	  localStorage.setItem('atalian_attempt_step', String(step)); // ← voeg toe
-	  await botui.message.add({ type:'html', content: t('need_checkin') + '' });
-	}
 
-
-  async function scenarioCleaning(){ await askNameIfNeeded(); await botui.message.add({content:t('scen1_q')});
-    await botui.action.button({action:[{text:I18N[LANG].scen1_opts[0],value:'ultimo'},{text:I18N[LANG].scen1_opts[1],value:'mop'},{text:I18N[LANG].scen1_opts[2],value:'niks'}]});
-    await botui.message.add({content:t('scen1_feedback',USERNAME)});
-    try{ await ticketFlow(LANG==='fr'?'signalement nettoyage':'schoonmaak-melding'); markScenarioDone(1); await endMessage(); }catch(_){}
-  }
-  async function scenarioCoffee(){ await askNameIfNeeded(); await botui.message.add({content:t('scen2_q')});
-    await botui.action.button({action:[{text:I18N[LANG].scen2_opts[0],value:'bel'},{text:I18N[LANG].scen2_opts[1],value:'ultimo'},{text:I18N[LANG].scen2_opts[2],value:'thee'}]});
-    await botui.message.add({content:t('scen2_feedback',USERNAME)});
-    try{ await ticketFlow(LANG==='fr'?'machine à café en panne':'koffiemachine-melding'); markScenarioDone(2); await endMessage();}catch(_){}
-  }
-  async function scenarioProgram(){ await askNameIfNeeded(); await botui.message.add({content:t('scen3_q')});
-    await botui.action.button({action:[{text:t('scen3_btn'),value:'toon'}]});
-    await botui.message.add({type:'html',content:t('scen3_info')});
-    const wil=await botui.action.button({action:[{text:t('scen3_mk'),value:'ja'},{text:t('scen3_ok'),value:'nee'}]});
-    if(wil && wil.value==='ja'){ try{ await ticketFlow(LANG==='fr'?'programme de nettoyage':'poetsprogramma-melding'); markScenarioDone(3); await endMessage(); }catch(_){}} else { await botui.message.add({content:t('scen3_okreply')}); await endMessage(); markScenarioDone(3); }
-  }
-  async function scenarioLamp(){ await askNameIfNeeded(); await botui.message.add({content:t('scen4_q')});
-    await botui.action.button({action:[{text:I18N[LANG].scen4_opts[0],value:'ultimo'},{text:I18N[LANG].scen4_opts[1],value:'zelf'},{text:I18N[LANG].scen4_opts[2],value:'donker'}]});
-    await botui.message.add({content:t('scen4_feedback')});
-    try{ await ticketFlow(LANG==='fr'?'lampe cassée':'lamp-melding'); markScenarioDone(4); await endMessage(); }catch(_){}
-  }
-	async function endMessage(){
-	  // Toon geen eindboodschap als alle scenario’s reeds afgerond zijn
-	  if (localStorage.getItem(PROG_KEY) === 'yes') return;
-	  await botui.message.add({ content: t('end_msg') });
-	}
-
-
-  // URL reset (bv. ?reset=1)
   if(qs.get('reset')==='1'){
     const lang=(localStorage.getItem('atalian_lang')||'nl');
     localStorage.clear();
     localStorage.setItem('atalian_lang',lang);
-    startNewSession(lang);
     window.location.href = window.location.pathname + `?step=0&lang=${lang}`;
   }
 
   const STEP_PARAM=parseInt(qs.get('step')||'0',10);
-  const SCENARIOS=[intro,scenarioCleaning,scenarioCoffee,scenarioProgram,scenarioLamp];
+  const SCENARIOS=[intro,scenario1,scenario2,scenario3,scenario4];
 
-	async function start(){
-	  const step = isNaN(STEP_PARAM) ? 0 : Math.max(0, Math.min(4, STEP_PARAM));
-
-	  // Gate: als nog niet ingecheckt en men landt op step>0 → enkel melding tonen
-	  if (step > 0 && localStorage.getItem('atalian_checkedin') !== 'yes') {
-		await showCheckinGate(step);
-		return; // Stop: niet verder naar het scenario
-	  }
-
-	  // Normale flow
-	  await SCENARIOS[step]();
-	}
-
-
-
-  window.addEventListener('online',flushPending);
-  window.addEventListener('load', ()=>{ logVisit(); flushPending(); (botui=new BotUI('botui-app')) && start(); });
-
-  // Long-press reset op logo
- function launchResetEffect(){
-  // overlay
-  const ov=document.createElement('div');
-  ov.id='reset-overlay';
-  document.body.appendChild(ov);
-
-  // ripple vanaf logo-positie (ongeveer top)
-  const ripple=document.createElement('div');
-  ripple.className='reset-ripple';
-  ov.appendChild(ripple);
-
-  // emoji-regen
-  const EMO=['🧹','☕','💡','🔧','🛎️'];
-  const N=24;
-  for(let i=0;i<N;i++){
-    const s=document.createElement('div');
-    s.className='reset-emoji';
-    s.textContent=EMO[i%EMO.length];
-    const left=Math.random()*100;          // 0–100vw
-    const delay=Math.random()*0.35;        // 0–350ms
-    const dur=0.65+Math.random()*0.5;      // 650–1150ms
-    s.style.left=left+'vw';
-    s.style.animationDuration=dur+'s';
-    s.style.animationDelay=delay+'s';
-    ov.appendChild(s);
+  async function start(){
+    document.getElementById('subtitle').textContent = I18N[LANG].subtitle || '';
+    const step = isNaN(STEP_PARAM) ? 0 : Math.max(0, Math.min(4, STEP_PARAM));
+    botui = new BotUI('botui-app');
+    await SCENARIOS[step]();
   }
 
-  // haptic
-  try{ if(navigator.vibrate) navigator.vibrate(60); }catch(_){}
+  window.addEventListener('load', ()=>{ logVisit(); start(); });
 
-  // opruimen na animatie
-  setTimeout(()=>{ ov.remove(); }, 1200);
-}
- 
-	// Long-press reset op logo
-	window.addEventListener('DOMContentLoaded', ()=>{
-	  const logo=document.querySelector('img.logo'); 
-	  if(!logo) return;
-	  let pressTimer=null;
+  document.getElementById('btn-nl').addEventListener('click', ()=>{ localStorage.setItem('atalian_lang','nl'); location.href=`${location.pathname}?lang=nl&step=${isNaN(STEP_PARAM)?0:STEP_PARAM}`;});
+  document.getElementById('btn-fr').addEventListener('click', ()=>{ localStorage.setItem('atalian_lang','fr'); location.href=`${location.pathname}?lang=fr&step=${isNaN(STEP_PARAM)?0:STEP_PARAM}`;});
 
-	  function startP(){ 
-		cancelP(); 
-		pressTimer=setTimeout(()=>{ 
-		  // ✨ Speciaal effect
-		  launchResetEffect();
+  document.addEventListener('DOMContentLoaded', ()=>{
+    const logo=document.querySelector('img.logo');
+    if(!logo) return;
+    let pressTimer=null;
 
-		  const lang=(localStorage.getItem('atalian_lang')||'nl');
-		  [
-			'atalian_scenario_1','atalian_scenario_2','atalian_scenario_3','atalian_scenario_4',
-			'atalian_all_done','atalian_name','atalian_demo_tickets',CHECKED_KEY,'atalian_attempt_step'
-		  ].forEach(k=>localStorage.removeItem(k));
+    function launchResetEffect(){
+      const ov=document.createElement('div'); ov.id='reset-overlay'; document.body.appendChild(ov);
+      const ripple=document.createElement('div'); ripple.className='reset-ripple'; ov.appendChild(ripple);
+      const EMO=['🧹','☕','💡','🔧','🛎️'];
+      for(let i=0;i<12;i++){
+        const span=document.createElement('div'); span.className='reset-emoji'; span.textContent=EMO[i%EMO.length];
+        span.style.left=(20+Math.random()*60)+'vw'; span.style.animationDelay=(Math.random()*0.6)+'s';
+        ov.appendChild(span);
+      }
+      setTimeout(()=>{ try{ document.body.removeChild(ov);}catch(_){ } },1200);
+    }
 
-		  localStorage.setItem('atalian_lang',lang); 
-		  startNewSession(lang);
+    function startP(){
+      if(pressTimer) return;
+      pressTimer=setTimeout(()=>{
+        launchResetEffect();
+        try{
+          const lang=(localStorage.getItem('atalian_lang')||'nl');
+          Object.keys(localStorage).forEach(k=>{
+            if(k.startsWith('atalian_') && k!=='atalian_lang') localStorage.removeItem(k);
+          });
+          sessionStorage.clear();
+          const base=window.location.pathname;
+          window.location.replace(`${base}?step=0&lang=${lang}&_=${Date.now()}`);
+        }catch(_){}
+      },900);
+    }
+    function cancelP(){ if(pressTimer){ clearTimeout(pressTimer); pressTimer=null; } }
 
-		  // korte delay zodat effect zichtbaar is
-		  setTimeout(()=>{
-			const base=window.location.pathname; 
-			window.location.replace(`${base}?step=0&lang=${lang}&_=${Date.now()}`);
-		  },650);
-		},900); 
-	  }
-
-	  function cancelP(){ 
-		if(pressTimer){ 
-		  clearTimeout(pressTimer); 
-		  pressTimer=null; 
-		} 
-	  }
-
-	  logo.addEventListener('touchstart',startP,{passive:true}); 
-	  logo.addEventListener('mousedown',startP);
-	  logo.addEventListener('touchend',cancelP,{passive:true}); 
-	  logo.addEventListener('mouseup',cancelP); 
-	  logo.addEventListener('mouseleave',cancelP);
-	});
-
+    logo.addEventListener('touchstart',startP,{passive:true});
+    logo.addEventListener('mousedown',startP);
+    logo.addEventListener('touchend',cancelP,{passive:true});
+    logo.addEventListener('mouseup',cancelP);
+    logo.addEventListener('mouseleave',cancelP);
+  });
 </script>
 </body>
 </html>
