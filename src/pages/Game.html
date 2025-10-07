@@ -260,8 +260,8 @@
       intro_welcome: n => `Welkom, ${n}. Dit is een simulatie van onze QR-processen. In de demo-stappen zal je vier veelvoorkomende situaties doorlopen.`,
       intro_line1: 'Het doel: <b>snel, duidelijk en direct</b> melden wat er aan de hand is. Geen apps, geen telefoonnummers.',
       intro_list_title: 'Wat je in de demo kan verwachten:',
-      intro_list_1: '• **Registratie:** Direct een ticket aanmaken (technisch defect, schoonmaak, comfort).',
-      intro_list_2: '• **Informatie:** Onmiddellijk relevante info krijgen (schoonmaakprogramma, wifi-codes).',
+      intro_list_1: '• <b>Registratie:</b> Direct een ticket aanmaken (technisch defect, schoonmaak, comfort).',
+      intro_list_2: '• <b>Informatie:</b> Onmiddellijk relevante info krijgen (schoonmaakprogramma, wifi-codes).',
       start_btn: 'Start de demo',
       ask_problem: 'Kan je in het kort zeggen wat je wilt melden?',
       ask_email: 'Wat is je e-mailadres?',
@@ -289,12 +289,9 @@ fast_cancel: n => `Geen probleem, ${n}. We maken nu geen dringende oproep aan.`,
       scen1_q: 'Wat wil je melden in dit lokaal?',
       scen1_opts: ['🛠️ Technisch', '🧹 Schoonmaak'],
       scen1_feedback: (n) => `Helder, ${n}. We maken een korte melding aan.`,
-      // SCENARIO 2
-      scen2_q: 'Wat is er aan de hand met de koffiemachine? ☕️',
-      scen2_opts: ['Koffiebonen zijn op', 'Melk/bekers zijn op', 'Toestel is defect'],
-      scen2_feedback: (n, selection)=> `Prima, ${n}. Melding aangemaakt voor: ${selection}.`,
-      scen2_context: 'Koffiemachine-ticket',
-      // EINDE SCENARIO 2
+      scen2_q: 'Kies een snelle poets- of comfortvraag.',
+      scen2_opts: ['Schoonmaak nodig', 'Ultimo-check', 'Liever thee 😅'],
+      scen2_feedback: (n)=> `Prima, ${n}. Quick-ticket aangemaakt (demo).`,
 		scen3_q: 'Wil je het schoonmaakprogramma voor deze zone zien?',
 		scen3_btn: 'Toon programma',
 		scen3_badge: '2×/week',
@@ -334,8 +331,8 @@ fast_cancel: n => `Geen probleem, ${n}. We maken nu geen dringende oproep aan.`,
       intro_welcome: n => `Bienvenue, ${n}. Ceci est une simulation de nos processus QR. Vous allez parcourir quatre scénarios fréquents.`,
       intro_line1: 'L’objectif : <b>signaler le problème rapidement, clairement et directement</b>. Pas d’application, pas d’appel téléphonique.',
       intro_list_title: 'Ce que vous allez expérimenter dans cette démo :',
-      intro_list_1: '• **Enregistrement :** Créer immédiatement un ticket (technique, nettoyage, confort).',
-      intro_list_2: '• **Information :** Obtenir des informations pertinentes instantanément (programme de nettoyage, codes Wi-Fi).',
+      intro_list_1: '• <b>Enregistrement :</b> Créer immédiatement un ticket (technique, nettoyage, confort).',
+      intro_list_2: '• <b>Information :</b> Obtenir des informations pertinentes instantanément (programme de nettoyage, codes Wi-Fi).',
       start_btn: 'Démarrer la démo',
       ask_problem: 'Que souhaitez-vous signaler en quelques mots ?',
       ask_email: 'Quelle est votre adresse e-mail ?',
@@ -357,19 +354,16 @@ fast_cancel: n => `Pas de souci, ${n}. Pas de signalement urgent pour l’instan
       summary_heading: 'Récapitulatif :',
       summary_urgent: u => `• Urgent : <b>${u==='ja'?'oui':'non'}</b>`,
       summary_desc: d => `• Description : <b>${d||'-'}</b>`,
-      summary_email: e => `• Contact: <b>${e}</b>`,
+      summary_email: e => `• Contact : <b>${e}</b>`,
       summary_photo: '• Photo : <i>jointe</i>',
       end_msg: 'Merci. Démo terminée.',
       scen1_q: 'Que souhaitez-vous signaler pour ce local?',
       scen1_opts: ['Technique', 'Nettoyage', 'Rien – info seulement'],
       scen1_feedback: (n) => `Parfait, ${n}. Nous créons un signalement (démo).`,
-      // SCENARIO 2
-      scen2_q: 'Quel est le problème avec la machine à café ? ☕️',
-      scen2_opts: ['Plus de grains de café', 'Plus de lait/gobelets', 'Machine défectueuse'],
-      scen2_feedback: (n, selection)=> `Très bien, ${n}. Signalement créé pour : ${selection}.`,
-      scen2_context: 'Ticket machine à café',
-      // EINDE SCENARIO 2
-		scen3_q: 'Voulez-vous voir le programme de nettoyage voor deze zone ?',
+      scen2_q: 'Choisissez un ticket rapide nettoyage/confort.',
+      scen2_opts: ['Besoin de nettoyage', 'Check Ultimo', 'Plutôt du thé 😅'],
+      scen2_feedback: (n)=> `Très bien, ${n}. Quick-ticket créé (démo).`,
+		scen3_q: 'Voulez-vous voir le programme de nettoyage pour cette zone ?',
 		scen3_btn: 'Afficher le programme',
 		scen3_badge: '2×/semaine',
 		scen3_info: 'Le nettoyage a lieu <b>2× par semaine</b> : <b>mar 08:00–12:00</b> et <b>jeu 13:00–17:00</b>.',
@@ -395,10 +389,10 @@ fast_cancel: n => `Pas de souci, ${n}. Pas de signalement urgent pour l’instan
 		tv_q_result: 'Voyez-vous l’image maintenant ?',
 		tv_ok: 'Super, la TV fonctionne. ✅',
 		tv_escalate:  n => `Sinon, ${n}, on crée un signalement <b>urgent</b>.`,
-		tv_step_power_hint: '🔋 Allumez la TV met de afstandsbediening (onder de TV of op de tafel).',
-		tv_step_hdmi_hint: '🔌 Verbind de HDMI-kabel met je laptop.',
-		tv_step_source_hint: '🔀 Kies op de TV de bron <b>HDMI1</b> (knop Source/Input).',
-		ok_now_q: 'Is het nu in orde?',
+		tv_step_power_hint: '🔋 Allumez la TV avec la télécommande (sous la TV ou sur la table).',
+		tv_step_hdmi_hint: '🔌 Branchez le câble HDMI à votre laptop.',
+		tv_step_source_hint: '🔀 Sélectionnez la source <b>HDMI1</b> sur la TV (touche Source/Input).',
+		ok_now_q: 'Est-ce bon maintenant ?',
 		other_context: 'autre problème en salle de réunion'
     }
   };
@@ -647,13 +641,7 @@ function getNextCleaning(now){
 	  } else {
 		// snelle flow: geen vragen
 		desc  = presetDesc || '(auto)';
-		
-		// Vraag om e-mail als deze nog niet bekend is (EMAIL is de globale variabele)
-		if (!EMAIL) {
-            email = await askEmail(); // askEmail() vult de globale EMAIL en return de waarde
-        } else {
-            email = EMAIL;
-        }
+		email = EMAIL || '';
 	  }
 
 	  const id = Math.random().toString(36).slice(2,8).toUpperCase();
@@ -720,50 +708,18 @@ function getNextCleaning(now){
     await endMessage(1);
   }
 
-  // GEPASTE SCENARIO 2 FUNCTIE
   async function scenario2(){
     await askNameIfNeeded();
     await botui.message.add({content:t('scen2_q')});
-    
-    const options = I18N[LANG].scen2_opts;
-    const choice = await botui.action.button({
-      action:[
-        {text: options[0], value:'bonen'},
-        {text: options[1], value:'melk'},
-        {text: options[2], value:'defect'}
-      ]
-    });
-
-    const selectedText = choice ? choice.text : (LANG === 'fr' ? 'Annulé' : 'Geannuleerd');
-    await botui.message.add({content:t('scen2_feedback', USERNAME, selectedText)});
-    
-    // Bepaal de beschrijving en flow
-    let description = selectedText;
-    let isUrgent = false;
-    let skipDetails = true; // Default: snelle flow (bonen, melk)
-
-    if (choice.value === 'defect') {
-        // Defect: is dringend en heeft een volledige beschrijving/foto nodig
-        description = (LANG === 'fr' ? 'Machine à café entièrement en panne' : 'Koffiemachine volledig defect');
-        isUrgent = true; 
-        skipDetails = false; // <-- Forceert de volledige ticket flow
-    } else if (choice.value === 'bonen') {
-        description = (LANG === 'fr' ? 'Grains de café épuisés' : 'Koffiebonen zijn op');
-    } else if (choice.value === 'melk') {
-        description = (LANG === 'fr' ? 'Lait/gobelets épuisés' : 'Melk/bekers zijn op');
-    }
-
-    // Roep de ticket flow aan, nu met dynamische skipDetails
-    await ticketFlow(t('scen2_context'), {
-      skipDetails: skipDetails,
-      forceUrgent: isUrgent,
-      presetDesc: description // Wordt alleen gebruikt als skipDetails: true
-    });
-
+    await botui.action.button({action:[
+      {text:I18N[LANG].scen2_opts[0],value:'clean'},
+      {text:I18N[LANG].scen2_opts[1],value:'ultimo'},
+      {text:I18N[LANG].scen2_opts[2],value:'thee'}]});
+    await botui.message.add({content:t('scen2_feedback',USERNAME)});
+    await ticketFlow(LANG==='fr'?'ticket rapide nettoyage/confort':'quick-ticket poets/comfort');
     markScenarioDone(2);
     await endMessage(2);
   }
-  // EINDE GEPASTE SCENARIO 2 FUNCTIE
 
 	async function scenario3(){
 	  await askNameIfNeeded();
