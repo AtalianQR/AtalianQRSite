@@ -123,87 +123,100 @@
 
     // ===== CORE =====
     async function loadAll(){
-      const from = elFrom.value?.slice(0,10);
-      const to   = elTo.value?.slice(0,10);
-      if(!from || !to){
-        setStatus('Kies een geldige datumrange.', 'error');
-        return;
-      }
-      elBtn.disabled = true;
-      setStatus('Bezig met laden… ⏳');
+	  const from = elFrom.value?.slice(0,10);
+	  const to   = elTo.value?.slice(0,10);
+	  
+	  if(!from || !to){
+		setStatus('Kies een geldige datumrange.', 'error');
+		return;
+	  }
 
-      try{
-        // GEWIJZIGD: API_BASE is nu absoluut, dus geen location.origin meer nodig
-        const url = new URL(API_BASE); 
-        url.searchParams.set('from', from);
-        url.searchParams.set('to', to);
-        url.searchParams.set('view', VIEW);
-        // voeg limit toe voor veiligheid, backend mag dit negeren
-        url.searchParams.set('limit', '8000');
+	  elBtn.disabled = true;
+	  setStatus('Bezig met laden… ⏳');
 
-        const res = await fetch(url.toString(), { headers:{ 'Accept':'application/json' } });
-        if(!res.ok){
-          const text = await res.text().catch(()=> '');
-          setStatus(`Serverfout ${res.status}: ${res.statusText} — ${text?.slice(0,180)}`, 'error');
-          elCards.innerHTML = '';
-          return;
-        }
+	  try{
+		// 1. URL instellen (Directe Worker API)
+		const url = new URL(API_BASE); 
+		url.searchParams.set('from', from);
+		url.searchParams.set('to', to);
+		url.searchParams.set('view', VIEW);
+		url.searchParams.set('limit', '8000'); // Veiligheidslimiet
 
-        const data = await res.json();
-        if(!data || data.ok === false){
-          setStatus(`Geen data: ${data?.message || data?.msg || 'onbekende fout'}`, 'error');
-          elCards.innerHTML = '';
-          return;
-        }
+		// 2. FILTER TOEVOEGEN
+		// Gebruik een komma-gescheiden lijst van portal-events om game-events te negeren.
+		const portalEvents = [
+		  'visit', 
+		  'blocked_without_checkin', 
+		  'submit', 
+		  'ticket_submitted', 
+		  'restart', 
+		  'external_info', 
+		  'idle', 
+		  'pagehide'
+		].join(',');
+		url.searchParams.set('events', portalEvents);
 
-        // We verwachten bij view=summary: { items:[ {day:'YYYY-MM-DD', total, withPhoto, urgent, byEvent?}, ... ] }
-        // Maar als de backend raw events geeft, groeperen we zélf — ZONDER sorteren.
-        let daysList = [];
+		const res = await fetch(url.toString(), { headers:{ 'Accept':'application/json' } });
+		
+		if(!res.ok){
+		  const text = await res.text().catch(()=> '');
+		  setStatus(`Serverfout ${res.status}: ${res.statusText} — ${text?.slice(0,180)}`, 'error');
+		  elCards.innerHTML = '';
+		  return;
+		}
 
-        if (Array.isArray(data.items) && data.items.length && 'day' in data.items[0]) {
-          // 1) De server leverde al dag-samenvattingen. Respecteer aangeleverde volgorde.
-          daysList = data.items;
-        } else if (Array.isArray(data.items)) {
-          // 2) Raw events: zelf groeperen (in invoegvolgorde)
-          const dayMap = new Map(); // insertion order preserved
-          for (const ev of data.items) {
-            const t = Number(ev?.server_ts ?? ev?.ts ?? NaN);
-            if (!Number.isFinite(t)) continue;
-            const day = toLocalDateISO(t);
-            if (!day) continue;
+		const data = await res.json();
+		if(!data || data.ok === false){
+		  setStatus(`Geen data: ${data?.message || data?.msg || 'onbekende fout'}`, 'error');
+		  elCards.innerHTML = '';
+		  return;
+		}
 
-            if (!dayMap.has(day)) {
-              dayMap.set(day, { day, total:0, withPhoto:0, urgent:0, byEvent:{} });
-            }
-            const g = dayMap.get(day);
-            g.total += 1;
-            if (ev.photo)  g.withPhoto += 1;
-            if (ev.urgent) g.urgent += 1;
-            const name = String(ev.event ?? 'event');
-            g.byEvent[name] = (g.byEvent[name] || 0) + 1;
-          }
-          // behoud invoegvolgorde — geen sort!
-          daysList = Array.from(dayMap.values());
-        } else {
-          setStatus('Onverwacht dataformaat (geen items).', 'error');
-          elCards.innerHTML = '';
-          return;
-        }
+		let daysList = [];
 
-        renderDays(daysList);
-        if(!daysList.length){
-          setStatus('Geen resultaten in deze periode.', 'ok');
-        }else{
-          setStatus(`OK — ${daysList.length} dag(en).`, 'ok');
-        }
+		if (Array.isArray(data.items) && data.items.length && 'day' in data.items[0]) {
+		  // Server leverde dag-samenvattingen
+		  daysList = data.items;
+		} else if (Array.isArray(data.items)) {
+		  // Raw events: zelf groeperen (in invoegvolgorde)
+		  const dayMap = new Map();
+		  for (const ev of data.items) {
+			const t = Number(ev?.server_ts ?? ev?.ts ?? NaN);
+			if (!Number.isFinite(t)) continue;
+			const day = toLocalDateISO(t);
+			if (!day) continue;
 
-      }catch(err){
-        setStatus(`Netwerk/parse fout: ${err?.message || err}`, 'error');
-        elCards.innerHTML = '';
-      }finally{
-        elBtn.disabled = false;
-      }
-    }
+			if (!dayMap.has(day)) {
+			  dayMap.set(day, { day, total:0, withPhoto:0, urgent:0, byEvent:{} });
+			}
+			const g = dayMap.get(day);
+			g.total += 1;
+			if (ev.photo)  g.withPhoto += 1;
+			if (ev.urgent) g.urgent += 1;
+			const name = String(ev.event ?? 'event');
+			g.byEvent[name] = (g.byEvent[name] || 0) + 1;
+		  }
+		  daysList = Array.from(dayMap.values());
+		} else {
+		  setStatus('Onverwacht dataformaat (geen items).', 'error');
+		  elCards.innerHTML = '';
+		  return;
+		}
+
+		renderDays(daysList);
+		if(!daysList.length){
+		  setStatus('Geen resultaten in deze periode.', 'ok');
+		}else{
+		  setStatus(`OK — ${daysList.length} dag(en). ${data.items.length} events verwerkt.`, 'ok');
+		}
+
+	  }catch(err){
+		setStatus(`Netwerk/parse fout: ${err?.message || err}`, 'error');
+		elCards.innerHTML = '';
+	  }finally{
+		elBtn.disabled = false;
+	  }
+	}
 
     // Render ZONDER te sorteren
     function renderDays(days){
