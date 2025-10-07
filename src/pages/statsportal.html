@@ -75,7 +75,9 @@
 
   <script type="module">
     // === CONFIG ===
-    const API_BASE = '/.netlify/functions/prod_formstats'; // proxy function
+    // Oude waarde was: '/.netlify/functions/prod_formstats' (de proxy die de 504 gaf)
+    // Nieuwe waarde: directe aanroep naar de Cloudflare Worker, net als statsgame.html
+    const API_BASE = 'https://atalian-logs.atalianqr.workers.dev/api/log'; // directe worker API
     const VIEW     = 'summary';                             // vraag dag-samenvatting op
     const MAX_RENDER = 1000; // veiligheid: render max N kaarten
 
@@ -131,7 +133,8 @@
       setStatus('Bezig met laden… ⏳');
 
       try{
-        const url = new URL(API_BASE, location.origin);
+        // GEWIJZIGD: API_BASE is nu absoluut, dus geen location.origin meer nodig
+        const url = new URL(API_BASE); 
         url.searchParams.set('from', from);
         url.searchParams.set('to', to);
         url.searchParams.set('view', VIEW);
