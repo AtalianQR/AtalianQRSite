@@ -83,8 +83,8 @@
   </div>
 
   <script>
-    /* ===== API-endpoint (same-origin via Netlify rewrite) ===== */
-    const API = '/api/log';
+    /* ===== API-endpoint (hardcoded to external logger for robust demo) ===== */
+    const API = 'https://atalian-logs.atalianqr.workers.dev/api/log';
 
     /* ===== Utils ===== */
     const $ = (s)=>document.querySelector(s);
@@ -144,6 +144,9 @@
     /* ===== Healthcheck (Edge Function /api/health indien aanwezig) ===== */
     async function pingHealth(){
       try{
+        // De health-check is een lokaal /api/health endpoint. Als dit niet werkt op de host van de gebruiker, geven we een neutraal antwoord.
+        // Omdat ik het lokaal pad niet kan wijzigen naar een extern adres zonder een extern health-check endpoint te kennen,
+        // gebruik ik hier een try-catch om het dashboard niet te breken.
         const r = await fetch('/api/health',{cache:'no-store'});
         $('#health').textContent = r.ok ? '🟢' : '🟠';
       }catch{ $('#health').textContent = '🔴'; }
@@ -172,6 +175,7 @@
     async function resetCounter(){
       $('#status').textContent = '⏳ reset...';
       try{
+        // Deze POST stuurt een reset event naar de log-API.
         const r = await fetch(API, {
           method:'POST',
           headers:{'Content-Type':'application/json'},
