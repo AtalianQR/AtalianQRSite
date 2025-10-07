@@ -286,6 +286,10 @@ fast_cancel: n => `Geen probleem, ${n}. We maken nu geen dringende oproep aan.`,
       summary_email: e => `• Contact: <b>${e}</b>`,
       summary_photo: '• Foto: <i>bijgevoegd</i>',
       end_msg: 'Bedankt. Klaar met deze demo.',
+      // NIEUW: Generieke Ja/Nee knoppen
+      yes_btn: 'Ja',
+      no_btn: 'Nee',
+      // Einde NIEUW
       scen1_q: 'Wat wil je melden in dit lokaal?',
       scen1_opts: ['🛠️ Technisch', '🧹 Schoonmaak'],
       scen1_feedback: (n) => `Helder, ${n}. We maken een korte melding aan.`,
@@ -354,9 +358,13 @@ fast_cancel: n => `Pas de souci, ${n}. Pas de signalement urgent pour l’instan
       summary_heading: 'Récapitulatif :',
       summary_urgent: u => `• Urgent : <b>${u==='ja'?'oui':'non'}</b>`,
       summary_desc: d => `• Description : <b>${d||'-'}</b>`,
-      summary_email: e => `• Contact : <b>${e}</b>`,
+      summary_email: e => `• Contact: <b>${e}</b>`,
       summary_photo: '• Photo : <i>jointe</i>',
       end_msg: 'Merci. Démo terminée.',
+      // NIEUW: Generieke Oui/Non knoppen
+      yes_btn: 'Oui',
+      no_btn: 'Non',
+      // Einde NIEUW
       scen1_q: 'Que souhaitez-vous signaler pour ce local?',
       scen1_opts: ['Technique', 'Nettoyage', 'Rien – info seulement'],
       scen1_feedback: (n) => `Parfait, ${n}. Nous créons un signalement (démo).`,
@@ -458,8 +466,9 @@ fast_cancel: n => `Pas de souci, ${n}. Pas de signalement urgent pour l’instan
   
 	async function askYesNo(questionHtml){
 	  await botui.message.add({ type:'html', content: questionHtml });
+	  // GEFIXT: Gebruik nu t('yes_btn') en t('no_btn') voor de juiste taal
 	  const res = await botui.action.button({
-		action: [{ text:'Ja', value:'yes' }, { text:'Nee', value:'no' }]
+		action: [{ text:t('yes_btn'), value:'yes' }, { text:t('no_btn'), value:'no' }]
 	  });
 	  return res?.value === 'yes';
 	}
