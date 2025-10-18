@@ -64,15 +64,29 @@
 <script type="module">
 import { parseUltimoQR } from '/js/CodeUrl.js';
 
-/* ▸ 0. |-scheidingstekens éénmalig vervangen door & (en herladen) ◂ */
+/* ▸ 0. Normaliseer afwijkende scheidingstekens in de query ◂ */
 (function () {
-  const raw = window.location.search;
-  if (raw.includes('|')) {
-    window.location.replace(
-      window.location.origin + window.location.pathname +
-      raw.replace(/\|/g, '&') + window.location.hash
-    );
-    return; // stop verdere uitvoering op de OUDE URL
+  // Ruwe en gedecodeerde zoekstring
+  const raw = window.location.search || '';
+  if (!raw) return;
+
+  // Normaliseer percent-encodes naar zichtbare tekens, puur voor detectie
+  let dec = decodeURIComponent(raw);
+
+  // 0a) Pipe → ampersand (backwards compatibility)
+  if (dec.includes('|')) {
+    const fixed = dec.replace(/\|/g, '&');
+    window.location.replace(window.location.origin + window.location.pathname + fixed + window.location.hash);
+    return;
+  }
+
+  // 0b) Tilde-vorm "lang=nl~code=...." → "lang=nl&code=...."
+  //   - werkt ook als de tilde in procentcode zat (%7E), door de decode hierboven
+  //   - pakt zowel "?lang=xx~code=yy" als "&lang=xx~code=yy"
+  if (dec.includes('~code=')) {
+    const fixed = dec.replace(/([?&]lang=[^&~=]+)~code=/i, '$1&code=');
+    window.location.replace(window.location.origin + window.location.pathname + fixed + window.location.hash);
+    return;
   }
 })();
 
