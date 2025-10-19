@@ -144,17 +144,27 @@
 
 		// 2. FILTER TOEVOEGEN
 		// Gebruik een komma-gescheiden lijst van portal-events om game-events te negeren.
-		const portalEvents = [
-		  'visit', 
-		  'blocked_without_checkin', 
-		  'submit', 
-		  'ticket_submitted', 
-		  'restart', 
-		  'external_info', 
-		  'idle', 
-		  'pagehide'
-		].join(',');
-		url.searchParams.set('events', portalEvents);
+	const portalEvents = [
+	  'url_load',            // pageload
+	  'step',                // alle chat-steps (start, flow_start, ask_*, …)
+	  'invalid_qr',
+	  'open_jobs_shown',
+	  'existing_list_confirm',
+	  'urgent_answer',
+	  'desc_entered',
+	  'email_entered',
+	  'submit_attempt',
+	  'submit_success',
+	  'submit_error',
+	  'poets_info_viewed',
+	  'language_switch',
+	  'restart',
+	  'external_info',
+	  'idle',
+	  'pagehide'
+	].join(',');
+	url.searchParams.set('events', portalEvents);
+
 
 		const res = await fetch(url.toString(), { headers:{ 'Accept':'application/json' } });
 		
