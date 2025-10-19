@@ -1,65 +1,83 @@
-export async function handler(event, context) {
+// netlify/functions/melding.js
+const API_KEY  = process.env.ULTIMO_API_KEY;              // per context ingevuld
+const BASE_URL = process.env.ULTIMO_API_BASEURL;          // bv. https://atalian.ultimo.net/api/v1  (prod)
+// in Deploy Previews zet je hier de TEST-waarde
+const APP_ONE  = process.env.APP_ELEMENT_OneAtalianJob;   // ApplicationElementId
+
+const json = (status, obj) => ({
+  statusCode: status,
+  headers: {
+    'Content-Type': 'application/json',
+    'Access-Control-Allow-Origin': '*',
+    'Access-Control-Allow-Methods': 'POST, OPTIONS',
+    'Access-Control-Allow-Headers': 'Content-Type, ApplicationElementId, ApiKey'
+  },
+  body: JSON.stringify(obj)
+});
+
+export async function handler(event) {
+  // CORS preflight
+  if (event.httpMethod === 'OPTIONS') return json(204, {});
+
   if (event.httpMethod !== 'POST') {
-    return {
-      statusCode: 405,
-      body: 'Method Not Allowed'
-    };
+    return json(405, { error: 'Method Not Allowed' });
   }
-console.log('RECEIVED DATA:', event.body);
-  const API_KEY = "03F5BDB822224699AD5077BE481BB627";
-  const APPLICATION_ELEMENT_ID = "3f92bbfca30445ff875f3a9d956441be";
-  const url = "https://atalian-test.ultimo.net/api/v1/action/_REST_OneAtalianJob";
+
+  // Veilige parse
+  let data;
+  try { data = JSON.parse(event.body || '{}'); }
+  catch { return json(400, { error: 'Body is geen geldige JSON.' }); }
+
+  const id         = String(data.id || '').trim();
+  const type       = String(data.type || '').trim();     // 'sp' | 'eq'
+  const JobDescr   = String(data.JobDescr || '').trim();
+  const ReportText = String(data.ReportText || '').trim();
+  const lang       = (data.lang === 'fr' ? 'fr' : 'nl'); // optioneel
+
+  // Validatie
+  if (!id || !type || !JobDescr || !ReportText) {
+    return json(400, { error: 'Vereist: id, type, JobDescr, ReportText.' });
+  }
+  if (type !== 'sp' && type !== 'eq') {
+    return json(400, { error: "type moet 'sp' (Space) of 'eq' (Equipment) zijn." });
+  }
+
+  // Payload opbouwen
+  const payload = { JobDescr, ReportText };
+  if (type === 'sp') payload.SpaceId = id;
+  if (type === 'eq') payload.EquipmentId = id;
+
+  // Actie-endpoint (zelfde padnaam in prod & test)
+  const actionUrl = `${BASE_URL}/action/_REST_OneAtalianJob`;
 
   try {
-    const data = JSON.parse(event.body);
-    const { id, type, lang, JobDescr, ReportText } = data;
-
-    // Validatie
-    if (!id || !type || !JobDescr || !ReportText) {
-      return {
-        statusCode: 400,
-        body: JSON.stringify({ error: 'Missing required fields: id, type, JobDescr, or ReportText' })
-      };
-    }
-
-    // Opbouw payload
-    const payload = {
-      JobDescr,
-      ReportText
-    };
-
-    if (type === 'sp') {
-      payload.SpaceId = id;
-    } else if (type === 'eq') {
-      payload.EquipmentId = id;
-    } else {
-      return {
-        statusCode: 400,
-        body: JSON.stringify({ error: `Unknown type "${type}". Must be 'sp' or 'eq'.` })
-      };
-    }
-
-    const response = await fetch(url, {
-      method: "POST",
+    const res = await fetch(actionUrl, {
+      method: 'POST',
       headers: {
-        "accept": "application/json",
-        "ApiKey": API_KEY,
-        "ApplicationElementId": APPLICATION_ELEMENT_ID,
-        "Content-Type": "application/json"
+        accept: 'application/json',
+        'Content-Type': 'application/json',
+        ApiKey: API_KEY,
+        ApplicationElementId: APP_ONE
       },
       body: JSON.stringify(payload)
     });
 
-    const text = await response.text();
+    // Ultimo kan 200/201/204 teruggeven; lees tekst/JSON defensief
+    const text = await res.text();
+    let body;
+    try { body = JSON.parse(text); } catch { body = { raw: text }; }
 
-    return {
-      statusCode: response.status,
-      body: text
-    };
-  } catch (error) {
-    return {
-      statusCode: 500,
-      body: `Serverfout: ${error.message}`
-    };
+    if (!res.ok) {
+      return json(res.status, { error: 'Fout bij aanmaken melding.', detail: body });
+    }
+
+    return json(200, {
+      ok: true,
+      result: body,
+      context: process.env.CONTEXT // 'production' | 'deploy-preview' | 'branch-deploy' (debug)
+    });
+
+  } catch (e) {
+    return json(500, { error: 'Serverfout bij doorsturen naar Ultimo.', detail: String(e?.message || e) });
   }
 }
