@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>StatsPortal — Vandaag (top 50) + duidelijke ID</title>
+  <title>StatsPortal — Recente logs (top 50) + duidelijke ID</title>
   <style>
     :root{ --bg:#0f1115; --card:#151923; --muted:#8b93a7; --text:#e7ecf2; --br:#23293a; --chip:#2a3142; --accent:#6ea8fe; }
     *{box-sizing:border-box}
@@ -15,6 +15,7 @@
     .bar input[type="text"], .bar input[type="number"]{background:#0f1422;color:var(--text);border:1px solid var(--br);border-radius:8px;padding:6px 8px}
     .btn{border:1px solid var(--br);background:#0f1422;color:var(--text);padding:8px 10px;border-radius:10px;cursor:pointer}
     .btn:hover{border-color:#3a4260}
+    .btn:disabled{opacity:0.5;cursor:not-allowed}
     .wrap{padding:0 18px 18px;display:grid;grid-template-columns:1fr 360px;gap:12px}
     @media (max-width: 1000px){ .wrap{grid-template-columns:1fr} }
     .panel{background:var(--card);border:1px solid var(--br);border-radius:12px;padding:12px}
@@ -44,7 +45,7 @@
 </head>
 <body>
 <header>
-  <h1>📊 StatsPortal <small>Vandaag (top 50) + duidelijke ID</small></h1>
+  <h1>📊 StatsPortal <small>Recente logs (top 50) + duidelijke ID</small></h1>
   <div class="bar">
     <label>Logs API:
       <input type="text" id="api" size="48" value="https://atalian-logs.atalianqr.workers.dev/api/log">
@@ -76,7 +77,7 @@
     <div class="kv"><span>Space</span><b id="mSp">0</b></div>
     <div class="kv"><span>Unknown target</span><b id="mTk">0</b></div>
     <hr style="border:none;border-top:1px solid var(--br);margin:10px 0">
-    <div class="kv"><span>Dagfilter</span><b id="mDay">vandaag</b></div>
+    <div class="kv"><span>Dagfilter</span><b id="mDay">Recentste logs (alle dagen)</b></div>
     <div class="kv"><span>Laatst geladen</span><b id="mLoaded">—</b></div>
   </aside>
 </div>
@@ -90,19 +91,19 @@ function setStatus(m,k=''){ const el=$('#status'); el.textContent=m; el.classNam
 function toLocalDayKey(ts){ const d=new Date(Number(ts)); const y=d.toLocaleDateString('nl-BE',{timeZone:TZ,year:'numeric'}); const m=d.toLocaleDateString('nl-BE',{timeZone:TZ,month:'2-digit'}); const da=d.toLocaleDateString('nl-BE',{timeZone:TZ,day:'2-digit'}); return `${y}-${m}-${da}`; }
 function todayKey(){ return toLocalDayKey(Date.now()); }
 function fmtTime(ts){ return new Intl.DateTimeFormat('nl-BE',{timeZone:TZ,hour:'2-digit',minute:'2-digit',second:'2-digit'}).format(new Date(Number(ts))); }
+function fmtDate(ts){ return new Intl.DateTimeFormat('nl-BE',{timeZone:TZ,month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'}).format(new Date(Number(ts))); } // Aangepast formaat voor de lijst
 
-// 13→6 decode: neem posities 0,2,4,6,8,10
 function decode13to6(code13){
   const s=String(code13);
   if(!/^\d{13}$/.test(s)) return '';
   return s[0]+s[2]+s[4]+s[6]+s[8]+s[10];
 }
 
-// env: eerst expliciet veld, dan host-heuristiek
 function readEnv(ev){
   const direct=(ev.env||ev.environment||'').toString().toLowerCase();
   if (direct==='prod'||direct==='production') return 'prod';
   if (direct==='test'||direct==='accept'||direct==='acc') return 'test';
+  
   const urlish=ev.href||ev.url||ev.location||ev.referrer||ev.origin||'';
   let host=''; try{ host=new URL(urlish).host.toLowerCase(); }catch(_){ host=(ev.host||ev.domain||'').toLowerCase(); }
   if (PROD_HOSTS.has(host)) return 'prod';
@@ -110,7 +111,6 @@ function readEnv(ev){
   return 'unknown';
 }
 
-// Haal id/soort uit meerdere velden + querystring + 13-cijferregel
 function extractIdentity(ev){
   const fields = [ev.id, ev.code, ev.eq_id, ev.spc_id, ev.equipmentId, ev.spaceId, ev._id].filter(Boolean).map(String);
   let urlId=''; let urlType='';
@@ -120,7 +120,6 @@ function extractIdentity(ev){
     urlType = (u.searchParams.get('type')||u.searchParams.get('t')||'').toLowerCase();
   }catch(_){}
 
-  // voorkeur: 13-cijferige code
   const hit13 = fields.find(v=>/^\d{13}$/.test(v)) || (urlId && /^\d{13}$/.test(urlId) ? urlId : '');
   if (hit13){
     const id6 = decode13to6(hit13);
@@ -129,10 +128,8 @@ function extractIdentity(ev){
     return { kind, id6, id13: hit13 };
   }
 
-  // anders: 6-cijferig id ergens
   const hit6 = fields.find(v=>/^\d{6}$/.test(v)) || (urlId && /^\d{6}$/.test(urlId) ? urlId : '');
   if (hit6){
-    // soort proberen af te leiden via type/url/veldnamen
     let kind = 'unknown';
     const t = String(ev.type||'').toLowerCase();
     if (/(equip|eq)/.test(t) || /equipment/i.test(JSON.stringify(ev))) kind='equipment';
@@ -142,14 +139,12 @@ function extractIdentity(ev){
     return { kind, id6: hit6, id13: '' };
   }
 
-  // fallback: we tonen wat we hebben
   const raw = fields[0] || urlId || '';
   let kind = 'unknown';
   const t = String(ev.type||'').toLowerCase();
   if (/(equip|eq)/.test(t)) kind='equipment';
   if (/(space|sp)/.test(t)) kind='space';
   if (!kind || kind==='unknown'){
-    // heuristiek op veldnaam
     if ('equipmentId' in ev || 'eq_id' in ev) kind='equipment';
     if ('spaceId' in ev || 'spc_id' in ev) kind='space';
   }
@@ -168,7 +163,7 @@ function renderList(dayKey, arr){
   const root=$('#list'); root.innerHTML='';
   const box=document.createElement('section'); box.className='day';
   const hd=document.createElement('header');
-  const h3=document.createElement('h3'); h3.textContent=`${dayKey} — meest recent 50`;
+  const h3=document.createElement('h3'); h3.textContent=`Meest recent ${arr.length} events`; // Titel is aangepast
   const sub=document.createElement('div'); sub.className='muted'; sub.textContent=`${arr.length} events getoond`;
   hd.appendChild(h3); hd.appendChild(sub); box.appendChild(hd);
   const ul=document.createElement('ul');
@@ -177,7 +172,9 @@ function renderList(dayKey, arr){
 
   for (const e of arr){
     const li=document.createElement('li');
-    const time=document.createElement('code'); time.className='time'; time.textContent=fmtTime(e.__ts);
+    // Toon nu datum en tijd, aangezien we events van alle dagen tonen
+    const time=document.createElement('code'); time.className='time'; time.textContent=fmtDate(e.__ts); 
+    
     const meta=document.createElement('div'); meta.className='list-meta';
     const env=document.createElement('span'); env.className='chip env-'+e.__env; env.textContent=e.__env;
     const kind=document.createElement('span'); kind.className='chip '+(e.__kind==='equipment'?'kind-eq':(e.__kind==='space'?'kind-space':'env-unknown')); kind.textContent=e.__kind;
@@ -201,11 +198,12 @@ function renderList(dayKey, arr){
   $('#mTotal').textContent=cTotal; $('#mProd').textContent=cProd; $('#mTest').textContent=cTest; $('#mUnknown').textContent=cUnk;
   $('#mEq').textContent=cEq; $('#mSp').textContent=cSp; $('#mTk').textContent=cTk;
   $('#mLoaded').textContent=new Date().toLocaleString('nl-BE',{timeZone:TZ});
-  $('#mDay').textContent='vandaag';
+  $('#mDay').textContent='Recentste logs (alle dagen)'; // Samenvatting is aangepast
 }
 
 async function fetchEvents(url, limitHint){
   const u=new URL(url);
+  // De limiet wordt verhoogd om de 'top 50' uit een grotere set te halen
   if (!u.searchParams.has('limit')) u.searchParams.set('limit', String(Math.max(200, limitHint*3)));
   const r=await fetch(u.toString(),{headers:{accept:'application/json'},cache:'no-store'});
   if (!r.ok) throw new Error(`HTTP ${r.status}`);
@@ -220,16 +218,27 @@ async function loadAll(){
   const q=$('#q').value||'';
   setStatus('Laden…');
 
+  // De knop wordt niet uitgeschakeld, zodat onbeperkt vernieuwen mogelijk is.
+  const btnLoad = $('#btnLoad');
+  btnLoad.disabled = false; 
+
   let raw=[];
   try{ raw=await fetchEvents(api, lim); }
-  catch(e){ setStatus('Fout bij laden: '+e.message, 'err'); return; }
+  catch(e){ 
+    setStatus('Fout bij laden: '+e.message, 'err'); 
+    btnLoad.disabled = false; // Herstel de knop bij een fout
+    return; 
+  }
 
   const tKey=todayKey();
   const rows=[];
   for (const ev of raw){
     const ts=Number(ev.server_ts ?? ev.ts ?? ev.time ?? ev.timestamp ?? ev.createdAt ?? ev.date);
     if (!Number.isFinite(ts)) continue;
-    if (toLocalDayKey(ts)!==tKey) continue; // enkel vandaag
+    
+    // !!! DE OPLOSSING: DE STRIKTE "ENKEL VANDAAG" FILTER IS VERWIJDERD !!!
+    // if (toLocalDayKey(ts)!==tKey) continue; 
+    
     const env=readEnv(ev);
     const {kind,id6,id13}=extractIdentity(ev);
     rows.push({...ev, __ts:ts, __env:env, __kind:kind, __id6:id6||'', __id13:id13||''});
@@ -245,17 +254,22 @@ async function loadAll(){
   filtered.sort((a,b)=> b.__ts - a.__ts);
   const top = filtered.slice(0, lim);
 
-  if (!top.length){ setStatus('Geen events voor vandaag die aan de filters voldoen.', 'warn'); $('#list').innerHTML=''; return; }
+  if (!top.length){ setStatus('Geen events gevonden die aan de filters voldoen.', 'warn'); $('#list').innerHTML=''; return; }
 
   renderList(tKey, top);
-  setStatus(`OK — ${top.length} meest recente events voor vandaag.`, 'ok');
+  setStatus(`OK — ${top.length} meest recente events geladen.`, 'ok');
+  // Zorg dat de knop weer klikbaar is als het laden klaar is
+  btnLoad.disabled = false; 
 }
 
 function exportCsv(){
   const rows=[['day','time','env','kind','id6','id13','type']];
-  const dayKey=document.querySelector('.day>header h3')?.textContent?.split(' — ')[0]||'';
+  // De dag key wordt nu uit de individuele list items gehaald in plaats van de header, omdat we meerdere dagen tonen
   document.querySelectorAll('.day li').forEach(li=>{
-    const time=li.querySelector('code.time')?.textContent||'';
+    const fullDateTime=li.querySelector('code.time')?.textContent||'';
+    const dayKey=fullDateTime.split(',')[0].trim(); // bijv. "15 sep", de datum
+    const time=fullDateTime.split(',')[1]?.trim()||''; // bijv. "20:08"
+    
     const chips=li.querySelectorAll('.chip');
     const env=chips[0]?.textContent||'';
     const kind=chips[1]?.textContent||'';
@@ -266,12 +280,12 @@ function exportCsv(){
   });
   const csv=rows.map(r=>r.map(x=>`"${String(x).replace(/"/g,'""')}"`).join(',')).join('\r\n');
   const blob=new Blob([csv],{type:'text/csv;charset=utf-8;'});
-  const url=URL.createObjectURL(blob); const a=document.createElement('a'); a.href=url; a.download='events_today_top50.csv'; document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
+  const url=URL.createObjectURL(blob); const a=document.createElement('a'); a.href=url; a.download='events_recent_top50.csv'; document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
 }
 
 document.getElementById('btnLoad').addEventListener('click', loadAll);
 document.getElementById('btnCsv').addEventListener('click', exportCsv);
-document.getElementById('envProd').addEventListener('change', loadAll);
+document.getElementById('envProd').addEventListener('change', loadAll); 
 document.getElementById('envTest').addEventListener('change', loadAll);
 document.getElementById('envUnknown').addEventListener('change', loadAll);
 document.getElementById('q').addEventListener('input', ()=>{ clearTimeout(window.__q_t); window.__q_t=setTimeout(loadAll,250); });

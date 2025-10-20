@@ -52,8 +52,9 @@ export async function handler(event) {
       cache: 'no-store',
       keepalive: false
     });
-    // Worker mag 2xx (200/204) geven; geen body vereist
-    if (!r.ok) {
+  // Worker mag 2xx (200/204) geven; geen body vereist
+	console.log('Worker POST status:', r.status); // <--- DE NIEUWE LIJN!
+	if (!r.ok) {
       const txt = await r.text().catch(()=>'');
       console.error('Worker POST failed:', r.status, txt);
       // We geven 202 terug zodat de portal niet blokkeert, maar log wél fout.
