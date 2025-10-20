@@ -1,292 +1,203 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="nl">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Statsportal – zonder sorteren</title>
-  <style>
-    :root{
-      --bg:#f7fafc;--card:#fff;--text:#0f172a;--muted:#475569;--accent:#ee7e00;--ok:#0e9f6e;--err:#dc2626
-    }
-    *{box-sizing:border-box}
-    html,body{height:100%}
-    body{
-      margin:0;background:var(--bg);color:var(--text);
-      font-family:system-ui,-apple-system,Segoe UI,Roboto,Inter,Arial,sans-serif;
-    }
-    header{padding:12px 16px;border-bottom:1px solid #e5e7eb;background:#fff;position:sticky;top:0;z-index:10}
-    h1{margin:0;font-size:18px}
-    .wrap{max-width:980px;margin:0 auto;padding:16px}
-    .controls{
-      display:flex;flex-wrap:wrap;gap:8px;align-items:end;margin:8px 0 12px;
-    }
-    label{font-size:12px;color:var(--muted);display:block;margin-bottom:4px}
-    input[type="date"]{padding:8px;border:1px solid #cbd5e1;border-radius:8px;background:#fff}
-    button{
-      padding:10px 14px;border:0;border-radius:10px;background:var(--accent);color:#fff;font-weight:600;cursor:pointer;
-      box-shadow:0 1px 2px rgba(0,0,0,.06)
-    }
-    button:disabled{opacity:.6;cursor:not-allowed}
-    .status{font-size:13px;color:var(--muted);margin:4px 0 12px}
-    .error{color:var(--err)}
-    .ok{color:var(--ok)}
-    .grid{display:grid;gap:12px;grid-template-columns:repeat(auto-fill,minmax(260px,1fr))}
-    .card{
-      background:var(--card);border-radius:14px;padding:14px;box-shadow:0 1px 2px rgba(0,0,0,.06),0 8px 24px -16px rgba(0,0,0,.2)
-    }
-    .day{font-weight:700;margin-bottom:6px}
-    .muted{color:var(--muted)}
-    .kv{display:flex;justify-content:space-between;margin:4px 0}
-    .kv b{font-variant-numeric:tabular-nums}
-    .badge{display:inline-block;padding:2px 8px;border-radius:999px;background:#f1f5f9;color:#0f172a;font-size:12px}
-    .footer{margin-top:20px;font-size:12px;color:var(--muted)}
-    .hint{font-size:12px;color:var(--muted)}
-    .sep{height:1px;background:#e5e7eb;margin:8px 0}
-  </style>
+  <meta charset="utf-8" />
+  <title>Statsportal – Portal Telemetry</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+    body{font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;background:#f6f7fb;margin:0;padding:24px;color:#222}
+    h1{margin:0 0 12px}
+    .bar{display:flex;gap:12px;flex-wrap:wrap;align-items:center;margin-bottom:12px}
+    input[type="date"]{padding:6px 8px}
+    button{padding:8px 12px;border:0;border-radius:8px;background:#0b5fff;color:#fff;cursor:pointer}
+    button:disabled{opacity:.6;cursor:not-allowed}
+    #status{margin:6px 0 16px;font-size:14px;color:#444;word-break:break-all}
+    #status.error{color:#b00020}
+    #status.warn{color:#995c00}
+    .day-card{background:#fff;border:1px solid #e6e8f0;border-radius:12px;margin:10px 0;padding:12px}
+    .day-card h3{margin:0 0 8px}
+    ul.evlist{list-style:none;padding-left:0;margin:0}
+    ul.evlist li{padding:6px 0;border-top:1px solid #f0f1f6}
+    ul.evlist li:first-child{border-top:0}
+    code{background:#f0f2f8;border-radius:6px;padding:2px 6px}
+    small.muted{color:#666}
+  </style>
 </head>
 <body>
-  <header>
-    <h1>📊 Statsportal (zonder sorteren)</h1>
-  </header>
-  <main class="wrap">
-    <div class="controls">
-      <div>
-        <label for="from">Van</label>
-        <input id="from" type="date" />
-      </div>
-      <div>
-        <label for="to">Tot</label>
-        <input id="to" type="date" />
-      </div>
-      <div>
-        <button id="btnLoad">Laad</button>
-      </div>
-      <div class="hint">Geen sortering — we tonen in de volgorde waarin de server levert.</div>
-    </div>
 
-    <div id="status" class="status">Klaar.</div>
-    <div id="cards" class="grid"></div>
+  <h1>Statsportal <small class="muted" id="build"></small></h1>
 
-    <div class="footer">
-      Tip: wil je enkel een health-check? Voeg <code>&view=keys&debug=1</code> toe aan de function-URL.<br>
-      Deze UI sorteert niets. We groeperen raw events per dag in <code>Map</code> (behoudt invoegvolgorde).
-    </div>
-  </main>
+  <div class="bar">
+    <label>Van: <input id="from" type="date"></label>
+    <label>Tot: <input id="to" type="date"></label>
+    <button id="btnLoad">Laden</button>
+  </div>
 
-  <script type="module">
-    // === CONFIG ===
-    // Oude waarde was: '/.netlify/functions/prod_formstats' (de proxy die de 504 gaf)
-    // Nieuwe waarde: directe aanroep naar de Cloudflare Worker, net als statsgame.html
-    const API_BASE = 'https://atalian-logs.atalianqr.workers.dev/api/log'; // directe worker API
-    const VIEW     = 'summary';                             // vraag dag-samenvatting op
-    const MAX_RENDER = 1000; // veiligheid: render max N kaarten
+  <div id="status"></div>
+  <div id="results"></div>
 
-    // === ELEMENTS ===
-    const elFrom  = document.getElementById('from');
-    const elTo    = document.getElementById('to');
-    const elBtn   = document.getElementById('btnLoad');
-    const elStat  = document.getElementById('status');
-    const elCards = document.getElementById('cards');
+  <script>
+  /* ====== CONFIG ====== */
+  // ✏️ Pas aan indien je worker-URL anders is:
+  const API_BASE = 'https://atalian-logs.atalianqr.workers.dev/api/log';
+  const TZ = 'Europe/Brussels';
+  const VIEW = 'raw'; // of 'summary' als je worker dat ondersteunt
 
-    // === INIT ===
-    setDefaultRange(7);
-    elBtn.addEventListener('click', () => loadAll());
-    // auto-load bij start
-    loadAll();
+  document.getElementById('build').textContent =
+    `(build @ ${new Date().toLocaleString('nl-BE', { timeZone: TZ })})`;
 
-    // ===== Helpers =====
-    function setDefaultRange(daysBack=7){
-      const today = new Date();
-      const from  = new Date(today.getTime() - (daysBack*86400000));
-      elFrom.value = toISODate(from);
-      elTo.value   = toISODate(today);
-    }
-    function toISODate(d){
-      const y=d.getFullYear();
-      const m=String(d.getMonth()+1).padStart(2,'0');
-      const day=String(d.getDate()).padStart(2,'0');
-      return `${y}-${m}-${day}`;
-    }
-    // Dag afleiden in Brussels TZ
-    function toLocalDateISO(ts, tz='Europe/Brussels'){
-      try{
-        const d = new Date(Number(ts));
-        // en-CA geeft YYYY-MM-DD
-        return new Intl.DateTimeFormat('en-CA',{timeZone:tz,year:'numeric',month:'2-digit',day:'2-digit'}).format(d);
-      }catch{ return null }
-    }
+  /* ====== utils ====== */
+  const fmtDay = new Intl.DateTimeFormat('nl-BE', { timeZone: TZ, year: 'numeric', month: '2-digit', day: '2-digit' });
+  const fmtTime = new Intl.DateTimeFormat('nl-BE', { timeZone: TZ, hour:'2-digit', minute:'2-digit', second:'2-digit' });
 
-    function setStatus(msg, cls=''){
-      elStat.textContent = msg;
-      elStat.className = `status ${cls}`;
-    }
+  function toLocalDayKey(tsMs){ return fmtDay.format(new Date(tsMs)); }
 
-    // ===== CORE =====
-    async function loadAll(){
-	  const from = elFrom.value?.slice(0,10);
-	  const to   = elTo.value?.slice(0,10);
-	  
-	  if(!from || !to){
-		setStatus('Kies een geldige datumrange.', 'error');
-		return;
-	  }
+  function setStatus(msg, type='info'){
+    const el = document.getElementById('status');
+    el.textContent = msg;
+    el.className = type;
+  }
 
-	  elBtn.disabled = true;
-	  setStatus('Bezig met laden… ⏳');
+  function renderDays(dayEntries){
+    const host = document.getElementById('results');
+    host.innerHTML = '';
+    if (!dayEntries.length) return;
 
-	  try{
-		// 1. URL instellen (Directe Worker API)
-		const url = new URL(API_BASE); 
-		url.searchParams.set('from', from);
-		url.searchParams.set('to', to);
-		url.searchParams.set('view', VIEW);
-		url.searchParams.set('limit', '8000'); // Veiligheidslimiet
+    for (const [day, events] of dayEntries){
+      const card = document.createElement('div');
+      card.className = 'day-card';
 
-		// 2. FILTER TOEVOEGEN
-		// Gebruik een komma-gescheiden lijst van portal-events om game-events te negeren.
-	const portalEvents = [
-	  'url_load',            // pageload
-	  'step',                // alle chat-steps (start, flow_start, ask_*, …)
-	  'invalid_qr',
-	  'open_jobs_shown',
-	  'existing_list_confirm',
-	  'urgent_answer',
-	  'desc_entered',
-	  'email_entered',
-	  'submit_attempt',
-	  'submit_success',
-	  'submit_error',
-	  'poets_info_viewed',
-	  'language_switch',
-	  'restart',
-	  'external_info',
-	  'idle',
-	  'pagehide'
-	].join(',');
-	url.searchParams.set('events', portalEvents);
+      const h = document.createElement('h3');
+      h.textContent = `${day}  (${events.length})`;
+      card.appendChild(h);
 
-		const res = await fetch(url.toString(), { headers:{ 'Accept':'application/json' } });
-		
-		if(!res.ok){
-		  const text = await res.text().catch(()=> '');
-		  setStatus(`Serverfout ${res.status}: ${res.statusText} — ${text?.slice(0,180)}`, 'error');
-		  elCards.innerHTML = '';
-		  return;
-		}
+      const ul = document.createElement('ul');
+      ul.className = 'evlist';
 
-		const data = await res.json();
-		if(!data || data.ok === false){
-		  setStatus(`Geen data: ${data?.message || data?.msg || 'onbekende fout'}`, 'error');
-		  elCards.innerHTML = '';
-		  return;
-		}
+      for (const e of events){
+        const li = document.createElement('li');
+        const ts = Number(e.server_ts ?? e.ts ?? e.time ?? e.timestamp);
+        const time = isFinite(ts) ? fmtTime.format(new Date(ts)) : '—';
+        const typ = e.type || e.event || 'event';
+        const id  = e.id ?? e.code ?? '';
+        li.innerHTML = `<code>${time}</code> — <b>${typ}</b> ${id ? '— '+id : ''}`;
+        ul.appendChild(li);
+      }
 
-		let daysList = [];
+      card.appendChild(ul);
+      host.appendChild(card);
+    }
+  }
 
-		if (Array.isArray(data.items) && data.items.length && 'day' in data.items[0]) {
-		  // Server leverde dag-samenvattingen
-		  daysList = data.items;
-		} else if (Array.isArray(data.items)) {
-		  // Raw events: zelf groeperen (in invoegvolgorde)
-		  const dayMap = new Map();
-		  for (const ev of data.items) {
-			const t = Number(ev?.server_ts ?? ev?.ts ?? NaN);
-			if (!Number.isFinite(t)) continue;
-			const day = toLocalDateISO(t);
-			if (!day) continue;
+  /* ====== kern ====== */
+  async function loadAll(){
+    const elFrom = document.getElementById('from');
+    const elTo   = document.getElementById('to');
+    const elBtn  = document.getElementById('btnLoad');
 
-			if (!dayMap.has(day)) {
-			  dayMap.set(day, { day, total:0, withPhoto:0, urgent:0, byEvent:{} });
-			}
-			const g = dayMap.get(day);
-			g.total += 1;
-			if (ev.photo)  g.withPhoto += 1;
-			if (ev.urgent) g.urgent += 1;
-			const name = String(ev.event ?? 'event');
-			g.byEvent[name] = (g.byEvent[name] || 0) + 1;
-		  }
-		  daysList = Array.from(dayMap.values());
-		} else {
-		  setStatus('Onverwacht dataformaat (geen items).', 'error');
-		  elCards.innerHTML = '';
-		  return;
-		}
+    const from = elFrom.value?.slice(0,10);
+    const to   = elTo.value?.slice(0,10);
+    if (!from || !to){ setStatus('Kies een geldige datumrange.','error'); return; }
 
-		renderDays(daysList);
-		if(!daysList.length){
-		  setStatus('Geen resultaten in deze periode.', 'ok');
-		}else{
-		  setStatus(`OK — ${daysList.length} dag(en). ${data.items.length} events verwerkt.`, 'ok');
-		}
+    // garandeer f ≤ t
+    let f = from, t = to;
+    if (f > t) [f, t] = [t, f];
 
-	  }catch(err){
-		setStatus(`Netwerk/parse fout: ${err?.message || err}`, 'error');
-		elCards.innerHTML = '';
-	  }finally{
-		elBtn.disabled = false;
-	  }
-	}
+    // Lokale daggrenzen → epoch millis (voorkomt UTC-dagverschuivingen)
+    const start = new Date(`${f}T00:00:00`);
+    const end   = new Date(`${t}T23:59:59.999`);
+    const fromTs = start.getTime();
+    const toTs   = end.getTime();
 
-    // Render ZONDER te sorteren
-    function renderDays(days){
-      elCards.innerHTML = '';
-      let rendered = 0;
-      for (const d of days){
-        if (rendered >= MAX_RENDER) break;
-        const card = document.createElement('div');
-        card.className = 'card';
+    // ✅ Event-filter: matcht portal-telemetry
+    const portalEvents = [
+      'url_load',
+      'step',
+      'invalid_qr',
+      'open_jobs_shown',
+      'existing_list_confirm',
+      'urgent_answer',
+      'desc_entered',
+      'email_entered',
+      'submit_attempt',
+      'submit_success',
+      'submit_error',
+      'poets_info_viewed',
+      'language_switch',
+      'restart',
+      'external_info',
+      'idle',
+      'pagehide'
+    ].join(',');
 
-        // Header
-        const h = document.createElement('div');
-        h.className = 'day';
-        h.textContent = `📅 ${d.day || '-'}`;
-        card.appendChild(h);
+    const url = new URL(API_BASE);
+    url.searchParams.set('events', portalEvents);
+    url.searchParams.set('from', f);                // menselijk leesbaar in logs
+    url.searchParams.set('to', t);
+    url.searchParams.set('from_ts', String(fromTs)); // eenduidige serverfilter
+    url.searchParams.set('to_ts', String(toTs));
+    url.searchParams.set('tz', TZ);
+    url.searchParams.set('view', VIEW);
+    url.searchParams.set('limit', '8000');
+    url.searchParams.set('cb', String(Date.now())); // cache-buster
 
-        // totals
-        card.appendChild(kv('Totaal events', safeNum(d.total)));
-        card.appendChild(kv('Met foto',      safeNum(d.withPhoto)));
-        card.appendChild(kv('Urgent',        safeNum(d.urgent)));
+    elBtn.disabled = true;
+    setStatus(`Laden… ⏳ ${url.toString()}`);
 
-        // byEvent (optioneel)
-        if (d.byEvent && Object.keys(d.byEvent).length){
-          card.appendChild(divSep());
-          const title = document.createElement('div');
-          title.className = 'muted';
-          title.textContent = 'Per eventtype:';
-          card.appendChild(title);
+    try{
+      const r = await fetch(url.toString(), { cache: 'no-store' });
+      if (!r.ok) throw new Error(`HTTP ${r.status}`);
+      const payload = await r.json();
 
-          // geen sort — we tonen in object-key volgorde (meestal invoegvolgorde)
-          let count = 0;
-          for (const k in d.byEvent){
-            if (Object.hasOwn(d.byEvent, k)){
-              card.appendChild(kv(k, safeNum(d.byEvent[k])));
-              count++; if (count > 30) break; // safety cap
-            }
-          }
-        }
+      const items = Array.isArray(payload) ? payload : (payload.items ?? []);
+      if (!items.length){
+        setStatus('Geen events in deze periode.','warn');
+        renderDays([]);
+        return;
+      }
 
-        elCards.appendChild(card);
-        rendered++;
-      }
-    }
+      // groepeer per dag (lokale TZ)
+      const byDay = new Map();
+      for (const ev of items){
+        const ts = Number(ev.server_ts ?? ev.ts ?? ev.time ?? ev.timestamp);
+        if (!isFinite(ts)) continue;
+        const key = toLocalDayKey(ts);
+        if (!byDay.has(key)) byDay.set(key, []);
+        byDay.get(key).push(ev);
+      }
 
-    // kleine UI helpers
-    function kv(label, value){
-      const row = document.createElement('div');
-      row.className = 'kv';
-      const a = document.createElement('span'); a.textContent = label;
-      const b = document.createElement('b');   b.textContent = value;
-      row.appendChild(a); row.appendChild(b);
-      return row;
-    }
-    function divSep(){
-      const d = document.createElement('div');
-      d.className = 'sep';
-      return d;
-    }
-    function safeNum(n){
-      return Number.isFinite(+n) ? String(+n) : '0';
-    }
-  </script>
+      // sort: nieuwste dag eerst
+      const days = [...byDay.entries()].sort((a,b)=>{
+        const [da] = a, [db] = b;
+        const pa = da.split('/').reverse().join(''); // yyyymmdd
+        const pb = db.split('/').reverse().join('');
+        return pb.localeCompare(pa);
+      });
+
+      setStatus(`OK — ${items.length} events in range 👍`);
+      renderDays(days);
+
+    } catch (e){
+      console.error(e);
+      setStatus(`Fout bij laden: ${String(e.message || e)}`, 'error');
+      renderDays([]);
+    } finally {
+      elBtn.disabled = false;
+    }
+  }
+
+  // init (today → today)
+  (function initDates(){
+    const d = new Date();
+    const iso = (x)=> x.toISOString().slice(0,10);
+    document.getElementById('from').value = iso(d);
+    document.getElementById('to').value = iso(d);
+  })();
+
+  document.getElementById('btnLoad').addEventListener('click', loadAll);
+
+  // auto-load bij openen (optioneel)
+  loadAll();
+  </script>
 </body>
 </html>
