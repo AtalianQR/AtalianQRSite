@@ -180,7 +180,7 @@ async function showLocation(){
 
 async function fetchOpenJobs(){
   try{
-    const res = await fetch(`/.netlify/functions/_jobs?code=${code}`);
+    const res = await fetch(`/.netlify/functions/jobs?code=${code}`);
     if(!res.ok) throw new Error(res.status);
     return await res.json();
   }catch(e){ console.error('Jobs error',e); return null; }
