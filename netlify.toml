@@ -28,3 +28,9 @@
 [functions]
   node_bundler = "esbuild"
   external_node_modules = ["@netlify/blobs"]
+  
+  [[headers]]
+for = "/statsportal.html"
+  [headers.values]
+  Cache-Control = "no-store, no-cache, must-revalidate, max-age=0"
+
