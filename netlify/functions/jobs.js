@@ -35,7 +35,7 @@ export async function handler(event) {
         accept: "application/json",
         "Content-Type": "application/json",
         ApiKey: API_KEY,
-        ApplicationElementId: APP_ELEMENT_QueryAtalianJobs,
+        ApplicationElementId: APP_ELEMENT,
       },
       body: JSON.stringify(payload),
     });
