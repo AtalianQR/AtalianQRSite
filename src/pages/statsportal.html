@@ -1,203 +1,281 @@
 <!DOCTYPE html>
 <html lang="nl">
 <head>
-  <meta charset="utf-8" />
-  <title>Statsportal – Portal Telemetry</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>StatsPortal — Vandaag (top 50) + duidelijke ID</title>
   <style>
-    body{font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;background:#f6f7fb;margin:0;padding:24px;color:#222}
-    h1{margin:0 0 12px}
-    .bar{display:flex;gap:12px;flex-wrap:wrap;align-items:center;margin-bottom:12px}
-    input[type="date"]{padding:6px 8px}
-    button{padding:8px 12px;border:0;border-radius:8px;background:#0b5fff;color:#fff;cursor:pointer}
-    button:disabled{opacity:.6;cursor:not-allowed}
-    #status{margin:6px 0 16px;font-size:14px;color:#444;word-break:break-all}
-    #status.error{color:#b00020}
-    #status.warn{color:#995c00}
-    .day-card{background:#fff;border:1px solid #e6e8f0;border-radius:12px;margin:10px 0;padding:12px}
-    .day-card h3{margin:0 0 8px}
-    ul.evlist{list-style:none;padding-left:0;margin:0}
-    ul.evlist li{padding:6px 0;border-top:1px solid #f0f1f6}
-    ul.evlist li:first-child{border-top:0}
-    code{background:#f0f2f8;border-radius:6px;padding:2px 6px}
-    small.muted{color:#666}
+    :root{ --bg:#0f1115; --card:#151923; --muted:#8b93a7; --text:#e7ecf2; --br:#23293a; --chip:#2a3142; --accent:#6ea8fe; }
+    *{box-sizing:border-box}
+    body{margin:0;background:var(--bg);color:var(--text);font:14px/1.5 system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,'Noto Sans',sans-serif}
+    header{padding:16px 18px 0 18px}
+    h1{margin:0 0 8px;font-size:18px;display:flex;gap:8px;align-items:center}
+    h1 small{font-size:12px;color:var(--muted);font-weight:400}
+    .bar{display:flex;gap:12px;align-items:center;flex-wrap:wrap;background:var(--card);border:1px solid var(--br);padding:10px 12px;border-radius:12px}
+    .bar input[type="text"], .bar input[type="number"]{background:#0f1422;color:var(--text);border:1px solid var(--br);border-radius:8px;padding:6px 8px}
+    .btn{border:1px solid var(--br);background:#0f1422;color:var(--text);padding:8px 10px;border-radius:10px;cursor:pointer}
+    .btn:hover{border-color:#3a4260}
+    .wrap{padding:0 18px 18px;display:grid;grid-template-columns:1fr 360px;gap:12px}
+    @media (max-width: 1000px){ .wrap{grid-template-columns:1fr} }
+    .panel{background:var(--card);border:1px solid var(--br);border-radius:12px;padding:12px}
+    .status{margin-top:8px;padding:10px 12px;border-radius:10px;background:#0f1422;border:1px solid var(--br);color:var(--muted)}
+    .status.ok{color:#c7f5d9;border-color:#1e3b2b;background:#0d1a14}
+    .status.warn{color:#ffe8c7;border-color:#5a3b14;background:#1a130a}
+    .status.err{color:#ffd3d0;border-color:#5a1714;background:#1a0d0c}
+    .day{margin:10px 0 18px;border:1px solid var(--br);border-radius:12px;overflow:hidden}
+    .day>header{background:#101625;border-bottom:1px solid var(--br);padding:10px 12px;display:flex;justify-content:space-between;align-items:center}
+    .day>header h3{margin:0;font-size:14px;font-weight:600}
+    .day ul{list-style:none;margin:0;padding:0}
+    .day li{display:grid;grid-template-columns:80px 1fr auto;gap:10px;align-items:center;padding:10px 12px;border-top:1px solid var(--br)}
+    .day li:first-child{border-top:0}
+    code.time{font-family:ui-monospace,Consolas,monospace;font-size:12px;color:#c1c9da;background:#0b0f19;border:1px solid var(--br);padding:2px 6px;border-radius:6px;min-width:60px;text-align:center}
+    .chip{padding:2px 8px;border-radius:999px;font-size:11px;border:1px solid var(--br);background:var(--chip);color:#dbe4ff}
+    .chip.env-prod{background:#0f2016;border-color:#18492a;color:#bff2d1}
+    .chip.env-test{background:#241d10;border-color:#6b4d15;color:#ffe5b5}
+    .chip.env-unknown{background:#201626;border-color:#5c325d;color:#f3c9ff}
+    .chip.kind-space{background:#0e1a2b;border-color:#1d3557;color:#a7c4ff}
+    .chip.kind-eq{background:#1a0f16;border-color:#5d234a;color:#f7bfe3}
+    .idbadge{font-family:ui-monospace,Consolas,monospace;background:#0b0f19;border:1px solid var(--br);padding:2px 8px;border-radius:8px;color:#dfe6f3}
+    .idwrap{display:flex;gap:8px;align-items:center;justify-content:flex-end}
+    .list-meta{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+    .muted{color:#9aa3b8}
+    .kv{font-size:12px;color:#b7bfd2;display:flex;justify-content:space-between;border-bottom:1px dashed #2a334a;padding:6px 0}
   </style>
 </head>
 <body>
-
-  <h1>Statsportal <small class="muted" id="build"></small></h1>
-
+<header>
+  <h1>📊 StatsPortal <small>Vandaag (top 50) + duidelijke ID</small></h1>
   <div class="bar">
-    <label>Van: <input id="from" type="date"></label>
-    <label>Tot: <input id="to" type="date"></label>
-    <button id="btnLoad">Laden</button>
+    <label>Logs API:
+      <input type="text" id="api" size="48" value="https://atalian-logs.atalianqr.workers.dev/api/log">
+    </label>
+    <label>Max events (vandaag): <input type="number" id="limit" value="50" min="10" step="10"></label>
+    <button class="btn" id="btnLoad">Laden</button>
+    <button class="btn" id="btnCsv">CSV</button>
+    <span style="flex:1"></span>
+    <label style="display:flex;gap:8px;align-items:center">Env:
+      <label><input type="checkbox" id="envProd" checked> prod</label>
+      <label><input type="checkbox" id="envTest" checked> test</label>
+      <label><input type="checkbox" id="envUnknown" checked> onbekend</label>
+    </label>
+    <label>Zoek: <input type="text" id="q" placeholder="type, id6, id13, url…"></label>
   </div>
+  <div id="status" class="status">Klaar.</div>
+</header>
 
-  <div id="status"></div>
-  <div id="results"></div>
+<div class="wrap">
+  <main class="panel" id="list"></main>
+  <aside class="panel">
+    <h3>📌 Samenvatting</h3>
+    <div class="kv"><span>Totaal getoond</span><b id="mTotal">0</b></div>
+    <div class="kv"><span>prod</span><b id="mProd">0</b></div>
+    <div class="kv"><span>test</span><b id="mTest">0</b></div>
+    <div class="kv"><span>onbekend</span><b id="mUnknown">0</b></div>
+    <hr style="border:none;border-top:1px solid var(--br);margin:10px 0">
+    <div class="kv"><span>Equipment</span><b id="mEq">0</b></div>
+    <div class="kv"><span>Space</span><b id="mSp">0</b></div>
+    <div class="kv"><span>Unknown target</span><b id="mTk">0</b></div>
+    <hr style="border:none;border-top:1px solid var(--br);margin:10px 0">
+    <div class="kv"><span>Dagfilter</span><b id="mDay">vandaag</b></div>
+    <div class="kv"><span>Laatst geladen</span><b id="mLoaded">—</b></div>
+  </aside>
+</div>
 
-  <script>
-  /* ====== CONFIG ====== */
-  // ✏️ Pas aan indien je worker-URL anders is:
-  const API_BASE = 'https://atalian-logs.atalianqr.workers.dev/api/log';
-  const TZ = 'Europe/Brussels';
-  const VIEW = 'raw'; // of 'summary' als je worker dat ondersteunt
+<script>
+const TZ = 'Europe/Brussels';
+const PROD_HOSTS = new Set(['atalianqrportal.netlify.app','atalianqr.workers.dev','atalian-logs.atalianqr.workers.dev','atalian.ultimo.net']);
+const TEST_HOSTS = new Set(['atalianqrportal--test.netlify.app','atalianqrportal-test.netlify.app','atalianqr-test.workers.dev','test.ultimo.net','preprod.ultimo.net']);
+const $ = s => document.querySelector(s);
+function setStatus(m,k=''){ const el=$('#status'); el.textContent=m; el.className='status '+(k||''); }
+function toLocalDayKey(ts){ const d=new Date(Number(ts)); const y=d.toLocaleDateString('nl-BE',{timeZone:TZ,year:'numeric'}); const m=d.toLocaleDateString('nl-BE',{timeZone:TZ,month:'2-digit'}); const da=d.toLocaleDateString('nl-BE',{timeZone:TZ,day:'2-digit'}); return `${y}-${m}-${da}`; }
+function todayKey(){ return toLocalDayKey(Date.now()); }
+function fmtTime(ts){ return new Intl.DateTimeFormat('nl-BE',{timeZone:TZ,hour:'2-digit',minute:'2-digit',second:'2-digit'}).format(new Date(Number(ts))); }
 
-  document.getElementById('build').textContent =
-    `(build @ ${new Date().toLocaleString('nl-BE', { timeZone: TZ })})`;
+// 13→6 decode: neem posities 0,2,4,6,8,10
+function decode13to6(code13){
+  const s=String(code13);
+  if(!/^\d{13}$/.test(s)) return '';
+  return s[0]+s[2]+s[4]+s[6]+s[8]+s[10];
+}
 
-  /* ====== utils ====== */
-  const fmtDay = new Intl.DateTimeFormat('nl-BE', { timeZone: TZ, year: 'numeric', month: '2-digit', day: '2-digit' });
-  const fmtTime = new Intl.DateTimeFormat('nl-BE', { timeZone: TZ, hour:'2-digit', minute:'2-digit', second:'2-digit' });
+// env: eerst expliciet veld, dan host-heuristiek
+function readEnv(ev){
+  const direct=(ev.env||ev.environment||'').toString().toLowerCase();
+  if (direct==='prod'||direct==='production') return 'prod';
+  if (direct==='test'||direct==='accept'||direct==='acc') return 'test';
+  const urlish=ev.href||ev.url||ev.location||ev.referrer||ev.origin||'';
+  let host=''; try{ host=new URL(urlish).host.toLowerCase(); }catch(_){ host=(ev.host||ev.domain||'').toLowerCase(); }
+  if (PROD_HOSTS.has(host)) return 'prod';
+  if (TEST_HOSTS.has(host)) return 'test';
+  return 'unknown';
+}
 
-  function toLocalDayKey(tsMs){ return fmtDay.format(new Date(tsMs)); }
+// Haal id/soort uit meerdere velden + querystring + 13-cijferregel
+function extractIdentity(ev){
+  const fields = [ev.id, ev.code, ev.eq_id, ev.spc_id, ev.equipmentId, ev.spaceId, ev._id].filter(Boolean).map(String);
+  let urlId=''; let urlType='';
+  try{
+    const u=new URL(ev.url||ev.location||'https://x.invalid');
+    urlId = u.searchParams.get('id') || '';
+    urlType = (u.searchParams.get('type')||u.searchParams.get('t')||'').toLowerCase();
+  }catch(_){}
 
-  function setStatus(msg, type='info'){
-    const el = document.getElementById('status');
-    el.textContent = msg;
-    el.className = type;
+  // voorkeur: 13-cijferige code
+  const hit13 = fields.find(v=>/^\d{13}$/.test(v)) || (urlId && /^\d{13}$/.test(urlId) ? urlId : '');
+  if (hit13){
+    const id6 = decode13to6(hit13);
+    const last = hit13.slice(-1);
+    const kind = last==='9' ? 'equipment' : (last==='0' ? 'space' : 'unknown');
+    return { kind, id6, id13: hit13 };
   }
 
-  function renderDays(dayEntries){
-    const host = document.getElementById('results');
-    host.innerHTML = '';
-    if (!dayEntries.length) return;
-
-    for (const [day, events] of dayEntries){
-      const card = document.createElement('div');
-      card.className = 'day-card';
-
-      const h = document.createElement('h3');
-      h.textContent = `${day}  (${events.length})`;
-      card.appendChild(h);
-
-      const ul = document.createElement('ul');
-      ul.className = 'evlist';
-
-      for (const e of events){
-        const li = document.createElement('li');
-        const ts = Number(e.server_ts ?? e.ts ?? e.time ?? e.timestamp);
-        const time = isFinite(ts) ? fmtTime.format(new Date(ts)) : '—';
-        const typ = e.type || e.event || 'event';
-        const id  = e.id ?? e.code ?? '';
-        li.innerHTML = `<code>${time}</code> — <b>${typ}</b> ${id ? '— '+id : ''}`;
-        ul.appendChild(li);
-      }
-
-      card.appendChild(ul);
-      host.appendChild(card);
-    }
+  // anders: 6-cijferig id ergens
+  const hit6 = fields.find(v=>/^\d{6}$/.test(v)) || (urlId && /^\d{6}$/.test(urlId) ? urlId : '');
+  if (hit6){
+    // soort proberen af te leiden via type/url/veldnamen
+    let kind = 'unknown';
+    const t = String(ev.type||'').toLowerCase();
+    if (/(equip|eq)/.test(t) || /equipment/i.test(JSON.stringify(ev))) kind='equipment';
+    if (/(space|sp)/.test(t)   || /space/i.test(JSON.stringify(ev)))     kind='space';
+    if (urlType==='eq'||urlType==='equipment') kind='equipment';
+    if (urlType==='sp'||urlType==='space') kind='space';
+    return { kind, id6: hit6, id13: '' };
   }
 
-  /* ====== kern ====== */
-  async function loadAll(){
-    const elFrom = document.getElementById('from');
-    const elTo   = document.getElementById('to');
-    const elBtn  = document.getElementById('btnLoad');
+  // fallback: we tonen wat we hebben
+  const raw = fields[0] || urlId || '';
+  let kind = 'unknown';
+  const t = String(ev.type||'').toLowerCase();
+  if (/(equip|eq)/.test(t)) kind='equipment';
+  if (/(space|sp)/.test(t)) kind='space';
+  if (!kind || kind==='unknown'){
+    // heuristiek op veldnaam
+    if ('equipmentId' in ev || 'eq_id' in ev) kind='equipment';
+    if ('spaceId' in ev || 'spc_id' in ev) kind='space';
+  }
+  return { kind, id6: '', id13: raw };
+}
 
-    const from = elFrom.value?.slice(0,10);
-    const to   = elTo.value?.slice(0,10);
-    if (!from || !to){ setStatus('Kies een geldige datumrange.','error'); return; }
+function applySearch(items, q){
+  const s=q.trim().toLowerCase(); if(!s) return items;
+  return items.filter(e=>{
+    const hay=[e.type||e.event||'', e.__env||'', e.__kind||'', e.__id6||'', e.__id13||'', e.url||e.location||''].join(' ').toLowerCase();
+    return hay.includes(s);
+  });
+}
 
-    // garandeer f ≤ t
-    let f = from, t = to;
-    if (f > t) [f, t] = [t, f];
+function renderList(dayKey, arr){
+  const root=$('#list'); root.innerHTML='';
+  const box=document.createElement('section'); box.className='day';
+  const hd=document.createElement('header');
+  const h3=document.createElement('h3'); h3.textContent=`${dayKey} — meest recent 50`;
+  const sub=document.createElement('div'); sub.className='muted'; sub.textContent=`${arr.length} events getoond`;
+  hd.appendChild(h3); hd.appendChild(sub); box.appendChild(hd);
+  const ul=document.createElement('ul');
 
-    // Lokale daggrenzen → epoch millis (voorkomt UTC-dagverschuivingen)
-    const start = new Date(`${f}T00:00:00`);
-    const end   = new Date(`${t}T23:59:59.999`);
-    const fromTs = start.getTime();
-    const toTs   = end.getTime();
+  let cTotal=0,cProd=0,cTest=0,cUnk=0,cEq=0,cSp=0,cTk=0;
 
-    // ✅ Event-filter: matcht portal-telemetry
-    const portalEvents = [
-      'url_load',
-      'step',
-      'invalid_qr',
-      'open_jobs_shown',
-      'existing_list_confirm',
-      'urgent_answer',
-      'desc_entered',
-      'email_entered',
-      'submit_attempt',
-      'submit_success',
-      'submit_error',
-      'poets_info_viewed',
-      'language_switch',
-      'restart',
-      'external_info',
-      'idle',
-      'pagehide'
-    ].join(',');
+  for (const e of arr){
+    const li=document.createElement('li');
+    const time=document.createElement('code'); time.className='time'; time.textContent=fmtTime(e.__ts);
+    const meta=document.createElement('div'); meta.className='list-meta';
+    const env=document.createElement('span'); env.className='chip env-'+e.__env; env.textContent=e.__env;
+    const kind=document.createElement('span'); kind.className='chip '+(e.__kind==='equipment'?'kind-eq':(e.__kind==='space'?'kind-space':'env-unknown')); kind.textContent=e.__kind;
+    const type=document.createElement('span'); type.textContent=e.type||e.event||'event';
+    meta.appendChild(type); meta.appendChild(env); meta.appendChild(kind);
 
-    const url = new URL(API_BASE);
-    url.searchParams.set('events', portalEvents);
-    url.searchParams.set('from', f);                // menselijk leesbaar in logs
-    url.searchParams.set('to', t);
-    url.searchParams.set('from_ts', String(fromTs)); // eenduidige serverfilter
-    url.searchParams.set('to_ts', String(toTs));
-    url.searchParams.set('tz', TZ);
-    url.searchParams.set('view', VIEW);
-    url.searchParams.set('limit', '8000');
-    url.searchParams.set('cb', String(Date.now())); // cache-buster
+    const idwrap=document.createElement('div'); idwrap.className='idwrap';
+    if (e.__id6){ const b=document.createElement('span'); b.className='idbadge'; b.title='ID (6)'; b.textContent=e.__id6; idwrap.appendChild(b); }
+    if (e.__id13){ const s=document.createElement('span'); s.className='muted'; s.title='Code (13)'; s.textContent=e.__id13; idwrap.appendChild(s); }
 
-    elBtn.disabled = true;
-    setStatus(`Laden… ⏳ ${url.toString()}`);
+    li.appendChild(time);
+    li.appendChild(meta);
+    li.appendChild(idwrap);
+    ul.appendChild(li);
 
-    try{
-      const r = await fetch(url.toString(), { cache: 'no-store' });
-      if (!r.ok) throw new Error(`HTTP ${r.status}`);
-      const payload = await r.json();
+    cTotal++; if (e.__env==='prod') cProd++; else if (e.__env==='test') cTest++; else cUnk++;
+    if (e.__kind==='equipment') cEq++; else if (e.__kind==='space') cSp++; else cTk++;
+  }
+  box.appendChild(ul); root.appendChild(box);
 
-      const items = Array.isArray(payload) ? payload : (payload.items ?? []);
-      if (!items.length){
-        setStatus('Geen events in deze periode.','warn');
-        renderDays([]);
-        return;
-      }
+  $('#mTotal').textContent=cTotal; $('#mProd').textContent=cProd; $('#mTest').textContent=cTest; $('#mUnknown').textContent=cUnk;
+  $('#mEq').textContent=cEq; $('#mSp').textContent=cSp; $('#mTk').textContent=cTk;
+  $('#mLoaded').textContent=new Date().toLocaleString('nl-BE',{timeZone:TZ});
+  $('#mDay').textContent='vandaag';
+}
 
-      // groepeer per dag (lokale TZ)
-      const byDay = new Map();
-      for (const ev of items){
-        const ts = Number(ev.server_ts ?? ev.ts ?? ev.time ?? ev.timestamp);
-        if (!isFinite(ts)) continue;
-        const key = toLocalDayKey(ts);
-        if (!byDay.has(key)) byDay.set(key, []);
-        byDay.get(key).push(ev);
-      }
+async function fetchEvents(url, limitHint){
+  const u=new URL(url);
+  if (!u.searchParams.has('limit')) u.searchParams.set('limit', String(Math.max(200, limitHint*3)));
+  const r=await fetch(u.toString(),{headers:{accept:'application/json'},cache:'no-store'});
+  if (!r.ok) throw new Error(`HTTP ${r.status}`);
+  const data=await r.json();
+  return Array.isArray(data)?data:(data.items||data.logs||data.results||Object.values(data));
+}
 
-      // sort: nieuwste dag eerst
-      const days = [...byDay.entries()].sort((a,b)=>{
-        const [da] = a, [db] = b;
-        const pa = da.split('/').reverse().join(''); // yyyymmdd
-        const pb = db.split('/').reverse().join('');
-        return pb.localeCompare(pa);
-      });
+async function loadAll(){
+  const api=$('#api').value.trim();
+  const lim=Number($('#limit').value)||50;
+  const fProd=$('#envProd').checked, fTest=$('#envTest').checked, fUnk=$('#envUnknown').checked;
+  const q=$('#q').value||'';
+  setStatus('Laden…');
 
-      setStatus(`OK — ${items.length} events in range 👍`);
-      renderDays(days);
+  let raw=[];
+  try{ raw=await fetchEvents(api, lim); }
+  catch(e){ setStatus('Fout bij laden: '+e.message, 'err'); return; }
 
-    } catch (e){
-      console.error(e);
-      setStatus(`Fout bij laden: ${String(e.message || e)}`, 'error');
-      renderDays([]);
-    } finally {
-      elBtn.disabled = false;
-    }
+  const tKey=todayKey();
+  const rows=[];
+  for (const ev of raw){
+    const ts=Number(ev.server_ts ?? ev.ts ?? ev.time ?? ev.timestamp ?? ev.createdAt ?? ev.date);
+    if (!Number.isFinite(ts)) continue;
+    if (toLocalDayKey(ts)!==tKey) continue; // enkel vandaag
+    const env=readEnv(ev);
+    const {kind,id6,id13}=extractIdentity(ev);
+    rows.push({...ev, __ts:ts, __env:env, __kind:kind, __id6:id6||'', __id13:id13||''});
   }
 
-  // init (today → today)
-  (function initDates(){
-    const d = new Date();
-    const iso = (x)=> x.toISOString().slice(0,10);
-    document.getElementById('from').value = iso(d);
-    document.getElementById('to').value = iso(d);
-  })();
+  // env filter
+  let filtered = rows.filter(e => (e.__env==='prod'&&fProd)||(e.__env==='test'&&fTest)||(e.__env==='unknown'&&fUnk));
 
-  document.getElementById('btnLoad').addEventListener('click', loadAll);
+  // zoekfilter
+  filtered = applySearch(filtered, q);
 
-  // auto-load bij openen (optioneel)
-  loadAll();
-  </script>
+  // Sorteer meest recent eerst en beperk tot 50
+  filtered.sort((a,b)=> b.__ts - a.__ts);
+  const top = filtered.slice(0, lim);
+
+  if (!top.length){ setStatus('Geen events voor vandaag die aan de filters voldoen.', 'warn'); $('#list').innerHTML=''; return; }
+
+  renderList(tKey, top);
+  setStatus(`OK — ${top.length} meest recente events voor vandaag.`, 'ok');
+}
+
+function exportCsv(){
+  const rows=[['day','time','env','kind','id6','id13','type']];
+  const dayKey=document.querySelector('.day>header h3')?.textContent?.split(' — ')[0]||'';
+  document.querySelectorAll('.day li').forEach(li=>{
+    const time=li.querySelector('code.time')?.textContent||'';
+    const chips=li.querySelectorAll('.chip');
+    const env=chips[0]?.textContent||'';
+    const kind=chips[1]?.textContent||'';
+    const id6=li.querySelector('.idbadge')?.textContent||'';
+    const id13=Array.from(li.querySelectorAll('.idwrap .muted')).find(s=>/^\d{13}$/.test(s.textContent||''))?.textContent||'';
+    const type=li.querySelector('.list-meta span')?.textContent||'';
+    rows.push([dayKey,time,env,kind,id6,id13,type]);
+  });
+  const csv=rows.map(r=>r.map(x=>`"${String(x).replace(/"/g,'""')}"`).join(',')).join('\r\n');
+  const blob=new Blob([csv],{type:'text/csv;charset=utf-8;'});
+  const url=URL.createObjectURL(blob); const a=document.createElement('a'); a.href=url; a.download='events_today_top50.csv'; document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
+}
+
+document.getElementById('btnLoad').addEventListener('click', loadAll);
+document.getElementById('btnCsv').addEventListener('click', exportCsv);
+document.getElementById('envProd').addEventListener('change', loadAll);
+document.getElementById('envTest').addEventListener('change', loadAll);
+document.getElementById('envUnknown').addEventListener('change', loadAll);
+document.getElementById('q').addEventListener('input', ()=>{ clearTimeout(window.__q_t); window.__q_t=setTimeout(loadAll,250); });
+window.addEventListener('DOMContentLoaded', loadAll);
+</script>
 </body>
 </html>

@@ -101,6 +101,12 @@ const isFr = lang === 'fr';
 const isTestEnv = qs.get('test') !== null; // Controleert op aanwezigheid van '?test'
 const prefix = isTestEnv ? 'test' : 'prod';
 const telemetryPrefix = 'Ultimo' + prefix;
+// ...
+// <<-- CRUCIAAL: Voeg de omgevingstag toe aan de payload
+  const base = {
+    // ...
+    env: prefix // <<-- CRUCIAAL: Voeg de omgevingstag toe aan de payload
+  };
 
 
 // Alleen parsen, NIET direct valideren!
