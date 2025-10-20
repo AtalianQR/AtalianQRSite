@@ -1,146 +1,293 @@
-<script>
-/* ====== CONFIG ====== */
-const API_BASE = 'https://atalian-logs.atalianqr.workers.dev/api/log'; // jouw worker endpoint
-const TZ = 'Europe/Brussels';
-const VIEW = 'raw'; // of 'summary' als je worker dit ondersteunt
+<!doctype html>
+<html lang="nl">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Statsportal – zonder sorteren</title>
+  <style>
+    :root{
+      --bg:#f7fafc;--card:#fff;--text:#0f172a;--muted:#475569;--accent:#ee7e00;--ok:#0e9f6e;--err:#dc2626
+    }
+    *{box-sizing:border-box}
+    html,body{height:100%}
+    body{
+      margin:0;background:var(--bg);color:var(--text);
+      font-family:system-ui,-apple-system,Segoe UI,Roboto,Inter,Arial,sans-serif;
+    }
+    header{padding:12px 16px;border-bottom:1px solid #e5e7eb;background:#fff;position:sticky;top:0;z-index:10}
+    h1{margin:0;font-size:18px}
+    .wrap{max-width:980px;margin:0 auto;padding:16px}
+    .controls{
+      display:flex;flex-wrap:wrap;gap:8px;align-items:end;margin:8px 0 12px;
+    }
+    label{font-size:12px;color:var(--muted);display:block;margin-bottom:4px}
+    input[type="date"]{padding:8px;border:1px solid #cbd5e1;border-radius:8px;background:#fff}
+    button{
+      padding:10px 14px;border:0;border-radius:10px;background:var(--accent);color:#fff;font-weight:600;cursor:pointer;
+      box-shadow:0 1px 2px rgba(0,0,0,.06)
+    }
+    button:disabled{opacity:.6;cursor:not-allowed}
+    .status{font-size:13px;color:var(--muted);margin:4px 0 12px}
+    .error{color:var(--err)}
+    .ok{color:var(--ok)}
+    .grid{display:grid;gap:12px;grid-template-columns:repeat(auto-fill,minmax(260px,1fr))}
+    .card{
+      background:var(--card);border-radius:14px;padding:14px;box-shadow:0 1px 2px rgba(0,0,0,.06),0 8px 24px -16px rgba(0,0,0,.2)
+    }
+    .day{font-weight:700;margin-bottom:6px}
+    .muted{color:var(--muted)}
+    .kv{display:flex;justify-content:space-between;margin:4px 0}
+    .kv b{font-variant-numeric:tabular-nums}
+    .badge{display:inline-block;padding:2px 8px;border-radius:999px;background:#f1f5f9;color:#0f172a;font-size:12px}
+    .footer{margin-top:20px;font-size:12px;color:var(--muted)}
+    .hint{font-size:12px;color:var(--muted)}
+    .sep{height:1px;background:#e5e7eb;margin:8px 0}
+  </style>
+</head>
+<body>
+  <header>
+    <h1>📊 Statsportal (zonder sorteren)</h1>
+  </header>
+  <main class="wrap">
+    <div class="controls">
+      <div>
+        <label for="from">Van</label>
+        <input id="from" type="date" />
+      </div>
+      <div>
+        <label for="to">Tot</label>
+        <input id="to" type="date" />
+      </div>
+      <div>
+        <button id="btnLoad">Laad</button>
+      </div>
+      <div class="hint">Geen sortering — we tonen in de volgorde waarin de server levert.</div>
+    </div>
 
-/* ====== HULP ====== */
-const fmtDay = new Intl.DateTimeFormat('nl-BE', { timeZone: TZ, year: 'numeric', month: '2-digit', day: '2-digit' });
-function toLocalDayKey(tsMs) {
-  return fmtDay.format(new Date(tsMs)); // bv. 19/10/2025
-}
-function setStatus(msg, type='info') {
-  const el = document.getElementById('status');
-  el.textContent = msg;
-  el.className = type;
-}
+    <div id="status" class="status">Klaar.</div>
+    <div id="cards" class="grid"></div>
 
-/* ====== LAAD FUNCTIE ====== */
-async function loadAll() {
-  const elFrom = document.getElementById('from');
-  const elTo   = document.getElementById('to');
-  const elBtn  = document.getElementById('btnLoad');
+    <div class="footer">
+      Tip: wil je enkel een health-check? Voeg <code>&view=keys&debug=1</code> toe aan de function-URL.<br>
+      Deze UI sorteert niets. We groeperen raw events per dag in <code>Map</code> (behoudt invoegvolgorde).
+    </div>
+  </main>
 
-  const from = elFrom.value?.slice(0,10);
-  const to   = elTo.value?.slice(0,10);
-  if (!from || !to) { setStatus('Kies een geldige datumrange.','error'); return; }
+  <script type="module">
+    // === CONFIG ===
+    // Oude waarde was: '/.netlify/functions/prod_formstats' (de proxy die de 504 gaf)
+    // Nieuwe waarde: directe aanroep naar de Cloudflare Worker, net als statsgame.html
+    const API_BASE = 'https://atalian-logs.atalianqr.workers.dev/api/log'; // directe worker API
+    const VIEW     = 'summary';                             // vraag dag-samenvatting op
+    const MAX_RENDER = 1000; // veiligheid: render max N kaarten
 
-  // Zorg dat from ≤ to (swap indien nodig)
-  let f = from, t = to;
-  if (f > t) [f, t] = [t, f];
+    // === ELEMENTS ===
+    const elFrom  = document.getElementById('from');
+    const elTo    = document.getElementById('to');
+    const elBtn   = document.getElementById('btnLoad');
+    const elStat  = document.getElementById('status');
+    const elCards = document.getElementById('cards');
 
-  // Expliciete daggrenzen in lokale tijd (voorkomt UTC-dagverschuivingen)
-  const start = new Date(`${f}T00:00:00`);
-  const end   = new Date(`${t}T23:59:59.999`);
-  const fromTs = start.getTime();         // epoch millis
-  const toTs   = end.getTime();
+    // === INIT ===
+    setDefaultRange(7);
+    elBtn.addEventListener('click', () => loadAll());
+    // auto-load bij start
+    loadAll();
 
-  // ★ Event-filter: matcht jouw portal (url_load/step/submit_*/idle/pagehide/…)
-  const portalEvents = [
-    'url_load',
-    'step',
-    'invalid_qr',
-    'open_jobs_shown',
-    'existing_list_confirm',
-    'urgent_answer',
-    'desc_entered',
-    'email_entered',
-    'submit_attempt',
-    'submit_success',
-    'submit_error',
-    'poets_info_viewed',
-    'language_switch',
-    'restart',
-    'external_info',
-    'idle',
-    'pagehide'
-  ].join(',');
-
-  const url = new URL(API_BASE);
-  url.searchParams.set('events', portalEvents);
-  url.searchParams.set('from', f);              // voor leesbaarheid/debug in logs
-  url.searchParams.set('to', t);
-  url.searchParams.set('from_ts', String(fromTs)); // eenduidige filtering server-side
-  url.searchParams.set('to_ts', String(toTs));
-  url.searchParams.set('tz', TZ);
-  url.searchParams.set('view', VIEW);
-  url.searchParams.set('limit', '8000');
-  url.searchParams.set('cb', String(Date.now())); // cache-buster voor zekerheid
-
-  elBtn.disabled = true;
-  setStatus(`Laden… ⏳ ${url.toString()}`);
-
-  try {
-    const r = await fetch(url.toString(), { cache: 'no-store' });
-    if (!r.ok) throw new Error(`HTTP ${r.status}`);
-    const payload = await r.json();
-
-    // payload kan array zijn of {items:[...]} afhankelijk van je worker
-    const items = Array.isArray(payload) ? payload : (payload.items ?? []);
-    if (!items.length) {
-      setStatus('Geen events in deze periode.','warn');
-      renderDays([]);
-      return;
+    // ===== Helpers =====
+    function setDefaultRange(daysBack=7){
+      const today = new Date();
+      const from  = new Date(today.getTime() - (daysBack*86400000));
+      elFrom.value = toISODate(from);
+      elTo.value   = toISODate(today);
+    }
+    function toISODate(d){
+      const y=d.getFullYear();
+      const m=String(d.getMonth()+1).padStart(2,'0');
+      const day=String(d.getDate()).padStart(2,'0');
+      return `${y}-${m}-${day}`;
+    }
+    // Dag afleiden in Brussels TZ
+    function toLocalDateISO(ts, tz='Europe/Brussels'){
+      try{
+        const d = new Date(Number(ts));
+        // en-CA geeft YYYY-MM-DD
+        return new Intl.DateTimeFormat('en-CA',{timeZone:tz,year:'numeric',month:'2-digit',day:'2-digit'}).format(d);
+      }catch{ return null }
     }
 
-    // Client-side groepering per dag (lokale tijd)
-    const byDay = new Map();
-    for (const ev of items) {
-      const ts = ev.server_ts ?? ev.ts ?? ev.time ?? ev.timestamp;
-      if (!ts) continue;
-      const key = toLocalDayKey(Number(ts));
-      if (!byDay.has(key)) byDay.set(key, []);
-      byDay.get(key).push(ev);
+    function setStatus(msg, cls=''){
+      elStat.textContent = msg;
+      elStat.className = `status ${cls}`;
     }
 
-    // Sorteer dagen aflopend
-    const days = [...byDay.entries()].sort((a,b)=>{
-      const [da] = a, [db] = b;
-      const pa = da.split('/').reverse().join(''); // 2025 10 19
-      const pb = db.split('/').reverse().join('');
-      return pb.localeCompare(pa);
-    });
+    // ===== CORE =====
+    async function loadAll(){
+	  const from = elFrom.value?.slice(0,10);
+	  const to   = elTo.value?.slice(0,10);
+	  
+	  if(!from || !to){
+		setStatus('Kies een geldige datumrange.', 'error');
+		return;
+	  }
 
-    setStatus(`OK — ${items.length} events in range 👍`);
-    renderDays(days);
+	  elBtn.disabled = true;
+	  setStatus('Bezig met laden… ⏳');
 
-  } catch (e) {
-    console.error(e);
-    setStatus(`Fout bij laden: ${String(e.message || e)}`, 'error');
-    renderDays([]);
-  } finally {
-    elBtn.disabled = false;
-  }
-}
+	  try{
+		// 1. URL instellen (Directe Worker API)
+		const url = new URL(API_BASE); 
+		url.searchParams.set('from', from);
+		url.searchParams.set('to', to);
+		url.searchParams.set('view', VIEW);
+		url.searchParams.set('limit', '8000'); // Veiligheidslimiet
 
-/* ====== RENDER ====== */
-function renderDays(dayEntries) {
-  const host = document.getElementById('results');
-  host.innerHTML = '';
-  if (!dayEntries.length) return;
+		// 2. FILTER TOEVOEGEN
+		// Gebruik een komma-gescheiden lijst van portal-events om game-events te negeren.
+	const portalEvents = [
+	  'url_load',            // pageload
+	  'step',                // alle chat-steps (start, flow_start, ask_*, …)
+	  'invalid_qr',
+	  'open_jobs_shown',
+	  'existing_list_confirm',
+	  'urgent_answer',
+	  'desc_entered',
+	  'email_entered',
+	  'submit_attempt',
+	  'submit_success',
+	  'submit_error',
+	  'poets_info_viewed',
+	  'language_switch',
+	  'restart',
+	  'external_info',
+	  'idle',
+	  'pagehide'
+	].join(',');
+	url.searchParams.set('events', portalEvents);
 
-  for (const [day, events] of dayEntries) {
-    const card = document.createElement('div');
-    card.className = 'day-card';
-    const h = document.createElement('h3');
-    h.textContent = day + `  (${events.length})`;
-    card.appendChild(h);
 
-    // eenvoudige lijst
-    const ul = document.createElement('ul');
-    ul.className = 'evlist';
-    for (const e of events) {
-      const li = document.createElement('li');
-      const t = Number(e.server_ts ?? e.ts);
-      const time = new Intl.DateTimeFormat('nl-BE', { timeZone: TZ, hour:'2-digit', minute:'2-digit', second:'2-digit' }).format(new Date(t));
-      li.innerHTML = `<code>${time}</code> — <b>${e.type || e.event || 'event'}</b> — ${e.id ?? e.code ?? ''}`;
-      ul.appendChild(li);
+		const res = await fetch(url.toString(), { headers:{ 'Accept':'application/json' } });
+		
+		if(!res.ok){
+		  const text = await res.text().catch(()=> '');
+		  setStatus(`Serverfout ${res.status}: ${res.statusText} — ${text?.slice(0,180)}`, 'error');
+		  elCards.innerHTML = '';
+		  return;
+		}
+
+		const data = await res.json();
+		if(!data || data.ok === false){
+		  setStatus(`Geen data: ${data?.message || data?.msg || 'onbekende fout'}`, 'error');
+		  elCards.innerHTML = '';
+		  return;
+		}
+
+		let daysList = [];
+
+		if (Array.isArray(data.items) && data.items.length && 'day' in data.items[0]) {
+		  // Server leverde dag-samenvattingen
+		  daysList = data.items;
+		} else if (Array.isArray(data.items)) {
+		  // Raw events: zelf groeperen (in invoegvolgorde)
+		  const dayMap = new Map();
+		  for (const ev of data.items) {
+			const t = Number(ev?.server_ts ?? ev?.ts ?? NaN);
+			if (!Number.isFinite(t)) continue;
+			const day = toLocalDateISO(t);
+			if (!day) continue;
+
+			if (!dayMap.has(day)) {
+			  dayMap.set(day, { day, total:0, withPhoto:0, urgent:0, byEvent:{} });
+			}
+			const g = dayMap.get(day);
+			g.total += 1;
+			if (ev.photo)  g.withPhoto += 1;
+			if (ev.urgent) g.urgent += 1;
+			const name = String(ev.event ?? 'event');
+			g.byEvent[name] = (g.byEvent[name] || 0) + 1;
+		  }
+		  daysList = Array.from(dayMap.values());
+		} else {
+		  setStatus('Onverwacht dataformaat (geen items).', 'error');
+		  elCards.innerHTML = '';
+		  return;
+		}
+
+		renderDays(daysList);
+		if(!daysList.length){
+		  setStatus('Geen resultaten in deze periode.', 'ok');
+		}else{
+		  setStatus(`OK — ${daysList.length} dag(en). ${data.items.length} events verwerkt.`, 'ok');
+		}
+
+	  }catch(err){
+		setStatus(`Netwerk/parse fout: ${err?.message || err}`, 'error');
+		elCards.innerHTML = '';
+	  }finally{
+		elBtn.disabled = false;
+	  }
+	}
+
+    // Render ZONDER te sorteren
+    function renderDays(days){
+      elCards.innerHTML = '';
+      let rendered = 0;
+      for (const d of days){
+        if (rendered >= MAX_RENDER) break;
+        const card = document.createElement('div');
+        card.className = 'card';
+
+        // Header
+        const h = document.createElement('div');
+        h.className = 'day';
+        h.textContent = `📅 ${d.day || '-'}`;
+        card.appendChild(h);
+
+        // totals
+        card.appendChild(kv('Totaal events', safeNum(d.total)));
+        card.appendChild(kv('Met foto',      safeNum(d.withPhoto)));
+        card.appendChild(kv('Urgent',        safeNum(d.urgent)));
+
+        // byEvent (optioneel)
+        if (d.byEvent && Object.keys(d.byEvent).length){
+          card.appendChild(divSep());
+          const title = document.createElement('div');
+          title.className = 'muted';
+          title.textContent = 'Per eventtype:';
+          card.appendChild(title);
+
+          // geen sort — we tonen in object-key volgorde (meestal invoegvolgorde)
+          let count = 0;
+          for (const k in d.byEvent){
+            if (Object.hasOwn(d.byEvent, k)){
+              card.appendChild(kv(k, safeNum(d.byEvent[k])));
+              count++; if (count > 30) break; // safety cap
+            }
+          }
+        }
+
+        elCards.appendChild(card);
+        rendered++;
+      }
     }
-    card.appendChild(ul);
-    host.appendChild(card);
-  }
-}
 
-/* ====== INIT ====== */
-document.getElementById('btnLoad').addEventListener('click', loadAll);
-</script>
+    // kleine UI helpers
+    function kv(label, value){
+      const row = document.createElement('div');
+      row.className = 'kv';
+      const a = document.createElement('span'); a.textContent = label;
+      const b = document.createElement('b');   b.textContent = value;
+      row.appendChild(a); row.appendChild(b);
+      return row;
+    }
+    function divSep(){
+      const d = document.createElement('div');
+      d.className = 'sep';
+      return d;
+    }
+    function safeNum(n){
+      return Number.isFinite(+n) ? String(+n) : '0';
+    }
+  </script>
+</body>
+</html>
