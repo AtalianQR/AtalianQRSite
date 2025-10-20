@@ -1,203 +1,203 @@
 <!DOCTYPE html>
 <html lang="nl">
 <head>
-  <meta charset="utf-8" />
-  <title>Statsportal – Portal Telemetry</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <style>
-    body{font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;background:#f6f7fb;margin:0;padding:24px;color:#222}
-    h1{margin:0 0 12px}
-    .bar{display:flex;gap:12px;flex-wrap:wrap;align-items:center;margin-bottom:12px}
-    input[type="date"]{padding:6px 8px}
-    button{padding:8px 12px;border:0;border-radius:8px;background:#0b5fff;color:#fff;cursor:pointer}
-    button:disabled{opacity:.6;cursor:not-allowed}
-    #status{margin:6px 0 16px;font-size:14px;color:#444;word-break:break-all}
-    #status.error{color:#b00020}
-    #status.warn{color:#995c00}
-    .day-card{background:#fff;border:1px solid #e6e8f0;border-radius:12px;margin:10px 0;padding:12px}
-    .day-card h3{margin:0 0 8px}
-    ul.evlist{list-style:none;padding-left:0;margin:0}
-    ul.evlist li{padding:6px 0;border-top:1px solid #f0f1f6}
-    ul.evlist li:first-child{border-top:0}
-    code{background:#f0f2f8;border-radius:6px;padding:2px 6px}
-    small.muted{color:#666}
-  </style>
+  <meta charset="utf-8" />
+  <title>Statsportal – Portal Telemetry</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+    body{font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;background:#f6f7fb;margin:0;padding:24px;color:#222}
+    h1{margin:0 0 12px}
+    .bar{display:flex;gap:12px;flex-wrap:wrap;align-items:center;margin-bottom:12px}
+    input[type="date"]{padding:6px 8px}
+    button{padding:8px 12px;border:0;border-radius:8px;background:#0b5fff;color:#fff;cursor:pointer}
+    button:disabled{opacity:.6;cursor:not-allowed}
+    #status{margin:6px 0 16px;font-size:14px;color:#444;word-break:break-all}
+    #status.error{color:#b00020}
+    #status.warn{color:#995c00}
+    .day-card{background:#fff;border:1px solid #e6e8f0;border-radius:12px;margin:10px 0;padding:12px}
+    .day-card h3{margin:0 0 8px}
+    ul.evlist{list-style:none;padding-left:0;margin:0}
+    ul.evlist li{padding:6px 0;border-top:1px solid #f0f1f6}
+    ul.evlist li:first-child{border-top:0}
+    code{background:#f0f2f8;border-radius:6px;padding:2px 6px}
+    small.muted{color:#666}
+  </style>
 </head>
 <body>
 
-  <h1>Statsportal <small class="muted" id="build"></small></h1>
+  <h1>Statsportal <small class="muted" id="build"></small></h1>
 
-  <div class="bar">
-    <label>Van: <input id="from" type="date"></label>
-    <label>Tot: <input id="to" type="date"></label>
-    <button id="btnLoad">Laden</button>
-  </div>
+  <div class="bar">
+    <label>Van: <input id="from" type="date"></label>
+    <label>Tot: <input id="to" type="date"></label>
+    <button id="btnLoad">Laden</button>
+  </div>
 
-  <div id="status"></div>
-  <div id="results"></div>
+  <div id="status"></div>
+  <div id="results"></div>
 
-  <script>
-  /* ====== CONFIG ====== */
-  // ✏️ Pas aan indien je worker-URL anders is:
-  const API_BASE = 'https://atalian-logs.atalianqr.workers.dev/api/log';
-  const TZ = 'Europe/Brussels';
-  const VIEW = 'raw'; // of 'summary' als je worker dat ondersteunt
+  <script>
+  /* ====== CONFIG ====== */
+  // ✏️ Pas aan indien je worker-URL anders is:
+  const API_BASE = 'https://atalian-logs.atalianqr.workers.dev/api/log';
+  const TZ = 'Europe/Brussels';
+  const VIEW = 'raw'; // of 'summary' als je worker dat ondersteunt
 
-  document.getElementById('build').textContent =
-    `(build @ ${new Date().toLocaleString('nl-BE', { timeZone: TZ })})`;
+  document.getElementById('build').textContent =
+    `(build @ ${new Date().toLocaleString('nl-BE', { timeZone: TZ })})`;
 
-  /* ====== utils ====== */
-  const fmtDay = new Intl.DateTimeFormat('nl-BE', { timeZone: TZ, year: 'numeric', month: '2-digit', day: '2-digit' });
-  const fmtTime = new Intl.DateTimeFormat('nl-BE', { timeZone: TZ, hour:'2-digit', minute:'2-digit', second:'2-digit' });
+  /* ====== utils ====== */
+  const fmtDay = new Intl.DateTimeFormat('nl-BE', { timeZone: TZ, year: 'numeric', month: '2-digit', day: '2-digit' });
+  const fmtTime = new Intl.DateTimeFormat('nl-BE', { timeZone: TZ, hour:'2-digit', minute:'2-digit', second:'2-digit' });
 
-  function toLocalDayKey(tsMs){ return fmtDay.format(new Date(tsMs)); }
+  function toLocalDayKey(tsMs){ return fmtDay.format(new Date(tsMs)); }
 
-  function setStatus(msg, type='info'){
-    const el = document.getElementById('status');
-    el.textContent = msg;
-    el.className = type;
-  }
+  function setStatus(msg, type='info'){
+    const el = document.getElementById('status');
+    el.textContent = msg;
+    el.className = type;
+  }
 
-  function renderDays(dayEntries){
-    const host = document.getElementById('results');
-    host.innerHTML = '';
-    if (!dayEntries.length) return;
+  function renderDays(dayEntries){
+    const host = document.getElementById('results');
+    host.innerHTML = '';
+    if (!dayEntries.length) return;
 
-    for (const [day, events] of dayEntries){
-      const card = document.createElement('div');
-      card.className = 'day-card';
+    for (const [day, events] of dayEntries){
+      const card = document.createElement('div');
+      card.className = 'day-card';
 
-      const h = document.createElement('h3');
-      h.textContent = `${day}  (${events.length})`;
-      card.appendChild(h);
+      const h = document.createElement('h3');
+      h.textContent = `${day}  (${events.length})`;
+      card.appendChild(h);
 
-      const ul = document.createElement('ul');
-      ul.className = 'evlist';
+      const ul = document.createElement('ul');
+      ul.className = 'evlist';
 
-      for (const e of events){
-        const li = document.createElement('li');
-        const ts = Number(e.server_ts ?? e.ts ?? e.time ?? e.timestamp);
-        const time = isFinite(ts) ? fmtTime.format(new Date(ts)) : '—';
-        const typ = e.type || e.event || 'event';
-        const id  = e.id ?? e.code ?? '';
-        li.innerHTML = `<code>${time}</code> — <b>${typ}</b> ${id ? '— '+id : ''}`;
-        ul.appendChild(li);
-      }
+      for (const e of events){
+        const li = document.createElement('li');
+        const ts = Number(e.server_ts ?? e.ts ?? e.time ?? e.timestamp);
+        const time = isFinite(ts) ? fmtTime.format(new Date(ts)) : '—';
+        const typ = e.type || e.event || 'event';
+        const id  = e.id ?? e.code ?? '';
+        li.innerHTML = `<code>${time}</code> — <b>${typ}</b> ${id ? '— '+id : ''}`;
+        ul.appendChild(li);
+      }
 
-      card.appendChild(ul);
-      host.appendChild(card);
-    }
-  }
+      card.appendChild(ul);
+      host.appendChild(card);
+    }
+  }
 
-  /* ====== kern ====== */
-  async function loadAll(){
-    const elFrom = document.getElementById('from');
-    const elTo   = document.getElementById('to');
-    const elBtn  = document.getElementById('btnLoad');
+  /* ====== kern ====== */
+  async function loadAll(){
+    const elFrom = document.getElementById('from');
+    const elTo   = document.getElementById('to');
+    const elBtn  = document.getElementById('btnLoad');
 
-    const from = elFrom.value?.slice(0,10);
-    const to   = elTo.value?.slice(0,10);
-    if (!from || !to){ setStatus('Kies een geldige datumrange.','error'); return; }
+    const from = elFrom.value?.slice(0,10);
+    const to   = elTo.value?.slice(0,10);
+    if (!from || !to){ setStatus('Kies een geldige datumrange.','error'); return; }
 
-    // garandeer f ≤ t
-    let f = from, t = to;
-    if (f > t) [f, t] = [t, f];
+    // garandeer f ≤ t
+    let f = from, t = to;
+    if (f > t) [f, t] = [t, f];
 
-    // Lokale daggrenzen → epoch millis (voorkomt UTC-dagverschuivingen)
-    const start = new Date(`${f}T00:00:00`);
-    const end   = new Date(`${t}T23:59:59.999`);
-    const fromTs = start.getTime();
-    const toTs   = end.getTime();
+    // Lokale daggrenzen → epoch millis (voorkomt UTC-dagverschuivingen)
+    const start = new Date(`${f}T00:00:00`);
+    const end   = new Date(`${t}T23:59:59.999`);
+    const fromTs = start.getTime();
+    const toTs   = end.getTime();
 
-    // ✅ Event-filter: matcht portal-telemetry
-    const portalEvents = [
-      'url_load',
-      'step',
-      'invalid_qr',
-      'open_jobs_shown',
-      'existing_list_confirm',
-      'urgent_answer',
-      'desc_entered',
-      'email_entered',
-      'submit_attempt',
-      'submit_success',
-      'submit_error',
-      'poets_info_viewed',
-      'language_switch',
-      'restart',
-      'external_info',
-      'idle',
-      'pagehide'
-    ].join(',');
+    // ✅ Event-filter: matcht portal-telemetry
+    const portalEvents = [
+      'url_load',
+      'step',
+      'invalid_qr',
+      'open_jobs_shown',
+      'existing_list_confirm',
+      'urgent_answer',
+      'desc_entered',
+      'email_entered',
+      'submit_attempt',
+      'submit_success',
+      'submit_error',
+      'poets_info_viewed',
+      'language_switch',
+      'restart',
+      'external_info',
+      'idle',
+      'pagehide'
+    ].join(',');
 
-    const url = new URL(API_BASE);
-    url.searchParams.set('events', portalEvents);
-    url.searchParams.set('from', f);                // menselijk leesbaar in logs
-    url.searchParams.set('to', t);
-    url.searchParams.set('from_ts', String(fromTs)); // eenduidige serverfilter
-    url.searchParams.set('to_ts', String(toTs));
-    url.searchParams.set('tz', TZ);
-    url.searchParams.set('view', VIEW);
-    url.searchParams.set('limit', '8000');
-    url.searchParams.set('cb', String(Date.now())); // cache-buster
+    const url = new URL(API_BASE);
+    url.searchParams.set('events', portalEvents);
+    url.searchParams.set('from', f);                // menselijk leesbaar in logs
+    url.searchParams.set('to', t);
+    url.searchParams.set('from_ts', String(fromTs)); // eenduidige serverfilter
+    url.searchParams.set('to_ts', String(toTs));
+    url.searchParams.set('tz', TZ);
+    url.searchParams.set('view', VIEW);
+    url.searchParams.set('limit', '8000');
+    url.searchParams.set('cb', String(Date.now())); // cache-buster
 
-    elBtn.disabled = true;
-    setStatus(`Laden… ⏳ ${url.toString()}`);
+    elBtn.disabled = true;
+    setStatus(`Laden… ⏳ ${url.toString()}`);
 
-    try{
-      const r = await fetch(url.toString(), { cache: 'no-store' });
-      if (!r.ok) throw new Error(`HTTP ${r.status}`);
-      const payload = await r.json();
+    try{
+      const r = await fetch(url.toString(), { cache: 'no-store' });
+      if (!r.ok) throw new Error(`HTTP ${r.status}`);
+      const payload = await r.json();
 
-      const items = Array.isArray(payload) ? payload : (payload.items ?? []);
-      if (!items.length){
-        setStatus('Geen events in deze periode.','warn');
-        renderDays([]);
-        return;
-      }
+      const items = Array.isArray(payload) ? payload : (payload.items ?? []);
+      if (!items.length){
+        setStatus('Geen events in deze periode.','warn');
+        renderDays([]);
+        return;
+      }
 
-      // groepeer per dag (lokale TZ)
-      const byDay = new Map();
-      for (const ev of items){
-        const ts = Number(ev.server_ts ?? ev.ts ?? ev.time ?? ev.timestamp);
-        if (!isFinite(ts)) continue;
-        const key = toLocalDayKey(ts);
-        if (!byDay.has(key)) byDay.set(key, []);
-        byDay.get(key).push(ev);
-      }
+      // groepeer per dag (lokale TZ)
+      const byDay = new Map();
+      for (const ev of items){
+        const ts = Number(ev.server_ts ?? ev.ts ?? ev.time ?? ev.timestamp);
+        if (!isFinite(ts)) continue;
+        const key = toLocalDayKey(ts);
+        if (!byDay.has(key)) byDay.set(key, []);
+        byDay.get(key).push(ev);
+      }
 
-      // sort: nieuwste dag eerst
-      const days = [...byDay.entries()].sort((a,b)=>{
-        const [da] = a, [db] = b;
-        const pa = da.split('/').reverse().join(''); // yyyymmdd
-        const pb = db.split('/').reverse().join('');
-        return pb.localeCompare(pa);
-      });
+      // sort: nieuwste dag eerst
+      const days = [...byDay.entries()].sort((a,b)=>{
+        const [da] = a, [db] = b;
+        const pa = da.split('/').reverse().join(''); // yyyymmdd
+        const pb = db.split('/').reverse().join('');
+        return pb.localeCompare(pa);
+      });
 
-      setStatus(`OK — ${items.length} events in range 👍`);
-      renderDays(days);
+      setStatus(`OK — ${items.length} events in range 👍`);
+      renderDays(days);
 
-    } catch (e){
-      console.error(e);
-      setStatus(`Fout bij laden: ${String(e.message || e)}`, 'error');
-      renderDays([]);
-    } finally {
-      elBtn.disabled = false;
-    }
-  }
+    } catch (e){
+      console.error(e);
+      setStatus(`Fout bij laden: ${String(e.message || e)}`, 'error');
+      renderDays([]);
+    } finally {
+      elBtn.disabled = false;
+    }
+  }
 
-  // init (today → today)
-  (function initDates(){
-    const d = new Date();
-    const iso = (x)=> x.toISOString().slice(0,10);
-    document.getElementById('from').value = iso(d);
-    document.getElementById('to').value = iso(d);
-  })();
+  // init (today → today)
+  (function initDates(){
+    const d = new Date();
+    const iso = (x)=> x.toISOString().slice(0,10);
+    document.getElementById('from').value = iso(d);
+    document.getElementById('to').value = iso(d);
+  })();
 
-  document.getElementById('btnLoad').addEventListener('click', loadAll);
+  document.getElementById('btnLoad').addEventListener('click', loadAll);
 
-  // auto-load bij openen (optioneel)
-  loadAll();
-  </script>
+  // auto-load bij openen (optioneel)
+  loadAll();
+  </script>
 </body>
 </html>
