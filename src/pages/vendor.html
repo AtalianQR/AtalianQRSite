@@ -362,7 +362,7 @@
         await loadAndRenderDocuments(job.Id);
         return menu(job); // dialoog loopt verder, paneel blijft open
       }
-
+	  
       if(ans.value==='done'){
         await botui.message.add({ content:isFr?'Veuillez ajouter un commentaire pour finaliser la tâche :':'Gelieve een opmerking toe te voegen om de taak af te ronden:' });
         const t=await botui.action.text({ action:{ placeholder:isFr?'Détail obligatoire…':'Verplichte opmerking…' } });
