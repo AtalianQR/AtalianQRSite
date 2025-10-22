@@ -111,295 +111,298 @@
   <script src="https://cdn.jsdelivr.net/npm/vue@2"></script>
   <script src="https://cdn.jsdelivr.net/npm/botui/build/botui.min.js"></script>
 
-  <script type="module">
-    /* ▸ 0. Endpoints ◂ */
-    const endpointJobDetails = `/.netlify/functions/jobsvendor`;
-    const endpointUpdate     = endpointJobDetails;
+ <script type="module">
+    /* ▸ 0. Endpoints ◂ */
+    const endpointJobDetails = `/.netlify/functions/jobsvendor`;
+    const endpointUpdate     = endpointJobDetails;
 
-    /* ▸ 1. Parameters ◂ */
-    const qs     = new URLSearchParams(window.location.search);
-    const jobId  = qs.get('job') || qs.get('jobId') || '';
-    let   lang   = qs.get('lang') || ((navigator.language||'').startsWith('fr') ? 'fr' : 'nl');
-    const isFr   = (lang === 'fr');
+    /* ▸ 1. Parameters ◂ */
+    const qs     = new URLSearchParams(window.location.search);
+    const jobId  = qs.get('job') || qs.get('jobId') || '';
+    let   lang   = qs.get('lang') || ((navigator.language||'').startsWith('fr') ? 'fr' : 'nl');
+    const isFr   = (lang === 'fr');
 
-    if (isFr) document.body.style.backgroundImage = "url('/afmeldentaak_fr.png')";
+    if (isFr) document.body.style.backgroundImage = "url('/afmeldentaak_fr.png')";
 
-    /* ▸ 2. Telemetrie (light) ◂ */
-    const Telemetry = (()=>{ 
-      const base = { jobId: String(jobId), lang, env: qs.has('test') ? 'test' : 'prod' };
-      async function send(type, extra={}){
-        const json = JSON.stringify({ type, ts: Date.now(), href: location.href, ...base, ...extra });
-        try{
-          if (navigator.sendBeacon && navigator.sendBeacon('/.netlify/functions/formlog', new Blob([json],{type:'application/json'}))) return;
-          await fetch('/.netlify/functions/formlog',{ method:'POST', headers:{'content-type':'application/json'}, body: json, keepalive:true });
-        }catch{}
-      }
-      return { send };
-    })();
-    Telemetry.send('vendor_html_load');
+    /* ▸ 2. Telemetrie (light) ◂ */
+    const Telemetry = (()=>{ 
+      const base = { jobId: String(jobId), lang, env: qs.has('test') ? 'test' : 'prod' };
+      async function send(type, extra={}){
+        const json = JSON.stringify({ type, ts: Date.now(), href: location.href, ...base, ...extra });
+        try{
+          if (navigator.sendBeacon && navigator.sendBeacon('/.netlify/functions/formlog', new Blob([json],{type:'application/json'}))) return;
+          await fetch('/.netlify/functions/formlog',{ method:'POST', headers:{'content-type':'application/json'}, body: json, keepalive:true });
+        }catch{}
+      }
+      return { send };
+    })();
+    Telemetry.send('vendor_html_load');
 
-    /* ▸ 3. UI helpers ◂ */
-    const botui = new BotUI('botui-app');
-    const elInfo = document.getElementById('job-info');
-    document.getElementById('switch-nl').onclick = ()=>{const u=new URL(location.href);u.searchParams.set('lang','nl');location.href=u;};
-    document.getElementById('switch-fr').onclick = ()=>{const u=new URL(location.href);u.searchParams.set('lang','fr');location.href=u;};
+    /* ▸ 3. UI helpers ◂ */
+    const botui = new BotUI('botui-app');
+    const elInfo = document.getElementById('job-info');
+    document.getElementById('switch-nl').onclick = ()=>{const u=new URL(location.href);u.searchParams.set('lang','nl');location.href=u;};
+    document.getElementById('switch-fr').onclick = ()=>{const u=new URL(location.href);u.searchParams.set('lang','fr');location.href=u;};
 
-    let sessionEmail='';
-    let jobPayload=null;
+    let sessionEmail='';
+    let jobPayload=null;
 
-    /* ====== Documentenpaneel helpers ====== */
-    const $panel   = document.getElementById('doc-panel');
-    const $backdrop= document.getElementById('doc-backdrop');
-    const $fab     = document.getElementById('doc-fab');
-    const $close   = document.getElementById('doc-panel-close');
-    const $list    = document.getElementById('doc-list');
-    const $preview = document.getElementById('doc-preview');
-    const $title   = document.getElementById('doc-panel-title');
+    /* ====== Documentenpaneel helpers ====== */
+    const $panel   = document.getElementById('doc-panel');
+    const $backdrop= document.getElementById('doc-backdrop');
+    const $fab     = document.getElementById('doc-fab');
+    const $close   = document.getElementById('doc-panel-close');
+    const $list    = document.getElementById('doc-list');
+    const $preview = document.getElementById('doc-preview');
+    const $title   = document.getElementById('doc-panel-title');
 
-    function openDocPanel(){
-      $panel.classList.add('open');
-      $panel.setAttribute('aria-hidden','false');
-      $backdrop.hidden=false; requestAnimationFrame(()=>{$backdrop.style.opacity=1});
-    }
-    function closeDocPanel(){
-      $panel.classList.remove('open');
-      $panel.setAttribute('aria-hidden','true');
-      $backdrop.style.opacity=0; setTimeout(()=>{$backdrop.hidden=true},180);
-    }
-    $fab.addEventListener('click',()=>{ openDocPanel(); if (!$list.dataset.bound) loadAndRenderDocuments(jobId).catch(console.error) });
-    $close.addEventListener('click',closeDocPanel);
-    $backdrop.addEventListener('click',closeDocPanel);
+    // FIX 1: Vertaal de tekst op de drijvende knop (FAB)
+    $fab.textContent = isFr ? '📎 Documents' : '📎 Documenten';
 
-    /* ▸ 4. Helpers ◂ */
-    const stripHtml=(s='')=>s.replace(/<[^>]*>/g,'').replace(/&nbsp;/g,' ').replace(/\s{2,}/g,' ').trim();
-    function formatIsoToLocal(iso){try{const d=new Date(iso);if(isNaN(d.getTime())) return isFr?'Date non valide':'Invalid Date'; return d.toLocaleString()}catch{ return iso||(isFr?'Date non valide':'Invalid Date') }}
+    function openDocPanel(){
+      $panel.classList.add('open');
+      $panel.setAttribute('aria-hidden','false');
+      $backdrop.hidden=false; requestAnimationFrame(()=>{$backdrop.style.opacity=1});
+    }
+    function closeDocPanel(){
+      $panel.classList.remove('open');
+      $panel.setAttribute('aria-hidden','true');
+      $backdrop.style.opacity=0; setTimeout(()=>{$backdrop.hidden=true},180);
+    }
+    $fab.addEventListener('click',()=>{ openDocPanel(); if (!$list.dataset.bound) loadAndRenderDocuments(jobId).catch(console.error) });
+    $close.addEventListener('click',closeDocPanel);
+    $backdrop.addEventListener('click',closeDocPanel);
 
-    async function fetchJobDocuments(jobId){
-      const url = `${endpointJobDetails}?action=LIST_JOB_DOCS&jobId=${encodeURIComponent(jobId)}`;
-      const r=await fetch(url,{headers:{accept:'application/json'}});
-      if(!r.ok) throw new Error(`HTTP ${r.status}`);
-      const data=await r.json();
-      return Array.isArray(data?.Documents)?data.Documents:[];
-    }
+    /* ▸ 4. Helpers ◂ */
+    const stripHtml=(s='')=>s.replace(/<[^>]*>/g,'').replace(/&nbsp;/g,' ').replace(/\s{2,}/g,' ').trim();
+    function formatIsoToLocal(iso){try{const d=new Date(iso);if(isNaN(d.getTime())) return isFr?'Date non valide':'Invalid Date'; return d.toLocaleString()}catch{ return iso||(isFr?'Date non valide':'Invalid Date') }}
 
-    async function fetchDocumentBase64(docId){
-      await botui.message.add({ content: isFr?`Téléchargement du document ${docId}...`:`Document ${docId} aan het downloaden...` });
-      const url = `${endpointJobDetails}?action=GET_JOB_DOC&docId=${encodeURIComponent(docId)}`;
-      const r=await fetch(url,{headers:{accept:'application/json'}});
-      if(!r.ok) throw new Error(`HTTP ${r.status}`);
-      const data=await r.json();
-      const b64=data?.Document; if(!b64||typeof b64!=='string') throw new Error(isFr?'Données du document introuvables.':'Documentdata niet gevonden.');
-      return b64;
-    }
+    async function fetchJobDocuments(jobId){
+      const url = `${endpointJobDetails}?action=LIST_JOB_DOCS&jobId=${encodeURIComponent(jobId)}`;
+      const r=await fetch(url,{headers:{accept:'application/json'}});
+      if(!r.ok) throw new Error(`HTTP ${r.status}`);
+      const data=await r.json();
+      return Array.isArray(data?.Documents)?data.Documents:[];
+    }
 
-    function getMimeType(docType, description){
-      const t=(docType||'').toUpperCase();
-      if(t==='PDF') return 'application/pdf';
-      if(t==='JPEG'||t==='JPG') return 'image/jpeg';
-      if(t==='PNG') return 'image/png';
-      const desc=(description||'').toLowerCase();
-      if(desc.endsWith('.pdf')) return 'application/pdf';
-      if(desc.endsWith('.jpg')||desc.endsWith('.jpeg')) return 'image/jpeg';
-      if(desc.endsWith('.png')) return 'image/png';
-      if(desc.endsWith('.doc')||desc.endsWith('.docx')) return 'application/msword';
-      if(desc.endsWith('.xls')||desc.endsWith('.xlsx')) return 'application/vnd.ms-excel';
-      return 'application/octet-stream';
-    }
+    async function fetchDocumentBase64(docId){
+      // FIX 2: Het voortgangsbericht is hier verwijderd om de dialoog schoon te houden.
+      const url = `${endpointJobDetails}?action=GET_JOB_DOC&docId=${encodeURIComponent(docId)}`;
+      const r=await fetch(url,{headers:{accept:'application/json'}});
+      if(!r.ok) throw new Error(`HTTP ${r.status}`);
+      const data=await r.json();
+      const b64=data?.Document; if(!b64||typeof b64!=='string') throw new Error(isFr?'Données du document introuvables.':'Documentdata niet gevonden.');
+      return b64;
+    }
 
-    async function displayBase64InPanel(docId, docType, docDescription, base64Data){
-      const mimeType=getMimeType(docType, docDescription);
-      const dataUrl=`data:${mimeType};base64,${base64Data}`;
-      const fileName=(docDescription||`${docId}.${(docType||'bin').toLowerCase()}`);
+    function getMimeType(docType, description){
+      const t=(docType||'').toUpperCase();
+      if(t==='PDF') return 'application/pdf';
+      if(t==='JPEG'||t==='JPG') return 'image/jpeg';
+      if(t==='PNG') return 'image/png';
+      const desc=(description||'').toLowerCase();
+      if(desc.endsWith('.pdf')) return 'application/pdf';
+      if(desc.endsWith('.jpg')||desc.endsWith('.jpeg')) return 'image/jpeg';
+      if(desc.endsWith('.png')) return 'image/png';
+      if(desc.endsWith('.doc')||desc.endsWith('.docx')) return 'application/msword';
+      if(desc.endsWith('.xls')||desc.endsWith('.xlsx')) return 'application/vnd.ms-excel';
+      return 'application/octet-stream';
+    }
 
-      let html='';
-      if(mimeType.startsWith('image/')){
-        html = `<figure style="margin:0"><img src="${dataUrl}" alt="${docId}" style="max-width:100%;height:auto;border:1px solid #ddd;border-radius:6px"/><figcaption style="font-size:.85rem;color:#6b7280;margin-top:.25rem">${fileName}</figcaption></figure>`;
-      } else if (mimeType==='application/pdf'){
-        html = `<div class="pdf-tip">${isFr? 'Ce document est un PDF. Ouvrez/le téléchargez via le lien ci‑dessous.' : 'Dit is een PDF. Open of download via de link hieronder.'}</div>
-                <p><a href="${dataUrl}" target="_blank" download="${fileName}" style="display:inline-block;padding:8px 14px;background:#EE7E00;color:#fff;text-decoration:none;border-radius:6px;font-weight:700">${isFr?'Ouvrir/Télécharger PDF':'PDF openen/downloaden'}</a></p>`;
-      } else {
-        html = `<p style="color:#b91c1c">${isFr?`Type non supporté (${mimeType}).`:`Niet-ondersteund type (${mimeType}).`}</p>
-                <p><a href="${dataUrl}" target="_blank" download="${fileName}${mimeType==='application/octet-stream'?'.dat':''}" style="color:#EE7E00;font-weight:700">${isFr?`Télécharger l'original`:'Origineel downloaden'}</a></p>`;
-      }
-      $preview.innerHTML = html;
-    }
+    async function displayBase64InPanel(docId, docType, docDescription, base64Data){
+      const mimeType=getMimeType(docType, docDescription);
+      const dataUrl=`data:${mimeType};base64,${base64Data}`;
+      const fileName=(docDescription||`${docId}.${(docType||'bin').toLowerCase()}`);
 
-    /* ▸ 5. Login ◂ */
-    const copy = { nl:{ intro1:"Welkom! We helpen je om deze taak snel en correct af te ronden. 👋", ask:"Gelieve uw login in te voeren:", invalid:"Foutieve login." }, fr:{ intro1:"Bienvenue ! Nous vous aidons à clôturer cette tâche rapidement et correctement. 👋", ask:"Veuillez entrer votre identifiant :", invalid:"Erreur d'identifiant." } };
+      let html='';
+      if(mimeType.startsWith('image/')){
+        html = `<figure style="margin:0"><img src="${dataUrl}" alt="${docId}" style="max-width:100%;height:auto;border:1px solid #ddd;border-radius:6px"/><figcaption style="font-size:.85rem;color:#6b7280;margin-top:.25rem">${fileName}</figcaption></figure>`;
+      } else if (mimeType==='application/pdf'){
+        html = `<div class="pdf-tip">${isFr? 'Ce document est un PDF. Ouvrez/le téléchargez via le lien ci‑dessous.' : 'Dit is een PDF. Open of download via de link hieronder.'}</div>
+                <p><a href="${dataUrl}" target="_blank" download="${fileName}" style="display:inline-block;padding:8px 14px;background:#EE7E00;color:#fff;text-decoration:none;border-radius:6px;font-weight:700">${isFr?'Ouvrir/Télécharger PDF':'PDF openen/downloaden'}</a></p>`;
+      } else {
+        html = `<p style="color:#b91c1c">${isFr?`Type non supporté (${mimeType}).`:`Niet-ondersteund type (${mimeType}).`}</p>
+                <p><a href="${dataUrl}" target="_blank" download="${fileName}${mimeType==='application/octet-stream'?'.dat':''}" style="color:#EE7E00;font-weight:700">${isFr?`Télécharger l'original`:'Origineel downloaden'}</a></p>`;
+      }
+      $preview.innerHTML = html;
+    }
+
+    /* ▸ 5. Login ◂ */
+    const copy = { nl:{ intro1:"Welkom! We helpen je om deze taak snel en correct af te ronden. 👋", ask:"Gelieve uw login in te voeren:", invalid:"Foutieve login." }, fr:{ intro1:"Bienvenue ! Nous vous aidons à clôturer cette tâche rapidement et correctement. 👋", ask:"Veuillez entrer votre identifiant :", invalid:"Erreur d'identifiant." } };
 
 	async function isAllowedBusinessMail(e=''){
-	  const okSyntax=/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e); if(!okSyntax) return false;
-	  try{ const url=`${endpointJobDetails}?jobId=${encodeURIComponent(jobId)}&email=${encodeURIComponent(e)}&controle=${encodeURIComponent(e)}`;
+	  const okSyntax=/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e); if(!okSyntax) return false;
+	  try{ const url=`${endpointJobDetails}?jobId=${encodeURIComponent(jobId)}&email=${encodeURIComponent(e)}&controle=${encodeURIComponent(e)}`;
 		const r=await fetch(url,{headers:{accept:'application/json'}}); if(!r.ok) return false; const data=await r.json(); return !!data?.allowed; }catch{ return false }
 	}
 
-    async function emailIntroAndLogin(){
-      const t=isFr?copy.fr:copy.nl; await botui.message.add({ content:t.intro1 });
-      let attempts=0; while(attempts<3){
-        await botui.message.add({ content:t.ask });
-        const a=await botui.action.text({ action:{ placeholder:isFr?'prenom.nom@exemple.com':'voornaam.naam@voorbeeld.com' } });
-        const email=(a.value||'').trim().toLowerCase();
-        if(!(await isAllowedBusinessMail(email))){ attempts++; if(attempts>=3){ await botui.message.add({ content: isFr?'❌ Maximum d\'essais atteint. Le flux de travail est terminé.':'❌ Maximum aantal pogingen bereikt. De workflow is beëindigd.' }); Telemetry.send('login_max_attempts'); return false }
-          const remaining=3-attempts; const msg=isFr?`${t.invalid} Il vous reste ${remaining} essai${remaining!==1?'s':''}.`:`${t.invalid} Je hebt nog ${remaining} poging(en) over.`; await botui.message.add({ content: msg }); continue; }
-        sessionEmail=email; Telemetry.send('email_ok',{ emailMasked: email.replace(/(.).+(@.*)/,'$1***$2') }); return true;
-      }
-      return false;
-    }
+    async function emailIntroAndLogin(){
+      const t=isFr?copy.fr:copy.nl; await botui.message.add({ content:t.intro1 });
+      let attempts=0; while(attempts<3){
+        await botui.message.add({ content:t.ask });
+        const a=await botui.action.text({ action:{ placeholder:isFr?'prenom.nom@exemple.com':'voornaam.naam@voorbeeld.com' } });
+        const email=(a.value||'').trim().toLowerCase();
+        if(!(await isAllowedBusinessMail(email))){ attempts++; if(attempts>=3){ await botui.message.add({ content: isFr?'❌ Maximum d\'essais atteint. Le flux de travail est terminé.':'❌ Maximum aantal pogingen bereikt. De workflow is beëindigd.' }); Telemetry.send('login_max_attempts'); return false }
+          const remaining=3-attempts; const msg=isFr?`${t.invalid} Il vous reste ${remaining} essai${remaining!==1?'s':''}.`:`${t.invalid} Je hebt nog ${remaining} poging(en) over.`; await botui.message.add({ content: msg }); continue; }
+        sessionEmail=email; Telemetry.send('email_ok',{ emailMasked: email.replace(/(.).+(@.*)/,'$1***$2') }); return true;
+      }
+      return false;
+    }
 
-    /* ▸ 6. Data ◂ */
-    async function fetchJobDetails(){
-      const url=`${endpointJobDetails}?jobId=${encodeURIComponent(jobId)}&lang=${lang}&action=VIEW&email=${encodeURIComponent(sessionEmail)}`;
-      const r=await fetch(url,{headers:{accept:'application/json'}}); if(!r.ok){ const errorText=await r.text(); console.error(`Fetch error ${r.status}: ${errorText}`); throw new Error(`HTTP ${r.status} - ${r.statusText||'Server Error'}`) } return r.json();
-    }
-    function isJobOpen(job){ const s=String(job?.Status??'').trim(); if(!s) return true; return s!=='1016' }
-    function renderJobHeader(job){ const desc=stripHtml(job.Description || (isFr?'Description manquante':'Beschrijving ontbreekt')); elInfo.innerHTML=`<div class="jobid">${isFr?'ID tâche':'Job ID'}: ${job.Id}</div><div class="desc">${desc}</div>`; elInfo.style.display='flex' }
+    /* ▸ 6. Data ◂ */
+    async function fetchJobDetails(){
+      const url=`${endpointJobDetails}?jobId=${encodeURIComponent(jobId)}&lang=${lang}&action=VIEW&email=${encodeURIComponent(sessionEmail)}`;
+      const r=await fetch(url,{headers:{accept:'application/json'}}); if(!r.ok){ const errorText=await r.text(); console.error(`Fetch error ${r.status}: ${errorText}`); throw new Error(`HTTP ${r.status} - ${r.statusText||'Server Error'}`) } return r.json();
+    }
+    function isJobOpen(job){ const s=String(job?.Status??'').trim(); if(!s) return true; return s!=='1016' }
+    function renderJobHeader(job){ const desc=stripHtml(job.Description || (isFr?'Description manquante':'Beschrijving ontbreekt')); elInfo.innerHTML=`<div class="jobid">${isFr?'ID tâche':'Job ID'}: ${job.Id}</div><div class="desc">${desc}</div>`; elInfo.style.display='flex' }
 
-    /* ▸ 7. Vertalen (zoals origineel, compacter gehouden) ◂ */
-    async function translateText(text, from, to){ if(!text||from===to) return {text, detected:null}; try{ const r=await fetch('/.netlify/functions/translate',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({text,source:from||undefined,target:to})}); if(!r.ok) throw new Error(await r.text()); const data=await r.json(); return { text:data?.text??text, detected:data?.detected??null } }catch{ return { text, detected:null } } }
+    /* ▸ 7. Vertalen (zoals origineel, compacter gehouden) ◂ */
+    async function translateText(text, from, to){ if(!text||from===to) return {text, detected:null}; try{ const r=await fetch('/.netlify/functions/translate',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({text,source:from||undefined,target:to})}); if(!r.ok) throw new Error(await r.text()); const data=await r.json(); return { text:data?.text??text, detected:data?.detected??null } }catch{ return { text, detected:null } } }
 
-    async function showJobTextsThenAskTranslate(job){
-      renderJobHeader(job);
-      const rawDesc=job.Description||''; const rawReport=job.Report||job.JobReportText||''; const rawInstr=job.Instructions||job.JobText||'';
-      if(rawDesc.trim()) await botui.message.add({ type:'html', content:`<div class='job-description-box'><b>${isFr?'Description (originale)':'Beschrijving (origineel)'}</b><br>${stripHtml(rawDesc)}</div>` });
-      if(rawReport.trim()) await botui.message.add({ type:'html', content:`<div class='meldingen-lijst'><b>${isFr?'Remarque (originale)':'Toelichting (origineel)'}</b><br>${stripHtml(rawReport)}</div>` });
-      if(rawInstr.trim()) await botui.message.add({ type:'html', content:`<div class='meldingen-lijst'><b>${isFr?'Instructions (original)':'Werkinstructies (origineel)'}</b><br>${stripHtml(rawInstr)}</div>` });
+    async function showJobTextsThenAskTranslate(job){
+      renderJobHeader(job);
+      const rawDesc=job.Description||''; const rawReport=job.Report||job.JobReportText||''; const rawInstr=job.Instructions||job.JobText||'';
+      if(rawDesc.trim()) await botui.message.add({ type:'html', content:`<div class='job-description-box'><b>${isFr?'Description (originale)':'Beschrijving (origineel)'}</b><br>${stripHtml(rawDesc)}</div>` });
+      if(rawReport.trim()) await botui.message.add({ type:'html', content:`<div class='meldingen-lijst'><b>${isFr?'Remarque (originale)':'Toelichting (origineel)'}</b><br>${stripHtml(rawReport)}</div>` });
+      if(rawInstr.trim()) await botui.message.add({ type:'html', content:`<div class='meldingen-lijst'><b>${isFr?'Instructions (original)':'Werkinstructies (origineel)'}</b><br>${stripHtml(rawInstr)}</div>` });
 
-      await botui.message.add({ content: isFr?'Les détails originaux sont affichés ci-dessus. Voulez-vous une version traduite ?':'De originele details worden hierboven weergegeven. Wil je een vertaalde versie zien?' });
-      const choice=await botui.action.button({ action:[ {text:isFr?'🌐 Traduire en français':'🌐 Vertalen naar Nederlands',value:'yes'},{text:isFr?'Garder l\'affichage actuel':'Houd chat zoals is',value:'no'} ] });
-      if(choice.value!=='yes') return;
-      const dst=isFr?'fr':'nl';
-      const descRes=await translateText(rawDesc,'auto',dst);
-      const repRes =await translateText(rawReport,'auto',dst);
-      const insRes =await translateText(rawInstr,'auto',dst);
-      const badge =(d)=> d?`<small style='color:#6b7280'>(${isFr?'traduit de':'vertaald uit'}: ${d.toUpperCase()})</small>`:'';
-      const shouldDisplay=(res,target,raw)=>{ const t=target.toLowerCase(); if(!(res.text||'').trim()) return false; if(res.detected&&res.detected.toLowerCase()!==t) return true; const a=stripHtml(raw).trim(), b=stripHtml(res.text).trim(); return a!==b };
-      if(shouldDisplay(descRes,dst,rawDesc)) await botui.message.add({ type:'html', content:`<div class='job-description-box'><b>${isFr?'Description (traduite)':'Beschrijving (vertaald)'}</b> ${badge(descRes.detected)}<br>${stripHtml(descRes.text)}</div>` });
-      if(shouldDisplay(repRes ,dst,rawReport)) await botui.message.add({ type:'html', content:`<div class='meldingen-lijst'><b>${isFr?'Remarque (traduite)':'Toelichting (vertaald)'}</b> ${badge(repRes.detected)}<br>${stripHtml(repRes.text)}</div>` });
-      if(shouldDisplay(insRes ,dst,rawInstr)) await botui.message.add({ type:'html', content:`<div class='meldingen-lijst'><b>${isFr?'Instructions (traduite)':'Werkinstructies (vertaald)'}</b> ${badge(insRes.detected)}<br>${stripHtml(insRes.text)}</div>` });
-      await botui.message.add({ type:'html', content:`<small style='color:#6b7280'>${isFr?'Affichage traduit ajouté sous l’original.':'Vertaalde weergave toegevoegd onder het origineel.'}</small>` });
-    }
+      await botui.message.add({ content: isFr?'Les détails originaux sont affichés ci-dessus. Voulez-vous une version traduite ?':'De originele details worden hierboven weergegeven. Wil je een vertaalde versie zien?' });
+      const choice=await botui.action.button({ action:[ {text:isFr?'🌐 Traduire en français':'🌐 Vertalen naar Nederlands',value:'yes'},{text:isFr?'Garder l\'affichage actuel':'Houd chat zoals is',value:'no'} ] });
+      if(choice.value!=='yes') return;
+      const dst=isFr?'fr':'nl';
+      const descRes=await translateText(rawDesc,'auto',dst);
+      const repRes =await translateText(rawReport,'auto',dst);
+      const insRes =await translateText(rawInstr,'auto',dst);
+      const badge =(d)=> d?`<small style='color:#6b7280'>(${isFr?'traduit de':'vertaald uit'}: ${d.toUpperCase()})</small>`:'';
+      const shouldDisplay=(res,target,raw)=>{ const t=target.toLowerCase(); if(!(res.text||'').trim()) return false; if(res.detected&&res.detected.toLowerCase()!==t) return true; const a=stripHtml(raw).trim(), b=stripHtml(res.text).trim(); return a!==b };
+      if(shouldDisplay(descRes,dst,rawDesc)) await botui.message.add({ type:'html', content:`<div class='job-description-box'><b>${isFr?'Description (traduite)':'Beschrijving (vertaald)'}</b> ${badge(descRes.detected)}<br>${stripHtml(descRes.text)}</div>` });
+      if(shouldDisplay(repRes ,dst,rawReport)) await botui.message.add({ type:'html', content:`<div class='meldingen-lijst'><b>${isFr?'Remarque (traduite)':'Toelichting (vertaald)'}</b> ${badge(repRes.detected)}<br>${stripHtml(repRes.text)}</div>` });
+      if(shouldDisplay(insRes ,dst,rawInstr)) await botui.message.add({ type:'html', content:`<div class='meldingen-lijst'><b>${isFr?'Instructions (traduite)':'Werkinstructies (vertaald)'}</b> ${badge(insRes.detected)}<br>${stripHtml(insRes.text)}</div>` });
+      await botui.message.add({ type:'html', content:`<small style='color:#6b7280'>${isFr?'Affichage traduit ajouté sous l’original.':'Vertaalde weergave toegevoegd onder het origineel.'}</small>` });
+    }
 
-    /* ▸ 8. Update wrapper ◂ */
-    async function submitUpdate(payload, successMsg){ const r=await fetch(endpointUpdate,{ method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(payload)}); if(!r.ok) throw new Error(await r.text()); await botui.message.add({ content: successMsg }) }
+    /* ▸ 8. Update wrapper ◂ */
+    async function submitUpdate(payload, successMsg){ const r=await fetch(endpointUpdate,{ method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(payload)}); if(!r.ok) throw new Error(await r.text()); await botui.message.add({ content: successMsg }) }
 
-    /* ▸ 9. Documentenlijst in paneel ◂ */
-    async function loadAndRenderDocuments(jobId){
-      $title.textContent = isFr? '📎 Documents' : '📎 Documenten';
-      $list.innerHTML = `<div style="padding:.75rem;color:#6b7280">${isFr?'Chargement des documents…':'Documenten laden…'}</div>`;
-      try{
-        const docs=await fetchJobDocuments(jobId);
-        if(!docs.length){ $list.innerHTML=`<div style='padding:.75rem'>${isFr?'Aucun document lié à cette tâche.':'Geen documenten gekoppeld aan deze taak.'}</div>`; return }
+    /* ▸ 9. Documentenlijst in paneel ◂ */
+    async function loadAndRenderDocuments(jobId){
+      $title.textContent = isFr? '📎 Documents' : '📎 Documenten';
+      $list.innerHTML = `<div style="padding:.75rem;color:#6b7280">${isFr?'Chargement des documents…':'Documenten laden…'}</div>`;
+      try{
+        const docs=await fetchJobDocuments(jobId);
+        if(!docs.length){ $list.innerHTML=`<div style='padding:.75rem'>${isFr?'Aucun document lié à cette tâche.':'Geen documenten gekoppeld aan deze taak.'}</div>`; return }
 
-        const rows = docs.map(d=>{
-          const id = d.Id || '';
-          const desc = stripHtml(d.Description||'');
-          const typ = d.DocumentType || '';
-          const when = formatIsoToLocal(d.Created||'');
-          return `<tr>
-            <td>${desc}</td>
-            <td style='white-space:nowrap;color:#6b7280'>${typ}</td>
-            <td style='white-space:nowrap;color:#6b7280'>${when}</td>
-            <td style='width:1%;white-space:nowrap'>
-              <button class='view-doc-btn' data-id='${id}' data-type='${typ}' data-desc='${desc}'>${isFr?'Voir':'Bekijken'}</button>
-            </td>
-          </tr>`
-        }).join('');
+        const rows = docs.map(d=>{
+          const id = d.Id || '';
+          const desc = stripHtml(d.Description||'');
+          const typ = d.DocumentType || '';
+          const when = formatIsoToLocal(d.Created||'');
+          return `<tr>
+            <td>${desc}</td>
+            <td style='white-space:nowrap;color:#6b7280'>${typ}</td>
+            <td style='white-space:nowrap;color:#6b7280'>${when}</td>
+            <td style='width:1%;white-space:nowrap'>
+              <button class='view-doc-btn' data-id='${id}' data-type='${typ}' data-desc='${desc}'>${isFr?'Voir':'Bekijken'}</button>
+            </td>
+          </tr>`
+        }).join('');
 
-        $list.innerHTML = `<div style='overflow:auto'>
-          <table class='doc-table'>
-            <thead>
-              <tr>
-                <th>${isFr?'Description':'Omschrijving'}</th>
-                <th>${isFr?'Type':'Type'}</th>
-                <th>${isFr?'Créé le':'Aangemaakt'}</th>
-                <th>${isFr?'Action':'Actie'}</th>
-              </tr>
-            </thead>
-            <tbody>${rows}</tbody>
-          </table>
-        </div>`;
+        $list.innerHTML = `<div style='overflow:auto'>
+          <table class='doc-table'>
+            <thead>
+              <tr>
+                <th>${isFr?'Description':'Omschrijving'}</th>
+                <th>${isFr?'Type':'Type'}</th>
+                <th>${isFr?'Créé le':'Aangemaakt'}</th>
+                <th>${isFr?'Action':'Actie'}</th>
+              </tr>
+            </thead>
+            <tbody>${rows}</tbody>
+          </table>
+        </div>`;
 
-        // Bind once
-        $list.dataset.bound = '1';
-        $list.addEventListener('click', async (ev)=>{
-          const btn = ev.target.closest('button.view-doc-btn'); if(!btn) return;
-          btn.disabled=true; const old=btn.textContent; btn.textContent=isFr?'Chargement…':'Laden…';
-          try{
-            const b64 = await fetchDocumentBase64(btn.dataset.id);
-            await displayBase64InPanel(btn.dataset.id, btn.dataset.type, btn.dataset.desc, b64);
-          }catch(e){ await botui.message.add({ content: isFr?`❌ Erreur de chargement du contenu: ${e.message}`:`❌ Fout bij laden inhoud: ${e.message}` }); }
-          finally{ btn.disabled=false; btn.textContent=old }
-        });
-      }catch(e){
-        console.error(e);
-        $list.innerHTML = `<div style='padding:.75rem;color:#b91c1c'>${isFr?'Échec du chargement des documents.':'Documenten laden mislukt.'} (${e.message})</div>`;
-      }
-    }
+        // Bind once
+        $list.dataset.bound = '1';
+        $list.addEventListener('click', async (ev)=>{
+          const btn = ev.target.closest('button.view-doc-btn'); if(!btn) return;
+          btn.disabled=true; const old=btn.textContent; btn.textContent=isFr?'Chargement…':'Laden…';
+          try{
+            const b64 = await fetchDocumentBase64(btn.dataset.id);
+            await displayBase64InPanel(btn.dataset.id, btn.dataset.type, btn.dataset.desc, b64);
+          }catch(e){ await botui.message.add({ content: isFr?`❌ Erreur de chargement du contenu: ${e.message}`:`❌ Fout bij laden inhoud: ${e.message}` }); }
+          finally{ btn.disabled=false; btn.textContent=old }
+        });
+      }catch(e){
+        console.error(e);
+        $list.innerHTML = `<div style='padding:.75rem;color:#b91c1c'>${isFr?'Échec du chargement des documents.':'Documenten laden mislukt.'} (${e.message})</div>`;
+      }
+    }
 
-    /* ▸ 10. Flow ◂ */
-    const createFormattedText=(s)=>`<span style="color:#007bff;font-weight:bold;">${(s||'').trim()}</span>`;
+    /* ▸ 10. Flow ◂ */
+    const createFormattedText=(s)=>`<span style="color:#007bff;font-weight:bold;">${(s||'').trim()}</span>`;
 
-    async function menu(job){
-      await botui.message.add({ content: isFr?`Que voulez-vous faire pour la tâche ${job.Id}?`:`Wat wil je doen voor taak ${job.Id}?` });
-      const ans=await botui.action.button({ action:[
-        { text:isFr?'➕ Ajouter un commentaire':'➕ Info toevoegen', value:'info' },
-        { text:isFr?'✅ Terminer la tâche':'✅ Taak afronden', value:'done' },
-        { text:isFr?'📎 Documents':'📎 Documenten', value:'docs' }
-      ]});
+    async function menu(job){
+      await botui.message.add({ content: isFr?`Que voulez-vous faire pour la tâche ${job.Id}?`:`Wat wil je doen voor taak ${job.Id}?` });
+      const ans=await botui.action.button({ action:[
+        { text:isFr?'➕ Ajouter un commentaire':'➕ Info toevoegen', value:'info' },
+        { text:isFr?'✅ Terminer la tâche':'✅ Taak afronden', value:'done' },
+        { text:isFr?'📎 Documents':'📎 Documenten', value:'docs' }
+      ]});
 
-      if(ans.value==='info'){
-        await botui.message.add({ content:isFr?'Votre commentaire :':'Jouw commentaar:' });
-        const t=await botui.action.text({ action:{ placeholder:isFr?'Détail…':'Detail…' } });
-        const info=(t.value||'').trim(); if(!info){ await botui.message.add({ content:isFr?'⚠️ Entrez un texte.':'⚠️ Geef wat tekst in.' }); return menu(job) }
-        const formatted=createFormattedText(info);
-        await submitUpdate({ action:'ADD_INFO', jobId:job.Id, text:formatted, email:sessionEmail, lang }, isFr?'Commentaire ajouté.':'Commentaar toegevoegd.');
-        try{ jobPayload=await fetchJobDetails(); renderJobHeader(jobPayload.Job) }catch{}
-        return menu(jobPayload.Job);
-      }
+      if(ans.value==='info'){
+        await botui.message.add({ content:isFr?'Votre commentaire :':'Jouw commentaar:' });
+        const t=await botui.action.text({ action:{ placeholder:isFr?'Détail…':'Detail…' } });
+        const info=(t.value||'').trim(); if(!info){ await botui.message.add({ content:isFr?'⚠️ Entrez un texte.':'⚠️ Geef wat tekst in.' }); return menu(job) }
+        const formatted=createFormattedText(info);
+        await submitUpdate({ action:'ADD_INFO', jobId:job.Id, text:formatted, email:sessionEmail, lang }, isFr?'Commentaire ajouté.':'Commentaar toegevoegd.');
+        try{ jobPayload=await fetchJobDetails(); renderJobHeader(jobPayload.Job) }catch{}
+        return menu(jobPayload.Job);
+      }
 
-      if(ans.value==='docs'){
-        openDocPanel();
-        await loadAndRenderDocuments(job.Id);
-        return menu(job); // dialoog loopt verder, paneel blijft open
-      }
-	  
-      if(ans.value==='done'){
-        await botui.message.add({ content:isFr?'Veuillez ajouter un commentaire pour finaliser la tâche :':'Gelieve een opmerking toe te voegen om de taak af te ronden:' });
-        const t=await botui.action.text({ action:{ placeholder:isFr?'Détail obligatoire…':'Verplichte opmerking…' } });
-        const info=(t.value||'').trim(); if(!info){ await botui.message.add({ content:isFr?'⚠️ Le commentaire is obligatoire pour la clôture.':'⚠️ De opmerking is verplicht voor het afsluiten.' }); return menu(job) }
-        const formatted=createFormattedText(info);
-        const c=await botui.action.button({ action:[ {text:isFr?'Confirmer la clôture':'Sluiting bevestigen', value:'yes'},{text:isFr?'Annuler':'Annuleren', value:'no'} ] });
-        if(c.value!=='yes') return menu(job);
-        await submitUpdate({ action:'CLOSE', jobId:job.Id, email:sessionEmail, lang, text:formatted }, isFr?'Statut mis à jour en commentaar is opgeslagen.':'Status bijgewerkt en opmerking vastgelegd.');
-        try{ jobPayload=await fetchJobDetails(); renderJobHeader(jobPayload.Job); if(!isJobOpen(jobPayload.Job)){ await botui.message.add({ content:isFr?'✅ Tâche clôturée.':'✅ Taak afgesloten.' }); closeDocPanel(); return } }catch{}
-        return menu(jobPayload.Job);
-      }
-    }
+      if(ans.value==='docs'){
+        openDocPanel();
+        await loadAndRenderDocuments(job.Id);
+        return menu(job); // dialoog loopt verder, paneel blijft open
+      }
+	  
+      if(ans.value==='done'){
+        await botui.message.add({ content:isFr?'Veuillez ajouter un commentaire pour finaliser la tâche :':'Gelieve een opmerking toe te voegen om de taak af te ronden:' });
+        const t=await botui.action.text({ action:{ placeholder:isFr?'Détail obligatoire…':'Verplichte opmerking…' } });
+        const info=(t.value||'').trim(); if(!info){ await botui.message.add({ content:isFr?'⚠️ Le commentaire is obligatoire pour la clôture.':'⚠️ De opmerking is verplicht voor het afsluiten.' }); return menu(job) }
+        const formatted=createFormattedText(info);
+        const c=await botui.action.button({ action:[ {text:isFr?'Confirmer la clôture':'Sluiting bevestigen', value:'yes'},{text:isFr?'Annuler':'Annuleren', value:'no'} ] });
+        if(c.value!=='yes') return menu(job);
+        await submitUpdate({ action:'CLOSE', jobId:job.Id, email:sessionEmail, lang, text:formatted }, isFr?'Statut mis à jour en commentaar is opgeslagen.':'Status bijgewerkt en opmerking vastgelegd.');
+        try{ jobPayload=await fetchJobDetails(); renderJobHeader(jobPayload.Job); if(!isJobOpen(jobPayload.Job)){ await botui.message.add({ content:isFr?'✅ Tâche clôturée.':'✅ Taak afgesloten.' }); closeDocPanel(); return } }catch{}
+        return menu(jobPayload.Job);
+      }
+    }
 
-    async function startFlow(){
-      try{
-        if(!jobId){ await botui.message.add({ type:'html', content:'<span style="color:red;font-weight:bold">Geen geldige Job ID.</span>' }); Telemetry.send('invalid_job_id'); return }
-        const loginSuccess=await emailIntroAndLogin(); if(!loginSuccess) return;
-        await botui.message.add({ content:isFr?'Je récupère les détails de la tâche…':'Ik haal de taakdetails op…' });
-        jobPayload=await fetchJobDetails(); const job=jobPayload?.Job||{}; if(!job.Id) throw new Error('Job details ontvangen, maar taak-ID ontbreekt in de payload.');
-        await showJobTextsThenAskTranslate(job);
-        if(!isJobOpen(job)){ await botui.message.add({ content:isFr?'Cette tâche est déjà clôturée. Aucune action possible.':'Deze taak is al afgesloten. Geen acties meer mogelijk.' }); Telemetry.send('job_closed',{status:job.Status}); return }
-        await menu(job);
-      }catch(e){
-        const errorDetail=String(e.message||e); console.error('FATALE FOUT IN FLOW:', e);
-        let userMessage=isFr?'❌ Erreur: Une erreur inattendue est survenue. Veuillez réessayer plus tard.':'❌ Fout: Er is een onverwachte fout opgetreden. Probeer later opnieuw.';
-        if(errorDetail.includes('HTTP')) userMessage=isFr?`❌ Erreur de connexion: Le chargement a échoué (Détail: ${errorDetail}).`:`❌ Verbindingsfout: Laden is onderbroken (Détail: ${errorDetail}).`;
-        await botui.message.add({ content:userMessage, type:'html', cssClass:'error-message' }); Telemetry.send('fatal_error',{ err:errorDetail });
-      }
-    }
+    async function startFlow(){
+      try{
+        if(!jobId){ await botui.message.add({ type:'html', content:'<span style="color:red;font-weight:bold">Geen geldige Job ID.</span>' }); Telemetry.send('invalid_job_id'); return }
+        const loginSuccess=await emailIntroAndLogin(); if(!loginSuccess) return;
+        await botui.message.add({ content:isFr?'Je récupère les détails de la tâche…':'Ik haal de taakdetails op…' });
+        jobPayload=await fetchJobDetails(); const job=jobPayload?.Job||{}; if(!job.Id) throw new Error('Job details ontvangen, maar taak-ID ontbreekt in de payload.');
+        await showJobTextsThenAskTranslate(job);
+        if(!isJobOpen(job)){ await botui.message.add({ content:isFr?'Cette tâche est déjà clôturée. Aucune action possible.':'Deze taak is al afgesloten. Geen acties meer mogelijk.' }); Telemetry.send('job_closed',{status:job.Status}); return }
+        await menu(job);
+      }catch(e){
+        const errorDetail=String(e.message||e); console.error('FATALE FOUT IN FLOW:', e);
+        let userMessage=isFr?'❌ Erreur: Une erreur inattendue est survenue. Veuillez réessayer plus tard.':'❌ Fout: Er is een onverwachte fout opgetreden. Probeer later opnieuw.';
+        if(errorDetail.includes('HTTP')) userMessage=isFr?`❌ Erreur de connexion: Le chargement a échoué (Détail: ${errorDetail}).`:`❌ Verbindingsfout: Laden is onderbroken (Détail: ${errorDetail}).`;
+        await botui.message.add({ content:userMessage, type:'html', cssClass:'error-message' }); Telemetry.send('fatal_error',{ err:errorDetail });
+      }
+    }
 
-    /* ▸ 11. Idle ping ◂ */
-    let lastActivity=Date.now(); ['click','keydown','touchstart'].forEach(ev=>document.addEventListener(ev,()=>lastActivity=Date.now(),{passive:true}));
-    setInterval(()=>{ const ms=Date.now()-lastActivity; if(ms>45000){ Telemetry.send('idle',{inactiveMs:ms}); lastActivity=Date.now() } },5000);
-    addEventListener('pagehide',()=>Telemetry.send('pagehide'));
+    /* ▸ 11. Idle ping ◂ */
+    let lastActivity=Date.now(); ['click','keydown','touchstart'].forEach(ev=>document.addEventListener(ev,()=>lastActivity=Date.now(),{passive:true}));
+    setInterval(()=>{ const ms=Date.now()-lastActivity; if(ms>45000){ Telemetry.send('idle',{inactiveMs:ms}); lastActivity=Date.now() } },5000);
+    addEventListener('pagehide',()=>Telemetry.send('pagehide'));
 
-    /* ▸ 12. Start ◂ */
-    startFlow();
-  </script>
+    /* ▸ 12. Start ◂ */
+    startFlow();
+  </script>
 </body>
 </html>
