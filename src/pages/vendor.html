@@ -227,15 +227,11 @@
     /* ▸ 5. Login ◂ */
     const copy = { nl:{ intro1:"Welkom! We helpen je om deze taak snel en correct af te ronden. 👋", ask:"Gelieve uw login in te voeren:", invalid:"Foutieve login." }, fr:{ intro1:"Bienvenue ! Nous vous aidons à clôturer cette tâche rapidement et correctement. 👋", ask:"Veuillez entrer votre identifiant :", invalid:"Erreur d'identifiant." } };
 
-async function isAllowedBusinessMail(e=''){
-  // Controleert alleen nog of het de basis e-mail syntax is
-  const okSyntax=/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e); 
-  if(!okSyntax) return false;
-
-  // Stelt de sessionEmail in op de ingevoerde waarde, om later te gebruiken
-  // We slaan de servercontrole over
-  return true; 
-}
+	async function isAllowedBusinessMail(e=''){
+	  const okSyntax=/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e); if(!okSyntax) return false;
+	  try{ const url=`${endpointJobDetails}?jobId=${encodeURIComponent(jobId)}&email=${encodeURIComponent(e)}&controle=${encodeURIComponent(e)}`;
+		const r=await fetch(url,{headers:{accept:'application/json'}}); if(!r.ok) return false; const data=await r.json(); return !!data?.allowed; }catch{ return false }
+	}
 
     async function emailIntroAndLogin(){
       const t=isFr?copy.fr:copy.nl; await botui.message.add({ content:t.intro1 });
