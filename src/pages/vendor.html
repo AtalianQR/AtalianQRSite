@@ -156,7 +156,7 @@
     const $preview = document.getElementById('doc-preview');
     const $title   = document.getElementById('doc-panel-title');
 
-    // FIX 1: Vertaal de tekst op de drijvende knop (FAB)
+    // FIX 1 (Vorig antwoord): Vertaal de tekst op de drijvende knop (FAB)
     $fab.textContent = isFr ? '📎 Documents' : '📎 Documenten';
 
     function openDocPanel(){
@@ -186,7 +186,7 @@
     }
 
     async function fetchDocumentBase64(docId){
-      // FIX 2: Het voortgangsbericht is hier verwijderd om de dialoog schoon te houden.
+      // FIX 2 (Vorig antwoord): Voortgangsbericht verwijderd
       const url = `${endpointJobDetails}?action=GET_JOB_DOC&docId=${encodeURIComponent(docId)}`;
       const r=await fetch(url,{headers:{accept:'application/json'}});
       if(!r.ok) throw new Error(`HTTP ${r.status}`);
@@ -195,8 +195,10 @@
       return b64;
     }
 
-    function getMimeType(docType, description){
+    // NIEUWE FIX: Voeg Base64 data toe aan de MIME type bepaling als fallback
+    function getMimeType(docType, description, base64Data){
       const t=(docType||'').toUpperCase();
+      // 1. Check op basis van Ultimo data
       if(t==='PDF') return 'application/pdf';
       if(t==='JPEG'||t==='JPG') return 'image/jpeg';
       if(t==='PNG') return 'image/png';
@@ -206,11 +208,20 @@
       if(desc.endsWith('.png')) return 'image/png';
       if(desc.endsWith('.doc')||desc.endsWith('.docx')) return 'application/msword';
       if(desc.endsWith('.xls')||desc.endsWith('.xlsx')) return 'application/vnd.ms-excel';
-      return 'application/octet-stream';
+
+      // 2. Fallback: Check Base64 "Magic Number" (eerste paar karakters)
+      if (base64Data && base64Data.length > 10) {
+        const prefix = base64Data.substring(0, 20);
+        if (prefix.startsWith('/9j/')) return 'image/jpeg'; // JPEG (start met FF D8 FF E0/E1 in binary)
+        if (prefix.startsWith('iVBORw0KGgo')) return 'image/png'; // PNG
+        if (prefix.startsWith('JVBERi0x')) return 'application/pdf'; // PDF
+      }
+      
+      return 'application/octet-stream'; // Standaard onbekend type
     }
 
     async function displayBase64InPanel(docId, docType, docDescription, base64Data){
-      const mimeType=getMimeType(docType, docDescription);
+      const mimeType=getMimeType(docType, docDescription, base64Data); // Argument toegevoegd
       const dataUrl=`data:${mimeType};base64,${base64Data}`;
       const fileName=(docDescription||`${docId}.${(docType||'bin').toLowerCase()}`);
 
@@ -221,6 +232,7 @@
         html = `<div class="pdf-tip">${isFr? 'Ce document est un PDF. Ouvrez/le téléchargez via le lien ci‑dessous.' : 'Dit is een PDF. Open of download via de link hieronder.'}</div>
                 <p><a href="${dataUrl}" target="_blank" download="${fileName}" style="display:inline-block;padding:8px 14px;background:#EE7E00;color:#fff;text-decoration:none;border-radius:6px;font-weight:700">${isFr?'Ouvrir/Télécharger PDF':'PDF openen/downloaden'}</a></p>`;
       } else {
+        // Dit is het bericht dat u zag ("Type non supporté")
         html = `<p style="color:#b91c1c">${isFr?`Type non supporté (${mimeType}).`:`Niet-ondersteund type (${mimeType}).`}</p>
                 <p><a href="${dataUrl}" target="_blank" download="${fileName}${mimeType==='application/octet-stream'?'.dat':''}" style="color:#EE7E00;font-weight:700">${isFr?`Télécharger l'original`:'Origineel downloaden'}</a></p>`;
       }
