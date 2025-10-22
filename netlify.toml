@@ -59,6 +59,12 @@
   to = "/vendor.html"
   status = 200
   force = true
+  
+[[redirects]]
+  from = "/mobile/*"
+  to = "/mobile.html"
+  status = 200
+  force = true
 
 # =================================================================
 # 5. HEADERS
