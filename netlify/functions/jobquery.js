@@ -1,4 +1,4 @@
-// netlify/functions/jobsvendor.js
+// netlify/functions/jobquery.js
 
 const API_KEY       = process.env.ULTIMO_API_KEY;
 const BASE_URL      = process.env.ULTIMO_API_BASEURL;
