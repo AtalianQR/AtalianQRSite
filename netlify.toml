@@ -6,7 +6,7 @@
   # Het gecombineerde commando: 
   # Eerst checken we de API sleutel, dan voeren we de build uit.
   # Let op: de 'publish' map moet hieronder handmatig worden aangepast!
-  command = 'echo "API Key check: $(if [ -z "$OPENAI_API_KEY" ]; then echo "NEE"; else echo "JA"; fi)" && npm run build'
+  # command = 'echo "API Key check: $(if [ -z "$OPENAI_API_KEY" ]; then echo "NEE"; else echo "JA"; fi)" && npm run build'
   
   # PAS DIT AAN: Dit moet de map zijn die na 'npm run build' de voltooide site bevat (bijv. 'dist', 'public', 'build').
   publish = "." 
