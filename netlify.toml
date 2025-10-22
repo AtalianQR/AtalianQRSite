@@ -54,7 +54,18 @@
   to = "/game.html"
   status = 200
   
+[[redirects]]
+  from = "/vendor/*"
+  to = "/vendor.html"
+  status = 200
+  force = true
 
+[[redirects]]
+  from = "/mobile/*"
+  to = "/mobile.html"
+  status = 200
+  force = true
+  
 # =================================================================
 # 5. HEADERS
 # =================================================================
