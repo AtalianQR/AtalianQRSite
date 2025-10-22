@@ -55,7 +55,7 @@
   status = 200
   
 [[redirects]]
-  from = "/vendor"
+  from = "/vendor/*"
   to = "/vendor.html"
   status = 200
   force = true
