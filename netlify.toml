@@ -1,36 +1,70 @@
+# =================================================================
+# 1. BUILD INSTELLINGEN (ALLES in één [build] sectie)
+# =================================================================
+
 [build]
+  # Het gecombineerde commando: 
+  # Eerst checken we de API sleutel, dan voeren we de build uit.
+  # Let op: de 'publish' map moet hieronder handmatig worden aangepast!
+  command = 'echo "API Key check: $(if [ -z "$OPENAI_API_KEY" ]; then echo "NEE"; else echo "JA"; fi)" && npm run build'
+  
+  # PAS DIT AAN: Dit moet de map zijn die na 'npm run build' de voltooide site bevat (bijv. 'dist', 'public', 'build').
+  publish = "dist" 
+
+  # Edge Functions directory (komt uit de oorspronkelijke eerste [build] sectie)
   edge_functions = "netlify/edge-functions"
+
+# =================================================================
+# 2. FUNCTIES & BUNDELING
+# =================================================================
+
+[functions]
+  node_bundler = "esbuild"
+  external_node_modules = ["@netlify/blobs"]
+
+# =================================================================
+# 3. EDGE FUNCTIONS (specifieke routes)
+# =================================================================
 
 # Alleen health via Edge Function
 [[edge_functions]]
   path = "/api/health"
   function = "health"
 
+# =================================================================
+# 4. REDIRECTS (Omleidingen en Rewrites)
+# =================================================================
+
 # Forceer https (optioneel; Netlify doet dit vaak al zelf)
 [[redirects]]
   from = "http://atalianqrportal.netlify.app/*"
-  to   = "https://atalianqrportal.netlify.app/:splat"
+  to = "https://atalianqrportal.netlify.app/:splat"
   status = 301
   force = true
 
 # Proxy /api/log naar de Netlify Function (rewrite)
 [[redirects]]
   from = "/api/log"
-  to   = "/.netlify/functions/proxy_logs"
+  to = "/.netlify/functions/proxy_logs"
   status = 200
 
 # Normaliseer pad /game -> /game.html
 [[redirects]]
   from = "/game"
-  to   = "/game.html"
+  to = "/game.html"
   status = 200
-
-[functions]
-  node_bundler = "esbuild"
-  external_node_modules = ["@netlify/blobs"]
   
-  [[headers]]
-for = "/statsportal.html"
+[[redirects]]
+  from = "/vendor"
+  to = "/vendor.html"
+  status = 200
+  force = true
+
+# =================================================================
+# 5. HEADERS
+# =================================================================
+
+[[headers]]
+  for = "/statsportal.html"
   [headers.values]
   Cache-Control = "no-store, no-cache, must-revalidate, max-age=0"
-
