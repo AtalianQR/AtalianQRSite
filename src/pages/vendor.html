@@ -31,8 +31,25 @@
 
     @keyframes fadeIn{to{opacity:1}}
 
-    .ruimte-label .jobid{font-size:.8rem;color:#6b7280;margin-bottom:.25rem}
-    .ruimte-label .desc{font-size:1.05rem;font-weight:600;color:#1f2937;line-height:1.4}
+	.ruimte-label .customer {
+	  font-size: 1.25rem;         /* groot */
+	  font-weight: 700;
+	  color: #111827;
+	  line-height: 1.25;
+	  margin-bottom: .15rem;
+	}
+	.ruimte-label .complex {
+	  font-size: 1rem;            /* kleiner */
+	  font-weight: 600;
+	  color: #374151;
+	  margin-bottom: .25rem;
+	}
+	.ruimte-label .jobidline {
+	  font-size: .9rem;           /* nog kleiner */
+	  font-weight: 600;
+	  color: #1f2937;
+	}
+
 
     .botui-actions-text-input {width:100% !important; max-width:50% !important; flex-grow:1 !important}
 
@@ -71,6 +88,16 @@
     /* Drijvende actieknop */
     .doc-fab{position:fixed;right:16px;bottom:16px;height:48px;min-width:48px;border-radius:24px;border:2px solid #EE7E00;background:#fff;color:#EE7E00;padding:0 14px;display:flex;align-items:center;gap:.5rem;cursor:pointer;box-shadow:0 8px 30px rgba(0,0,0,.16);z-index:980;font-weight:700}
     .doc-fab:hover{background:#FFF8F1}
+    
+    /* Nieuwe stijl voor info over de knop */
+    .document-tip{
+        background:#ffedd5; /* Licht oranje/geel */
+        border-left:4px solid #EE7E00; 
+        padding:.7em 1em;
+        margin-top:.7em;
+        border-radius:4px;
+        font-size:.95rem;
+    }
 
     @media (max-width:640px){
       .doc-panel{width:100vw;border-left-width:0;border-top:3px solid #EE7E00}
@@ -92,7 +119,6 @@
 
   <div id="botui-app"><bot-ui></bot-ui></div>
 
-  <!-- Backdrop + Zijpaneel + FAB -->
   <div id="doc-backdrop" class="doc-backdrop" hidden></div>
   <aside id="doc-panel" class="doc-panel" aria-hidden="true">
     <div class="doc-panel-header">
@@ -156,7 +182,7 @@
     const $preview = document.getElementById('doc-preview');
     const $title   = document.getElementById('doc-panel-title');
 
-    // FIX 1 (Vorig antwoord): Vertaal de tekst op de drijvende knop (FAB)
+    // Vertaal de tekst op de drijvende knop (FAB)
     $fab.textContent = isFr ? '📎 Documents' : '📎 Documenten';
 
     function openDocPanel(){
@@ -169,7 +195,13 @@
       $panel.setAttribute('aria-hidden','true');
       $backdrop.style.opacity=0; setTimeout(()=>{$backdrop.hidden=true},180);
     }
-    $fab.addEventListener('click',()=>{ openDocPanel(); if (!$list.dataset.bound) loadAndRenderDocuments(jobId).catch(console.error) });
+    
+    // Event listener voor FAB: opent en herlaadt altijd de documenten
+    $fab.addEventListener('click', async ()=>{ 
+        openDocPanel(); 
+        await loadAndRenderDocuments(jobId).catch(console.error); 
+    });
+    
     $close.addEventListener('click',closeDocPanel);
     $backdrop.addEventListener('click',closeDocPanel);
 
@@ -186,7 +218,7 @@
     }
 
     async function fetchDocumentBase64(docId){
-      // FIX 2 (Vorig antwoord): Voortgangsbericht verwijderd
+      // Voortgangsbericht verwijderd
       const url = `${endpointJobDetails}?action=GET_JOB_DOC&docId=${encodeURIComponent(docId)}`;
       const r=await fetch(url,{headers:{accept:'application/json'}});
       if(!r.ok) throw new Error(`HTTP ${r.status}`);
@@ -195,7 +227,7 @@
       return b64;
     }
 
-    // NIEUWE FIX: Voeg Base64 data toe aan de MIME type bepaling als fallback
+    // NIEUWE FIX: Voeg Base64 data toe aan de MIME type bepaling als fallback
     function getMimeType(docType, description, base64Data){
       const t=(docType||'').toUpperCase();
       // 1. Check op basis van Ultimo data
@@ -209,14 +241,14 @@
       if(desc.endsWith('.doc')||desc.endsWith('.docx')) return 'application/msword';
       if(desc.endsWith('.xls')||desc.endsWith('.xlsx')) return 'application/vnd.ms-excel';
 
-      // 2. Fallback: Check Base64 "Magic Number" (eerste paar karakters)
-      if (base64Data && base64Data.length > 10) {
-        const prefix = base64Data.substring(0, 20);
-        if (prefix.startsWith('/9j/')) return 'image/jpeg'; // JPEG (start met FF D8 FF E0/E1 in binary)
-        if (prefix.startsWith('iVBORw0KGgo')) return 'image/png'; // PNG
-        if (prefix.startsWith('JVBERi0x')) return 'application/pdf'; // PDF
-      }
-      
+      // 2. Fallback: Check Base64 "Magic Number" (eerste paar karakters)
+      if (base64Data && base64Data.length > 10) {
+        const prefix = base64Data.substring(0, 20);
+        if (prefix.startsWith('/9j/')) return 'image/jpeg'; // JPEG (start met FF D8 FF E0/E1 in binary)
+        if (prefix.startsWith('iVBORw0KGgo')) return 'image/png'; // PNG
+        if (prefix.startsWith('JVBERi0x')) return 'application/pdf'; // PDF
+      }
+      
       return 'application/octet-stream'; // Standaard onbekend type
     }
 
@@ -232,9 +264,8 @@
         html = `<div class="pdf-tip">${isFr? 'Ce document est un PDF. Ouvrez/le téléchargez via le lien ci‑dessous.' : 'Dit is een PDF. Open of download via de link hieronder.'}</div>
                 <p><a href="${dataUrl}" target="_blank" download="${fileName}" style="display:inline-block;padding:8px 14px;background:#EE7E00;color:#fff;text-decoration:none;border-radius:6px;font-weight:700">${isFr?'Ouvrir/Télécharger PDF':'PDF openen/downloaden'}</a></p>`;
       } else {
-        // Dit is het bericht dat u zag ("Type non supporté")
         html = `<p style="color:#b91c1c">${isFr?`Type non supporté (${mimeType}).`:`Niet-ondersteund type (${mimeType}).`}</p>
-                <p><a href="${dataUrl}" target="_blank" download="${fileName}${mimeType==='application/octet-stream'?'.dat':''}" style="color:#EE7E00;font-weight:700">${isFr?`Télécharger l'original`:'Origineel downloaden'}</a></p>`;
+                <p><a href="${dataUrl}" target="_blank" download="${fileName}${mimeType==='application/octet-stream'?'.dat':''}" style="color:#EE7E00;font-weight:700">${isFr?'Télécharger l\'original':'Origineel downloaden'}</a></p>`;
       }
       $preview.innerHTML = html;
     }
@@ -267,32 +298,61 @@
       const r=await fetch(url,{headers:{accept:'application/json'}}); if(!r.ok){ const errorText=await r.text(); console.error(`Fetch error ${r.status}: ${errorText}`); throw new Error(`HTTP ${r.status} - ${r.statusText||'Server Error'}`) } return r.json();
     }
     function isJobOpen(job){ const s=String(job?.Status??'').trim(); if(!s) return true; return s!=='1016' }
-    function renderJobHeader(job){ const desc=stripHtml(job.Description || (isFr?'Description manquante':'Beschrijving ontbreekt')); elInfo.innerHTML=`<div class="jobid">${isFr?'ID tâche':'Job ID'}: ${job.Id}</div><div class="desc">${desc}</div>`; elInfo.style.display='flex' }
+	function renderJobHeader(job){
+	  const klant   = (job.CustomerName || '').trim();
+	  const complex = (job.ComplexName  || '').trim();
+
+	  const lineCustomer = klant || (isFr ? 'Client inconnu' : 'Onbekende klant');
+	  const lineComplex  = complex || (isFr ? 'Complexe inconnu' : 'Onbekend complex');
+
+	  elInfo.innerHTML = `
+		<div class="customer">${lineCustomer}</div>
+		<div class="complex">${lineComplex}</div>
+		<div class="jobidline">${isFr ? 'ID tâche' : 'Job ID'}: ${job.Id}</div>
+	  `;
+	  elInfo.style.display = 'flex';
+	}
+
 
     /* ▸ 7. Vertalen (zoals origineel, compacter gehouden) ◂ */
     async function translateText(text, from, to){ if(!text||from===to) return {text, detected:null}; try{ const r=await fetch('/.netlify/functions/translate',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({text,source:from||undefined,target:to})}); if(!r.ok) throw new Error(await r.text()); const data=await r.json(); return { text:data?.text??text, detected:data?.detected??null } }catch{ return { text, detected:null } } }
 
-    async function showJobTextsThenAskTranslate(job){
-      renderJobHeader(job);
-      const rawDesc=job.Description||''; const rawReport=job.Report||job.JobReportText||''; const rawInstr=job.Instructions||job.JobText||'';
-      if(rawDesc.trim()) await botui.message.add({ type:'html', content:`<div class='job-description-box'><b>${isFr?'Description (originale)':'Beschrijving (origineel)'}</b><br>${stripHtml(rawDesc)}</div>` });
-      if(rawReport.trim()) await botui.message.add({ type:'html', content:`<div class='meldingen-lijst'><b>${isFr?'Remarque (originale)':'Toelichting (origineel)'}</b><br>${stripHtml(rawReport)}</div>` });
-      if(rawInstr.trim()) await botui.message.add({ type:'html', content:`<div class='meldingen-lijst'><b>${isFr?'Instructions (original)':'Werkinstructies (origineel)'}</b><br>${stripHtml(rawInstr)}</div>` });
+	let hasJobDocuments = false;
 
-      await botui.message.add({ content: isFr?'Les détails originaux sont affichés ci-dessus. Voulez-vous une version traduite ?':'De originele details worden hierboven weergegeven. Wil je een vertaalde versie zien?' });
-      const choice=await botui.action.button({ action:[ {text:isFr?'🌐 Traduire en français':'🌐 Vertalen naar Nederlands',value:'yes'},{text:isFr?'Garder l\'affichage actuel':'Houd chat zoals is',value:'no'} ] });
-      if(choice.value!=='yes') return;
-      const dst=isFr?'fr':'nl';
-      const descRes=await translateText(rawDesc,'auto',dst);
-      const repRes =await translateText(rawReport,'auto',dst);
-      const insRes =await translateText(rawInstr,'auto',dst);
-      const badge =(d)=> d?`<small style='color:#6b7280'>(${isFr?'traduit de':'vertaald uit'}: ${d.toUpperCase()})</small>`:'';
-      const shouldDisplay=(res,target,raw)=>{ const t=target.toLowerCase(); if(!(res.text||'').trim()) return false; if(res.detected&&res.detected.toLowerCase()!==t) return true; const a=stripHtml(raw).trim(), b=stripHtml(res.text).trim(); return a!==b };
-      if(shouldDisplay(descRes,dst,rawDesc)) await botui.message.add({ type:'html', content:`<div class='job-description-box'><b>${isFr?'Description (traduite)':'Beschrijving (vertaald)'}</b> ${badge(descRes.detected)}<br>${stripHtml(descRes.text)}</div>` });
-      if(shouldDisplay(repRes ,dst,rawReport)) await botui.message.add({ type:'html', content:`<div class='meldingen-lijst'><b>${isFr?'Remarque (traduite)':'Toelichting (vertaald)'}</b> ${badge(repRes.detected)}<br>${stripHtml(repRes.text)}</div>` });
-      if(shouldDisplay(insRes ,dst,rawInstr)) await botui.message.add({ type:'html', content:`<div class='meldingen-lijst'><b>${isFr?'Instructions (traduite)':'Werkinstructies (vertaald)'}</b> ${badge(insRes.detected)}<br>${stripHtml(insRes.text)}</div>` });
-      await botui.message.add({ type:'html', content:`<small style='color:#6b7280'>${isFr?'Affichage traduit ajouté sous l’original.':'Vertaalde weergave toegevoegd onder het origineel.'}</small>` });
-    }
+	async function showJobTextsThenAskTranslate(job){
+		renderJobHeader(job);
+		const rawDesc=job.Description||''; const rawReport=job.Report||job.JobReportText||''; const rawInstr=job.Instructions||job.JobText||'';
+		if(rawDesc.trim()) await botui.message.add({ type:'html', content:`<div class='job-description-box'><b>${isFr?'Description (originale)':'Beschrijving (origineel)'}</b><br>${stripHtml(rawDesc)}</div>` });
+		if(rawReport.trim()) await botui.message.add({ type:'html', content:`<div class='meldingen-lijst'><b>${isFr?'Remarque (originale)':'Toelichting (origineel)'}</b><br>${stripHtml(rawReport)}</div>` });
+		if(rawInstr.trim()) await botui.message.add({ type:'html', content:`<div class='meldingen-lijst'><b>${isFr?'Instructions (original)':'Werkinstructies (origineel)'}</b><br>${stripHtml(rawInstr)}</div>` });
+
+		await botui.message.add({ content: isFr?'Les détails originaux sont affichés ci-dessus. Voulez-vous une version traduite ?':'De originele details worden hierboven weergegeven. Wil je een vertaalde versie zien?' });
+		const choice=await botui.action.button({ action:[ {text:isFr?'🌐 Traduire en français':'🌐 Vertalen naar Nederlands',value:'yes'},{text:isFr?'Sans traduction':'Zonder vertaling',value:'no'} ] });
+		if(choice.value==='yes'){
+			const dst=isFr?'fr':'nl';
+			const descRes=await translateText(rawDesc,'auto',dst);
+			const repRes =await translateText(rawReport,'auto',dst);
+			const insRes =await translateText(rawInstr,'auto',dst);
+			const badge =(d)=> d?`<small style='color:#6b7280'>(${isFr?'traduit de':'vertaald uit'}: ${d.toUpperCase()})</small>`:'';
+			const shouldDisplay=(res,target,raw)=>{ const t=target.toLowerCase(); if(!(res.text||'').trim()) return false; if(res.detected&&res.detected.toLowerCase()!==t) return true; const a=stripHtml(raw).trim(), b=stripHtml(res.text).trim(); return a!==b };
+			if(shouldDisplay(descRes,dst,rawDesc)) await botui.message.add({ type:'html', content:`<div class='job-description-box'><b>${isFr?'Description (traduite)':'Beschrijving (vertaald)'}</b> ${badge(descRes.detected)}<br>${stripHtml(descRes.text)}</div>` });
+			if(shouldDisplay(repRes ,dst,rawReport)) await botui.message.add({ type:'html', content:`<div class='meldingen-lijst'><b>${isFr?'Remarque (traduite)':'Toelichting (vertaald)'}</b> ${badge(repRes.detected)}<br>${stripHtml(repRes.text)}</div>` });
+			if(shouldDisplay(insRes ,dst,rawInstr)) await botui.message.add({ type:'html', content:`<div class='meldingen-lijst'><b>${isFr?'Instructions (traduite)':'Werkinstructies (vertaald)'}</b> ${badge(insRes.detected)}<br>${stripHtml(insRes.text)}</div>` });
+			await botui.message.add({ type:'html', content:`<small style='color:#6b7280'>${isFr?'Affichage traduit ajouté sous l’original.':'Vertaalde weergave toegevoegd onder het origineel.'}</small>` });
+		}
+
+		// AANPASSING: Voeg het bericht over de FAB-knop ALLEEN toe als er documenten zijn
+		if (hasJobDocuments) { 
+			await botui.message.add({ 
+				type: 'html', 
+				content: `<div class="document-tip">
+							${isFr 
+								? '<b>Important :</b> Les documents liés à cette tâche peuvent être consultés à tout moment via le bouton **📎 Documents** flottant en bas à droite.' 
+								: '<b>Belangrijk:</b> Documenten gekoppeld aan deze taak zijn op elk moment in te zien via de zwevende knop **📎 Documenten** rechtsonder.'}
+						</div>` 
+			});
+		}
+	}
 
     /* ▸ 8. Update wrapper ◂ */
     async function submitUpdate(payload, successMsg){ const r=await fetch(endpointUpdate,{ method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(payload)}); if(!r.ok) throw new Error(await r.text()); await botui.message.add({ content: successMsg }) }
@@ -301,9 +361,17 @@
 	async function loadAndRenderDocuments(jobId){
 	      $title.textContent = isFr? '📎 Documents' : '📎 Documenten';
 	      $list.innerHTML = `<div style="padding:.75rem;color:#6b7280">${isFr?'Chargement des documents…':'Documenten laden…'}</div>`;
+	      // Zorgt ervoor dat de preview terug naar de tip gaat bij een nieuwe lijst-laadactie
+        $preview.innerHTML = `<div class="pdf-tip">Selecteer een document uit de lijst om de preview te zien. PDF's openen in een nieuw tabblad of via downloadlink.</div>`; 
+
+        // Clone/replace om oude listeners op de lijst (indien aanwezig) te verwijderen
+        const listClone = $list.cloneNode(true);
+        $list.parentNode.replaceChild(listClone, $list);
+        const $newList = document.getElementById('doc-list');
+
 	      try{
 	        const docs=await fetchJobDocuments(jobId);
-	        if(!docs.length){ $list.innerHTML=`<div style='padding:.75rem'>${isFr?'Aucun document lié à cette tâche.':'Geen documenten gekoppeld aan deze taak.'}</div>`; return }
+	        if(!docs.length){ $newList.innerHTML=`<div style='padding:.75rem'>${isFr?'Aucun document lié à cette tâche.':'Geen documenten gekoppeld aan deze taak.'}</div>`; return }
 
 	        const rows = docs.map(d=>{
 	          const id = d.Id || '';
@@ -314,24 +382,23 @@
 	            <td style='width:1%;white-space:nowrap'>
 	              <button class='view-doc-btn' data-id='${id}' data-type='${typ}' data-desc='${desc}'>${isFr?'Voir':'Bekijken'}</button>
 	            </td>
-	          </tr>`
+	          </tr>`;
 	        }).join('');
 
-	        $list.innerHTML = `<div style='overflow:auto'>
+	        $newList.innerHTML = `<div style='overflow:auto'>
 	          <table class='doc-table'>
 	            <thead>
 	              <tr>
 	                <th>${isFr?'Description':'Omschrijving'}</th>
-	                <th>${isFr?'Action':'Actie'}</th>
+	                <th>${isFr?'Actie':'Actie'}</th>
 	              </tr>
 	            </thead>
 	            <tbody>${rows}</tbody>
 	          </table>
 	        </div>`;
-
-	        // Bind once
-	        $list.dataset.bound = '1';
-	        $list.addEventListener('click', async (ev)=>{
+	        
+	        // Bind de nieuwe event listener aan de (nieuwe) lijst
+	        $newList.addEventListener('click', async (ev)=>{
 	          const btn = ev.target.closest('button.view-doc-btn'); if(!btn) return;
 	          btn.disabled=true; const old=btn.textContent; btn.textContent=isFr?'Chargement…':'Laden…';
 	          try{
@@ -342,66 +409,92 @@
 	        });
 	      }catch(e){
 	        console.error(e);
-	        $list.innerHTML = `<div style='padding:.75rem;color:#b91c1c'>${isFr?'Échec du chargement des documents.':'Documenten laden mislukt.'} (${e.message})</div>`;
+	        $newList.innerHTML = `<div style='padding:.75rem;color:#b91c1c'>${isFr?'Échec du chargement des documents.':'Documenten laden mislukt.'} (${e.message})</div>`;
 	      }
 	    }
 
     /* ▸ 10. Flow ◂ */
     const createFormattedText=(s)=>`<span style="color:#007bff;font-weight:bold;">${(s||'').trim()}</span>`;
 
-    async function menu(job){
-      await botui.message.add({ content: isFr?`Que voulez-vous faire pour la tâche ${job.Id}?`:`Wat wil je doen voor taak ${job.Id}?` });
-      const ans=await botui.action.button({ action:[
-        { text:isFr?'➕ Ajouter un commentaire':'➕ Info toevoegen', value:'info' },
-        { text:isFr?'✅ Terminer la tâche':'✅ Taak afronden', value:'done' },
-        { text:isFr?'📎 Documents':'📎 Documenten', value:'docs' }
-      ]});
+	async function menu(job, opts = {}) {
+		  if (!opts.silent) {
+			await botui.message.add({ content: isFr ? `Que voulez-vous faire pour la tâche ${job.Id}?` : `Wat wil je doen voor taak ${job.Id}?` });
+		  }
 
-      if(ans.value==='info'){
-        await botui.message.add({ content:isFr?'Votre commentaire :':'Jouw commentaar:' });
-        const t=await botui.action.text({ action:{ placeholder:isFr?'Détail…':'Detail…' } });
-        const info=(t.value||'').trim(); if(!info){ await botui.message.add({ content:isFr?'⚠️ Entrez un texte.':'⚠️ Geef wat tekst in.' }); return menu(job) }
-        const formatted=createFormattedText(info);
-        await submitUpdate({ action:'ADD_INFO', jobId:job.Id, text:formatted, email:sessionEmail, lang }, isFr?'Commentaire ajouté.':'Commentaar toegevoegd.');
-        try{ jobPayload=await fetchJobDetails(); renderJobHeader(jobPayload.Job) }catch{}
-        return menu(jobPayload.Job);
-      }
+		  // EENMALIGE DEFINITIE: Alle 3 de knoppen, inclusief de correcte "Sessie verlaten"
+		  const ans = await botui.action.button({
+			action: [
+			  { text: isFr ? '➕ Ajouter un commentaire' : '➕ Info toevoegen', value: 'info' },
+			  { text: isFr ? '✅ Terminer la tâche'      : '✅ Taak afronden',  value: 'done' },
+			  { text: isFr ? '🛑 Quitter la session'      : '🛑 Sessie verlaten', value: 'exit', cssClass:'secondary-button' }
+			]
+		  });
 
-      if(ans.value==='docs'){
-        openDocPanel();
-        await loadAndRenderDocuments(job.Id);
-        return menu(job); // dialoog loopt verder, paneel blijft open
-      }
-	  
-      if(ans.value==='done'){
-        await botui.message.add({ content:isFr?'Veuillez ajouter un commentaire pour finaliser la tâche :':'Gelieve een opmerking toe te voegen om de taak af te ronden:' });
-        const t=await botui.action.text({ action:{ placeholder:isFr?'Détail obligatoire…':'Verplichte opmerking…' } });
-        const info=(t.value||'').trim(); if(!info){ await botui.message.add({ content:isFr?'⚠️ Le commentaire is obligatoire pour la clôture.':'⚠️ De opmerking is verplicht voor het afsluiten.' }); return menu(job) }
-        const formatted=createFormattedText(info);
-        const c=await botui.action.button({ action:[ {text:isFr?'Confirmer la clôture':'Sluiting bevestigen', value:'yes'},{text:isFr?'Annuler':'Annuleren', value:'no'} ] });
-        if(c.value!=='yes') return menu(job);
-        await submitUpdate({ action:'CLOSE', jobId:job.Id, email:sessionEmail, lang, text:formatted }, isFr?'Statut mis à jour en commentaar is opgeslagen.':'Status bijgewerkt en opmerking vastgelegd.');
-        try{ jobPayload=await fetchJobDetails(); renderJobHeader(jobPayload.Job); if(!isJobOpen(jobPayload.Job)){ await botui.message.add({ content:isFr?'✅ Tâche clôturée.':'✅ Taak afgesloten.' }); closeDocPanel(); return } }catch{}
-        return menu(jobPayload.Job);
-      }
-    }
+		  if (ans.value !== 'docs') {
+			await botui.message.add({ human: true, content: ans.text });
+		  }
 
-    async function startFlow(){
-      try{
-        if(!jobId){ await botui.message.add({ type:'html', content:'<span style="color:red;font-weight:bold">Geen geldige Job ID.</span>' }); Telemetry.send('invalid_job_id'); return }
-        const loginSuccess=await emailIntroAndLogin(); if(!loginSuccess) return;
-        await botui.message.add({ content:isFr?'Je récupère les détails de la tâche…':'Ik haal de taakdetails op…' });
-        jobPayload=await fetchJobDetails(); const job=jobPayload?.Job||{}; if(!job.Id) throw new Error('Job details ontvangen, maar taak-ID ontbreekt in de payload.');
-        await showJobTextsThenAskTranslate(job);
-        if(!isJobOpen(job)){ await botui.message.add({ content:isFr?'Cette tâche est déjà clôturée. Aucune action possible.':'Deze taak is al afgesloten. Geen acties meer mogelijk.' }); Telemetry.send('job_closed',{status:job.Status}); return }
-        await menu(job);
-      }catch(e){
-        const errorDetail=String(e.message||e); console.error('FATALE FOUT IN FLOW:', e);
-        let userMessage=isFr?'❌ Erreur: Une erreur inattendue est survenue. Veuillez réessayer plus tard.':'❌ Fout: Er is een onverwachte fout opgetreden. Probeer later opnieuw.';
-        if(errorDetail.includes('HTTP')) userMessage=isFr?`❌ Erreur de connexion: Le chargement a échoué (Détail: ${errorDetail}).`:`❌ Verbindingsfout: Laden is onderbroken (Détail: ${errorDetail}).`;
-        await botui.message.add({ content:userMessage, type:'html', cssClass:'error-message' }); Telemetry.send('fatal_error',{ err:errorDetail });
-      }
-    }
+	      if(ans.value==='info'){
+	        await botui.message.add({ content:isFr?'Votre commentaire :':'Jouw commentaar:' });
+	        const t=await botui.action.text({ action:{ placeholder:isFr?'Détail…':'Detail…' } });
+	        const info=(t.value||'').trim(); if(!info){ await botui.message.add({ content:isFr?'⚠️ Entrez un texte.':'⚠️ Geef wat tekst in.' }); return menu(job) }
+	        const formatted=createFormattedText(info);
+	        await submitUpdate({ action:'ADD_INFO', jobId:job.Id, text:formatted, email:sessionEmail, lang }, isFr?'Commentaire ajouté.':'Commentaar toegevoegd.');
+	        try{ jobPayload=await fetchJobDetails(); renderJobHeader(jobPayload.Job); if(!isJobOpen(jobPayload.Job)){ await botui.message.add({ content:isFr?'✅ Tâche clôturée.':'✅ Taak afgesloten.' }); closeDocPanel(); return } }catch{}
+	        return menu(jobPayload.Job);
+	      }
+		  
+		  // ACTIE: EINDE / EXIT (met de 🔚 emoji in de afsluitende tekst)
+	      if(ans.value==='exit'){
+	          await botui.message.add({ 
+	              content: isFr 
+	                  ? '🔚 Merci. Vous pouvez fermer cette fenêtre. Si vous heeft nog actions pour cette tâche, veuillez rafraîchir la page.' 
+	                  : '🔚 Bedankt. Je kunt dit venster sluiten. Als je later nog acties voor deze taak hebt, ververs dan de pagina.' 
+	          });
+	          Telemetry.send('session_exit');
+	          return;
+	      }
+		  
+	      if(ans.value==='done'){
+	        await botui.message.add({ content:isFr?'Veuillez ajouter un commentaire pour finaliser la tâche :':'Gelieve een opmerking toe te voegen om de taak af te ronden:' });
+	        const t=await botui.action.text({ action:{ placeholder:isFr?'Détail obligatoire…':'Verplichte opmerking…' } });
+	        const info=(t.value||'').trim(); if(!info){ await botui.message.add({ content:isFr?'⚠️ Le commentaire is obligatoire pour la clôture.':'⚠️ De opmerking is verplicht voor het afsluiten.' }); return menu(job) }
+	        const formatted=createFormattedText(info);
+	        const c=await botui.action.button({ action:[ {text:isFr?'Confirmer la clôture':'Sluiting bevestigen', value:'yes'},{text:isFr?'Annuler':'Annuleren', value:'no'} ] });
+	        if(c.value!=='yes') return menu(job);
+	        await submitUpdate({ action:'CLOSE', jobId:job.Id, email:sessionEmail, lang, text:formatted }, isFr?'Statut mis à jour en commentaar is opgeslagen.':'Status bijgewerkt en opmerking vastgelegd.');
+	        try{ jobPayload=await fetchJobDetails(); renderJobHeader(jobPayload.Job); if(!isJobOpen(jobPayload.Job)){ await botui.message.add({ content:isFr?'✅ Tâche clôturée.':'✅ Taak afgesloten.' }); closeDocPanel(); return } }catch{}
+	        return menu(jobPayload.Job);
+	      }
+		}
+
+	async function startFlow(){
+		try{
+			if(!jobId){ await botui.message.add({ type:'html', content:'<span style="color:red;font-weight:bold">Geen geldige Job ID.</span>' }); Telemetry.send('invalid_job_id'); return }
+			const loginSuccess=await emailIntroAndLogin(); if(!loginSuccess) return;
+			await botui.message.add({ content:isFr?'Je récupère les détails de la tâche…':'Ik haal de taakdetails op…' });
+			jobPayload=await fetchJobDetails(); const job=jobPayload?.Job||{}; if(!job.Id) throw new Error('Job details ontvangen, maar taak-ID ontbreekt in de payload.');
+			
+			// ⭐ NIEUWE STAP: Documenten check vóór het tonen van de chatberichten
+			try {
+				const docs = await fetchJobDocuments(job.Id);
+				hasJobDocuments = docs.length > 0;
+			} catch (e) {
+				console.warn('Kon documenten niet vooraf controleren:', e.message);
+				hasJobDocuments = false; // Blijft false bij fout
+			}
+			// ⭐ EINDE NIEUWE STAP
+
+			await showJobTextsThenAskTranslate(job);
+			if(!isJobOpen(job)){ await botui.message.add({ content:isFr?'Cette tâche est déjà clôturée. Aucune action possible.':'Deze taak is al afgesloten. Geen acties meer mogelijk.' }); Telemetry.send('job_closed',{status:job.Status}); return }
+			await menu(job);
+		}catch(e){
+			const errorDetail=String(e.message||e); console.error('FATALE FOUT IN FLOW:', e);
+			let userMessage=isFr?'❌ Erreur: Une erreur inattendue est survenue. Veuillez réessayer plus tard.':'❌ Fout: Er is een onverwachte fout opgetreden. Probeer later opnieuw.';
+			if(errorDetail.includes('HTTP')) userMessage=isFr?`❌ Erreur de connexion: Le chargement a échoué (Détail: ${errorDetail}).`:`❌ Verbindingsfout: Laden is onderbroken (Détail: ${errorDetail}).`;
+			await botui.message.add({ content:userMessage, type:'html', cssClass:'error-message' }); Telemetry.send('fatal_error',{ err:errorDetail });
+		}
+	}
 
     /* ▸ 11. Idle ping ◂ */
     let lastActivity=Date.now(); ['click','keydown','touchstart'].forEach(ev=>document.addEventListener(ev,()=>lastActivity=Date.now(),{passive:true}));
