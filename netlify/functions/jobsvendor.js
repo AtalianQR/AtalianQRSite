@@ -25,10 +25,30 @@ async function callUltimo(payload) {
     },
     body: JSON.stringify(payload),
   });
+
   if (!res.ok) {
     return { ok: false, status: res.status, text: await res.text() };
   }
-  const json = await res.json();
+  
+  // ⭐ NIEUWE LOGICA: Controleer de Content-Type header om crashes te voorkomen
+  const contentType = res.headers.get('content-type');
+  let json = null;
+  
+  if (contentType && contentType.includes('application/json')) {
+    try {
+      json = await res.json(); // Probeer JSON te parsen
+    } catch (e) {
+      // Als parsen faalt, stuur dan een API-error terug
+      return { ok: false, status: 502, text: `Fout bij parsen van API JSON: ${e.message}` };
+    }
+  } else {
+    // Geen JSON ontvangen, maar de status was OK. Probeer de ruwe tekst te loggen.
+    const text = await res.text();
+    console.error("Ultimo OK status maar geen JSON response. Tekst:", text);
+    // Behandel dit als een lege JSON-respons om de rest van de code te laten werken.
+    json = {};
+  }
+  
   return { ok: true, json };
 }
 
