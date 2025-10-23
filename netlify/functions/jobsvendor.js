@@ -26,27 +26,30 @@ async function callUltimo(payload) {
     body: JSON.stringify(payload),
   });
 
-  // 1. Ultimo API gaf een foutstatus (bijv. 401, 404, 500)
   if (!res.ok) {
     return { ok: false, status: res.status, text: await res.text() };
   }
   
-  // 2. Status is OK (bijv. 200), maar we controleren of de response JSON is (defensief).
+  // ⭐ NIEUWE LOGICA: Controleer de Content-Type header om crashes te voorkomen
   const contentType = res.headers.get('content-type');
+  let json = null;
   
   if (contentType && contentType.includes('application/json')) {
     try {
-      // Vangt de crash op als de response 'application/json' claimt, maar ongeldig is.
-      return { ok: true, json: await res.json() };
+      json = await res.json(); // Probeer JSON te parsen
     } catch (e) {
-      // Dit resulteert in een 502 Bad Gateway/API Error (geen 500 Internal Server Error)
-      return { ok: false, status: 502, text: `502: Ongeldige JSON respons van Ultimo API: ${e.message}` };
+      // Als parsen faalt, stuur dan een API-error terug
+      return { ok: false, status: 502, text: `Fout bij parsen van API JSON: ${e.message}` };
     }
-  } 
+  } else {
+    // Geen JSON ontvangen, maar de status was OK. Probeer de ruwe tekst te loggen.
+    const text = await res.text();
+    console.error("Ultimo OK status maar geen JSON response. Tekst:", text);
+    // Behandel dit als een lege JSON-respons om de rest van de code te laten werken.
+    json = {};
+  }
   
-  // 3. Vangt een 200 OK status op die geen JSON is (bijvoorbeeld een lege body/tekst van de Test API).
-  const text = await res.text();
-  return { ok: false, status: 502, text: `502: Ultimo gaf OK status maar geen JSON terug: ${text.substring(0, 100)}...` };
+  return { ok: true, json };
 }
 
 /** * Output.object kan "true"/"false", JSON-string ({QRCommando, Jobs:[...]}), 
