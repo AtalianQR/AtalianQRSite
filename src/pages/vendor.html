@@ -329,6 +329,7 @@
 		await botui.message.add({ content: isFr?'Les détails originaux sont affichés ci-dessus. Voulez-vous une version traduite ?':'De originele details worden hierboven weergegeven. Wil je een vertaalde versie zien?' });
 		const choice=await botui.action.button({ action:[ {text:isFr?'🌐 Traduire en français':'🌐 Vertalen naar Nederlands',value:'yes'},{text:isFr?'Sans traduction':'Zonder vertaling',value:'no'} ] });
 		if(choice.value==='yes'){
+			await botui.message.add({ content: isFr?'Veuillez patienter, traduction en cours...':'Even geduld, vertaling bezig...' });
 			const dst=isFr?'fr':'nl';
 			const descRes=await translateText(rawDesc,'auto',dst);
 			const repRes =await translateText(rawReport,'auto',dst);
