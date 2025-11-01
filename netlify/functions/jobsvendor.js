@@ -41,7 +41,8 @@ function detectEnvironment(event) {
   const testInUrl  = params.test === '1' || params.test === 'true';
   const testInHost = /test|staging/i.test(host);
   const isTest = testInUrl || testInHost;
-
+// 🚨 NIEUWE DEBUG LINE: Toon alle parameters die de functie ontving
+  console.log(`[jobsvendor] DEBUG PARAMS: ${JSON.stringify(params)}`);
   const base = isTest ? BASE_URL_TEST : BASE_URL_PROD;
   const envName = isTest ? 'TEST' : 'PROD';
   console.log(`[jobsvendor] Environment: ${envName} | Host=${host} | testParam=${params.test || ''}`);
