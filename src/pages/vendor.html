@@ -113,9 +113,11 @@
   
   /* ==================== QS & ENV ==================== */
 	const qs   = new URLSearchParams(window.location.search);
+	// ❗️ host MOET gedefinieerd zijn
 	const host = (window.location && window.location.host) ? window.location.host : '';
 	const isTest = qs.has('test') || /test|staging/i.test(host);
 	const envQ   = isTest ? '&test=1' : '';
+
 
   /* ==================== 0. Endpoints ==================== */
   const endpointJobDetails = '/.netlify/functions/jobsvendor';
