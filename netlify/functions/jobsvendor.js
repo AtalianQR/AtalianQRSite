@@ -1,10 +1,11 @@
 // netlify/functions/jobsvendor.js
 
 // === Config uit omgeving ===
-const API_KEY       = process.env.ULTIMO_API_KEY;
-const BASE_URL      = process.env.ULTIMO_API_BASEURL;
-const APP_ELEMENT   = process.env.APP_ELEMENT_QueryAtalianJobs;
-const ULTIMO_ACTION = "_rest_QueryAtalianJobs";
+const API_KEY        = process.env.ULTIMO_API_KEY;
+const BASE_URL_PROD  = process.env.ULTIMO_API_BASEURL;
+const BASE_URL_TEST  = process.env.ULTIMO_API_BASEURL_TEST || process.env.ULTIMO_API_BASEURL; // fallback
+const APP_ELEMENT    = process.env.APP_ELEMENT_QueryAtalianJobs;
+const ULTIMO_ACTION  = "_rest_QueryAtalianJobs";
 
 // === CORS helper ===
 const corsHeaders = {
@@ -17,13 +18,33 @@ const corsHeaders = {
 const isNonEmpty = (v) => typeof v === 'string' && v.trim().length > 0;
 
 const stripHtml = (s = "") =>
-  String(s).replace(/<[^>]*>/g, "").replace(/&nbsp;/g, " ").replace(/\s{2,}/g, " ").trim();
+  String(s)
+    .replace(/<[^>]*>/g, "")
+    .replace(/&nbsp;/g, " ")
+    .replace(/\s{2,}/g, " ")
+    .trim();
 
 const getDomain = (e = "") => {
   const m = String(e).toLowerCase().match(/@(.+)$/);
   return m ? m[1] : "";
 };
 
+// === Detecteer omgeving ===
+function detectEnvironment(event) {
+  const params = event.queryStringParameters || {};
+  const host   = event.headers?.host || '';
+  const testInUrl  = params.test === '1' || params.test === 'true';
+  const testInHost = /test|staging/i.test(host);
+  const isTest = testInUrl || testInHost;
+
+  const base = isTest ? BASE_URL_TEST : BASE_URL_PROD;
+  const envName = isTest ? 'TEST' : 'PROD';
+  console.log(`[jobsvendor] Environment: ${envName} | Host=${host} | testParam=${params.test || ''}`);
+
+  return { isTest, base, envName };
+}
+
+// === Standaard JSON response helper ===
 function respond(statusCode, bodyObj) {
   return {
     statusCode,
@@ -32,9 +53,12 @@ function respond(statusCode, bodyObj) {
   };
 }
 
-// === Ultimo call wrapper ===
-async function callUltimo(payload) {
-  const res = await fetch(`${BASE_URL}/action/${ULTIMO_ACTION}`, {
+// === Ultimo-call helper (met dynamische BASE_URL) ===
+async function callUltimo(event, payload) {
+  const { base, envName } = detectEnvironment(event);
+  console.log(`[jobsvendor] callUltimo via ${envName}: ${payload.Action || 'n/a'}`);
+
+  const res = await fetch(`${base}/action/${ULTIMO_ACTION}`, {
     method: "POST",
     headers: {
       accept: "application/json",
@@ -46,27 +70,24 @@ async function callUltimo(payload) {
   });
 
   if (!res.ok) {
-    return { ok: false, status: res.status, text: await res.text() };
+    const text = await res.text().catch(() => '');
+    throw new Error(`Ultimo API fout (${res.status}): ${text}`);
   }
 
-  // Content-Type defensief controleren om parse-fouten te vermijden
-  const contentType = res.headers.get("content-type");
-  let json = null;
-
-  if (contentType && contentType.includes("application/json")) {
-    try {
-      json = await res.json();
-    } catch (e) {
-      return { ok: false, status: 502, text: `Fout bij parsen van API JSON: ${e.message}` };
-    }
+  const contentType = res.headers.get("content-type") || "";
+  let json;
+  if (contentType.includes("application/json")) {
+    json = await res.json().catch(e => {
+      throw new Error(`Fout bij parsen van JSON: ${e.message}`);
+    });
   } else {
-    const text = await res.text();
-    console.error("Ultimo gaf OK status maar geen JSON. Response-tekst:", text);
-    json = {}; // leeg object zodat downstream blijft werken
+    const text = await res.text().catch(() => '');
+    console.error("⚠ Ultimo gaf geen JSON:", text.slice(0, 200));
+    json = {};
   }
-
   return { ok: true, json };
 }
+
 
 /**
  * Output.object kan "true"/"false", een JSON-string ({QRCommando, Jobs:[...]}),
@@ -117,9 +138,13 @@ export async function handler(event) {
     }
 
     // Simpele sanity check op env
-    if (!API_KEY || !BASE_URL || !APP_ELEMENT) {
-      return respond(500, { error: "Serverconfig onvolledig: ontbrekende API-sleutels/URL." });
-    }
+	if (!API_KEY || !BASE_URL_PROD || !APP_ELEMENT) {
+	  return respond(500, { error: "Serverconfig onvolledig: ontbrekende API-sleutels of BASE_URL_PROD." });
+	}
+
+    // ⬇️ Voeg DEZE log hier toe
+    const { isTest, base, envName } = detectEnvironment(event);
+    console.log(`[jobsvendor] 🔎 Handler start in ${envName} → base=${base}`);
 
     /* ───────────── GET ───────────── */
     if (event.httpMethod === "GET") {
@@ -142,7 +167,7 @@ export async function handler(event) {
         if (!jobId || !/^\d+$/.test(jobId)) {
           return respond(400, { error: "Ongeldig of ontbrekend 'jobId'." });
         }
-        const r = await callUltimo({ Action: "LIST_JOB_DOCS", JobId: String(jobId) });
+        const r = await callUltimo(event, { Action: "LIST_JOB_DOCS", JobId: String(jobId) });
         if (!r.ok) return { statusCode: r.status, headers: corsHeaders, body: r.text };
         const out = getOutputObject(r.json);
         const docs = pickDocuments(out);
