@@ -387,7 +387,7 @@ async function handlePostAction(event, body, { jobId, email, hasEmail, action, t
 
 export async function handler(event) {
   try {
-    // Preflight
+    // Preflight 
     if (event.httpMethod === 'OPTIONS') {
       return { statusCode: 204, headers: corsHeaders, body: '' };
     }
