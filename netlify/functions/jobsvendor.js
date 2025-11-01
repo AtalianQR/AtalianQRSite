@@ -1,11 +1,21 @@
 // netlify/functions/jobsvendor.js
 
+// === Config uit omgeving ===
 const API_KEY       = process.env.ULTIMO_API_KEY;
 const BASE_URL      = process.env.ULTIMO_API_BASEURL;
 const APP_ELEMENT   = process.env.APP_ELEMENT_QueryAtalianJobs;
 const ULTIMO_ACTION = "_rest_QueryAtalianJobs";
 
-/* ───────────── Helpers ───────────── */
+// === CORS helper ===
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'content-type',
+  'Access-Control-Allow-Methods': 'GET,POST,OPTIONS',
+};
+
+// === Kleine helpers ===
+const isNonEmpty = (v) => typeof v === 'string' && v.trim().length > 0;
+
 const stripHtml = (s = "") =>
   String(s).replace(/<[^>]*>/g, "").replace(/&nbsp;/g, " ").replace(/\s{2,}/g, " ").trim();
 
@@ -14,6 +24,15 @@ const getDomain = (e = "") => {
   return m ? m[1] : "";
 };
 
+function respond(statusCode, bodyObj) {
+  return {
+    statusCode,
+    headers: corsHeaders,
+    body: JSON.stringify(bodyObj),
+  };
+}
+
+// === Ultimo call wrapper ===
 async function callUltimo(payload) {
   const res = await fetch(`${BASE_URL}/action/${ULTIMO_ACTION}`, {
     method: "POST",
@@ -29,51 +48,54 @@ async function callUltimo(payload) {
   if (!res.ok) {
     return { ok: false, status: res.status, text: await res.text() };
   }
-  
-  // ⭐ NIEUWE LOGICA: Controleer de Content-Type header om crashes te voorkomen
-  const contentType = res.headers.get('content-type');
+
+  // Content-Type defensief controleren om parse-fouten te vermijden
+  const contentType = res.headers.get("content-type");
   let json = null;
-  
-  if (contentType && contentType.includes('application/json')) {
+
+  if (contentType && contentType.includes("application/json")) {
     try {
-      json = await res.json(); // Probeer JSON te parsen
+      json = await res.json();
     } catch (e) {
-      // Als parsen faalt, stuur dan een API-error terug
       return { ok: false, status: 502, text: `Fout bij parsen van API JSON: ${e.message}` };
     }
   } else {
-    // Geen JSON ontvangen, maar de status was OK. Probeer de ruwe tekst te loggen.
     const text = await res.text();
-    console.error("Ultimo OK status maar geen JSON response. Tekst:", text);
-    // Behandel dit als een lege JSON-respons om de rest van de code te laten werken.
-    json = {};
+    console.error("Ultimo gaf OK status maar geen JSON. Response-tekst:", text);
+    json = {}; // leeg object zodat downstream blijft werken
   }
-  
+
   return { ok: true, json };
 }
 
-/** * Output.object kan "true"/"false", JSON-string ({QRCommando, Jobs:[...]}), 
- * of de ruwe Base64-string zijn (voor GET_JOB_DOC).
+/**
+ * Output.object kan "true"/"false", een JSON-string ({QRCommando, Jobs:[...]}),
+ * of een ruwe Base64-string zijn (bij GET_JOB_DOC).
  */
 function getOutputObject(raw) {
   const s = raw?.properties?.Output?.object;
   if (!s) return null;
-  const txt = String(s).trim();
-  
-  if (txt === "true" || txt === "false") return txt;
+  let txt = String(s).trim();
 
-  // Probeer alleen JSON te parsen als het de typische JSON structuur is ({...})
-  if (txt.startsWith('{') && txt.endsWith('}')) {
+  // 🧹 Clean up control chars en illegal linebreaks
+  txt = txt
+    .replace(/&quot;/g, '"')
+    .replace(/\r/g, "\\r")
+    .replace(/\n/g, "\\n")
+    .replace(/[\u0000-\u001F]+/g, " "); // overige control chars
+
+  if (txt.startsWith("{") && txt.endsWith("}")) {
     try {
       return JSON.parse(txt);
     } catch (e) {
-      // Als parsen faalt, behandelen we de string als ruwe data
+      console.error("[Ultimo] ⚠ getOutputObject parsefout:", e.message);
+      // Debug: toon eerste 300 tekens zodat je kan zien waar het knalt
+      console.log("[Ultimo] ⇢ JSON (start):", txt.slice(0, 300));
     }
   }
-  
-  // Als het geen geldige JSON is, retourneren we de ruwe string (dit is de Base64 data)
   return txt;
 }
+
 
 function pickFirstJob(out) {
   if (!out || typeof out !== "object") return null;
@@ -86,164 +108,186 @@ function pickDocuments(out) {
   return Array.isArray(out.Documents) ? out.Documents : [];
 }
 
-
-/* ───────────── Handler ───────────── */
+// === Netlify handler ===
 export async function handler(event) {
   try {
+    // Preflight
+    if (event.httpMethod === 'OPTIONS') {
+      return { statusCode: 204, headers: corsHeaders, body: '' };
+    }
+
+    // Simpele sanity check op env
+    if (!API_KEY || !BASE_URL || !APP_ELEMENT) {
+      return respond(500, { error: "Serverconfig onvolledig: ontbrekende API-sleutels/URL." });
+    }
+
     /* ───────────── GET ───────────── */
     if (event.httpMethod === "GET") {
-      // docId toegevoegd
       const { jobId, email = "", action = "VIEW", controle, docId } = event.queryStringParameters || {};
-      
-      // 0) Eén specifiek Document opvragen (ENKEL met docId / objdocid)
+      const hasEmail = isNonEmpty(email);
+
+      // 0) Eén document-inhoud (Base64) opvragen
       if (action === "GET_JOB_DOC") {
-        // *** JobId is niet nodig voor de API call (zoals gevraagd). ***
         if (!docId || !/^\d+$/.test(docId)) {
-          return { statusCode: 400, body: JSON.stringify({ error: "Ongeldig of ontbrekend 'docId' (objdocid)." }) };
+          return respond(400, { error: "Ongeldig of ontbrekend 'docId'." });
         }
-        
-        // Call gebruikt de juiste parameter: objdocid
-        const r = await callUltimo({
-          Action: "GET_JOB_DOC", 
-          objdocid: String(docId), 
-        });
-
-        if (!r.ok) return { statusCode: r.status, body: r.text };
-
-        // out zal nu de ruwe Base64 string bevatten
-        const out = getOutputObject(r.json);
-        
-        // Retourneert de Base64-string in de Document property
-        return {
-          statusCode: 200,
-          body: JSON.stringify({ docId: String(docId), Document: out }),
-        };
+        const r = await callUltimo({ Action: "GET_JOB_DOC", objdocid: String(docId) });
+        if (!r.ok) return { statusCode: r.status, headers: corsHeaders, body: r.text };
+        const out = getOutputObject(r.json); // ruwe Base64
+        return respond(200, { docId: String(docId), Document: out });
       }
-      
-      // 1) Alle Documents van een Job opvragen
-      // JobId is weer vereist om WorkflowException te omzeilen.
+
+      // 1) Lijst met documenten bij een job
       if (action === "LIST_JOB_DOCS") {
         if (!jobId || !/^\d+$/.test(jobId)) {
-          return { statusCode: 400, body: JSON.stringify({ error: "Ongeldig of ontbrekend 'jobId'." }) };
+          return respond(400, { error: "Ongeldig of ontbrekend 'jobId'." });
         }
-        // JobId weer meegestuurd
         const r = await callUltimo({ Action: "LIST_JOB_DOCS", JobId: String(jobId) });
-        if (!r.ok) return { statusCode: r.status, body: r.text };
-
+        if (!r.ok) return { statusCode: r.status, headers: corsHeaders, body: r.text };
         const out = getOutputObject(r.json);
         const docs = pickDocuments(out);
-        return { statusCode: 200, body: JSON.stringify({ jobId: String(jobId), Documents: docs }) };
+        return respond(200, { jobId: String(jobId), Documents: docs });
       }
-      
 
-      // 2) Dedicated controle-pad voor frontend login
-      if (controle) {
+      // 2) Domeincontrole (frontend login check)
+      if (typeof controle !== "undefined") {
         if (!jobId || !/^\d+$/.test(jobId)) {
-          return { statusCode: 400, body: JSON.stringify({ error: "Ongeldig of ontbrekend 'jobId'." }) };
+          return respond(400, { error: "Ongeldig of ontbrekend 'jobId'." });
         }
-        // ... rest van de code blijft hetzelfde, want deze delen werken correct.
-        // Eerst job ophalen om Vendor.EmailAddress te kennen (VIEW)
-        const view = await callUltimo({ JobId: String(jobId), Email: email || "", Action: "VIEW" });
-        if (!view.ok) return { statusCode: view.status, body: view.text };
 
+        // Eerst VIEW om vendor te kennen; Email enkel meesturen indien aanwezig
+        const viewPayload = { JobId: String(jobId), Action: "VIEW" };
+        if (hasEmail) viewPayload.Email = email.trim();
+
+        const view = await callUltimo(viewPayload);
+        if (!view.ok) return { statusCode: view.status, headers: corsHeaders, body: view.text };
         const vOut = getOutputObject(view.json);
         const job = pickFirstJob(vOut);
-        const vendorEmail =
-          job?.VendorEmailAddress || job?.Vendor?.EmailAddress || "";
+        const vendorEmail = job?.VendorEmailAddress || job?.Vendor?.EmailAddress || "";
+        const hasVendor = isNonEmpty(vendorEmail);
 
-        // Dan de pure controle-call (workflow vergelijkt enkel domeinen en geeft true/false)
+        // Geen email of geen vendor? => controle niet relevant -> allowed
+        if (!(hasEmail && hasVendor)) {
+          return respond(200, { allowed: true });
+        }
+
+        // Echte check
         const payload = {
           JobId: String(jobId),
-          Email: email || "",
-          Controle: String(controle),
-          ControleDomain: getDomain(controle),
+          Email: email.trim(),
+          Controle: email.trim(),
+          ControleDomain: getDomain(email),
           LoginDomain: getDomain(email),
           VendorDomain: getDomain(vendorEmail),
           Action: "VIEW",
         };
-
         const chk = await callUltimo(payload);
-        if (!chk.ok) return { statusCode: chk.status, body: chk.text };
-
+        if (!chk.ok) return { statusCode: chk.status, headers: corsHeaders, body: chk.text };
         const out = getOutputObject(chk.json);
         const allowed = String(out).toLowerCase() === "true";
-        return { statusCode: 200, body: JSON.stringify({ allowed }) };
+        return respond(200, { allowed });
       }
 
-      // 3) Standaard VIEW (geen side-effects)
+      // 3) Standaard VIEW (geen side effects)
       if (!jobId || !/^\d+$/.test(jobId)) {
-        return { statusCode: 400, body: JSON.stringify({ error: "Ongeldig of ontbrekend 'jobId'." }) };
+        return respond(400, { error: "Ongeldig of ontbrekend 'jobId'." });
       }
+      const viewPayload = { JobId: String(jobId), Action: action };
+      if (hasEmail) viewPayload.Email = email.trim();
 
-      const r = await callUltimo({ JobId: String(jobId), Email: email || "", Action: action });
-      if (!r.ok) return { statusCode: r.status, body: r.text };
+      const r = await callUltimo(viewPayload);
+      if (!r.ok) return { statusCode: r.status, headers: corsHeaders, body: r.text };
 
       const out = getOutputObject(r.json);
       const job = pickFirstJob(out);
-      if (!job) return { statusCode: 404, body: JSON.stringify({ error: "Job niet gevonden." }) };
-
+      if (!job) return respond(404, { error: "Job niet gevonden." });
       if (job.Description) job.Description = stripHtml(job.Description);
 
-      return {
-        statusCode: 200,
-        body: JSON.stringify({ jobId: String(jobId), email: email || null, Job: job, hasDetails: true }),
-      };
+      return respond(200, { jobId: String(jobId), email: hasEmail ? email.trim() : null, Job: job, hasDetails: true });
     }
 
     /* ───────────── POST ───────────── */
     if (event.httpMethod === "POST") {
       const body = JSON.parse(event.body || "{}");
-      const { action, jobId, email = "", text = "" } = body || {};
+      const { action, jobId, email, text = "", fileName, mimeType, description, base64 } = body || {};
+      const hasEmail = Object.prototype.hasOwnProperty.call(body, 'email') && isNonEmpty(email);
 
       if (!jobId || !/^\d+$/.test(jobId)) {
-        return { statusCode: 400, body: JSON.stringify({ error: "Ongeldig of ontbrekend 'jobId'." }) };
+        return respond(400, { error: "Ongeldig of ontbrekend 'jobId'." });
       }
-      if (!action || !["ADD_INFO", "CLOSE"].includes(action)) {
-        return { statusCode: 400, body: JSON.stringify({ error: "Ongeldige of ontbrekende 'action'." }) };
+      if (!action || !["ADD_INFO", "CLOSE", "ADD_JOB_DOC"].includes(action)) {
+        return respond(400, { error: "Ongeldige of ontbrekende 'action'." });
       }
 
-      // Server-side guard: eerst job ophalen → domeinen doorgeven → controle vragen
-      const firstView = await callUltimo({ JobId: String(jobId), Email: email || "", Action: "VIEW" });
-      if (!firstView.ok) return { statusCode: firstView.status, body: firstView.text };
+      // 1) VIEW om job + vendor te kennen (Email enkel meesturen indien aanwezig)
+      const viewPayload = { JobId: String(jobId), Action: "VIEW" };
+      if (hasEmail) viewPayload.Email = email.trim();
 
+      const firstView = await callUltimo(viewPayload);
+      if (!firstView.ok) return { statusCode: firstView.status, headers: corsHeaders, body: firstView.text };
       const vOut = getOutputObject(firstView.json);
       const job = pickFirstJob(vOut);
-      const vendorEmail =
-        job?.VendorEmailAddress || job?.Vendor?.EmailAddress || "";
+      const vendorEmail = job?.VendorEmailAddress || job?.Vendor?.EmailAddress || "";
+      const hasVendor = isNonEmpty(vendorEmail);
 
-      const checkPayload = {
-        JobId: String(jobId),
-        Email: email || "",
-        Controle: email || "",
-        ControleDomain: getDomain(email),
-        LoginDomain: getDomain(email),
-        VendorDomain: getDomain(vendorEmail),
-        Action: "VIEW",
-      };
-      const chk = await callUltimo(checkPayload);
-      if (!chk.ok) return { statusCode: chk.status, body: chk.text };
-
-      const outChk = getOutputObject(chk.json);
-      const allowed = String(outChk).toLowerCase() === "true";
-      if (!allowed) {
-        return { statusCode: 403, body: JSON.stringify({ error: "E-mailadres niet toegestaan voor deze job/leverancier." }) };
+      // 2) Vendor-check enkel als zowel email als vendor bestaan
+      let allowed = true;
+      if (hasEmail && hasVendor) {
+        const checkPayload = {
+          JobId: String(jobId),
+          Email: email.trim(),
+          Controle: email.trim(),
+          ControleDomain: getDomain(email),
+          LoginDomain: getDomain(email),
+          VendorDomain: getDomain(vendorEmail),
+          Action: "VIEW",
+        };
+        const chk = await callUltimo(checkPayload);
+        if (!chk.ok) return { statusCode: chk.status, headers: corsHeaders, body: chk.text };
+        const outChk = getOutputObject(chk.json);
+        allowed = String(outChk).toLowerCase() === "true";
       }
 
-      // Doorsturen mutatie
+      if (!allowed) {
+        return respond(403, { error: "E-mailadres niet toegestaan voor deze job/leverancier." });
+      }
+
+      // 3) Mutaties
+      if (action === "ADD_JOB_DOC") {
+        if (!fileName || typeof base64 !== "string" || !base64.length) {
+          return respond(400, { error: "Ontbrekende 'fileName' of 'base64'." });
+        }
+        const addDocPayload = {
+          JobId: String(jobId),
+          Action: "ADD_JOB_DOC",
+          AddDoc_FileName: String(fileName),
+          AddDoc_Base64: String(base64),
+          AddDoc_Description: String(description || fileName),
+          // mimeType NIET doorgeven; bestaat niet als veld in Document-model
+        };
+        if (hasEmail) addDocPayload.Email = email.trim();
+
+        const rAdd = await callUltimo(addDocPayload);
+        if (!rAdd.ok) return { statusCode: rAdd.status, headers: corsHeaders, body: rAdd.text };
+        const out = getOutputObject(rAdd.json);
+        return respond(200, { ok: true, jobId: String(jobId), action, result: out });
+      }
+
+      // ADD_INFO of CLOSE
       const ultPayload =
         action === "ADD_INFO"
-          ? { JobId: String(jobId), Email: email, Action: "ADD_INFO", Text: String(text || "") }
-          : { JobId: String(jobId), Email: email, Action: "CLOSE",    Text: String(text || "") };
+          ? { JobId: String(jobId), Action: "ADD_INFO", Text: String(text || "") }
+          : { JobId: String(jobId), Action: "CLOSE",    Text: String(text || "") };
+      if (hasEmail) ultPayload.Email = email.trim();
 
       const r = await callUltimo(ultPayload);
-      if (!r.ok) return { statusCode: r.status, body: r.text };
-
-      return { statusCode: 200, body: JSON.stringify({ ok: true, jobId, action }) };
+      if (!r.ok) return { statusCode: r.status, headers: corsHeaders, body: r.text };
+      return respond(200, { ok: true, jobId, action });
     }
 
-    return { statusCode: 405, body: "Methode niet toegestaan" };
+    return { statusCode: 405, headers: corsHeaders, body: "Methode niet toegestaan" };
   } catch (err) {
     console.error("jobsvendor error", err);
-    return { statusCode: 500, body: JSON.stringify({ error: err.message }) };
+    return respond(500, { error: err.message });
   }
 }
