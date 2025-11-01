@@ -1,227 +1,201 @@
-const API_KEY   = process.env.ULTIMO_API_KEY;
-const BASE_URL  = process.env.ULTIMO_API_BASEURL;
-const APP_QUERY = process.env.APP_ELEMENT_QueryAtalianJobs;
-const APP_ONE   = process.env.APP_ELEMENT_OneAtalianJob;
+// netlify/functions/space.js
+/* eslint-disable */
 
-// -- Voeg backend parsing/formatting toe --
-// In je prod_space.js (bovenaan):
+// === ENV =========================================================
+const API_KEY       = process.env.ULTIMO_API_KEY;
+const BASE_URL_PROD = process.env.ULTIMO_API_BASEURL;
+const BASE_URL_TEST = process.env.ULTIMO_API_BASEURL_TEST || process.env.ULTIMO_API_BASEURL; // fallback
+
+// === Response helper + CORS ======================================
+const json = (status, obj = {}) => ({
+  statusCode: status,
+  headers: {
+    'Content-Type': 'application/json',
+    'Access-Control-Allow-Origin': '*',
+    'Access-Control-Allow-Methods': 'GET, OPTIONS',
+    'Access-Control-Allow-Headers': 'Content-Type, ApplicationElementId, ApiKey'
+  },
+  body: JSON.stringify(obj)
+});
+
+// === Omgevingsdetectie (QS of host) ===============================
+function detectEnvironment(event = {}) {
+  const qs   = event.queryStringParameters || {};
+  const host = (event.headers && event.headers.host) || '';
+
+  // Steunt op je portal + bestaande patroon in jobsvendor
+  const testViaParam =
+    qs.test === '1' || qs.test === 'true' ||
+    qs.env  === 'test'; // compatibel met &env=test
+  const testViaHost  = /test|staging/i.test(host);
+
+  const isTest = !!(testViaParam || testViaHost);
+  const base   = isTest ? BASE_URL_TEST : BASE_URL_PROD;
+  const env    = isTest ? 'TEST' : 'PROD';
+
+  if (!base) throw new Error('BASE_URL niet gezet voor geselecteerde omgeving.');
+  return { isTest, base, env };
+}
+
+// === Helpers: CleaningProgram formatting =========================
+// CleaningProgram verwacht "1111100;W1" (dagen;frequentie)
+// - dagen: string van 7 chars (1=actief), volgorde ma..zo
+// - frequentie: D (dagelijks) / Wn (wekelijks / om de n weken) / Mn (maandelijks / om de n maanden)
+
 function getWeekdayNames(daysRaw, lang) {
-  // ["maandag", "dinsdag", ...] of ["lundi", ...]
-  const dagenNl = ['maandag','dinsdag','woensdag','donderdag','vrijdag','zaterdag','zondag'];
-  const dagenFr = ['lundi','mardi','mercredi','jeudi','vendredi','samedi','dimanche'];
-  const dagen = lang === 'fr' ? dagenFr : dagenNl;
-  let daysList = [];
-  for (let i=0; i<daysRaw.length; ++i) {
-    if (daysRaw[i]==='1') {
-      daysList.push(dagen[i]);
-    }
+  const nl = ['maandag','dinsdag','woensdag','donderdag','vrijdag','zaterdag','zondag'];
+  const fr = ['lundi','mardi','mercredi','jeudi','vendredi','samedi','dimanche'];
+  const dagen = lang === 'fr' ? fr : nl;
+  const list = [];
+  for (let i = 0; i < Math.min(7, daysRaw.length); i++) {
+    if (daysRaw[i] === '1') list.push(dagen[i]);
   }
-  return daysList;
+  return list;
 }
 
 function getNextCleaningDate(daysRaw) {
   const now = new Date();
-  const todayIdx = (now.getDay() + 6) % 7; // JS: 0=zo, hier: 0=ma
+  const todayIdx = (now.getDay() + 6) % 7; // JS: 0=zo; wij: 0=ma
   for (let offset = 0; offset < 7; offset++) {
     const idx = (todayIdx + offset) % 7;
-    if (daysRaw[idx] === "1") {
-      const nextDate = new Date(now);
-      nextDate.setDate(now.getDate() + offset);
-      return {offset, nextDate};
+    if (daysRaw[idx] === '1') {
+      const next = new Date(now);
+      next.setDate(now.getDate() + offset);
+      return { offset, nextDate: next };
     }
   }
   return null;
 }
 
 function formatCleaningProgram(raw, lang) {
-  if (!raw) return "";
-  const parts = raw.split(";");
-  if (parts.length < 2) return raw;
-
-  const daysRaw = parts[0];
-  const freqRaw = parts[1];
+  if (!raw || typeof raw !== 'string' || !raw.includes(';')) return '';
+  const [daysRaw = '', freqRaw = ''] = raw.split(';');
   const isFr = lang === 'fr';
 
-  // Frequentie uitleg
-  let freqType = freqRaw[0];
-  let freqVal  = freqRaw.slice(1);
+  // Frequentie
+  const t = String(freqRaw || '').trim();
+  const fType = t[0] || '';
+  const fVal  = t.slice(1);
 
   let freqStr = '';
-  if (freqType === 'D') {
+  if (fType === 'D') {
     freqStr = isFr ? 'Quotidiennement' : 'Dagelijks';
-  } else if (freqType === 'W') {
-    if (freqVal && freqVal !== "1") {
-      freqStr = isFr ? `Toutes les ${freqVal} semaines` : `Om de ${freqVal} weken`;
-    } else {
-      freqStr = isFr ? 'Chaque semaine' : 'Wekelijks';
-    }
-  } else if (freqType === 'M') {
-    if (freqVal && freqVal !== "1") {
-      freqStr = isFr ? `Tous les ${freqVal} mois` : `Om de ${freqVal} maanden`;
-    } else {
-      freqStr = isFr ? 'Chaque mois' : 'Maandelijks';
-    }
+  } else if (fType === 'W') {
+    if (fVal && fVal !== '1') freqStr = isFr ? `Toutes les ${fVal} semaines` : `Om de ${fVal} weken`;
+    else freqStr = isFr ? 'Chaque semaine' : 'Wekelijks';
+  } else if (fType === 'M') {
+    if (fVal && fVal !== '1') freqStr = isFr ? `Tous les ${fVal} mois` : `Om de ${fVal} maanden`;
+    else freqStr = isFr ? 'Chaque mois' : 'Maandelijks';
   }
 
-  // Dagen
-  const daysList = getWeekdayNames(daysRaw, lang);
-
-// Nette zin - slimme herkenning patronen
+  // Dagen (mooie zinnen voor gangbare patronen)
   let daysPhrase = '';
-  // Patronen als string voor snelle matching
-  const pattern = daysRaw;
-
-  if (pattern === '1111100') {
-    daysPhrase = isFr ? "chaque jour ouvrable" : "op elke werkdag";
-  } else if (pattern === '0000011') {
-    daysPhrase = isFr ? "le week-end" : "in het weekend";
-  } else if (pattern === '1111111') {
-    daysPhrase = isFr ? "tous les jours" : "op elke dag";
-  } else if (pattern.match(/^0*1+0*$/)) {
-    // Reeks van dagen (bijv. 0111110 = di-za)
-    const first = daysList[0];
-    const last = daysList[daysList.length - 1];
-    if (daysList.length > 1) {
-      daysPhrase = isFr
-        ? `du ${first} au ${last}`
-        : `van ${first} t/m ${last}`;
-    } else {
-      daysPhrase = isFr ? `le ${first}` : `op ${first}`;
+  const d = String(daysRaw || '').substring(0,7); // defensief
+  if      (d === '1111100') daysPhrase = isFr ? 'du lundi au vendredi' : 'van maandag tot en met vrijdag';
+  else if (d === '1111111') daysPhrase = isFr ? 'tous les jours' : 'elke dag';
+  else if (d === '0000011') daysPhrase = isFr ? 'le week-end' : 'in het weekend';
+  else {
+    const list = getWeekdayNames(d, lang);
+    if (!list.length) daysPhrase = isFr ? 'jours non spécifiés' : 'dagen niet gespecificeerd';
+    else if (list.length === 1) daysPhrase = list[0];
+    else {
+      const last = list.pop();
+      daysPhrase = (lang === 'fr')
+        ? `${list.join(', ')} et ${last}`
+        : `${list.join(', ')} en ${last}`;
     }
-  } else if (daysList.length === 1) {
-    daysPhrase = isFr ? `le ${daysList[0]}` : `op ${daysList[0]}`;
-  } else if (daysList.length > 1) {
-    const last = daysList.pop();
-    daysPhrase = isFr
-      ? `les ${daysList.join(', ')} et ${last}`
-      : `op ${daysList.join(', ')} en ${last}`;
-  } else {
-    daysPhrase = isFr ? "(aucun jour)" : "(geen dag)";
   }
-  
-  // Emoji Poetsfrequentie
-	let freqEmoji = '';
-	if (freqType === 'D') freqEmoji = '🌞';
-	else if (freqType === 'W') freqEmoji = '🔁';
-	else if (freqType === 'M') freqEmoji = '📅';
 
-  // Volgende beurt
-  const next = getNextCleaningDate(daysRaw);
-  let nextText = '';
+  // Volgende uitvoering (optioneel, kort)
+  const next = getNextCleaningDate(d);
+  let nextStr = '';
   if (next) {
-    const n = next.nextDate;
-    const nu = new Date();
-    n.setHours(0,0,0,0);
-    nu.setHours(0,0,0,0);
-    if (n.getTime() === nu.getTime()) {
-      nextText = isFr
-        ? "<b>Aujourd’hui</b>, un nettoyage est prévu."
-        : "Er is <b>vandaag</b> een poetsbeurt gepland.";
-    } else {
-		// Afkortingen dagen
-		const dagAfkNl = ['zo','ma','di','wo','do','vr','za'];
-		const dagAfkFr = ['dim.','lun.','mar.','mer.','jeu.','ven.','sam.'];
-		const dagAfk = isFr ? dagAfkFr : dagAfkNl;
-
-		// Weekdag halen: let op, JS: 0=zo, 1=ma, ...
-		const dagNum = n.getDay();
-		const dagAfkort = dagAfk[dagNum];
-
-		const d = ('0'+n.getDate()).slice(-2);
-		const m = ('0'+(n.getMonth()+1)).slice(-2);
-		const y = n.getFullYear();
-
-		nextText = isFr
-		  ? `Le prochain nettoyage est prévu le <br>📅 <b>${dagAfkort} ${d}-${m}-${y}</b>.`
-		  : `De volgende poetsbeurt is voorzien op <br>📅 <b>${dagAfkort} ${d}-${m}-${y}</b>.`;
-			}
+    if (next.offset === 0) nextStr = isFr ? '(aujourd’hui)' : '(vandaag)';
+    else if (next.offset === 1) nextStr = isFr ? '(demain)' : '(morgen)';
+    else {
+      // Locale zonder vaste kleur/stijl; client toont meldingen
+      nextStr = `(${ next.nextDate.toLocaleDateString() })`;
+    }
   }
 
-  return `${freqEmoji} ${freqStr} ${daysPhrase}.<br><br>🧹 ${nextText}`;
+  if (freqStr && daysPhrase) {
+    return `${freqStr} – ${daysPhrase} ${nextStr}`.trim();
+  }
+  if (daysPhrase) return daysPhrase;
+  return freqStr || '';
 }
 
-
+// === Handler =====================================================
 export async function handler(event) {
-  const { id: spaceId, lang = 'nl' } = event.queryStringParameters || {};
-
-  if (!spaceId) {
-    console.error("Missing 'id' parameter");
-    return {
-      statusCode: 400,
-      body: JSON.stringify({ error: "Geen geldig ID ontvangen." }),
-    };
-  }
-
-  const url = `${BASE_URL}/object/Space('${spaceId}')`;
+  // Preflight
+  if (event.httpMethod === 'OPTIONS') return json(204, {});
 
   try {
-    const response = await fetch(url, {
-      headers: {
-        accept: "application/json",
-        ApiKey: API_KEY,
-      },
+    if (!API_KEY || !BASE_URL_PROD) {
+      return json(500, { description: '', error: 'Server misconfiguratie (env-variabelen ontbreken).' });
+    }
+
+    // Params
+    const spaceId = String(event.queryStringParameters?.id ?? '').trim();
+    const langRaw = String(event.queryStringParameters?.lang ?? '').toLowerCase();
+    const lang = langRaw === 'fr' ? 'fr' : 'nl';
+    if (!spaceId) return json(400, { description: '', error: 'Geen geldig ID ontvangen.' });
+
+    // Env
+    const { base, env } = detectEnvironment(event);
+
+    // Ultimo call
+    const url = `${base}/object/Space('${spaceId}')`;
+    const res = await fetch(url, { headers: { accept: 'application/json', ApiKey: API_KEY } });
+
+    if (res.status === 404) {
+      return json(404, {
+        description: '',
+        error: (lang === 'fr')
+          ? `Local avec ID ${spaceId} introuvable.`
+          : `Ruimte met ID ${spaceId} niet gevonden.`,
+        env
+      });
+    }
+    if (!res.ok) {
+      const txt = await res.text().catch(() => '');
+      return json(res.status, {
+        description: '',
+        error: (lang === 'fr') ? 'Erreur lors du chargement du local.' : 'Fout bij ophalen van ruimte.',
+        detail: txt.slice(0, 800),
+        env
+      });
+    }
+
+    const data = await res.json().catch(() => ({}));
+    const beschrijving =
+      data?.Description ??
+      data?.description ??
+      data?.properties?.Description ??
+      data?.properties?.description ??
+      (lang === 'fr' ? 'Aucune description trouvée.' : 'Geen beschrijving gevonden.');
+
+    const cleaningProgram =
+      data?._CleaningProgram ??
+      data?.properties?._CleaningProgram ??
+      '';
+
+    const cleaningProgramFormatted = cleaningProgram
+      ? formatCleaningProgram(String(cleaningProgram), lang)
+      : '';
+
+    return json(200, {
+      description: String(beschrijving || '').trim(),
+      cleaningProgram: String(cleaningProgram || ''),
+      cleaningProgramFormatted,
+      env
     });
 
-    // Specifieke handling als de ruimte niet bestaat (meestal 404)
-    if (response.status === 404) {
-      console.warn(`Ruimte met ID ${spaceId} niet gevonden.`);
-      return {
-        statusCode: 404,
-        body: JSON.stringify({
-          description: "",
-          error: `Ruimte met ID ${spaceId} niet gevonden.`,
-        }),
-      };
-    }
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error("Ultimo API returned non-200:", response.status, errorText);
-      return {
-        statusCode: response.status,
-        body: JSON.stringify({
-          description: "",
-          error: "Fout bij ophalen van ruimte.",
-          detail: errorText,
-        }),
-      };
-    }
-
-    const data = await response.json();
-    // Beschrijving ophalen
-    let beschrijving = data.Description || data.description || "";
-    if (!beschrijving && data.properties) {
-      beschrijving =
-        data.properties.Description || data.properties.description || "";
-    }
-
-    // CleaningProgram ophalen (altijd, ook leeg als niet aanwezig)
-    let cleaningProgram = data._CleaningProgram || (data.properties && data.properties._CleaningProgram) || "";
-
-    // Formatting gebeurt nu HIER!
-    let cleaningProgramFormatted = cleaningProgram
-      ? formatCleaningProgram(cleaningProgram, lang)
-      : "";
-
-    return {
-      statusCode: 200,
-      body: JSON.stringify({
-        description: beschrijving || "Geen beschrijving gevonden.",
-        cleaningProgram: cleaningProgram ?? "",
-        cleaningProgramFormatted: cleaningProgramFormatted,
-        error: "",
-      }),
-    };
-
-  } catch (error) {
-    console.error("Serverfout bij ophalen:", error);
-    return {
-      statusCode: 500,
-      body: JSON.stringify({
-        description: "",
-        error: "Serverfout bij ophalen.",
-        detail: error.message,
-      }),
-    };
+  } catch (err) {
+    return json(500, {
+      description: '',
+      error: 'Serverfout bij ophalen.',
+      detail: String(err?.message || err)
+    });
   }
 }

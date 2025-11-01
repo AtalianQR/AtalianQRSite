@@ -1,53 +1,106 @@
 // netlify/functions/equipment.js
-const API_KEY  = process.env.ULTIMO_API_KEY;
-const BASE_URL = process.env.ULTIMO_API_BASEURL;
-// Alleen gebruiken als je AppElements nodig hebt:
-const APP_QUERY = process.env.APP_ELEMENT_QueryAtalianJobs;
-const APP_ONE   = process.env.APP_ELEMENT_OneAtalianJob;
+/* eslint-disable */
 
-const json = (status, obj) => ({
+// === ENV =========================================================
+const API_KEY       = process.env.ULTIMO_API_KEY;
+const BASE_URL_PROD = process.env.ULTIMO_API_BASEURL;
+const BASE_URL_TEST = process.env.ULTIMO_API_BASEURL_TEST || process.env.ULTIMO_API_BASEURL; // fallback
+
+// === Response helper + CORS ======================================
+const json = (status, obj = {}) => ({
   statusCode: status,
   headers: {
     'Content-Type': 'application/json',
-    'Access-Control-Allow-Origin': '*'
+    'Access-Control-Allow-Origin': '*',
+    'Access-Control-Allow-Methods': 'GET, OPTIONS',
+    'Access-Control-Allow-Headers': 'Content-Type, ApplicationElementId, ApiKey'
   },
   body: JSON.stringify(obj)
 });
 
-export async function handler(event) {
-  const equipmentId = (event.queryStringParameters?.id ?? '').trim();
-  if (!equipmentId) {
-    return json(400, { description: '', error: "Geen geldig ID ontvangen." });
-  }
+// === Omgevingsdetectie (QS of host) ===============================
+function detectEnvironment(event = {}) {
+  const qs   = event.queryStringParameters || {};
+  const host = (event.headers && event.headers.host) || '';
 
-  const url = `${BASE_URL}/object/Equipment('${equipmentId}')`;
+  const testViaParam =
+    qs.test === '1' || qs.test === 'true' ||
+    qs.env  === 'test'; // ← compatibel met portal.html (&env=test)
+  const testViaHost  = /test|staging/i.test(host);
+
+  const isTest = !!(testViaParam || testViaHost);
+  const base   = isTest ? BASE_URL_TEST : BASE_URL_PROD;
+  const env    = isTest ? 'TEST' : 'PROD';
+
+  if (!base) {
+    // Minimale sanity check om verkeerde deploy-config snel te zien
+    throw new Error('BASE_URL niet gezet voor geselecteerde omgeving.');
+  }
+  return { isTest, base, env };
+}
+
+// === Handler =====================================================
+export async function handler(event) {
+  // Preflight
+  if (event.httpMethod === 'OPTIONS') return json(204, {});
 
   try {
-    const res = await fetch(url, {
-      headers: { accept: "application/json", ApiKey: API_KEY }
-    });
+    if (!API_KEY || !BASE_URL_PROD) {
+      return json(500, { description: '', error: 'Server misconfiguratie (env-variabelen ontbreken).' });
+    }
+
+    // Params
+    const equipmentId = String(event.queryStringParameters?.id ?? '').trim();
+    const langRaw = String(event.queryStringParameters?.lang ?? '').toLowerCase();
+    const lang = langRaw === 'fr' ? 'fr' : 'nl'; // future-proof: toonbare teksten
+    if (!equipmentId) return json(400, { description: '', error: 'Geen geldig ID ontvangen.' });
+
+    // Env
+    const { base, env } = detectEnvironment(event);
+
+    // Ultimo call
+    const url = `${base}/object/Equipment('${equipmentId}')`;
+    const res = await fetch(url, { headers: { accept: 'application/json', ApiKey: API_KEY } });
 
     if (res.status === 404) {
-      return json(404, { description: "", error: `Installatie met ID ${equipmentId} niet gevonden.` });
+      return json(404, {
+        description: '',
+        error: (lang === 'fr')
+          ? `Installation avec ID ${equipmentId} introuvable.`
+          : `Installatie met ID ${equipmentId} niet gevonden.`,
+        env
+      });
     }
     if (!res.ok) {
-      const txt = await res.text();
-      return json(res.status, { description: "", error: "Fout bij ophalen van installatie.", detail: txt });
+      const txt = await res.text().catch(() => '');
+      return json(res.status, {
+        description: '',
+        error: (lang === 'fr') ? 'Erreur lors du chargement de l’installation.' : 'Fout bij ophalen van installatie.',
+        detail: txt.slice(0, 800),
+        env
+      });
     }
 
-    const data = await res.json();
-    const desc = data?.Description
-      ?? data?.description
-      ?? data?.properties?.Description
-      ?? data?.properties?.description
-      ?? "Geen beschrijving gevonden.";
+    const data = await res.json().catch(() => ({}));
+    const desc =
+      data?.Description ??
+      data?.description ??
+      data?.properties?.Description ??
+      data?.properties?.description ??
+      ((lang === 'fr') ? 'Aucune description trouvée.' : 'Geen beschrijving gevonden.');
 
+    // NB: voor Equipments voorzien we enkel de beschrijving.
+    // (cleaningProgramFormatted is enkel zinvol bij Space; portal toont het optioneel.)
     return json(200, {
-      description: desc,
-      context: process.env.CONTEXT // 'production' | 'deploy-preview' | 'branch-deploy' (handig voor debug)
+      description: String(desc || '').trim(),
+      env
     });
 
   } catch (err) {
-    return json(500, { description: "", error: "Serverfout bij ophalen.", detail: String(err?.message || err) });
+    return json(500, {
+      description: '',
+      error: 'Serverfout bij ophalen.',
+      detail: String(err?.message || err)
+    });
   }
 }
