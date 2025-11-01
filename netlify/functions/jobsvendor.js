@@ -88,7 +88,6 @@ async function callUltimo(event, payload) {
   return { ok: true, json };
 }
 
-
 /**
  * Output.object kan "true"/"false", een JSON-string ({QRCommando, Jobs:[...]}),
  * of een ruwe Base64-string zijn (bij GET_JOB_DOC).
@@ -117,7 +116,6 @@ function getOutputObject(raw) {
   return txt;
 }
 
-
 function pickFirstJob(out) {
   if (!out || typeof out !== "object") return null;
   if (!Array.isArray(out.Jobs)) return null;
@@ -138,12 +136,12 @@ export async function handler(event) {
     }
 
     // Simpele sanity check op env
-	if (!API_KEY || !BASE_URL_PROD || !APP_ELEMENT) {
-	  return respond(500, { error: "Serverconfig onvolledig: ontbrekende API-sleutels of BASE_URL_PROD." });
-	}
+    if (!API_KEY || !BASE_URL_PROD || !APP_ELEMENT) {
+      return respond(500, { error: "Serverconfig onvolledig: ontbrekende API-sleutels of BASE_URL_PROD." });
+    }
 
-    // ⬇️ Voeg DEZE log hier toe
-    const { isTest, base, envName } = detectEnvironment(event);
+    // Log gekozen omgeving en base
+    const { envName, base } = detectEnvironment(event);
     console.log(`[jobsvendor] 🔎 Handler start in ${envName} → base=${base}`);
 
     /* ───────────── GET ───────────── */
@@ -156,8 +154,7 @@ export async function handler(event) {
         if (!docId || !/^\d+$/.test(docId)) {
           return respond(400, { error: "Ongeldig of ontbrekend 'docId'." });
         }
-        const r = await callUltimo({ Action: "GET_JOB_DOC", objdocid: String(docId) });
-        if (!r.ok) return { statusCode: r.status, headers: corsHeaders, body: r.text };
+        const r = await callUltimo(event, { Action: "GET_JOB_DOC", objdocid: String(docId) });
         const out = getOutputObject(r.json); // ruwe Base64
         return respond(200, { docId: String(docId), Document: out });
       }
@@ -168,7 +165,6 @@ export async function handler(event) {
           return respond(400, { error: "Ongeldig of ontbrekend 'jobId'." });
         }
         const r = await callUltimo(event, { Action: "LIST_JOB_DOCS", JobId: String(jobId) });
-        if (!r.ok) return { statusCode: r.status, headers: corsHeaders, body: r.text };
         const out = getOutputObject(r.json);
         const docs = pickDocuments(out);
         return respond(200, { jobId: String(jobId), Documents: docs });
@@ -184,8 +180,7 @@ export async function handler(event) {
         const viewPayload = { JobId: String(jobId), Action: "VIEW" };
         if (hasEmail) viewPayload.Email = email.trim();
 
-        const view = await callUltimo(viewPayload);
-        if (!view.ok) return { statusCode: view.status, headers: corsHeaders, body: view.text };
+        const view = await callUltimo(event, viewPayload);
         const vOut = getOutputObject(view.json);
         const job = pickFirstJob(vOut);
         const vendorEmail = job?.VendorEmailAddress || job?.Vendor?.EmailAddress || "";
@@ -206,8 +201,7 @@ export async function handler(event) {
           VendorDomain: getDomain(vendorEmail),
           Action: "VIEW",
         };
-        const chk = await callUltimo(payload);
-        if (!chk.ok) return { statusCode: chk.status, headers: corsHeaders, body: chk.text };
+        const chk = await callUltimo(event, payload);
         const out = getOutputObject(chk.json);
         const allowed = String(out).toLowerCase() === "true";
         return respond(200, { allowed });
@@ -220,9 +214,7 @@ export async function handler(event) {
       const viewPayload = { JobId: String(jobId), Action: action };
       if (hasEmail) viewPayload.Email = email.trim();
 
-      const r = await callUltimo(viewPayload);
-      if (!r.ok) return { statusCode: r.status, headers: corsHeaders, body: r.text };
-
+      const r = await callUltimo(event, viewPayload);
       const out = getOutputObject(r.json);
       const job = pickFirstJob(out);
       if (!job) return respond(404, { error: "Job niet gevonden." });
@@ -248,8 +240,7 @@ export async function handler(event) {
       const viewPayload = { JobId: String(jobId), Action: "VIEW" };
       if (hasEmail) viewPayload.Email = email.trim();
 
-      const firstView = await callUltimo(viewPayload);
-      if (!firstView.ok) return { statusCode: firstView.status, headers: corsHeaders, body: firstView.text };
+      const firstView = await callUltimo(event, viewPayload);
       const vOut = getOutputObject(firstView.json);
       const job = pickFirstJob(vOut);
       const vendorEmail = job?.VendorEmailAddress || job?.Vendor?.EmailAddress || "";
@@ -267,8 +258,7 @@ export async function handler(event) {
           VendorDomain: getDomain(vendorEmail),
           Action: "VIEW",
         };
-        const chk = await callUltimo(checkPayload);
-        if (!chk.ok) return { statusCode: chk.status, headers: corsHeaders, body: chk.text };
+        const chk = await callUltimo(event, checkPayload);
         const outChk = getOutputObject(chk.json);
         allowed = String(outChk).toLowerCase() === "true";
       }
@@ -292,8 +282,7 @@ export async function handler(event) {
         };
         if (hasEmail) addDocPayload.Email = email.trim();
 
-        const rAdd = await callUltimo(addDocPayload);
-        if (!rAdd.ok) return { statusCode: rAdd.status, headers: corsHeaders, body: rAdd.text };
+        const rAdd = await callUltimo(event, addDocPayload);
         const out = getOutputObject(rAdd.json);
         return respond(200, { ok: true, jobId: String(jobId), action, result: out });
       }
@@ -305,8 +294,7 @@ export async function handler(event) {
           : { JobId: String(jobId), Action: "CLOSE",    Text: String(text || "") };
       if (hasEmail) ultPayload.Email = email.trim();
 
-      const r = await callUltimo(ultPayload);
-      if (!r.ok) return { statusCode: r.status, headers: corsHeaders, body: r.text };
+      const r = await callUltimo(event, ultPayload);
       return respond(200, { ok: true, jobId, action });
     }
 
