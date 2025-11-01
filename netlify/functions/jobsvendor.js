@@ -123,8 +123,19 @@ function getOutputObject(raw) {
 
 function pickFirstJob(out) {
   if (!out || typeof out !== "object") return null;
-  if (!Array.isArray(out.Jobs)) return null;
-  return out.Jobs[0] || null;
+
+  // 1) Prefer 'Job' object (sommige VIEW responses)
+  if (out.Job && typeof out.Job === 'object') return out.Job;
+  if (out.job && typeof out.job === 'object') return out.job;
+
+  // 2) Anders 'Jobs' array
+  if (Array.isArray(out.Jobs) && out.Jobs.length) return out.Jobs[0];
+  if (Array.isArray(out.jobs) && out.jobs.length) return out.jobs[0];
+
+  // 3) Als fallback: als het hele 'out' zelf op Job lijkt
+  if (out.Id || out.Description || out.Vendor || out.VendorEmailAddress) return out;
+
+  return null;
 }
 
 function pickDocuments(out) {
