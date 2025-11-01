@@ -112,9 +112,10 @@
   <script type="module">
   
   /* ==================== QS & ENV ==================== */
-  const qs = new URLSearchParams(window.location.search);
-  const isTest = qs.has('test') || /test|staging/i.test(host);
-  const envQ  = isTest ? '&test=1' : '';
+	const qs   = new URLSearchParams(window.location.search);
+	const host = (window.location && window.location.host) ? window.location.host : '';
+	const isTest = qs.has('test') || /test|staging/i.test(host);
+	const envQ   = isTest ? '&test=1' : '';
 
   /* ==================== 0. Endpoints ==================== */
   const endpointJobDetails = '/.netlify/functions/jobsvendor';
@@ -131,7 +132,7 @@
   /* ==================== 2. Telemetrie ==================== */
   const Telemetry = (()=>{ 
     // OPMERKING: Telemetry.send gebruikt al qs.has('test')
-    const base = { jobId: String(jobId), lang, env: qs.has('test') ? 'test' : 'prod' };
+    const base = { jobId: String(jobId), lang, env: isTest ? 'test' : 'prod' };
     async function send(type, extra={}){
       const json = JSON.stringify({ type, ts: Date.now(), href: location.href, ...base, ...extra });
       try{
