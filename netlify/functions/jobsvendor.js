@@ -144,45 +144,22 @@ function pickDocuments(out) {
 }
 
 // === OData helper om Vendor.Id op te halen (voor override) ===
-// --- OData helper om Vendor.Id op te halen (robuust) ---
 async function fetchJobVendorId(event, jobId) {
   const { base } = detectEnvironment(event); // respecteert TEST/PROD
-  const id = String(jobId).trim();
-
-  // 1) Rechtstreeks de subresource /Vendor (voorkeur)
-  try {
-    const res1 = await fetch(`${base}/object/Job('${id}')/Vendor`, {
-      headers: { accept: 'application/json', ApiKey: API_KEY }
-    });
-    if (res1.ok) {
-      const d1 = await res1.json().catch(() => ({}));
-      const v1 = d1?.Id || d1?.properties?.Id || d1?.VendorId || '';
-      const vendorId1 = String(v1 || '').trim();
-      if (vendorId1) return vendorId1;
-    }
-  } catch (_) { /* ga door naar fallback */ }
-
-  // 2) Fallback: volledige Job (soms Vendor inline/expanded)
-  try {
-    const res2 = await fetch(`${base}/object/Job('${id}')`, {
-      headers: { accept: 'application/json', ApiKey: API_KEY }
-    });
-    if (res2.ok) {
-      const d2 = await res2.json().catch(() => ({}));
-      const v2 =
-        d2?.Vendor?.Id ||
-        d2?.properties?.Vendor?.Id ||
-        d2?.Vendor ||
-        d2?.properties?.Vendor ||
-        '';
-      const vendorId2 = String((typeof v2 === 'object' ? v2?.Id : v2) || '').trim();
-      if (vendorId2) return vendorId2;
-    }
-  } catch (_) { /* ignore */ }
-
-  return ''; // onvindbaar
+  const url = `${base}/object/Job('${String(jobId)}')`;
+  const res = await fetch(url, { headers: { accept: 'application/json', ApiKey: API_KEY }});
+  if (!res.ok) return ''; // stil falen → geen override
+  const data = await res.json().catch(()=> ({}));
+  // dek meerdere vormen af
+  const v =
+    data?.Vendor?.Id ||
+    data?.properties?.Vendor?.Id ||
+    data?.Vendor ||
+    data?.properties?.Vendor ||
+    '';
+  const vendorId = String((typeof v === 'object' ? v?.Id : v) || '').trim();
+  return vendorId;
 }
-
 
 /* ───────────── GET HANDLERS ───────────── */
 
@@ -225,9 +202,10 @@ async function handleGetDomainCheck(event, { jobId, email, hasEmail }) {
 
   const vendorEmail = job?.VendorEmailAddress || job?.Vendor?.EmailAddress || "";
   const hasVendor = isNonEmpty(vendorEmail);
+  const isAtalianEmail = hasEmail && emailDomain(email) === 'atalianworld.com'; // NIEUW: Hulpvariabele
 
   // === Vendor override via OData: Vendor.Id ===
-  if (hasEmail && emailDomain(email) === 'atalianworld.com') {
+  if (isAtalianEmail) { // Gebruik de nieuwe variabele
     try {
       const vendorId = await fetchJobVendorId(event, jobId);
       if (vendorId === '000016') {
@@ -242,7 +220,9 @@ async function handleGetDomainCheck(event, { jobId, email, hasEmail }) {
   }
 
   // 🛑 STRIKTE CONTROLE: e-mail en vendor-mail moeten aanwezig zijn voor standaard check
-  if (!hasEmail || !hasVendor) {
+  // PAS DEZE CHECK AAN: Bypass de !hasVendor check voor @atalianworld.com e-mails, 
+  // zodat ze naar de standaard check kunnen gaan als de 000016 override niet werkt.
+  if (!hasEmail || (!hasVendor && !isAtalianEmail)) {
     const reason = !hasEmail
       ? "E-mail ontbreekt"
       : "Job heeft geen gekoppelde leverancier.";
@@ -316,20 +296,28 @@ async function handlePostAction(event, body, { jobId, email, hasEmail, action, t
   let allowed = true;
 
   // === Vendor override via OData: Vendor.Id ===
-  if (hasEmail && emailDomain(email) === 'atalianworld.com') {
+  const isAtalianEmail = hasEmail && emailDomain(email) === 'atalianworld.com'; // NIEUW: Hulpvariabele voor consistentie
+  
+  if (isAtalianEmail) {
     try {
       const vendorId = await fetchJobVendorId(event, jobId);
       if (vendorId === '000016') {
         allowed = true; // force allow
-      } else if (hasVendor) {
-        const checkPayload = {
-          JobId: String(jobId), Email: email.trim(), Controle: email.trim(),
-          ControleDomain: getDomain(email), LoginDomain: getDomain(email),
-          VendorDomain: getDomain(vendorEmail), Action: "VIEW",
-        };
-        const chk = await callUltimo(event, checkPayload);
-        const outChk = getOutputObject(chk.json);
-        allowed = String(outChk).toLowerCase() === "true";
+      } else { // NIEUW: Hier moet de check ook falen als de vendor niet 000016 is EN er geen vendor email is.
+        if (hasVendor) {
+          // Standaard domeincheck als niet 000016 maar wel een vendor email
+          const checkPayload = {
+            JobId: String(jobId), Email: email.trim(), Controle: email.trim(),
+            ControleDomain: getDomain(email), LoginDomain: getDomain(email),
+            VendorDomain: getDomain(vendorEmail), Action: "VIEW",
+          };
+          const chk = await callUltimo(event, checkPayload);
+          const outChk = getOutputObject(chk.json);
+          allowed = String(outChk).toLowerCase() === "true";
+        } else {
+          // Niet 000016 EN geen vendor email: NIET toegestaan voor Atalian gebruikers
+          allowed = false;
+        }
       }
     } catch (_) {
       // fallback naar oorspronkelijke logica
@@ -342,10 +330,13 @@ async function handlePostAction(event, body, { jobId, email, hasEmail, action, t
         const chk = await callUltimo(event, checkPayload);
         const outChk = getOutputObject(chk.json);
         allowed = String(outChk).toLowerCase() === "true";
+      } else {
+        // Geen vendor email EN fetch failed: NIET toegestaan
+        allowed = false;
       }
     }
   } else if (hasVendor && hasEmail) {
-    // oorspronkelijke domeincontrole
+    // oorspronkelijke domeincontrole (niet-Atalian e-mails)
     const checkPayload = {
       JobId: String(jobId), Email: email.trim(), Controle: email.trim(),
       ControleDomain: getDomain(email), LoginDomain: getDomain(email),
@@ -354,6 +345,9 @@ async function handlePostAction(event, body, { jobId, email, hasEmail, action, t
     const chk = await callUltimo(event, checkPayload);
     const outChk = getOutputObject(chk.json);
     allowed = String(outChk).toLowerCase() === "true";
+  } else {
+    // Geen Atalian email EN geen vendor email: NIET toegestaan
+    allowed = false;
   }
 
   if (!allowed) {
