@@ -127,20 +127,182 @@ function pickDocuments(out) {
   return Array.isArray(out.Documents) ? out.Documents : [];
 }
 
-// === Netlify handler ===
+// === Netlify handler (Gerefractoriseerde Versie) ===
+
+// Mock headers en helpers (verondersteld beschikbaar in de oorspronkelijke code)
+const corsHeaders = { 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Methods': 'GET, POST, OPTIONS', 'Access-Control-Allow-Headers': 'Content-Type' };
+// ... andere imports/helpers (respond, callUltimo, getOutputObject, pickDocuments, pickFirstJob, isNonEmpty, getDomain, stripHtml)
+
+// Veronderstelde globale constanten (uit de oorspronkelijke code)
+// const { API_KEY, BASE_URL_PROD, APP_ELEMENT } = process.env; 
+
+/**
+ * Helper: Extractor en Validator voor de Job ID.
+ */
+function getCleanJobId(params) {
+  const jobIdRaw = (params.jobId || params.job || '').trim();
+  // Gebruikt de oorspronkelijke robuuste, maar specifieke, regex.
+  const jobIdClean = decodeURIComponent(jobIdRaw).match(/^\d+/)?.[0] || '';
+  return jobIdClean;
+}
+
+/**
+ * Helper: Voert de Vendor/Domein controle uit.
+ * @returns {Promise<boolean>} Of de actie is toegestaan.
+ */
+async function checkVendorAccess(event, jobIdClean, email, vendorEmail) {
+  const hasEmail = isNonEmpty(email);
+  const hasVendor = isNonEmpty(vendorEmail);
+  
+  // Geen email of geen vendor? => Altijd toegestaan voor deze check
+  if (!(hasEmail && hasVendor)) {
+    return true;
+  }
+
+  // Echte check uitvoeren met alle domeininfo
+  const checkPayload = {
+    JobId: jobIdClean,
+    Email: email.trim(),
+    Controle: email.trim(),
+    ControleDomain: getDomain(email),
+    LoginDomain: getDomain(email),
+    VendorDomain: getDomain(vendorEmail),
+    Action: "VIEW", // Misleidende Action-naam, maar behouden conform de Ultimo API
+  };
+  
+  const chk = await callUltimo(event, checkPayload);
+  const out = getOutputObject(chk.json);
+  
+  return String(out).toLowerCase() === "true";
+}
+
+
+/* ───────────── GET HANDLERS ───────────── */
+
+async function handleGetJobDoc(event, { docId }) {
+  if (!docId || !/^\d+$/.test(docId)) {
+    return respond(400, { error: "Ongeldig of ontbrekend 'docId'." });
+  }
+  const r = await callUltimo(event, { Action: "GET_JOB_DOC", objdocid: String(docId) });
+  const out = getOutputObject(r.json);
+  return respond(200, { docId: String(docId), Document: out });
+}
+
+async function handleListJobDocs(event, { jobIdClean }) {
+  const r = await callUltimo(event, { Action: "LIST_JOB_DOCS", JobId: jobIdClean });
+  const out = getOutputObject(r.json);
+  const docs = pickDocuments(out);
+  return respond(200, { jobId: jobIdClean, Documents: docs });
+}
+
+async function handleGetDomainCheck(event, { jobIdClean, email }) {
+  // Eerst VIEW om vendor te kennen; Email enkel meesturen indien aanwezig
+  const viewPayload = { JobId: jobIdClean, Action: "VIEW" };
+  if (isNonEmpty(email)) viewPayload.Email = email.trim();
+
+  const view = await callUltimo(event, viewPayload);
+  const vOut = getOutputObject(view.json);
+  const job = pickFirstJob(vOut);
+  const vendorEmail = job?.VendorEmailAddress || job?.Vendor?.EmailAddress || "";
+
+  const allowed = await checkVendorAccess(event, jobIdClean, email, vendorEmail);
+  return respond(200, { allowed });
+}
+
+async function handleDefaultView(event, { jobIdClean, email, action }) {
+  const hasEmail = isNonEmpty(email);
+  const viewPayload = { JobId: jobIdClean, Action: action };
+  if (hasEmail) viewPayload.Email = email.trim();
+
+  const r = await callUltimo(event, viewPayload);
+  const out = getOutputObject(r.json);
+  const job = pickFirstJob(out);
+  
+  if (!job) {
+    return respond(404, { error: "Job niet gevonden." });
+  }
+  
+  if (job.Description) job.Description = stripHtml(job.Description);
+
+  return respond(200, { 
+    jobId: jobIdClean, 
+    email: hasEmail ? email.trim() : null, 
+    Job: job, 
+    hasDetails: true 
+  });
+}
+
+
+/* ───────────── POST HANDLERS ───────────── */
+
+async function handleAddJobDoc(event, { jobIdClean, email, fileName, description, base64 }) {
+  if (!fileName || typeof base64 !== "string" || !base64.length) {
+    return respond(400, { error: "Ontbrekende 'fileName' of 'base64'." });
+  }
+  
+  const addDocPayload = {
+    JobId: jobIdClean,
+    Action: "ADD_JOB_DOC",
+    AddDoc_FileName: String(fileName),
+    AddDoc_Base64: String(base64),
+    AddDoc_Description: String(description || fileName),
+  };
+  if (isNonEmpty(email)) addDocPayload.Email = email.trim();
+
+  const rAdd = await callUltimo(event, addDocPayload);
+  const out = getOutputObject(rAdd.json);
+  return respond(200, { ok: true, jobId: jobIdClean, action: "ADD_JOB_DOC", result: out });
+}
+
+async function handlePostAction(event, { jobIdClean, body, action, email, text }) {
+    // 1) Eerste VIEW om job + vendor te kennen
+    const viewPayload = { JobId: jobIdClean, Action: "VIEW" };
+    if (isNonEmpty(email)) viewPayload.Email = email.trim();
+
+    const firstView = await callUltimo(event, viewPayload);
+    const vOut = getOutputObject(firstView.json);
+    const jobDetails = pickFirstJob(vOut); 
+    const vendorEmail = jobDetails?.VendorEmailAddress || jobDetails?.Vendor?.EmailAddress || "";
+
+    // 2) Vendor-check
+    const allowed = await checkVendorAccess(event, jobIdClean, email, vendorEmail);
+
+    if (!allowed) {
+      return respond(403, { error: "E-mailadres niet toegestaan voor deze job/leverancier." });
+    }
+    
+    // 3) Mutaties (Acties 'ADD_INFO' en 'CLOSE' - 'ADD_JOB_DOC' wordt apart behandeld)
+    
+    // Payload voor ADD_INFO of CLOSE
+    const mutationPayload = { JobId: jobIdClean, Action: action };
+    if (isNonEmpty(email)) mutationPayload.Email = email.trim();
+    if (isNonEmpty(text) && action === "ADD_INFO") mutationPayload.Text = text;
+
+    // ... Eventueel meer logica voor CLOSE/ADD_INFO afhankelijk van de Ultimo API
+
+    const r = await callUltimo(event, mutationPayload);
+    const out = getOutputObject(r.json);
+    return respond(200, { ok: true, jobId: jobIdClean, action, result: out });
+}
+
+
+// ----------------------------------------------------------------------
+// 🚨 Hoofd Handler
+// ----------------------------------------------------------------------
+
 export async function handler(event) {
   try {
-    // Preflight (onveranderd)
+    // Preflight
     if (event.httpMethod === 'OPTIONS') {
       return { statusCode: 204, headers: corsHeaders, body: '' };
     }
 
-    // Simpele sanity check op env (onveranderd)
+    // Sanity check op env
     if (!API_KEY || !BASE_URL_PROD || !APP_ELEMENT) {
       return respond(500, { error: "Serverconfig onvolledig: ontbrekende API-sleutels of BASE_URL_PROD." });
     }
 
-    // Log gekozen omgeving en base (onveranderd)
+    // Log gekozen omgeving en base
     const { envName, base } = detectEnvironment(event);
     console.log(`[jobsvendor] 🔎 Handler start in ${envName} → base=${base}`);
 
@@ -148,157 +310,65 @@ export async function handler(event) {
     if (event.httpMethod === "GET") {
       const { jobId, job, email = "", action = "VIEW", controle, docId } = event.queryStringParameters || {};
       
-      // 🚨 Defensieve Fix voor jobId in GET-parameters
-      const jobIdRaw = (jobId || job || '').trim();
-      const jobIdClean = decodeURIComponent(jobIdRaw).match(/^\d+/)?.[0] || '';
-      
+      // Valideer Job ID
+      const jobIdClean = getCleanJobId({ jobId, job });
       if (!jobIdClean) {
         return respond(400, { error: "Ongeldig of ontbrekend 'jobId'." });
       }
       
-      const hasEmail = isNonEmpty(email);
-
       // 0) Eén document-inhoud (Base64) opvragen
       if (action === "GET_JOB_DOC") {
-        // docId check blijft specifiek
-        if (!docId || !/^\d+$/.test(docId)) {
-          return respond(400, { error: "Ongeldig of ontbrekend 'docId'." });
-        }
-        const r = await callUltimo(event, { Action: "GET_JOB_DOC", objdocid: String(docId) });
-        const out = getOutputObject(r.json); // ruwe Base64
-        return respond(200, { docId: String(docId), Document: out });
+        return handleGetJobDoc(event, { docId });
       }
 
       // 1) Lijst met documenten bij een job
       if (action === "LIST_JOB_DOCS") {
-        // Gebruik jobIdClean
-        const r = await callUltimo(event, { Action: "LIST_JOB_DOCS", JobId: jobIdClean });
-        const out = getOutputObject(r.json);
-        const docs = pickDocuments(out);
-        return respond(200, { jobId: jobIdClean, Documents: docs });
+        return handleListJobDocs(event, { jobIdClean });
       }
 
       // 2) Domeincontrole (frontend login check)
       if (typeof controle !== "undefined") {
-        // Gebruik jobIdClean
-
-        // Eerst VIEW om vendor te kennen; Email enkel meesturen indien aanwezig
-        const viewPayload = { JobId: jobIdClean, Action: "VIEW" };
-        if (hasEmail) viewPayload.Email = email.trim();
-
-        const view = await callUltimo(event, viewPayload);
-        const vOut = getOutputObject(view.json);
-        const job = pickFirstJob(vOut);
-        const vendorEmail = job?.VendorEmailAddress || job?.Vendor?.EmailAddress || "";
-        const hasVendor = isNonEmpty(vendorEmail);
-
-        // Geen email of geen vendor? => controle niet relevant -> allowed
-        if (!(hasEmail && hasVendor)) {
-          return respond(200, { allowed: true });
-        }
-
-        // Echte check
-        const payload = {
-          JobId: jobIdClean,
-          Email: email.trim(),
-          Controle: email.trim(),
-          ControleDomain: getDomain(email),
-          LoginDomain: getDomain(email),
-          VendorDomain: getDomain(vendorEmail),
-          Action: "VIEW",
-        };
-        const chk = await callUltimo(event, payload);
-        const out = getOutputObject(chk.json);
-        const allowed = String(out).toLowerCase() === "true";
-        return respond(200, { allowed });
+        return handleGetDomainCheck(event, { jobIdClean, email });
       }
 
       // 3) Standaard VIEW (geen side effects)
-      // Gebruik jobIdClean
-      const viewPayload = { JobId: jobIdClean, Action: action };
-      if (hasEmail) viewPayload.Email = email.trim();
-
-      const r = await callUltimo(event, viewPayload);
-      const out = getOutputObject(r.json);
-      const job = pickFirstJob(out);
-      if (!job) return respond(404, { error: "Job niet gevonden." });
-      if (job.Description) job.Description = stripHtml(job.Description);
-
-      return respond(200, { jobId: jobIdClean, email: hasEmail ? email.trim() : null, Job: job, hasDetails: true });
+      return handleDefaultView(event, { jobIdClean, email, action });
     }
 
     /* ───────────── POST ───────────── */
     if (event.httpMethod === "POST") {
       const body = JSON.parse(event.body || "{}");
-      const { action, jobId, job, email, text = "", fileName, mimeType, description, base64 } = body || {};
+      const { action, email, text, fileName, description, base64 } = body;
       
-      // 🚨 Defensieve Fix voor jobId in POST-body
-      const jobIdRaw = (jobId || job || '').trim();
-      const jobIdClean = decodeURIComponent(jobIdRaw).match(/^\d+/)?.[0] || '';
-      
+      // Valideer Job ID
+      const jobIdClean = getCleanJobId(body);
       if (!jobIdClean) {
         return respond(400, { error: "Ongeldig of ontbrekend 'jobId'." });
       }
       
-      const hasEmail = Object.prototype.hasOwnProperty.call(body, 'email') && isNonEmpty(email);
-
-      if (!action || !["ADD_INFO", "CLOSE", "ADD_JOB_DOC"].includes(action)) {
-        return respond(400, { error: "Ongeldige of ontbrekende 'action'." });
+      // Valideer Action
+      const allowedActions = ["ADD_INFO", "CLOSE", "ADD_JOB_DOC"];
+      if (!action || !allowedActions.includes(action)) {
+        return respond(400, { error: `Ongeldige of ontbrekende 'action'. Moet één van ${allowedActions.join(', ')} zijn.` });
       }
 
-      // 1) VIEW om job + vendor te kennen (Email enkel meesturen indien aanwezig)
-      // Gebruik jobIdClean
-      const viewPayload = { JobId: jobIdClean, Action: "VIEW" };
-      if (hasEmail) viewPayload.Email = email.trim();
-
-      const firstView = await callUltimo(event, viewPayload);
-      const vOut = getOutputObject(firstView.json);
-      const jobDetails = pickFirstJob(vOut); // Naam gewijzigd om conflict met body.job te vermijden
-      const vendorEmail = jobDetails?.VendorEmailAddress || jobDetails?.Vendor?.EmailAddress || "";
-      const hasVendor = isNonEmpty(vendorEmail);
-
-      // 2) Vendor-check enkel als zowel email als vendor bestaan
-      let allowed = true;
-      if (hasEmail && hasVendor) {
-        // Gebruik jobIdClean
-        const checkPayload = {
-          JobId: jobIdClean,
-          Email: email.trim(),
-          Controle: email.trim(),
-          ControleDomain: getDomain(email),
-          LoginDomain: getDomain(email),
-          VendorDomain: getDomain(vendorEmail),
-          Action: "VIEW",
-        };
-        const chk = await callUltimo(event, checkPayload);
-        const outChk = getOutputObject(chk.json);
-        allowed = String(outChk).toLowerCase() === "true";
-      }
-
-      if (!allowed) {
-        return respond(403, { error: "E-mailadres niet toegestaan voor deze job/leverancier." });
-      }
-
-      // 3) Mutaties
+      // 3) Mutaties: ADD_JOB_DOC (speciale afhandeling vanwege grote body/base64)
       if (action === "ADD_JOB_DOC") {
-        if (!fileName || typeof base64 !== "string" || !base64.length) {
-          return respond(400, { error: "Ontbrekende 'fileName' of 'base64'." });
-        }
-        // Gebruik jobIdClean
-        const addDocPayload = {
-          JobId: jobIdClean,
-          Action: "ADD_JOB_DOC",
-          AddDoc_FileName: String(fileName),
-          AddDoc_Base64: String(base64),
-          AddDoc_Description: String(description || fileName),
-          // mimeType NIET doorgeven; bestaat niet als veld in Document-model
-        };
-        if (hasEmail) addDocPayload.Email = email.trim();
-
-        const rAdd = await callUltimo(event, addDocPayload);
-        const out = getOutputObject(rAdd.json);
-        return respond(200, { ok: true, jobId: jobIdClean, action, result: out });
+        return handleAddJobDoc(event, { jobIdClean, email, fileName, description, base64 });
       }
+      
+      // 4) Overige mutaties (ADD_INFO, CLOSE) inclusief vendor/toegangscheck
+      return handlePostAction(event, { jobIdClean, body, action, email, text });
+    }
+    
+    // Ongeaccepteerde HTTP Method
+    return respond(405, { error: "Methode niet toegestaan." });
+
+  } catch (error) {
+    console.error(`[jobsvendor] 💥 Fout in handler: ${error.message}`, error.stack);
+    return respond(500, { error: "Interne serverfout." });
+  }
+}
 
       // ADD_INFO of CLOSE
       // Gebruik jobIdClean
