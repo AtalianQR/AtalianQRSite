@@ -358,7 +358,7 @@ async function askPhotosLoop() {
 
 
 async function uploadCustomerDoc({ jobId, email, file, description }) {
-  const endpoint = '/.netlify/functions/jobsvendor';
+  const endpoint = '/.netlify/functions/jobsvendor' + (isTestEnv ? '?test=1' : '');
   const safeFile  = await compressImageIfNeeded(file);
   const fileName  = sanitizeName(safeFile.name);
   const mimeType  = safeFile.type || guessMimeByName(fileName);
@@ -425,8 +425,15 @@ const code = qs.get('code') ?? '';
 let   lang = qs.get('lang') ?? '';
 if (!lang) { const b = navigator.language||''; lang = b.startsWith('fr') ? 'fr' : 'nl'; }
 const isFr = lang === 'fr';
-const isTestEnv = qs.get('test') !== null;
+const host = location.host || '';
+const isTestEnv = qs.has('test') || /test|staging/i.test(host);
 const prefix = isTestEnv ? 'test' : 'prod';
+document.getElementById('ruimte-info').insertAdjacentHTML(
+  'afterbegin',
+  `<div style="font-size:.8rem;margin-bottom:.25rem;color:${isTestEnv?'#b45309':'#374151'}">
+     ${isTestEnv ? '🧪 TEST-omgeving' : '✅ PROD-omgeving'}
+   </div>`
+);
 
 const parsedQR = parseUltimoQR(code);
 let isEquipment = false, typeStr = '', id = '', indicator = '';
