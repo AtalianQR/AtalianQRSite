@@ -741,11 +741,13 @@ async function askEmail(isUrgent, isCleaning){
       serviceWorkOrderId
     });
 
-    const r = await fetch('/.netlify/functions/melding', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload)
-    });
+	const endpointMelding = '/.netlify/functions/melding' + (isTestEnv ? '?test=1' : '');
+
+	const r = await fetch(endpointMelding, {
+	  method: 'POST',
+	  headers: { 'Content-Type': 'application/json' },
+	  body: JSON.stringify(payload)
+	});
 
     // ---- Robuuste parsing (raw -> json -> inner object) ----
     let raw = await r.text();
