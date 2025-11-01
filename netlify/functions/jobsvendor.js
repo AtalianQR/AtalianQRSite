@@ -155,6 +155,8 @@ async function handleListJobDocs(event, { jobId }) {
   return respond(200, { jobId: String(jobId), Documents: docs });
 }
 
+// === jobsvendor.js: GECORRIGEERDE handleGetDomainCheck functie ===
+
 async function handleGetDomainCheck(event, { jobId, email, hasEmail }) {
   if (!isValidJobId(jobId)) {
     return respond(400, { error: "Ongeldig of ontbrekend 'jobId'." });
@@ -164,17 +166,30 @@ async function handleGetDomainCheck(event, { jobId, email, hasEmail }) {
   const viewPayload = { JobId: String(jobId), Action: "VIEW" };
   if (hasEmail) viewPayload.Email = email.trim();
 
+  // await is nu geldig!
   const view = await callUltimo(event, viewPayload);
   const vOut = getOutputObject(view.json);
   const job = pickFirstJob(vOut);
+  
+  if (!job) {
+    // Job bestaat niet, weiger toegang.
+    return respond(200, { allowed: false, reason: "Job niet gevonden." });
+  }
+  
   const vendorEmail = job?.VendorEmailAddress || job?.Vendor?.EmailAddress || "";
   const hasVendor = isNonEmpty(vendorEmail);
 
-  if (!(hasEmail && hasVendor)) {
-    return respond(200, { allowed: true });
+  // 🛑 STRIKTE CONTROLE: Job moet een e-mail en een vendor hebben om de check te doorlopen
+  if (!hasEmail || !hasVendor) {
+    const reason = !hasEmail 
+      ? "E-mail ontbreekt" 
+      : "Job heeft geen gekoppelde leverancier.";
+
+    // Weiger de toegang
+    return respond(200, { allowed: false, reason: reason });
   }
 
-  // 2) Echte check
+  // 2) Echte domein check (wordt alleen uitgevoerd als hasEmail && hasVendor)
   const payload = {
     JobId: String(jobId),
     Email: email.trim(),
@@ -184,11 +199,15 @@ async function handleGetDomainCheck(event, { jobId, email, hasEmail }) {
     VendorDomain: getDomain(vendorEmail),
     Action: "VIEW",
   };
+  // await is nu geldig!
   const chk = await callUltimo(event, payload);
   const out = getOutputObject(chk.json);
   const allowed = String(out).toLowerCase() === "true";
   return respond(200, { allowed });
 }
+
+// ======================================================================
+
 
 async function handleDefaultView(event, { jobId, email, action, hasEmail }) {
   if (!isValidJobId(jobId)) {
