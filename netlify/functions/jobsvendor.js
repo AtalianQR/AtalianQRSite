@@ -1,4 +1,4 @@
-// === netlify/functions/jobsvendor.js (Volledige, Gerefactorde Versie) ===
+// === netlify/functions/jobsvendor.js (Met VendorId 000016 override) ===
 
 // === Config uit omgeving ===
 const API_KEY         = process.env.ULTIMO_API_KEY;
@@ -28,26 +28,26 @@ const getDomain = (e = "") => {
   const m = String(e).toLowerCase().match(/@(.+)$/);
   return m ? m[1] : "";
 };
+const emailDomain = (e = "") => getDomain(e);
 
 function isValidJobId(id) {
-    return isNonEmpty(id) && /^\d+$/.test(id);
+  return isNonEmpty(id) && /^\d+$/.test(id);
 }
-
 
 // === Detecteer omgeving ===
 function detectEnvironment(event) {
   const params = event.queryStringParameters || {};
   const host   = event.headers?.host || '';
-  const testInUrl  = params.test === '1' || params.test === 'true';
+  const testInUrl  = params.test === '1' || params.test === 'true' || params.env === 'test';
   const testInHost = /test|staging/i.test(host);
   const isTest = testInUrl || testInHost;
-// 🚨 NIEUWE DEBUG LINE: Toon alle parameters die de functie ontving
+
   console.log(`[jobsvendor] DEBUG PARAMS: ${JSON.stringify(params)}`);
   const base = isTest ? BASE_URL_TEST : BASE_URL_PROD;
   const envName = isTest ? 'TEST' : 'PROD';
   console.log(`[jobsvendor] Environment: ${envName} | Host=${host} | testParam=${params.test || ''}`);
 
-  return { isTest, base, envName };
+  return { isTest, base, envName, params };
 }
 
 // === Standaard JSON response helper ===
@@ -108,14 +108,13 @@ function getOutputObject(raw) {
     .replace(/&quot;/g, '"')
     .replace(/\r/g, "\\r")
     .replace(/\n/g, "\\n")
-    .replace(/[\u0000-\u001F]+/g, " "); // overige control chars  
+    .replace(/[\u0000-\u001F]+/g, " "); // overige control chars
 
   if (txt.startsWith("{") && txt.endsWith("}")) {
     try {
       return JSON.parse(txt);
     } catch (e) {
       console.error("[Ultimo] ⚠ getOutputObject parsefout:", e.message);
-      // Debug: toon eerste 300 tekens zodat je kan zien waar het knalt
       console.log("[Ultimo] ⇢ JSON (start):", txt.slice(0, 300));
     }
   }
@@ -133,6 +132,23 @@ function pickDocuments(out) {
   return Array.isArray(out.Documents) ? out.Documents : [];
 }
 
+// === OData helper om Vendor.Id op te halen (voor override) ===
+async function fetchJobVendorId(event, jobId) {
+  const { base } = detectEnvironment(event); // respecteert TEST/PROD
+  const url = `${base}/object/Job('${String(jobId)}')`;
+  const res = await fetch(url, { headers: { accept: 'application/json', ApiKey: API_KEY }});
+  if (!res.ok) return ''; // stil falen → geen override
+  const data = await res.json().catch(()=> ({}));
+  // dek meerdere vormen af
+  const v =
+    data?.Vendor?.Id ||
+    data?.properties?.Vendor?.Id ||
+    data?.Vendor ||
+    data?.properties?.Vendor ||
+    '';
+  const vendorId = String((typeof v === 'object' ? v?.Id : v) || '').trim();
+  return vendorId;
+}
 
 /* ───────────── GET HANDLERS ───────────── */
 
@@ -155,41 +171,51 @@ async function handleListJobDocs(event, { jobId }) {
   return respond(200, { jobId: String(jobId), Documents: docs });
 }
 
-// === jobsvendor.js: GECORRIGEERDE handleGetDomainCheck functie ===
-
+// === Login/domain check (met VendorId-override) ===
 async function handleGetDomainCheck(event, { jobId, email, hasEmail }) {
   if (!isValidJobId(jobId)) {
     return respond(400, { error: "Ongeldig of ontbrekend 'jobId'." });
   }
-  
-  // 1) Eerste VIEW om vendor te kennen
+
+  // 1) VIEW om basis-gegevens op te halen
   const viewPayload = { JobId: String(jobId), Action: "VIEW" };
   if (hasEmail) viewPayload.Email = email.trim();
 
-  // await is nu geldig!
   const view = await callUltimo(event, viewPayload);
   const vOut = getOutputObject(view.json);
   const job = pickFirstJob(vOut);
-  
+
   if (!job) {
-    // Job bestaat niet, weiger toegang.
     return respond(200, { allowed: false, reason: "Job niet gevonden." });
   }
-  
+
   const vendorEmail = job?.VendorEmailAddress || job?.Vendor?.EmailAddress || "";
   const hasVendor = isNonEmpty(vendorEmail);
 
-  // 🛑 STRIKTE CONTROLE: Job moet een e-mail en een vendor hebben om de check te doorlopen
-  if (!hasEmail || !hasVendor) {
-    const reason = !hasEmail 
-      ? "E-mail ontbreekt" 
-      : "Job heeft geen gekoppelde leverancier.";
-
-    // Weiger de toegang
-    return respond(200, { allowed: false, reason: reason });
+  // === Vendor override via OData: Vendor.Id ===
+  if (hasEmail && emailDomain(email) === 'atalianworld.com') {
+    try {
+      const vendorId = await fetchJobVendorId(event, jobId);
+      if (vendorId === '000016') {
+        // optioneel: debug info bijvoegen wanneer ?debug=1
+        const { params } = detectEnvironment(event);
+        const extra = params.debug ? { vendorId } : {};
+        return respond(200, { allowed: true, override: 'vendor000016', ...extra });
+      }
+    } catch (_) {
+      // geen hard fail; ga door naar standaard check
+    }
   }
 
-  // 2) Echte domein check (wordt alleen uitgevoerd als hasEmail && hasVendor)
+  // 🛑 STRIKTE CONTROLE: e-mail en vendor-mail moeten aanwezig zijn voor standaard check
+  if (!hasEmail || !hasVendor) {
+    const reason = !hasEmail
+      ? "E-mail ontbreekt"
+      : "Job heeft geen gekoppelde leverancier.";
+    return respond(200, { allowed: false, reason });
+  }
+
+  // 2) Standaard domein-check
   const payload = {
     JobId: String(jobId),
     Email: email.trim(),
@@ -199,7 +225,6 @@ async function handleGetDomainCheck(event, { jobId, email, hasEmail }) {
     VendorDomain: getDomain(vendorEmail),
     Action: "VIEW",
   };
-  // await is nu geldig!
   const chk = await callUltimo(event, payload);
   const out = getOutputObject(chk.json);
   const allowed = String(out).toLowerCase() === "true";
@@ -207,7 +232,6 @@ async function handleGetDomainCheck(event, { jobId, email, hasEmail }) {
 }
 
 // ======================================================================
-
 
 async function handleDefaultView(event, { jobId, email, action, hasEmail }) {
   if (!isValidJobId(jobId)) {
@@ -219,87 +243,115 @@ async function handleDefaultView(event, { jobId, email, action, hasEmail }) {
   const r = await callUltimo(event, viewPayload);
   const out = getOutputObject(r.json);
   const job = pickFirstJob(out);
-  
+
   if (!job) {
     return respond(404, { error: "Job niet gevonden." });
   }
-  
+
   if (job.Description) job.Description = stripHtml(job.Description);
 
-  return respond(200, { 
-    jobId: String(jobId), 
-    email: hasEmail ? email.trim() : null, 
-    Job: job, 
-    hasDetails: true 
+  return respond(200, {
+    jobId: String(jobId),
+    email: hasEmail ? email.trim() : null,
+    Job: job,
+    hasDetails: true
   });
 }
-
 
 /* ───────────── POST HANDLERS ───────────── */
 
 async function handlePostAction(event, body, { jobId, email, hasEmail, action, text, fileName, description, base64 }) {
-    if (!isValidJobId(jobId)) {
-        return respond(400, { error: "Ongeldig of ontbrekend 'jobId'." });
-    }
-    const allowedActions = ["ADD_INFO", "CLOSE", "ADD_JOB_DOC"];
-    if (!action || !allowedActions.includes(action)) {
-        return respond(400, { error: "Ongeldige of ontbrekende 'action'." });
-    }
+  if (!isValidJobId(jobId)) {
+    return respond(400, { error: "Ongeldig of ontbrekend 'jobId'." });
+  }
+  const allowedActions = ["ADD_INFO", "CLOSE", "ADD_JOB_DOC"];
+  if (!action || !allowedActions.includes(action)) {
+    return respond(400, { error: "Ongeldige of ontbrekende 'action'." });
+  }
 
-    // --- 1) Vendor/Access Check ---
-    const viewPayload = { JobId: String(jobId), Action: "VIEW" };
-    if (hasEmail) viewPayload.Email = email.trim();
+  // --- 1) Vendor/Access Check ---
+  const viewPayload = { JobId: String(jobId), Action: "VIEW" };
+  if (hasEmail) viewPayload.Email = email.trim();
 
-    const firstView = await callUltimo(event, viewPayload);
-    const vOut = getOutputObject(firstView.json);
-    const jobDetails = pickFirstJob(vOut); 
-    const vendorEmail = jobDetails?.VendorEmailAddress || jobDetails?.Vendor?.EmailAddress || "";
-    const hasVendor = isNonEmpty(vendorEmail);
+  const firstView = await callUltimo(event, viewPayload);
+  const vOut = getOutputObject(firstView.json);
+  const jobDetails = pickFirstJob(vOut);
+  const vendorEmail = jobDetails?.VendorEmailAddress || jobDetails?.Vendor?.EmailAddress || "";
+  const hasVendor = isNonEmpty(vendorEmail);
 
-    let allowed = true;
-    if (hasEmail && hasVendor) {
-        // Logica exact behouden van de werkende versie
+  let allowed = true;
+
+  // === Vendor override via OData: Vendor.Id ===
+  if (hasEmail && emailDomain(email) === 'atalianworld.com') {
+    try {
+      const vendorId = await fetchJobVendorId(event, jobId);
+      if (vendorId === '000016') {
+        allowed = true; // force allow
+      } else if (hasVendor) {
         const checkPayload = {
-            JobId: String(jobId), Email: email.trim(), Controle: email.trim(),
-            ControleDomain: getDomain(email), LoginDomain: getDomain(email),
-            VendorDomain: getDomain(vendorEmail), Action: "VIEW",
+          JobId: String(jobId), Email: email.trim(), Controle: email.trim(),
+          ControleDomain: getDomain(email), LoginDomain: getDomain(email),
+          VendorDomain: getDomain(vendorEmail), Action: "VIEW",
         };
         const chk = await callUltimo(event, checkPayload);
         const outChk = getOutputObject(chk.json);
         allowed = String(outChk).toLowerCase() === "true";
-    }
-
-    if (!allowed) {
-        return respond(403, { error: "E-mailadres niet toegestaan voor deze job/leverancier." });
-    }
-    
-    // --- 2) Mutaties ---
-    if (action === "ADD_JOB_DOC") {
-        if (!fileName || typeof base64 !== "string" || !base64.length) {
-            return respond(400, { error: "Ontbrekende 'fileName' of 'base64'." });
-        }
-        const addDocPayload = {
-            JobId: String(jobId), Action: "ADD_JOB_DOC", AddDoc_FileName: String(fileName),
-            AddDoc_Base64: String(base64), AddDoc_Description: String(description || fileName),
+      }
+    } catch (_) {
+      // fallback naar oorspronkelijke logica
+      if (hasVendor && hasEmail) {
+        const checkPayload = {
+          JobId: String(jobId), Email: email.trim(), Controle: email.trim(),
+          ControleDomain: getDomain(email), LoginDomain: getDomain(email),
+          VendorDomain: getDomain(vendorEmail), Action: "VIEW",
         };
-        if (hasEmail) addDocPayload.Email = email.trim();
-
-        const rAdd = await callUltimo(event, addDocPayload);
-        const out = getOutputObject(rAdd.json);
-        return respond(200, { ok: true, jobId: String(jobId), action, result: out });
+        const chk = await callUltimo(event, checkPayload);
+        const outChk = getOutputObject(chk.json);
+        allowed = String(outChk).toLowerCase() === "true";
+      }
     }
-    
-    // ADD_INFO of CLOSE
-    const ultPayload =
-        action === "ADD_INFO"
-            ? { JobId: String(jobId), Action: "ADD_INFO", Text: String(text || "") }
-            : { JobId: String(jobId), Action: "CLOSE", Text: String(text || "") };
-    if (hasEmail) ultPayload.Email = email.trim();
+  } else if (hasVendor && hasEmail) {
+    // oorspronkelijke domeincontrole
+    const checkPayload = {
+      JobId: String(jobId), Email: email.trim(), Controle: email.trim(),
+      ControleDomain: getDomain(email), LoginDomain: getDomain(email),
+      VendorDomain: getDomain(vendorEmail), Action: "VIEW",
+    };
+    const chk = await callUltimo(event, checkPayload);
+    const outChk = getOutputObject(chk.json);
+    allowed = String(outChk).toLowerCase() === "true";
+  }
 
-    const r = await callUltimo(event, ultPayload);
-    return respond(200, { ok: true, jobId, action });
+  if (!allowed) {
+    return respond(403, { error: "E-mailadres niet toegestaan voor deze job/leverancier." });
+  }
+
+  // --- 2) Mutaties ---
+  if (action === "ADD_JOB_DOC") {
+    if (!fileName || typeof base64 !== "string" || !base64.length) {
+      return respond(400, { error: "Ontbrekende 'fileName' of 'base64'." });
+    }
+    const addDocPayload = {
+      JobId: String(jobId), Action: "ADD_JOB_DOC", AddDoc_FileName: String(fileName),
+      AddDoc_Base64: String(base64), AddDoc_Description: String(description || fileName),
+    };
+    if (hasEmail) addDocPayload.Email = email.trim();
+
+    const rAdd = await callUltimo(event, addDocPayload);
+    const out = getOutputObject(rAdd.json);
+    return respond(200, { ok: true, jobId: String(jobId), action, result: out });
+  }
+
+  // ADD_INFO of CLOSE
+  const ultPayload =
+    action === "ADD_INFO"
+      ? { JobId: String(jobId), Action: "ADD_INFO", Text: String(text || "") }
+      : { JobId: String(jobId), Action: "CLOSE", Text: String(text || "") };
+  if (hasEmail) ultPayload.Email = email.trim();
+
+  const r = await callUltimo(event, ultPayload);
+  return respond(200, { ok: true, jobId, action });
 }
-
 
 // ----------------------------------------------------------------------
 // 🚨 Hoofd Handler
@@ -312,7 +364,7 @@ export async function handler(event) {
       return { statusCode: 204, headers: corsHeaders, body: '' };
     }
 
-    // Simpele sanity check op env
+    // Sanity
     if (!API_KEY || !BASE_URL_PROD || !APP_ELEMENT) {
       return respond(500, { error: "Serverconfig onvolledig: ontbrekende API-sleutels of BASE_URL_PROD." });
     }
@@ -323,22 +375,14 @@ export async function handler(event) {
 
     /* ───────────── GET ───────────── */
     if (event.httpMethod === "GET") {
-      // Destructure parameters
       const { jobId, email = "", action = "VIEW", controle, docId } = event.queryStringParameters || {};
       const hasEmail = isNonEmpty(email);
-      
       const params = { jobId, email, action, controle, docId, hasEmail };
 
-      // Dispatch based on action/presence of 'controle'
-      if (action === "GET_JOB_DOC") {
-        return handleGetJobDoc(event, params);
-      }
-      if (action === "LIST_JOB_DOCS") {
-        return handleListJobDocs(event, params);
-      }
-      if (typeof controle !== "undefined") {
-        return handleGetDomainCheck(event, params);
-      }
+      if (action === "GET_JOB_DOC")  return handleGetJobDoc(event, params);
+      if (action === "LIST_JOB_DOCS") return handleListJobDocs(event, params);
+      if (typeof controle !== "undefined") return handleGetDomainCheck(event, params);
+
       // Default: VIEW
       return handleDefaultView(event, params);
     }
@@ -349,8 +393,8 @@ export async function handler(event) {
       const { action, jobId, email, text, fileName, description, base64 } = body || {};
       const hasEmail = Object.prototype.hasOwnProperty.call(body, 'email') && isNonEmpty(email);
 
-      return handlePostAction(event, body, { 
-        jobId, email, hasEmail, action, text, fileName, description, base64 
+      return handlePostAction(event, body, {
+        jobId, email, hasEmail, action, text, fileName, description, base64
       });
     }
 
