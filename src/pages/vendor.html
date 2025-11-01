@@ -250,7 +250,7 @@
       const r=await fetch(url,{headers:{accept:'application/json'}});
       if(!r.ok) return false;
       const data=await r.json();
-      return !!data?.allowed;
+      return !!data?.allowed && !!data?.allowedForJob && !!data?.hasVendor;
     }catch{ return false }
   }
 
@@ -724,6 +724,12 @@
       await botui.message.add({ content:isFr?'Je récupère les détails de la tâche…':'Ik haal de taakdetails op…' });
       jobPayload=await fetchJobDetails(); 
       const job=jobPayload?.Job||{}; 
+	  const ok = jobPayload?.Allowed === true && !!(job.VendorEmailAddress || job.Vendor?.EmailAddress || job.VendorId);
+		if (!ok) {
+		  await botui.message.add({ content: '❌ Geen toegang voor dit e-mailadres of geen leverancier gekoppeld aan deze taak.' });
+		  Telemetry.send('auth_blocked', { jobId: jobId });
+		  return;
+		}
       if(!job.Id) throw new Error('Job details ontvangen, maar taak-ID ontbreekt in de payload.');
       
       // Precheck documenten voor tip
