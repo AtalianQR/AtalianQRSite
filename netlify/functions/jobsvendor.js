@@ -108,7 +108,7 @@ function getOutputObject(raw) {
     .replace(/&quot;/g, '"')
     .replace(/\r/g, "\\r")
     .replace(/\n/g, "\\n")
-    .replace(/[\u0000-\u001F]+/g, " "); // overige control chars
+    .replace(/[\u0000-\u001F]+/g, " "); // overige control chars  
 
   if (txt.startsWith("{") && txt.endsWith("}")) {
     try {
