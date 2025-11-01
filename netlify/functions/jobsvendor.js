@@ -202,10 +202,10 @@ async function handleGetDomainCheck(event, { jobId, email, hasEmail }) {
 
   const vendorEmail = job?.VendorEmailAddress || job?.Vendor?.EmailAddress || "";
   const hasVendor = isNonEmpty(vendorEmail);
-  const isAtalianEmail = hasEmail && emailDomain(email) === 'atalianworld.com'; // NIEUW: Hulpvariabele
+  const isAtalianEmail = hasEmail && emailDomain(email) === 'atalianworld.com';
 
   // === Vendor override via OData: Vendor.Id ===
-  if (isAtalianEmail) { // Gebruik de nieuwe variabele
+  if (isAtalianEmail) {
     try {
       const vendorId = await fetchJobVendorId(event, jobId);
       if (vendorId === '000016') {
@@ -220,9 +220,8 @@ async function handleGetDomainCheck(event, { jobId, email, hasEmail }) {
   }
 
   // 🛑 STRIKTE CONTROLE: e-mail en vendor-mail moeten aanwezig zijn voor standaard check
-  // PAS DEZE CHECK AAN: Bypass de !hasVendor check voor @atalianworld.com e-mails, 
-  // zodat ze naar de standaard check kunnen gaan als de 000016 override niet werkt.
-  if (!hasEmail || (!hasVendor && !isAtalianEmail)) {
+  // WIJZIGING 1: Als het een @atalianworld.com e-mail is, bypass dan de !hasVendor check.
+  if (!hasEmail || (!hasVendor && !isAtalianEmail)) { 
     const reason = !hasEmail
       ? "E-mail ontbreekt"
       : "Job heeft geen gekoppelde leverancier.";
@@ -296,14 +295,15 @@ async function handlePostAction(event, body, { jobId, email, hasEmail, action, t
   let allowed = true;
 
   // === Vendor override via OData: Vendor.Id ===
-  const isAtalianEmail = hasEmail && emailDomain(email) === 'atalianworld.com'; // NIEUW: Hulpvariabele voor consistentie
+  const isAtalianEmail = hasEmail && emailDomain(email) === 'atalianworld.com';
   
   if (isAtalianEmail) {
     try {
       const vendorId = await fetchJobVendorId(event, jobId);
+      // WIJZIGING 2: Forceer allowed=true voor vendor 000016, ongeacht VendorEmailAddress
       if (vendorId === '000016') {
         allowed = true; // force allow
-      } else { // NIEUW: Hier moet de check ook falen als de vendor niet 000016 is EN er geen vendor email is.
+      } else { 
         if (hasVendor) {
           // Standaard domeincheck als niet 000016 maar wel een vendor email
           const checkPayload = {
@@ -320,7 +320,7 @@ async function handlePostAction(event, body, { jobId, email, hasEmail, action, t
         }
       }
     } catch (_) {
-      // fallback naar oorspronkelijke logica
+      // fallback
       if (hasVendor && hasEmail) {
         const checkPayload = {
           JobId: String(jobId), Email: email.trim(), Controle: email.trim(),
