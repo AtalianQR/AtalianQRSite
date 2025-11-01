@@ -300,7 +300,20 @@
     if(!r.ok){ const errorText=await r.text(); console.error(`Fetch error ${r.status}: ${errorText}`); throw new Error(`HTTP ${r.status} - ${r.statusText||'Server Error'}`) }
     return r.json();
   }
-  function isJobOpen(job){ const s=String(job?.Status??'').trim(); if(!s) return true; return s!=='1016' }
+  function isJobOpen(job){ 
+    // Probeer de Status ID te pakken (meerdere Ultimo formaten)
+    const statusId = job?.Status?.Id || job?.StatusId || job?.Status;
+    const s = String(statusId ?? '').trim(); 
+    
+    // Lijst van afgesloten/afgeronde Progress Statussen
+    const closedStatuses = ['1016', '1017', '1018', '1020', '1024', '1027', '1010'];
+    
+    // Als de status leeg is, aannemen dat deze open is
+    if(!s) return true; 
+    
+    // Controleer of de status voorkomt in de lijst van afgesloten statussen
+    return !closedStatuses.includes(s);
+  }
   function renderJobHeader(job){
     const klant   = (job.CustomerName || '').trim();
     const complex = (job.ComplexName  || '').trim();
