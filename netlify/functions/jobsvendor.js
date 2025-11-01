@@ -144,22 +144,45 @@ function pickDocuments(out) {
 }
 
 // === OData helper om Vendor.Id op te halen (voor override) ===
+// --- OData helper om Vendor.Id op te halen (robuust) ---
 async function fetchJobVendorId(event, jobId) {
   const { base } = detectEnvironment(event); // respecteert TEST/PROD
-  const url = `${base}/object/Job('${String(jobId)}')`;
-  const res = await fetch(url, { headers: { accept: 'application/json', ApiKey: API_KEY }});
-  if (!res.ok) return ''; // stil falen → geen override
-  const data = await res.json().catch(()=> ({}));
-  // dek meerdere vormen af
-  const v =
-    data?.Vendor?.Id ||
-    data?.properties?.Vendor?.Id ||
-    data?.Vendor ||
-    data?.properties?.Vendor ||
-    '';
-  const vendorId = String((typeof v === 'object' ? v?.Id : v) || '').trim();
-  return vendorId;
+  const id = String(jobId).trim();
+
+  // 1) Rechtstreeks de subresource /Vendor (voorkeur)
+  try {
+    const res1 = await fetch(`${base}/object/Job('${id}')/Vendor`, {
+      headers: { accept: 'application/json', ApiKey: API_KEY }
+    });
+    if (res1.ok) {
+      const d1 = await res1.json().catch(() => ({}));
+      const v1 = d1?.Id || d1?.properties?.Id || d1?.VendorId || '';
+      const vendorId1 = String(v1 || '').trim();
+      if (vendorId1) return vendorId1;
+    }
+  } catch (_) { /* ga door naar fallback */ }
+
+  // 2) Fallback: volledige Job (soms Vendor inline/expanded)
+  try {
+    const res2 = await fetch(`${base}/object/Job('${id}')`, {
+      headers: { accept: 'application/json', ApiKey: API_KEY }
+    });
+    if (res2.ok) {
+      const d2 = await res2.json().catch(() => ({}));
+      const v2 =
+        d2?.Vendor?.Id ||
+        d2?.properties?.Vendor?.Id ||
+        d2?.Vendor ||
+        d2?.properties?.Vendor ||
+        '';
+      const vendorId2 = String((typeof v2 === 'object' ? v2?.Id : v2) || '').trim();
+      if (vendorId2) return vendorId2;
+    }
+  } catch (_) { /* ignore */ }
+
+  return ''; // onvindbaar
 }
+
 
 /* ───────────── GET HANDLERS ───────────── */
 
