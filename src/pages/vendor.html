@@ -104,7 +104,7 @@
   <button id="doc-fab" class="doc-fab" type="button"
         style="display:none"
         aria-hidden="true"
-        tabindex="-1">📎 Documenten</button>ton>
+        tabindex="-1">📎 Documenten</button>
 
   <script src="https://cdn.jsdelivr.net/npm/vue@2"></script>
   <script src="https://cdn.jsdelivr.net/npm/botui/build/botui.min.js"></script>
@@ -113,8 +113,8 @@
   
   /* ==================== QS & ENV ==================== */
   const qs = new URLSearchParams(window.location.search);
-  const isTest = qs.has('test');         // ?test in URL = testmode
-  const envQ  = isTest ? '&test=1' : ''; // plak dit aan elke call
+  const isTest = qs.has('test') || /test|staging/i.test(host);
+  const envQ  = isTest ? '&test=1' : '';
 
   /* ==================== 0. Endpoints ==================== */
   const endpointJobDetails = '/.netlify/functions/jobsvendor';
@@ -122,7 +122,8 @@
 
   /* ==================== 1. Parameters ==================== */
   // ... (rest van de parameters sectie)
-  const jobId = qs.get('job') || qs.get('jobId') || '';
+  const jobIdRaw = qs.get('job') || qs.get('jobId') || '';
+  const jobId = String(jobIdRaw).split(/[?&#]/)[0];
   let   lang  = qs.get('lang') || ((navigator.language||'').startsWith('fr') ? 'fr' : 'nl');
   const isFr  = (lang === 'fr');
   if (isFr) document.body.style.backgroundImage = "url('/afmeldentaak_fr.png')";
@@ -251,17 +252,20 @@
   /* ==================== 5. Login ==================== */
   const copy = { nl:{ intro1:"Welkom! We helpen je om deze taak snel en correct af te ronden. 👋", ask:"Gelieve uw login in te voeren:", invalid:"Foutieve login." }, fr:{ intro1:"Bienvenue ! Nous vous aidons à clôturer cette tâche rapidement et correctement. 👋", ask:"Veuillez entrer votre identifiant :", invalid:"Erreur d'identifiant." } };
 
-  async function isAllowedBusinessMail(e=''){
-    const okSyntax=/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e); if(!okSyntax) return false;
-    try{
-      // AANPASSING: toevoegen van ${envQ}
-      const url=`${endpointJobDetails}?jobId=${encodeURIComponent(jobId)}&email=${encodeURIComponent(e)}&controle=${encodeURIComponent(e)}${envQ}`;
-      const r=await fetch(url,{headers:{accept:'application/json'}});
-      if(!r.ok) return false;
-      const data=await r.json();
-      return !!data?.allowed && !!data?.allowedForJob && !!data?.hasVendor;
-    }catch{ return false }
-  }
+	async function isAllowedBusinessMail(e=''){
+	  const okSyntax = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e);
+	  if (!okSyntax) return false;
+	  try {
+		const url = `${endpointJobDetails}?jobId=${encodeURIComponent(jobId)}&email=${encodeURIComponent(e)}&controle=${encodeURIComponent(e)}${envQ}`;
+		const r   = await fetch(url, { headers: { accept: 'application/json' } });
+		if (!r.ok) return false;
+		const data = await r.json();
+		// Backend geeft enkel { allowed: boolean } terug
+		return data?.allowed === true;
+	  } catch {
+		return false;
+	  }
+	}
 
   async function emailIntroAndLogin(){
     const t=isFr?copy.fr:copy.nl; await botui.message.add({ content:t.intro1 });
