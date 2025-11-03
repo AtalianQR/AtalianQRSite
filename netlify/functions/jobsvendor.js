@@ -3,7 +3,7 @@
 // === Config uit omgeving ===
 const API_KEY         = process.env.ULTIMO_API_KEY;
 const BASE_URL_PROD   = process.env.ULTIMO_API_BASEURL;
-const BASE_URL_TEST   = process.env.ULTIMO_API_BASEURL_TEST || process.env.ULTIMO_API_BASEURL; // fallback
+const BASE_URL_TEST   = process.env.ULTIMO_API_BASEURL_TEST;
 const APP_ELEMENT     = process.env.APP_ELEMENT_QueryAtalianJobs;
 const ULTIMO_ACTION   = "_rest_QueryAtalianJobs";
 
@@ -34,21 +34,6 @@ function isValidJobId(id) {
   return isNonEmpty(id) && /^\d+$/.test(id);
 }
 
-// === Detecteer omgeving ===
-function detectEnvironment(event) {
-  const params = event.queryStringParameters || {};
-  const host   = event.headers?.host || '';
-  const testInUrl  = params.test === '1' || params.test === 'true' || params.env === 'test';
-  const testInHost = /test|staging/i.test(host);
-  const isTest = testInUrl || testInHost;
-
-  console.log(`[jobsvendor] DEBUG PARAMS: ${JSON.stringify(params)}`);
-  const base = isTest ? BASE_URL_TEST : BASE_URL_PROD;
-  const envName = isTest ? 'TEST' : 'PROD';
-  console.log(`[jobsvendor] Environment: ${envName} | Host=${host} | testParam=${params.test || ''}`);
-
-  return { isTest, base, envName, params };
-}
 
 // === Standaard JSON response helper ===
 function respond(statusCode, bodyObj) {
@@ -61,16 +46,16 @@ function respond(statusCode, bodyObj) {
 
 // === Ultimo-call helper (met dynamische BASE_URL) ===
 async function callUltimo(event, payload) {
-  const { base, envName } = detectEnvironment(event);
-  console.log(`[jobsvendor] callUltimo via ${envName}: ${payload.Action || 'n/a'}`);
+  const cfg = buildEnvConfig(event);
+  console.log(`[jobsvendor] callUltimo via ${cfg.name}: ${payload.Action || 'n/a'}`);
 
-  const res = await fetch(`${base}/action/${ULTIMO_ACTION}`, {
+  const res = await fetch(`${cfg.base}/action/${ULTIMO_ACTION}`, {
     method: "POST",
     headers: {
       accept: "application/json",
       "Content-Type": "application/json",
-      ApiKey: API_KEY,
-      ApplicationElementId: APP_ELEMENT,
+      ApiKey: cfg.key,
+      ApplicationElementId: cfg.app,
     },
     body: JSON.stringify(payload),
   });
@@ -79,19 +64,8 @@ async function callUltimo(event, payload) {
     const text = await res.text().catch(() => '');
     throw new Error(`Ultimo API fout (${res.status}): ${text}`);
   }
-
   const contentType = res.headers.get("content-type") || "";
-  let json;
-  if (contentType.includes("application/json")) {
-    json = await res.json().catch(e => {
-      throw new Error(`Fout bij parsen van JSON: ${e.message}`);
-    });
-  } else {
-    const text = await res.text().catch(() => '');
-    console.error("⚠ Ultimo gaf geen JSON:", text.slice(0, 200));
-    json = {};
-  }
-  return { ok: true, json };
+  return { ok: true, json: contentType.includes("application/json") ? await res.json() : {} };
 }
 
 /**
@@ -145,23 +119,66 @@ function pickDocuments(out) {
 
 // === OData helper om Vendor.Id op te halen (voor override) ===
 async function fetchJobVendorId(event, jobId) {
-  const { base } = detectEnvironment(event); // respecteert TEST/PROD
-  const url = `${base}/object/Job('${String(jobId)}')`;
-  const res = await fetch(url, { headers: { accept: 'application/json', ApiKey: API_KEY }});
-  if (!res.ok) return ''; // stil falen → geen override
+  const cfg = buildEnvConfig(event);
+  const url = `${cfg.base}/object/Job('${String(jobId)}')`;
+  const res = await fetch(url, { headers: { accept: 'application/json', ApiKey: cfg.key }});
+  if (!res.ok) return '';
   const data = await res.json().catch(()=> ({}));
-  // dek meerdere vormen af
-  const v =
-    data?.Vendor?.Id ||
-    data?.properties?.Vendor?.Id ||
-    data?.Vendor ||
-    data?.properties?.Vendor ||
-    '';
-  const vendorId = String((typeof v === 'object' ? v?.Id : v) || '').trim();
-  return vendorId;
+  const v = data?.Vendor?.Id || data?.properties?.Vendor?.Id || data?.Vendor || data?.properties?.Vendor || '';
+  return String((typeof v === 'object' ? v?.Id : v) || '').trim();
 }
 
 /* ───────────── GET HANDLERS ───────────── */
+
+
+function buildEnvConfig(event) {
+  const params = event.queryStringParameters || {};
+  const host   = event.headers?.host || '';
+  const isTest = params.test === '1' || params.test === 'true' || /test|staging/i.test(host);
+
+  const prod = {
+    base: process.env.ULTIMO_API_BASEURL,
+    key:  process.env.ULTIMO_API_KEY,
+    app:  process.env.APP_ELEMENT_QueryAtalianJobs,
+    name: 'PROD',
+  };
+
+  const test = {
+    base: process.env.ULTIMO_API_BASEURL_TEST,     // ⬅️ geen fallback naar prod!
+    key:  process.env.ULTIMO_API_KEY_TEST || process.env.ULTIMO_API_KEY, // key mag delen indien nodig
+    app:  process.env.APP_ELEMENT_QueryAtalianJobs_TEST || process.env.APP_ELEMENT_QueryAtalianJobs,
+    name: 'TEST',
+  };
+  
+ // Optionele domein-afleiding als base voor TEST ontbreekt
+  function deriveTestBase(from) {
+    if (!from) return '';
+    // pas aan aan jouw domeinpatroon
+    return from
+      .replace('atalian.ultimo.net', 'atalian-test.ultimo.net')
+      .replace('api/v1', 'api/v1'); // placeholder indien pad afwijkt
+  }
+
+  let cfg = isTest ? test : prod;
+
+  // ❌ Hard fail als test gevraagd is maar geen test-base
+  if (isTest && (!cfg.base || cfg.base === prod.base)) {
+    // laatste redmiddel: afleiden uit prod
+    const derived = deriveTestBase(prod.base);
+    if (derived && derived !== prod.base) {
+      cfg = { ...cfg, base: derived };
+    } else {
+      throw new Error("TEST omgeving gevraagd (?test=1) maar ULTIMO_API_BASEURL_TEST ontbreekt.");
+    }
+  }
+
+  if (!cfg.base || !cfg.key || !cfg.app) {
+    throw new Error(`Serverconfig onvolledig voor ${cfg.name}: base/key/app ontbreken.`);
+  }
+
+  console.log(`[jobsvendor] Environment: ${cfg.name} | Host=${host} | base=${cfg.base} | testParam=${params.test || ''}`);
+  return cfg;
+}  
 
 async function handleGetJobDoc(event, { docId }) {
   if (!docId || !/^\d+$/.test(docId)) {
@@ -210,8 +227,8 @@ async function handleGetDomainCheck(event, { jobId, email, hasEmail }) {
       const vendorId = await fetchJobVendorId(event, jobId);
       if (vendorId === '000016') {
         // optioneel: debug info bijvoegen wanneer ?debug=1
-        const { params } = detectEnvironment(event);
-        const extra = params.debug ? { vendorId } : {};
+		const params = event.queryStringParameters || {};
+		const extra = params.debug ? { vendorId } : {};
         return respond(200, { allowed: true, override: 'vendor000016', ...extra });
       }
     } catch (_) {
@@ -277,6 +294,7 @@ async function handleDefaultView(event, { jobId, email, action, hasEmail }) {
 // Vereist dat je al helpers hebt zoals: fetchJob(event, jobId), respond(status, obj)
 // Laat je bestaande actiehandlers (ADD_JOB_DOC / ADD_INFO) ONGEWIJZIGD ONDERAAN STAAN.
 
+// VERVANG je huidige handlePostAction volledig door deze versie
 async function handlePostAction(event) {
   const qs   = event.queryStringParameters || {};
   const body = (event.body && JSON.parse(event.body)) || {};
@@ -289,59 +307,100 @@ async function handlePostAction(event) {
   if (!jobId)  return respond(400, { error: "jobId ontbreekt" });
   if (!email)  return respond(400, { error: "email ontbreekt" });
 
-  const getDomain     = (e="") => (String(e).toLowerCase().match(/@(.+)$/)||[,""])[1];
-  const domainsMatch  = (a,b) => !!getDomain(a) && getDomain(a) === getDomain(b);
-  const isAtalian     = getDomain(email) === "atalianworld.com";
+  const isAtalian = getDomain(email) === "atalianworld.com";
 
-  // Haal job + vendorcontext op (gebruik jouw bestaande job-fetch)
-  const job = await fetchJob(event, jobId); // <-- jouw bestaande implementatie
+  // 1) Job ophalen via VIEW (zoals in GET)
+  const viewPayload = { JobId: String(jobId), Action: "VIEW", Email: email };
+  const firstView   = await callUltimo(event, viewPayload);
+  const vOut        = getOutputObject(firstView.json);
+  const job         = pickFirstJob(vOut);
   if (!job) return respond(404, { error: `Job ${jobId} niet gevonden` });
 
-  const vendorId       = job?.Vendor?.Id || job?.VendorId || "";
-  const vendorEmail    = job?.VendorEmailAddress || job?.Vendor?.Email || "";
-  const hasVendorEmail = /@/.test(vendorEmail);
+  // 2) Vendor-context bepalen
+  const vendorEmail    = job?.VendorEmailAddress || job?.Vendor?.EmailAddress || "";
+  let vendorId         = String(job?.Vendor?.Id || job?.VendorId || "").trim();
 
-  // 🔎 Logging helpt bij toekomstige debug
-  console.info("[auth ctx]", {
-    jobId, email, vendorId, vendorEmail, hasVendorEmail, isAtalian, action
+  // resolve vendorId via OData indien nodig
+  if (!vendorId) {
+    try { vendorId = await fetchJobVendorId(event, jobId); } catch {}
+  }
+
+  console.info("[jobsvendor][AUTH]", {
+    jobId, email, vendorId, vendorEmail,
+    hasVendorEmail: !!vendorEmail, isAtalianMail: isAtalian, action
   });
 
-  // === AUTORISATIE ===
+  // 🚫 harde regel: vendorId verplicht voor POST
+  if (!vendorId) {
+    console.warn("[jobsvendor][AUTH] deny: AUTH_NO_VENDOR", { jobId, email });
+    return respond(403, { error: "Geen leverancier gekoppeld aan deze job.", reason: "AUTH_NO_VENDOR" });
+  }
+
+  // 3) Autorisatie
   let allowed = false;
 
-  // 1) ✅ Atalian-vendor: altijd toestaan voor @atalianworld.com
+  // ✅ Atalian-vendor override
   if (vendorId === "000016" && isAtalian) {
     allowed = true;
-    console.info("[auth] allow: Atalian vendor + Atalian user");
-  }
-  // 2) Externe vendors: domein moet matchen met VendorEmail
-  else if (hasVendorEmail) {
-    allowed = domainsMatch(email, vendorEmail);
-    console.info(`[auth] ${allowed ? "allow" : "deny"}: ${getDomain(email)} vs ${getDomain(vendorEmail)}`);
-  }
-  // 3) Geen vendorEmail en geen Atalian-vendor: blokkeren
-  else {
-    allowed = false;
+    console.info("[auth] allow: Atalian vendor + Atalian mail");
+  } else if (vendorEmail) {
+    // domeinmatch voor externe vendors
+    const loginDom  = getDomain(email);
+    const vendorDom = getDomain(vendorEmail);
+    allowed = loginDom && vendorDom && loginDom === vendorDom;
+    console.info("[auth] domain-check", { loginDom, vendorDom, allowed });
+  } else {
     console.warn("[auth] deny: no vendor email for non-Atalian vendor");
+    allowed = false;
   }
 
   if (!allowed) {
     return respond(403, { error: "E-mailadres niet toegestaan voor deze job/leverancier." });
   }
 
-  // === ACTIE-AFHANDELING ===
-  // Laat hier je bestaande handlers lopen; we hebben enkel de gate erboven toegevoegd.
-  switch (action) {
-    case "ADD_JOB_DOC":
-      // ⬇️ jouw bestaande codeblok voor documenten uploaden
-      return await addJobDocument(event, { job, jobId, email, body }); // of jouw huidige functie
-    case "ADD_INFO":
-      // ⬇️ jouw bestaande codeblok voor info toevoegen
-      return await addJobInfo(event, { job, jobId, email, body }); // of jouw huidige functie
-    default:
-      return respond(400, { error: `Onbekende action: ${action}` });
+  // 4) Actie uitvoeren ZONDER externe helpers
+  if (action === "ADD_JOB_DOC") {
+    const fileName    = String(body.fileName || "").trim();
+    const base64      = String(body.base64   || "");
+    const description = String(body.description || fileName || "Bijlage");
+
+    if (!fileName || !base64) {
+      return respond(400, { error: "Ontbrekende 'fileName' of 'base64'." });
+    }
+    // ⚠ Tip: check payload-grootte om Netlify-limiet te vermijden (~4,5 MB effectief bij base64)
+    if (base64.length > 6_000_000) { // ruwe heuristiek
+      return respond(413, { error: "Bestand te groot voor upload via functie (limiet ~4,5MB base64)." });
+    }
+
+    const addDocPayload = {
+      JobId: String(jobId),
+      Action: "ADD_JOB_DOC",
+      Email: email,
+      AddDoc_FileName: fileName,
+      AddDoc_Base64: base64,
+      AddDoc_Description: description
+    };
+
+    const rAdd = await callUltimo(event, addDocPayload);
+    const out  = getOutputObject(rAdd.json);
+    return respond(200, { ok: true, jobId, action, result: out });
   }
+
+  if (action === "ADD_INFO" || action === "CLOSE") {
+    const text = String(body.text || "");
+    const ultPayload =
+      action === "ADD_INFO"
+        ? { JobId: String(jobId), Action: "ADD_INFO", Email: email, Text: text }
+        : { JobId: String(jobId), Action: "CLOSE",    Email: email, Text: text };
+
+    const r = await callUltimo(event, ultPayload);
+    const out = getOutputObject(r.json);
+    return respond(200, { ok: true, jobId, action, result: out });
+  }
+
+  return respond(400, { error: `Onbekende action: ${action}` });
 }
+
 
 
 // ----------------------------------------------------------------------
@@ -360,9 +419,9 @@ export async function handler(event) {
       return respond(500, { error: "Serverconfig onvolledig: ontbrekende API-sleutels of BASE_URL_PROD." });
     }
 
-    // Log gekozen omgeving en base
-    const { envName, base } = detectEnvironment(event);
-    console.log(`[jobsvendor] 🔎 Handler start in ${envName} → base=${base}`);
+	// Log gekozen omgeving en base (één bron: buildEnvConfig)
+	const cfg = buildEnvConfig(event);
+	console.log(`[jobsvendor] 🔎 Handler start in ${cfg.name} → base=${cfg.base}`);
 
     /* ───────────── GET ───────────── */
     if (event.httpMethod === "GET") {
