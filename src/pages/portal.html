@@ -498,7 +498,7 @@ const btnFr = document.getElementById('switch-fr');
 btnNl.onclick = () => { Telemetry.send('language_switch', {to:'nl'}); const u = new URL(window.location.href); u.searchParams.set('lang','nl'); window.location.href = u; };
 btnFr.onclick = () => { Telemetry.send('language_switch', {to:'fr'}); const u = new URL(window.location.href); u.searchParams.set('lang','fr'); window.location.href = u; };
 
-const botui     = new BotUI('botui-app');
+
 const phoneLink = '<a href="tel:+3278152300">📞 +32 78 152 300</a>';
 let   omschrijving = '';
 
@@ -841,13 +841,15 @@ const r = await fetch(endpointMelding, {
       }
     }
 
-    if (!jobId) {
-      await botui.message.add({
-        content: isFr ? '❌ Job ID manquant dans la réponse.' : '❌ Job ID ontbreekt in de response.'
-      });
-      Telemetry.send('submit_error', { message: 'missing jobId', raw: (typeof raw === 'string' ? raw.slice(0, 400) : '') });
-      return;
-    }
+	if (!jobId) {
+      await botui.message.add({
+        content: isFr 
+          ? '❌ Er is een probleem opgetreden. Je melding is mogelijk niet succesvol ingediend. Probeer het later opnieuw.'
+          : '❌ Un problème est survenu. Votre signalement n\'a peut-être pas été soumis avec succès. Veuillez réessayer plus tard.'
+      });
+      Telemetry.send('jobid_missing_fallback_fail');
+      return; // Belangrijk: hier afsluiten als er geen jobId is
+    }
 
     // 4) Succesboodschap
     await botui.message.add({
