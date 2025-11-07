@@ -35,6 +35,16 @@
     body.is-test {
         padding-top: 30px; /* Moet hoger zijn dan de bannerhoogte */
     }
+	.botui-actions-text-input{
+	  width: 100% !important;
+	  max-width: 80% !important;   /* kies 80–100% naar smaak */
+	  flex-grow: 1 !important;
+	}
+
+	/* op small screens gewoon full width */
+	@media (max-width: 768px){
+	  .botui-actions-text-input{ max-width: 100% !important; }
+	}
     /* EINDE NIEUWE STIJLEN */
     .header-flex{display:flex;flex-direction:column;align-items:center;max-width:600px;width:100%;
       margin:0 auto;padding:.5rem 0;gap:.5rem}
