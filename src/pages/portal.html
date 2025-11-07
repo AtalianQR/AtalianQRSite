@@ -109,6 +109,7 @@ let cachedSvcWO = [];
 let cachedQRCommando = "";
 let contextFetched = false;
 let selectedServiceWOId = null; // Gekozen ServiceWO bij schoonmaak
+let botui; // Maak botui nu globaal beschikbaar voor alle functies
 
 // FOTO-state (ENKEL deze gebruiken)
 let pickedFiles = []; // [{file, kind:'image'|'pdf'|'other', name, previewUrl}]
@@ -513,10 +514,21 @@ async function init() {
     }
     await startChat();
 }
-async function startChat(){
-  Telemetry.send('step', { step:'start', stepIndex:0 });
-  await showLocation();
 
+function startChat(){
+  // STAP 1: INITIALISEER BOTUI HIER! (Zonder 'const' of 'var')
+  // Zorg dat botui (de globale variabele) hier zijn waarde krijgt.
+  botui = new BotUI('botui-app'); 
+  
+  // OPMERKING: De rest van uw oorspronkelijke logica volgt nu direct.
+  
+  Telemetry.send('step', { step:'start', stepIndex:0 });
+  
+  // De showLocation() functie moet de chat NIET starten, 
+  // maar alleen de locatie/titel boven de chat bijwerken.
+  showLocation(); 
+  
+  // De BotUI berichten kunnen nu worden toegevoegd:
   await botui.message.add({
     type:'html',
     content:isFr
