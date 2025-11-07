@@ -122,6 +122,18 @@
 
   <script type="module">
   
+	// Fix dubbele '?' in query (maakt van de tweede '?' een '&')
+	(function fixDoubleQuestionMark(){
+	  const href = String(location.href);
+	  const first = href.indexOf('?');
+	  const second = href.indexOf('?', first + 1);
+	  if (second !== -1) {
+		const fixed = href.slice(0, second) + '&' + href.slice(second + 1);
+		location.replace(fixed); // herlaadt netjes met correcte query
+	  }
+	})();
+  
+  
   /* ==================== QS & ENV ==================== */
 	const qs   = new URLSearchParams(window.location.search);
 	// ❗️ host MOET gedefinieerd zijn
@@ -129,11 +141,17 @@
 	const isTest = qs.has('test') || /test|staging/i.test(host);
 	const envQ   = isTest ? '&test=1' : '';
 	if (isTest) {
-	  const $ti = document.getElementById('test-indicator');
-	  if ($ti) $ti.style.display = 'block';
-	  document.body.classList.add('is-test');
+	  const showBanner = () => {
+		const $ti = document.getElementById('test-indicator');
+		if ($ti) $ti.style.display = 'block';
+		document.body.classList.add('is-test');
+	  };
+	  if (document.readyState === 'loading') {
+		document.addEventListener('DOMContentLoaded', showBanner);
+	  } else {
+		showBanner();
+	  }
 	}
-
 
 
   /* ==================== 0. Endpoints ==================== */

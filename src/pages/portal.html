@@ -244,140 +244,87 @@ function fileToBase64(file){
   });
 }
 
+
 async function pickOnePhotoWithConfirm() {
   const $file = document.getElementById('portal-photo');
-  if (!$file) throw new Error('Bestand-input ontbreekt (#portal-photo).');
+  if (!$file) {
+    await botui.message.add({ content: isFr ? '❌ Entrée fichier manquante.' : '❌ Bestand-input ontbreekt.' });
+    return { status: 'cancel' };
+  }
 
-  // reset + open dialoog
+  // dialoog openen + wachten op selectie
   $file.value = '';
   $file.click();
   const f = await new Promise(res => {
+    // Luister naar de 'change' event van de verborgen file-input
     const h = () => { $file.removeEventListener('change', h); res($file.files && $file.files[0]); };
     $file.addEventListener('change', h, { once: true });
   });
-  if (!f) return { status:'cancel' };
+  if (!f) return { status: 'cancel' };
 
-  // voorlopige preview
-  const url = URL.createObjectURL(f);
-  await botui.message.add({
-    type:'html',
-    content: `<figure style="margin:0">
-      <img src="${url}" alt="${esc(f.name)}" style="max-width:100%;height:auto;border:1px solid #ddd;border-radius:6px"/>
-      <figcaption style="font-size:.85rem;color:#6b7280;margin-top:.25rem">${esc(f.name)}</figcaption>
-    </figure>`
-  });
+  const name = f.name;
+  const mime = f.type || guessMimeByName(name);
+  const kind = mime.startsWith('image/') ? 'image' : (mime === 'application/pdf' ? 'pdf' : 'other');
 
-  // bevestigen of wijzigen/annuleren
-  const choice = await botui.action.button({
-    action: [
-      { text:'✅ Gebruik deze', value:'ok' },
-      { text:'🔁 Andere kiezen', value:'change' },
-      { text:'✖️ Annuleren', value:'cancel' }
-    ]
-  });
-
-  if (choice.value === 'ok') return { status:'ok', file: f, previewUrl: url };
-  URL.revokeObjectURL(url);
-
-  if (choice.value === 'change') {
-    // recurse: laat opnieuw kiezen; bubbelt door tot ok/cancel
-    return await pickOnePhotoWithConfirm();
+  // Korte preview
+  let previewUrl = '';
+  if (kind === 'image') {
+    previewUrl = URL.createObjectURL(f);
+    await botui.message.add({
+      type: 'html',
+      content: `<figure style="margin:0">
+        <img src="${previewUrl}" alt="${esc(name)}" style="max-width:100%;height:auto;border:1px solid #ddd;border-radius:6px"/>
+        <figcaption style="font-size:.85rem;color:#6b7280;margin-top:.25rem">${esc(name)}</figcaption>
+      </figure>`
+    });
+  } else {
+    await botui.message.add({
+      content: (isFr ? 'Fichier sélectionné: ' : 'Bestand geselecteerd: ') + esc(name)
+    });
   }
-  return { status:'cancel' };
+
+  // Geen knoppen meer – direct “ok”
+  return { status: 'ok', file: f, kind, name, previewUrl };
 }
+// --- einde helper ---
 
-
-async function askPhotosLoop() {
-  // ✅ Zelfde UX als “vendor”: kiezen → bevestigen / andere kiezen / annuleren
-  pickedFiles = [];
-
-  // --- interne helper: laat 1 bestand kiezen + confirm ---
-  async function pickOnePhotoWithConfirm() {
-    const $file = document.getElementById('portal-photo');
-    if (!$file) {
-      await botui.message.add({ content: isFr ? '❌ Entrée fichier manquante.' : '❌ Bestand-input ontbreekt.' });
-      return { status: 'cancel' };
-    }
-
-    // dialoog openen + wachten op selectie
-    $file.value = '';
-    $file.click();
-    const f = await new Promise(res => {
-      const h = () => { $file.removeEventListener('change', h); res($file.files && $file.files[0]); };
-      $file.addEventListener('change', h, { once: true });
-    });
-    if (!f) return { status: 'cancel' };
-
-    const name = f.name;
-    const mime = f.type || guessMimeByName(name);
-    const kind = mime.startsWith('image/') ? 'image' : (mime === 'application/pdf' ? 'pdf' : 'other');
-
-    // voorlopige preview (image) of bestandsnaam (pdf/other)
-    let url = '';
-    if (kind === 'image') {
-      url = URL.createObjectURL(f);
-      await botui.message.add({
-        type: 'html',
-        content: `<figure style="margin:0">
-          <img src="${url}" alt="${esc(name)}" style="max-width:100%;height:auto;border:1px solid #ddd;border-radius:6px"/>
-          <figcaption style="font-size:.85rem;color:#6b7280;margin-top:.25rem">${esc(name)}</figcaption>
-        </figure>`
-      });
-    } else {
-      await botui.message.add({
-        content: (isFr ? 'Fichier sélectionné: ' : 'Bestand geselecteerd: ') + esc(name)
-      });
-    }
-
-    // confirm: gebruik / andere kiezen / annuleren
-    const choice = await botui.action.button({
-      action: [
-        { text: isFr ? '✅ Utiliser ceci' : '✅ Gebruik deze', value: 'ok' },
-        { text: isFr ? '🔁 Changer' : '🔁 Andere kiezen', value: 'change' },
-        { text: isFr ? '✖️ Annuler' : '✖️ Annuleren', value: 'cancel' }
-      ]
-    });
-
-    if (choice.value === 'ok') {
-      return { status: 'ok', file: f, kind, name, previewUrl: url };
-    }
-    if (url) URL.revokeObjectURL(url);
-    if (choice.value === 'change') {
-      // recursief opnieuw kiezen
-      return await pickOnePhotoWithConfirm();
-    }
-    return { status: 'cancel' };
-  }
-  // --- einde helper ---
-
+// --- DE JUISTE FOTO-LOOP FUNCTIE (voorheen mainFlow) ---
+async function askPhotosLoop() { 
   while (true) {
     const add = await botui.action.button({
       action: [
-        { text: isFr ? '📎 Ajouter une photo' : '📎 Foto toevoegen', value: 'add' },
+        // Knoptekst aangepast om ook documenten te vermelden
+        { text: isFr ? '📎 Ajouter une photo ou document' : '📎 Foto of document toevoegen', value: 'add' },
         { text: isFr ? '➡️ Continuer' : '➡️ Doorgaan', value: 'next' }
       ]
     });
     if (add.value === 'next') break;
 
-    const result = await pickOnePhotoWithConfirm();
+    const result = await pickOnePhotoWithConfirm(); // Oproep van de behouden functie
     if (result?.status !== 'ok') continue;
 
     const { file: f, kind, name, previewUrl } = result;
 
-    // korte opmerking per item
-    await botui.message.add({
-      content: isFr
-        ? (kind === 'image' ? 'Votre remarque pour cette photo (max 200):' : 'Votre remarque pour ce document (max 200):')
-        : (kind === 'image' ? 'Jouw opmerking bij deze foto (max 200):'    : 'Jouw opmerking bij dit document (max 200):')
-    });
-    const t = await botui.action.text({
-      action: { placeholder: isFr ? 'Remarque…' : 'Opmerking…', maxLength: 200 }
-    });
+    // Korte opmerking per item: De prompt en de text-input gecombineerd
+    const remarkPrompt = isFr
+      ? (kind === 'image' ? 'Votre remarque pour cette photo (max 200):' : 'Votre remarque pour ce document (max 200):')
+      : (kind === 'image' ? 'Jouw opmerking bij deze foto (max 200):' : 'Jouw opmerking bij dit document (max 200):');
+    
+    // Gebruik 'addMessage' om de prompt en de input in één BotUI-stap te plaatsen
+	const t = await botui.action.text({
+		  addMessage: { content: remarkPrompt },
+		  action: { 
+			placeholder: isFr ? 'Décrivez la photo/le document…' : 'Beschrijf de foto/het document…', 
+			maxLength: 200 
+		  }
+		});
+    
     const remark = (t?.value || '').trim().slice(0, 200);
 
     pickedFiles.push({ file: f, kind, name, previewUrl: previewUrl || '', remark });
   }
 }
+// --- EINDE askPhotosLoop ---
 
 
 
