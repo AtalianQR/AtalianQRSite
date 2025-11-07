@@ -515,53 +515,57 @@ async function init() {
     await startChat();
 }
 
-function startChat(){
-  // STAP 1: INITIALISEER BOTUI HIER! (Zonder 'const' of 'var')
-  // Zorg dat botui (de globale variabele) hier zijn waarde krijgt.
-  botui = new BotUI('botui-app'); 
-  
-  // OPMERKING: De rest van uw oorspronkelijke logica volgt nu direct.
-  
-  Telemetry.send('step', { step:'start', stepIndex:0 });
-  
-  // De showLocation() functie moet de chat NIET starten, 
-  // maar alleen de locatie/titel boven de chat bijwerken.
-  showLocation(); 
-  
-  // De BotUI berichten kunnen nu worden toegevoegd:
-  await botui.message.add({
-    type:'html',
-    content:isFr
-      ? 'Bonjour, je suis votre assistant <span style="color:#EE7E00;font-weight:bold;">ATALIAN</span>.<br>Je recherche pour vous les <b>signalements en cours</b>…'
-      : 'Hallo, ik ben je <span style="color:#EE7E00;font-weight:bold;">ATALIAN</span>-assistent.<br>Ik haal even de <b>openstaande meldingen</b> voor je op…'
-  });
+/* ======================================================================
+   CHATFLOW
+====================================================================== */
+// <<<<<< DEZE FUNCTIE MOET 'async' ZIJN! >>>>>>
+async function startChat(){ 
+  // STAP 1: INITIALISEER BOTUI HIER! (Zonder 'const' of 'var')
+  // Zorg dat botui (de globale variabele) hier zijn waarde krijgt.
+  botui = new BotUI('botui-app'); 
+  
+  // OPMERKING: De rest van uw oorspronkelijke logica volgt nu direct.
+  
+  Telemetry.send('step', { step:'start', stepIndex:0 });
+  
+  // De showLocation() functie moet de chat NIET starten, 
+  // maar alleen de locatie/titel boven de chat bijwerken.
+  showLocation(); 
+  
+  // De BotUI berichten kunnen nu worden toegevoegd:
+  await botui.message.add({
+    type:'html',
+    content:isFr
+      ? 'Bonjour, je suis votre assistant <span style="color:#EE7E00;font-weight:bold;">ATALIAN</span>.<br>Je recherche pour vous les <b>signalements en cours</b>…'
+      : 'Hallo, ik ben je <span style="color:#EE7E00;font-weight:bold;">ATALIAN</span>-assistent.<br>Ik haal even de <b>openstaande meldingen</b> voor je op…'
+  });
 
-  await preloadContextAndShow();
+  await preloadContextAndShow();
 
-  if (!isEquipment && hasCleaningActivities(cachedSvcWO)) {
-    const actions = [];
-    if (hasText(cleaningProgramText)) {
-      actions.push({ text: isFr ? '📋 Programme de Nettoyage' : '📋 Poetsprogramma', value: 'poets' });
-    }
-    actions.push({ text: isFr ? '🧹 Signaler un Nettoyage' : '🧹 Schoonmaak Melding', value: 'cleaning_ticket' });
-    actions.push({ text: isFr ? '💡 Autre Problème' : '💡 Ander Probleem', value: 'other_problem' });
+  if (!isEquipment && hasCleaningActivities(cachedSvcWO)) {
+    const actions = [];
+    if (hasText(cleaningProgramText)) {
+      actions.push({ text: isFr ? '📋 Programme de Nettoyage' : '📋 Poetsprogramma', value: 'poets' });
+    }
+    actions.push({ text: isFr ? '🧹 Signaler un Nettoyage' : '🧹 Schoonmaak Melding', value: 'cleaning_ticket' });
+    actions.push({ text: isFr ? '💡 Autre Problème' : '💡 Ander Probleem', value: 'other_problem' });
 
-    const ans = await botui.action.button({ action: actions });
-    if (ans.value === 'poets') {
-      return await showCleaningProgramAndContinue();
-    } else if (ans.value === 'cleaning_ticket') {
-      return await startCleaningFlow();
-    } else {
-      return await startGenericFlow();
-    }
-  } else {
-    await botui.action.button({
-      action: [
-        { text: isFr ? '❗️ Je veux signaler un problème' : '❗️ Ik wil een probleem melden', value: 'other_problem' }
-      ]
-    });
-    return await startGenericFlow();
-  }
+    const ans = await botui.action.button({ action: actions });
+    if (ans.value === 'poets') {
+      return await showCleaningProgramAndContinue();
+    } else if (ans.value === 'cleaning_ticket') {
+      return await startCleaningFlow();
+    } else {
+      return await startGenericFlow();
+    }
+  } else {
+    await botui.action.button({
+      action: [
+        { text: isFr ? '❗️ Je veux signaler un problème' : '❗️ Ik wil een probleem melden', value: 'other_problem' }
+      ]
+    });
+    return await startGenericFlow();
+  }
 }
 
 async function showCleaningProgramAndContinue() {
