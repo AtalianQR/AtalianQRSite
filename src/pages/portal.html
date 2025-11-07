@@ -176,9 +176,12 @@ async function preloadContextAndShow() {
       await botui.message.add({ type:'html', content: '⚠️ Er zijn al openstaande meldingen in deze ruimte:' });
       await botui.message.add({
         type:'html',
-        content: '<div class="meldingen-lijst">'
-               + cachedJobs.map(j => `✅ ${esc(j.Description)}`).join('<br>')
-               + '</div>'
+			content: '<div class="meldingen-lijst">'
+				   + cachedJobs.map(j => {
+					   const idPart = (isTestEnv && j?.Id) ? `<span class="jobid">${esc(j.Id)}</span> — ` : '';
+					   return `✅ ${idPart}${esc(j.Description)}`;
+					 }).join('<br>')
+				   + '</div>'
       });
     } else {
       await botui.message.add({ content: 'ℹ️ Geen openstaande meldingen gevonden.' });
