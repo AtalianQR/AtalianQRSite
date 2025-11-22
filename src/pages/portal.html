@@ -108,8 +108,10 @@ let cachedJobs = [];
 let cachedSvcWO = [];
 let cachedQRCommando = "";
 let contextFetched = false;
-let selectedServiceWOId = null; // Gekozen ServiceWO bij schoonmaak
 let botui; // Maak botui nu globaal beschikbaar voor alle functies
+let selectedServiceWOId = null; // Gekozen ServiceWO bij schoonmaak
+let selectedOtherServiceWO = null; // Gekozen ServiceWO bij "Andere problemen"
+
 
 // FOTO-state (ENKEL deze gebruiken)
 let pickedFiles = []; // [{file, kind:'image'|'pdf'|'other', name, previewUrl}]
@@ -138,6 +140,20 @@ function getRelevantCleaningServiceWOs(svcList) {
     return act !== null && act >= 10 && act <= 40 && isTicketTrue(x?.Ticket);
   });
 }
+function hasOtherActivities(svcList){
+  return (svcList || []).some(x => {
+    const act = toInt(x?.Activiteit ?? x?._Activiteit);
+    return act !== null && act > 40 && isTicketTrue(x?.Ticket);
+  });
+}
+
+function getRelevantOtherServiceWOs(svcList){
+  return (svcList || []).filter(x => {
+    const act = toInt(x?.Activiteit ?? x?._Activiteit);
+    return act !== null && act > 40 && isTicketTrue(x?.Ticket);
+  });
+}
+
 function hasText(s){ return !!String(s ?? '').trim(); }
 function esc(s){ return String(s ?? '').replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])); }
 function isValidEmail(e){ return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e); }
@@ -627,8 +643,18 @@ function askUrgency(isCleaning){
       {text:isFr?'⏱ Non':'⏱ Nee',value:'nee'}
     ]})).then(res=>{
       Telemetry.send('urgent_answer', { urgent: res.value==='ja', isCleaning });
-      const isUrgent = res.value==='ja';
-      if (isCleaning) return askCleaningServiceWO(isUrgent);
+
+      const isUrgent = res.value === 'ja';
+
+      if (isCleaning) {
+        return askCleaningServiceWO(isUrgent);
+      }
+
+      // 👉 Nieuwe logica voor "Andere problemen"
+      if (hasOtherActivities(cachedSvcWO)) {
+        return askOtherServiceWO(isUrgent);
+      }
+
       return askDescription(isUrgent, false);
     });
 }
@@ -662,6 +688,51 @@ async function askCleaningServiceWO(isUrgent) {
   Telemetry.send('service_wo_selected', { id: selectedServiceWOId });
   return await askDescription(isUrgent, true);
 }
+
+async function askOtherServiceWO(isUrgent) {
+  Telemetry.send('step', { step: 'ask_other_service_wo', stepIndex: 3, isCleaning: false });
+
+  const relevantSvcWOs = getRelevantOtherServiceWOs(cachedSvcWO);
+
+  if (relevantSvcWOs.length === 0) {
+    // safety net, zou normaal niet gebeuren door de check in askUrgency
+    return await askDescription(isUrgent, false);
+  }
+
+  await botui.message.add({
+    content: isFr
+      ? 'Pour quel service signalez-vous un autre problème ?'
+      : 'Voor welke dienst wil je een ander probleem melden?'
+  });
+
+	const actions = relevantSvcWOs.map(x => ({
+	  text: `📍 ${esc(x.Description)}`,
+	  value: x.Id
+	}));
+
+	// ➕ EXTRA KNOP “Andere”
+	actions.push({
+	  text: isFr ? '➕ Autre' : '➕ Andere',
+	  value: 'OTHER_GENERIC'
+	});
+
+
+	const res = await botui.action.button({ action: actions });
+
+	if (res.value === 'OTHER_GENERIC') {
+	  // ❗ gebruiker kiest voor gewone melding
+	  selectedOtherServiceWO = null;   // => geen WO
+	  return await askDescription(isUrgent, false);
+	}
+
+	// anders: normaal WO
+	selectedOtherServiceWO =
+	  relevantSvcWOs.find(x => x.Id === res.value) || null;
+
+	return await askDescription(isUrgent, false);
+
+	}
+
 
 async function askDescription(isUrgent, isCleaning) {
   // 1) EERST de probleemomschrijving
@@ -735,8 +806,22 @@ async function askEmail(isUrgent, isCleaning){
 
   // 2) Payload opbouwen
   const meldingTekst = omschrijving;
-  const cleaningActivityCode = isCleaning ? 20 : null;
-  const serviceWorkOrderId   = isCleaning ? selectedServiceWOId : null;
+
+  let activityCode = null;
+  let serviceWorkOrderId = null;
+
+  if (isCleaning) {
+    // 🧹 Schoonmaak
+    activityCode = 20;
+    serviceWorkOrderId = selectedServiceWOId;
+  } else if (selectedOtherServiceWO) {
+    // 💡 "Andere problemen" mét gekozen service-WO (Activiteit ≥ 40)
+    activityCode = toInt(
+      selectedOtherServiceWO.Activiteit ?? selectedOtherServiceWO._Activiteit
+    );
+    serviceWorkOrderId = selectedOtherServiceWO.Id;
+  }
+
 
   // 🔹 helper om ReportText te bouwen uit geselecteerde files
   function buildReportTextFromFiles(files){
@@ -761,7 +846,7 @@ async function askEmail(isUrgent, isCleaning){
 	  Email: email,
 	  lang,
 	  env: prefix,
-	  Activity: cleaningActivityCode,
+	  Activity: activityCode,
 	  ServiceWOId: serviceWorkOrderId
 	};
 
