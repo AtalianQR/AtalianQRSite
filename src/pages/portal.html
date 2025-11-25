@@ -427,7 +427,10 @@ let   lang = qs.get('lang') ?? '';
 if (!lang) { const b = navigator.language||''; lang = b.startsWith('fr') ? 'fr' : 'nl'; }
 const isFr = lang === 'fr';
 const host = location.host || '';
-const isTestEnv = qs.has('test') || /test|staging/i.test(host);
+const isTestEnv =
+  qs.has('test') ||                   // ?test=1 of ?test=whatever
+  qs.get('env') === 'test' ||         // ?env=test
+  /test|staging/i.test(host);         // subdomein met "test" of "staging"
 const prefix = isTestEnv ? 'test' : 'prod';
 
 // 🟢 Grote banner bovenaan de pagina tonen
