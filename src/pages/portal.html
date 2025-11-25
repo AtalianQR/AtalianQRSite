@@ -10,12 +10,26 @@
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/botui/build/botui.min.css" />
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/botui/build/botui-theme-default.css" />
   <style>
-    html, body{height:auto;min-height:100vh;width:100%;margin:0;padding:0;box-sizing:border-box;
-      font-family:'Segoe UI',sans-serif;background-color:#f4f6fa;overflow-y:auto}
-    body{background-image:url('/building-cleaning.png');background-size:cover;background-repeat:no-repeat;
-      background-position:center}
+    html, body{
+      height:auto;
+      min-height:100vh;
+      width:100%;
+      margin:0;
+      padding:0;
+      box-sizing:border-box;
+      font-family:'Segoe UI',sans-serif;
+      background-color:#f4f6fa;
+      overflow-y:auto
+    }
+    body{
+      background-image:url('/building-cleaning.png');
+      background-size:cover;
+      background-repeat:no-repeat;
+      background-position:center
+    }
     *{box-sizing:border-box}
-	/* NIEUWE STIJLEN VOOR TEST-INDICATOR */
+
+    /* NIEUWE STIJLEN VOOR TEST-INDICATOR */
     .test-banner {
       position: fixed;
       top: 0;
@@ -33,1016 +47,1202 @@
     }
     /* Verschuif de content een beetje naar beneden als de banner actief is */
     body.is-test {
-        padding-top: 30px; /* Moet hoger zijn dan de bannerhoogte */
+      padding-top: 30px; /* Moet hoger zijn dan de bannerhoogte */
     }
-	.botui-actions-text-input{
-	  width: 100% !important;
-	  max-width: 80% !important;   /* kies 80–100% naar smaak */
-	  flex-grow: 1 !important;
-	}
 
-	/* op small screens gewoon full width */
-	@media (max-width: 768px){
-	  .botui-actions-text-input{ max-width: 100% !important; }
-	}
+    .botui-actions-text-input{
+      width: 100% !important;
+      max-width: 80% !important;
+      flex-grow: 1 !important;
+    }
+    /* op small screens gewoon full width */
+    @media (max-width: 768px){
+      .botui-actions-text-input{ max-width: 100% !important; }
+    }
     /* EINDE NIEUWE STIJLEN */
-    .header-flex{display:flex;flex-direction:column;align-items:center;max-width:600px;width:100%;
-      margin:0 auto;padding:.5rem 0;gap:.5rem}
-    img.logo{max-height:60px;height:auto;width:auto;display:block;margin:0 auto;
-      background:rgba(255,255,255,.85);padding:.1rem;border-radius:12px}
-    .header-flex .ruimte-label{display:flex;flex-direction:column;align-items:center;justify-content:center;
-      text-align:center;background:rgba(255,255,255,.95);color:#1a202c;padding:.5rem 1rem;border-radius:12px;
-      font-size:1rem;font-weight:500;white-space:normal;box-shadow:0 2px 6px rgba(0,0,0,.05);
-      border:2.5px solid #EE7E00;box-shadow:0 2px 8px rgba(238,126,0,.06);width:100%;max-width:600px;margin:0 auto;
-      border-bottom-width:4px}
-    .ruimte-label .type{font-size:.85rem;font-weight:normal;margin-top:.25rem;color:#666}
-    .lang-switch{text-align:right;padding-right:1rem;margin-top:1rem}
-    .lang-switch a{margin:0 .5rem;text-decoration:none;font-size:1.2rem}
-    #botui-app{width:100%;max-width:600px;margin:1rem auto 0 auto;padding:.5rem 1rem 1rem}
-    .botui-container{max-width:600px;width:100%;margin:0 auto;background:linear-gradient(120deg,#fff 85%,#f4f6fa 100%);
-      border:2px solid #EE7E00;box-shadow:0 6px 32px rgba(0,0,0,.12),0 1.5px 8px rgba(238,126,0,.10);
-      border-radius:12px;padding:1rem;box-sizing:border-box;opacity:0;animation:fadeIn 3s ease forwards}
-    .botui-container,.botui-message-content{font-family:'Segoe UI',sans-serif}
-    .botui-button{font-weight:600;border:none;box-shadow:0 2px 6px rgba(238,126,0,.04);transition:background .12s}
+
+    .header-flex{
+      display:flex;
+      flex-direction:column;
+      align-items:center;
+      max-width:600px;
+      width:100%;
+      margin:0 auto;
+      padding:.5rem 0;
+      gap:.5rem
+    }
+    img.logo{
+      max-height:60px;
+      height:auto;
+      width:auto;
+      display:block;
+      margin:0 auto;
+      background:rgba(255,255,255,.85);
+      padding:.1rem;
+      border-radius:12px
+    }
+    .header-flex .ruimte-label{
+      display:flex;
+      flex-direction:column;
+      align-items:center;
+      justify-content:center;
+      text-align:center;
+      background:rgba(255,255,255,.95);
+      color:#1a202c;
+      padding:.5rem 1rem;
+      border-radius:12px;
+      font-size:1rem;
+      font-weight:500;
+      white-space:normal;
+      box-shadow:0 2px 6px rgba(0,0,0,.05);
+      border:2.5px solid #EE7E00;
+      box-shadow:0 2px 8px rgba(238,126,0,.06);
+      width:100%;
+      max-width:600px;
+      margin:0 auto;
+      border-bottom-width:4px
+    }
+    .ruimte-label .type{
+      font-size:.85rem;
+      font-weight:normal;
+      margin-top:.25rem;
+      color:#666
+    }
+    .lang-switch{
+      text-align:right;
+      padding-right:1rem;
+      margin-top:1rem
+    }
+    .lang-switch a{
+      margin:0 .5rem;
+      text-decoration:none;
+      font-size:1.2rem
+    }
+    #botui-app{
+      width:100%;
+      max-width:600px;
+      margin:1rem auto 0 auto;
+      padding:.5rem 1rem 1rem
+    }
+    .botui-container{
+      max-width:600px;
+      width:100%;
+      margin:0 auto;
+      background:linear-gradient(120deg,#fff 85%,#f4f6fa 100%);
+      border:2px solid #EE7E00;
+      box-shadow:0 6px 32px rgba(0,0,0,.12),0 1.5px 8px rgba(238,126,0,.10);
+      border-radius:12px;
+      padding:1rem;
+      box-sizing:border-box;
+      opacity:0;
+      animation:fadeIn 3s ease forwards
+    }
+    .botui-container,.botui-message-content{
+      font-family:'Segoe UI',sans-serif
+    }
+    .botui-button{
+      font-weight:600;
+      border:none;
+      box-shadow:0 2px 6px rgba(238,126,0,.04);
+      transition:background .12s
+    }
     .botui-button:active{background:#d86e00}
-    .meldingen-lijst{background:#f5f8fc;border-radius:10px;padding:.7em 1em;margin:.7em 0;border-left:4px solid #EE7E00}
+    .meldingen-lijst{
+      background:#f5f8fc;
+      border-radius:10px;
+      padding:.7em 1em;
+      margin:.7em 0;
+      border-left:4px solid #EE7E00
+    }
     @keyframes fadeIn{to{opacity:1}}
     @media(max-width:480px){
       .header-flex{flex-wrap:wrap;justify-content:center}
-      .header-flex .ruimte-label,img.logo{flex:0 0 90%;max-width:90%;text-align:center}
-      .header-flex .ruimte-label{font-size:.95rem;padding:.5rem}
-      .botui-container{padding:.75rem;max-width:95%}
+      .header-flex .ruimte-label,img.logo{
+        flex:0 0 90%;
+        max-width:90%;
+        text-align:center
+      }
+      .header-flex .ruimte-label{
+        font-size:.95rem;
+        padding:.5rem
+      }
+      .botui-container{
+        padding:.75rem;
+        max-width:95%
+      }
     }
   </style>
 </head>
 <body>
-    <div id="test-indicator" style="display: none;" class="test-banner">
-        ⚠️ TEST OMGEVING ACTIEF
+  <div id="test-indicator" style="display: none;" class="test-banner">
+    ⚠️ TEST OMGEVING ACTIEF
+  </div>
+
+  <header>
+    <div class="lang-switch">
+      <a href="#" id="switch-nl">🇳🇱 NL</a> |
+      <a href="#" id="switch-fr">🇫🇷 FR</a>
     </div>
-<header>
-  <div class="lang-switch">
-    <a href="#" id="switch-nl">🇳🇱 NL</a> |
-    <a href="#" id="switch-fr">🇫🇷 FR</a>
-  </div>
-  <div class="header-flex">
-    <img src="/AtalianLogo.png" alt="Atalian Logo" class="logo" />
-    <div id="ruimte-info" class="ruimte-label" style="display:none"></div>
-  </div>
-</header>
-<div id="botui-app"><bot-ui></bot-ui></div>
+    <div class="header-flex">
+      <img src="/AtalianLogo.png" alt="Atalian Logo" class="logo" />
+      <div id="ruimte-info" class="ruimte-label" style="display:none"></div>
+    </div>
+  </header>
+  <div id="botui-app"><bot-ui></bot-ui></div>
 
-<!-- Vue & BotUI -->
-<script src="https://cdn.jsdelivr.net/npm/vue@2"></script>
-<script src="https://cdn.jsdelivr.net/npm/botui/build/botui.min.js"></script>
+  <!-- Vue & BotUI -->
+  <script src="https://cdn.jsdelivr.net/npm/vue@2"></script>
+  <script src="https://cdn.jsdelivr.net/npm/botui/build/botui.min.js"></script>
 
-<script type="module">
-/* ======================================================================
-   IMPORTS
-====================================================================== */
-import { parseUltimoQR } from '/js/CodeUrl.js';
+  <script type="module">
+  /* ======================================================================
+     IMPORTS
+  ====================================================================== */
+  import { parseUltimoQR } from '/js/CodeUrl.js';
 
-/* ======================================================================
-   GLOBALE STATE
-====================================================================== */
-let cachedJobs = [];
-let cachedSvcWO = [];
-let cachedQRCommando = "";
-let contextFetched = false;
-let botui; // Maak botui nu globaal beschikbaar voor alle functies
-let selectedServiceWOId = null; // Gekozen ServiceWO bij schoonmaak
-let selectedOtherServiceWO = null; // Gekozen ServiceWO bij "Andere problemen"
+  /* ======================================================================
+     GLOBALE STATE
+  ====================================================================== */
+  let cachedJobs = [];
+  let cachedSvcWO = [];
+  let cachedQRCommando = "";
+  let contextFetched = false;
+  let botui; // globaal beschikbaar
+  let selectedServiceWOId = null;      // Gekozen ServiceWO bij schoonmaak
+  let selectedOtherServiceWO = null;   // Gekozen ServiceWO bij "Andere problemen"
 
+  // FOTO-state (ENKEL deze gebruiken)
+  let pickedFiles = []; // [{file, kind:'image'|'pdf'|'other', name, previewUrl, remark}]
 
-// FOTO-state (ENKEL deze gebruiken)
-let pickedFiles = []; // [{file, kind:'image'|'pdf'|'other', name, previewUrl}]
+  /* ======================================================================
+     HULPFUNCTIES (algemeen)
+  ====================================================================== */
+  function toInt(v){
+    const n = parseInt((v ?? '').toString(), 10);
+    return Number.isFinite(n) ? n : null;
+  }
+  function isTicketTrue(v){
+    if (v === true || v === 1) return true;
+    if (typeof v === 'string') return /^(true|1)$/i.test(v.trim());
+    return false;
+  }
+  function hasCleaningActivities(svcList){
+    return (svcList || []).some(x => {
+      const act = toInt(x?.Activiteit ?? x?._Activiteit);
+      return act !== null && act >= 10 && act <= 40 && isTicketTrue(x?.Ticket);
+    });
+  }
+  function getRelevantCleaningServiceWOs(svcList) {
+    return (svcList || []).filter(x => {
+      const act = toInt(x?.Activiteit ?? x?._Activiteit);
+      return act !== null && act >= 10 && act <= 40 && isTicketTrue(x?.Ticket);
+    });
+  }
+  function hasOtherActivities(svcList){
+    return (svcList || []).some(x => {
+      const act = toInt(x?.Activiteit ?? x?._Activiteit);
+      return act !== null && act > 40 && isTicketTrue(x?.Ticket);
+    });
+  }
+  function getRelevantOtherServiceWOs(svcList){
+    return (svcList || []).filter(x => {
+      const act = toInt(x?.Activiteit ?? x?._Activiteit);
+      return act !== null && act > 40 && isTicketTrue(x?.Ticket);
+    });
+  }
 
-/* ======================================================================
-   HULPFUNCTIES (algemeen)
-====================================================================== */
-function toInt(v){
-  const n = parseInt((v ?? '').toString(), 10);
-  return Number.isFinite(n) ? n : null;
-}
-function isTicketTrue(v){
-  if (v === true || v === 1) return true;
-  if (typeof v === 'string') return /^(true|1)$/i.test(v.trim());
-  return false;
-}
-function hasCleaningActivities(svcList){
-  return (svcList || []).some(x => {
-    const act = toInt(x?.Activiteit ?? x?._Activiteit);
-    return act !== null && act >= 10 && act <= 40 && isTicketTrue(x?.Ticket);
-  });
-}
-function getRelevantCleaningServiceWOs(svcList) {
-  return (svcList || []).filter(x => {
-    const act = toInt(x?.Activiteit ?? x?._Activiteit);
-    return act !== null && act >= 10 && act <= 40 && isTicketTrue(x?.Ticket);
-  });
-}
-function hasOtherActivities(svcList){
-  return (svcList || []).some(x => {
-    const act = toInt(x?.Activiteit ?? x?._Activiteit);
-    return act !== null && act > 40 && isTicketTrue(x?.Ticket);
-  });
-}
+  function hasText(s){ return !!String(s ?? '').trim(); }
+  function esc(s){
+    return String(s ?? '').replace(/[&<>"']/g, m =>
+      ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])
+    );
+  }
+  function isValidEmail(e){
+    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e);
+  }
 
-function getRelevantOtherServiceWOs(svcList){
-  return (svcList || []).filter(x => {
-    const act = toInt(x?.Activiteit ?? x?._Activiteit);
-    return act !== null && act > 40 && isTicketTrue(x?.Ticket);
-  });
-}
-
-function hasText(s){ return !!String(s ?? '').trim(); }
-function esc(s){ return String(s ?? '').replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])); }
-function isValidEmail(e){ return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e); }
-
-/* ======================================================================
-   CONTEXT LOADERS (jobs + serviceWO + locatie)
-====================================================================== */
-async function preloadContextAndShow() {
-  try {
-    const url = `/.netlify/functions/jobs?code=${encodeURIComponent(code)}&env=${prefix}`;
-    const res = await fetch(url);
-    let txt = await res.text();
-
-    // a) HTML-escaped quotes -> echte quotes
-    if (txt.includes('&quot;')) txt = txt.replace(/&quot;/g, '"');
-
-    // b) Mogelijke wrapper {"object":"{...}"}
-    let data;
-    try {
-      data = JSON.parse(txt);
-      if (data && typeof data.object === 'string') {
-        const inner = data.object.includes('&quot;') ? data.object.replace(/&quot;/g, '"') : data.object;
-        data = JSON.parse(inner);
-      }
-    } catch (e) {
-      throw new Error(`Bad JSON from /jobs: ${e.message}\n---\n${txt.slice(0,800)}`);
+  /* ======================================================================
+     URL NORMALISATIE (pipes/tilde)
+  ====================================================================== */
+  (function () {
+    const raw = window.location.search || '';
+    if (!raw) return;
+    let dec = decodeURIComponent(raw);
+    if (dec.includes('|')) {
+      const fixed = dec.replace(/\|/g, '&');
+      window.location.replace(window.location.origin + window.location.pathname + fixed + window.location.hash);
+      return;
     }
-
-    if (!res.ok) throw new Error(data?.error || `HTTP ${res.status}`);
-
-    cachedJobs       = Array.isArray(data.Jobs) ? data.Jobs : [];
-    cachedSvcWO      = Array.isArray(data.ComplexServiceWO) ? data.ComplexServiceWO : [];
-    cachedQRCommando = data.QRCommando || "";
-    contextFetched   = true;
-
-    if (cachedJobs.length) {
-      await botui.message.add({ type:'html', content: '⚠️ Er zijn al openstaande meldingen in deze ruimte:' });
-      await botui.message.add({
-        type:'html',
-			content: '<div class="meldingen-lijst">'
-				   + cachedJobs.map(j => {
-					   const idPart = (isTestEnv && j?.Id) ? `<span class="jobid">${esc(j.Id)}</span> — ` : '';
-					   return `✅ ${idPart}${esc(j.Description)}`;
-					 }).join('<br>')
-				   + '</div>'
-      });
-    } else {
-      await botui.message.add({ content: 'ℹ️ Geen openstaande meldingen gevonden.' });
+    if (dec.includes('~code=')) {
+      const fixed = dec.replace(/([?&]lang=[^&~=]+)~code=/i, '$1&code=');
+      window.location.replace(window.location.origin + window.location.pathname + fixed + window.location.hash);
+      return;
     }
+  })();
 
-  } catch (e) {
-    console.error('preload error', e);
-    await botui.message.add({
-      type: 'html',
-      content: '❌ Fout bij laden van context (jobs/ServiceWO’s).'
-             + `<br><small>${esc(String(e.message)).slice(0,400)}</small>`
-    });
+  /* ======================================================================
+     PARAMS + OMGEVING
+  ====================================================================== */
+  const qs   = new URLSearchParams(window.location.search);
+  const code = qs.get('code') ?? '';
+  let   lang = qs.get('lang') ?? '';
+  if (!lang) {
+    const b = navigator.language || '';
+    lang = b.startsWith('fr') ? 'fr' : 'nl';
   }
-}
+  const isFr = lang === 'fr';
+  const host = location.host || '';
 
-let cleaningProgramText = ""; // wordt gevuld door showLocation()
+  const isTestEnv =
+    qs.has('test') ||              // ?test=1 of ?test=...
+    qs.get('env') === 'test' ||    // ?env=test
+    /test|staging/i.test(host);    // test/staging in host
 
-async function showLocation(){
-  const r = await fetch(`${endpointLoc}?id=${encodeURIComponent(id)}&lang=${lang}&env=${prefix}`);
-  const d = await r.json();
-  if(!d.description) return;
-  const el=document.getElementById('ruimte-info');
-  el.innerHTML = `${d.description}<div class="type">${
-    isEquipment ? (isFr?'🔧 Installation':'🔧 Installatie')
-                : (isFr?'🏢 Espace'      :'🏢 Ruimte')
-  }</div>`;
-  el.style.display='flex';
-  cleaningProgramText = d.cleaningProgramFormatted || "";
-}
+  const prefix = isTestEnv ? 'test' : 'prod';
 
-/* ======================================================================
-   FOTO-HELPERS
-====================================================================== */
-async function compressImageIfNeeded(file, { maxW=1600, maxH=1600, quality=0.8 } = {}) {
-  if (!/^image\//.test(file.type)) return file; // alleen images
-  const img = new Image();
-  const url = URL.createObjectURL(file);
-  await new Promise((res, rej) => { img.onload=res; img.onerror=rej; img.src=url; });
-  let { width:w, height:h } = img;
-  const scale = Math.min(1, maxW / w, maxH / h);
-  URL.revokeObjectURL(url);
-  if (scale >= 1) return file; // al klein genoeg
-
-  const canvas = document.createElement('canvas');
-  canvas.width = Math.round(w * scale);
-  canvas.height = Math.round(h * scale);
-  const ctx = canvas.getContext('2d', { alpha: true });
-  ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-  const blob = await new Promise(res => canvas.toBlob(res, file.type === 'image/png' ? 'image/png' : 'image/jpeg', quality));
-  return new File([blob], file.name.replace(/\.(jpe?g|png)$/i, (file.type==='image/png' ? '.png' : '.jpg')), { type: blob.type });
-}
-
-
-function sanitizeName(name){
-  return String(name||'').replace(/[^\w.\-()+ ]+/g,'_').trim() || 'upload.bin';
-}
-function guessMimeByName(name){
-  const n = (name||'').toLowerCase();
-  if(n.endsWith('.jpg')||n.endsWith('.jpeg')) return 'image/jpeg';
-  if(n.endsWith('.png'))  return 'image/png';
-  if(n.endsWith('.pdf'))  return 'application/pdf';
-  return 'application/octet-stream';
-}
-function fileToBase64(file){
-  return new Promise((res,rej)=>{
-    const r=new FileReader();
-    r.onload=()=>{
-      const s=String(r.result||''); const i=s.indexOf('base64,');
-      res(i>0 ? s.substring(i+7) : s);
-    };
-    r.onerror=()=>rej(r.error||new Error('Kon bestand niet lezen'));
-    r.readAsDataURL(file);
-  });
-}
-
-
-async function pickOnePhotoWithConfirm() {
-  const $file = document.getElementById('portal-photo');
-  if (!$file) {
-    await botui.message.add({ content: isFr ? '❌ Entrée fichier manquante.' : '❌ Bestand-input ontbreekt.' });
-    return { status: 'cancel' };
-  }
-
-  // dialoog openen + wachten op selectie
-  $file.value = '';
-  $file.click();
-  const f = await new Promise(res => {
-    // Luister naar de 'change' event van de verborgen file-input
-    const h = () => { $file.removeEventListener('change', h); res($file.files && $file.files[0]); };
-    $file.addEventListener('change', h, { once: true });
-  });
-  if (!f) return { status: 'cancel' };
-
-  const name = f.name;
-  const mime = f.type || guessMimeByName(name);
-  const kind = mime.startsWith('image/') ? 'image' : (mime === 'application/pdf' ? 'pdf' : 'other');
-
-  // Korte preview
-  let previewUrl = '';
-  if (kind === 'image') {
-    previewUrl = URL.createObjectURL(f);
-    await botui.message.add({
-      type: 'html',
-      content: `<figure style="margin:0">
-        <img src="${previewUrl}" alt="${esc(name)}" style="max-width:100%;height:auto;border:1px solid #ddd;border-radius:6px"/>
-        <figcaption style="font-size:.85rem;color:#6b7280;margin-top:.25rem">${esc(name)}</figcaption>
-      </figure>`
-    });
-  } else {
-    await botui.message.add({
-      content: (isFr ? 'Fichier sélectionné: ' : 'Bestand geselecteerd: ') + esc(name)
-    });
-  }
-
-  // Geen knoppen meer – direct “ok”
-  return { status: 'ok', file: f, kind, name, previewUrl };
-}
-// --- einde helper ---
-
-// --- DE JUISTE FOTO-LOOP FUNCTIE (voorheen mainFlow) ---
-async function askPhotosLoop() { 
-  while (true) {
-    const add = await botui.action.button({
-      action: [
-        // Knoptekst aangepast om ook documenten te vermelden
-        { text: isFr ? '📎 Ajouter une photo ou document' : '📎 Foto of document toevoegen', value: 'add' },
-        { text: isFr ? '➡️ Continuer' : '➡️ Doorgaan', value: 'next' }
-      ]
-    });
-    if (add.value === 'next') break;
-
-    const result = await pickOnePhotoWithConfirm(); // Oproep van de behouden functie
-    if (result?.status !== 'ok') continue;
-
-    const { file: f, kind, name, previewUrl } = result;
-
-    // Korte opmerking per item: De prompt en de text-input gecombineerd
-    const remarkPrompt = isFr
-      ? (kind === 'image' ? 'Votre remarque pour cette photo (max 200):' : 'Votre remarque pour ce document (max 200):')
-      : (kind === 'image' ? 'Jouw opmerking bij deze foto (max 200):' : 'Jouw opmerking bij dit document (max 200):');
-    
-    // Gebruik 'addMessage' om de prompt en de input in één BotUI-stap te plaatsen
-	const t = await botui.action.text({
-		  addMessage: { content: remarkPrompt },
-		  action: { 
-			placeholder: isFr ? 'Décrivez la photo/le document…' : 'Beschrijf de foto/het document…', 
-			maxLength: 200 
-		  }
-		});
-    
-    const remark = (t?.value || '').trim().slice(0, 200);
-
-    pickedFiles.push({ file: f, kind, name, previewUrl: previewUrl || '', remark });
-  }
-}
-// --- EINDE askPhotosLoop ---
-
-
-
-async function uploadCustomerDoc({ jobId, email, file, description }) {
-  const endpoint = '/.netlify/functions/jobsvendor' + (isTestEnv ? '?test=1' : '');
-  const safeFile  = await compressImageIfNeeded(file);
-  const fileName  = sanitizeName(safeFile.name);
-  const mimeType  = safeFile.type || guessMimeByName(fileName);
-  const base64    = await fileToBase64(safeFile);
-
-  if (base64.length > 6_000_000) {
-    throw new Error((isFr ? 'Fichier trop volumineux' : 'Bestand te groot') + ' (~>4.5MB).');
-  }
-
-  // ⚙️ bouw payload op zonder email
-  const payload = {
-    action: 'ADD_JOB_DOC',
-    jobId: String(jobId),
-    fileName,
-    mimeType,
-    description: (description || fileName).substring(0, 200),
-    base64
-  };
-
-  // 🧠 email enkel toevoegen als niet-leeg EN als vendor-flow
-  if (email && email.trim().length > 0) {
-    payload.email = email.trim();
-  }
-
-  const resp = await fetch(endpoint, {
-    method: 'POST',
-    headers: { 'content-type': 'application/json' },
-    body: JSON.stringify(payload)
-  });
-
-  if (!resp.ok) {
-    const txt = await resp.text().catch(() => `HTTP ${resp.status}`);
-    throw new Error(`Upload mislukt: ${txt}`);
-  }
-  return resp.json();
-}
-
-
-
-/* ======================================================================
-   URL NORMALISATIE (pipes/tilde)
-====================================================================== */
-(function () {
-  const raw = window.location.search || '';
-  if (!raw) return;
-  let dec = decodeURIComponent(raw);
-  if (dec.includes('|')) {
-    const fixed = dec.replace(/\|/g, '&');
-    window.location.replace(window.location.origin + window.location.pathname + fixed + window.location.hash);
-    return;
-  }
-  if (dec.includes('~code=')) {
-    const fixed = dec.replace(/([?&]lang=[^&~=]+)~code=/i, '$1&code=');
-    window.location.replace(window.location.origin + window.location.pathname + fixed + window.location.hash);
-    return;
-  }
-})();
-
-/* ======================================================================
-   PARAMS + OMGEVING
-====================================================================== */
-const qs   = new URLSearchParams(window.location.search);
-const code = qs.get('code') ?? '';
-let   lang = qs.get('lang') ?? '';
-if (!lang) { const b = navigator.language||''; lang = b.startsWith('fr') ? 'fr' : 'nl'; }
-const isFr = lang === 'fr';
-const host = location.host || '';
-const isTestEnv =
-  qs.has('test') ||                   // ?test=1 of ?test=whatever
-  qs.get('env') === 'test' ||         // ?env=test
-  /test|staging/i.test(host);         // subdomein met "test" of "staging"
-const prefix = isTestEnv ? 'test' : 'prod';
-
-// 🟢 Grote banner bovenaan de pagina tonen
-if (isTestEnv) {
+  // 🟢 Grote banner bovenaan de pagina tonen
+  if (isTestEnv) {
     document.getElementById('test-indicator').style.display = 'block';
     document.body.classList.add('is-test');
-}
-
-// ℹ️ Kleine indicator in de ruimte-info (zoals voorheen)
-document.getElementById('ruimte-info').insertAdjacentHTML(
-  'afterbegin',
-  `<div style="font-size:.8rem;margin-bottom:.25rem;color:${isTestEnv?'#b45309':'#374151'}">
-     ${isTestEnv ? '🧪 TEST-omgeving' : '✅ PROD-omgeving'}
-   </div>`
-);
-
-const parsedQR = parseUltimoQR(code);
-let isEquipment = false, typeStr = '', id = '', indicator = '';
-if (parsedQR) { isEquipment = parsedQR.isEquipment; typeStr = parsedQR.typeStr; id = parsedQR.id; indicator = parsedQR.indicator; }
-
-const endpointLoc = isEquipment
-  ? `/.netlify/functions/equipment`
-  : `/.netlify/functions/space`;
-
-/* ======================================================================
-   TELEMETRIE
-====================================================================== */
-const Telemetry = (()=>{
-  const base = {
-    code: String(code ?? ''),
-    path: location.pathname,
-    lang,
-    id: (typeof id !== 'undefined' && id) ? String(id) : String(code),
-    isEquipment,
-    env: prefix
-  };
-  async function send(type, extra = {}) {
-    const payload = { type, ts: Date.now(), href: location.href, ...base, ...extra };
-    const json = JSON.stringify(payload);
-    try {
-      if (navigator.sendBeacon) {
-        const ok = navigator.sendBeacon(`/.netlify/functions/formlog`, new Blob([json], { type: 'application/json' }));
-        if (ok) return;
-      }
-      await fetch(`/.netlify/functions/formlog`, {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: json,
-        keepalive: true,
-        credentials: 'omit',
-        cache: 'no-store'
-      }).catch(()=>{});
-    } catch(_) {}
   }
-  return { send };
-})();
-Telemetry.send('url_load');
-addEventListener('pagehide', () => Telemetry.send('pagehide'), { capture: true });
 
-/* ======================================================================
-   UI INIT
-====================================================================== */
-function detectEnvironment() {
-    // Zoals in jobsvendor.js: controleer host of URL parameter
-    const host = window.location.host;
-    const urlParams = new URLSearchParams(window.location.search);
-    
-    const testInUrl  = urlParams.get('test') === '1' || urlParams.get('test') === 'true' || urlParams.get('env') === 'test';
-    const testInHost = /test|staging/i.test(host);
-    
-    return testInUrl || testInHost;
-}
-  
-function setTestIndicator() {
-    const isTest = detectEnvironment();
-    if (isTest) {
-        // Maak de banner zichtbaar en voeg de CSS-klasse toe om de content te verschuiven
-        document.getElementById('test-indicator').style.display = 'block';
-        document.body.classList.add('is-test');
+  const parsedQR = parseUltimoQR(code);
+  let isEquipment = false, typeStr = '', id = '', indicator = '';
+  if (parsedQR) {
+    isEquipment = parsedQR.isEquipment;
+    typeStr     = parsedQR.typeStr;
+    id          = parsedQR.id;
+    indicator   = parsedQR.indicator;
+  }
+
+  const endpointLoc = isEquipment
+    ? '/.netlify/functions/equipment'
+    : '/.netlify/functions/space';
+
+  /* ======================================================================
+     CONTEXT LOADERS (jobs + serviceWO + locatie)
+  ====================================================================== */
+  async function preloadContextAndShow() {
+    try {
+      const url = `/.netlify/functions/jobs?code=${encodeURIComponent(code)}&env=${prefix}`;
+      const res = await fetch(url);
+      let txt = await res.text();
+
+      // a) HTML-escaped quotes -> echte quotes
+      if (txt.includes('&quot;')) txt = txt.replace(/&quot;/g, '"');
+
+      // b) Mogelijke wrapper {"object":"{...}"}
+      let data;
+      try {
+        data = JSON.parse(txt);
+        if (data && typeof data.object === 'string') {
+          const inner = data.object.includes('&quot;')
+            ? data.object.replace(/&quot;/g, '"')
+            : data.object;
+          data = JSON.parse(inner);
+        }
+      } catch (e) {
+        throw new Error(`Bad JSON from /jobs: ${e.message}\n---\n${txt.slice(0,800)}`);
+      }
+
+      if (!res.ok) throw new Error(data?.error || `HTTP ${res.status}`);
+
+      cachedJobs       = Array.isArray(data.Jobs) ? data.Jobs : [];
+      cachedSvcWO      = Array.isArray(data.ComplexServiceWO) ? data.ComplexServiceWO : [];
+      cachedQRCommando = data.QRCommando || "";
+      contextFetched   = true;
+
+      if (cachedJobs.length) {
+        await botui.message.add({
+          type:'html',
+          content: '⚠️ Er zijn al openstaande meldingen in deze ruimte:'
+        });
+        await botui.message.add({
+          type:'html',
+          content: '<div class="meldingen-lijst">'
+                 + cachedJobs.map(j => {
+                     const idPart =
+                       (isTestEnv && j?.Id)
+                         ? `<span class="jobid">${esc(j.Id)}</span> — `
+                         : '';
+                     return `✅ ${idPart}${esc(j.Description)}`;
+                   }).join('<br>')
+                 + '</div>'
+        });
+      } else {
+        await botui.message.add({ content: 'ℹ️ Geen openstaande meldingen gevonden.' });
+      }
+
+    } catch (e) {
+      console.error('preload error', e);
+      await botui.message.add({
+        type: 'html',
+        content: '❌ Fout bij laden van context (jobs/ServiceWO’s).'
+               + `<br><small>${esc(String(e.message)).slice(0,400)}</small>`
+      });
     }
-}
-const btnNl = document.getElementById('switch-nl');
-const btnFr = document.getElementById('switch-fr');
-btnNl.onclick = () => { Telemetry.send('language_switch', {to:'nl'}); const u = new URL(window.location.href); u.searchParams.set('lang','nl'); window.location.href = u; };
-btnFr.onclick = () => { Telemetry.send('language_switch', {to:'fr'}); const u = new URL(window.location.href); u.searchParams.set('lang','fr'); window.location.href = u; };
+  }
 
+  let cleaningProgramText = ""; // wordt gevuld door showLocation()
 
-const phoneLink = '<a href="tel:+3278152300">📞 +32 78 152 300</a>';
-let   omschrijving = '';
+  async function showLocation(){
+    const r = await fetch(
+      `${endpointLoc}?id=${encodeURIComponent(id)}&lang=${lang}&env=${prefix}`
+    );
+    const d = await r.json();
+    if(!d.description) return;
+    const el = document.getElementById('ruimte-info');
 
-/* ======================================================================
-   CHATFLOW
-====================================================================== */
-async function init() {
-    setTestIndicator(); // ⬅️ ROEP DE NIEUWE FUNCTIE AAN
-    if (!code) {
-      await botui.message.add({ type:'html', content:isFr?'❌ Code QR manquante.':'❌ QR-code ontbreekt.' });
-      Telemetry.send('missing_code');
-      return;
-    }
-    await startChat();
-}
+    el.innerHTML = `
+      <div style="font-size:.8rem;margin-bottom:.25rem;color:${isTestEnv ? '#b45309' : '#374151'}">
+        ${isTestEnv ? '🧪 TEST-omgeving' : '✅ PROD-omgeving'}
+      </div>
+      ${d.description}
+      <div class="type">
+        ${
+          isEquipment
+            ? (isFr ? '🔧 Installation' : '🔧 Installatie')
+            : (isFr ? '🏢 Espace'       : '🏢 Ruimte')
+        }
+      </div>
+    `;
+    el.style.display='flex';
+    cleaningProgramText = d.cleaningProgramFormatted || "";
+  }
 
-/* ======================================================================
-   CHATFLOW
-====================================================================== */
-// <<<<<< DEZE FUNCTIE MOET 'async' ZIJN! >>>>>>
-async function startChat(){ 
-  // STAP 1: INITIALISEER BOTUI HIER! (Zonder 'const' of 'var')
-  // Zorg dat botui (de globale variabele) hier zijn waarde krijgt.
-  botui = new BotUI('botui-app'); 
-  
-  // OPMERKING: De rest van uw oorspronkelijke logica volgt nu direct.
-  
-  Telemetry.send('step', { step:'start', stepIndex:0 });
-  
-  // De showLocation() functie moet de chat NIET starten, 
-  // maar alleen de locatie/titel boven de chat bijwerken.
-  showLocation(); 
-  
-  // De BotUI berichten kunnen nu worden toegevoegd:
-  await botui.message.add({
-    type:'html',
-    content:isFr
-      ? 'Bonjour, je suis votre assistant <span style="color:#EE7E00;font-weight:bold;">ATALIAN</span>.<br>Je recherche pour vous les <b>signalements en cours</b>…'
-      : 'Hallo, ik ben je <span style="color:#EE7E00;font-weight:bold;">ATALIAN</span>-assistent.<br>Ik haal even de <b>openstaande meldingen</b> voor je op…'
-  });
+  /* ======================================================================
+     FOTO-HELPERS
+  ====================================================================== */
+  async function compressImageIfNeeded(file, { maxW=1600, maxH=1600, quality=0.8 } = {}) {
+    if (!/^image\//.test(file.type)) return file; // alleen images
+    const img = new Image();
+    const url = URL.createObjectURL(file);
+    await new Promise((res, rej) => {
+      img.onload  = res;
+      img.onerror = rej;
+      img.src     = url;
+    });
+    let { width:w, height:h } = img;
+    const scale = Math.min(1, maxW / w, maxH / h);
+    URL.revokeObjectURL(url);
+    if (scale >= 1) return file; // al klein genoeg
 
-  await preloadContextAndShow();
+    const canvas = document.createElement('canvas');
+    canvas.width = Math.round(w * scale);
+    canvas.height = Math.round(h * scale);
+    const ctx = canvas.getContext('2d', { alpha: true });
+    ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+    const blob = await new Promise(res =>
+      canvas.toBlob(
+        res,
+        file.type === 'image/png' ? 'image/png' : 'image/jpeg',
+        quality
+      )
+    );
+    return new File(
+      [blob],
+      file.name.replace(/\.(jpe?g|png)$/i, (file.type==='image/png' ? '.png' : '.jpg')),
+      { type: blob.type }
+    );
+  }
 
-  if (!isEquipment && hasCleaningActivities(cachedSvcWO)) {
-    const actions = [];
-    if (hasText(cleaningProgramText)) {
-      actions.push({ text: isFr ? '📋 Programme de Nettoyage' : '📋 Poetsprogramma', value: 'poets' });
-    }
-    actions.push({ text: isFr ? '🧹 Signaler un Nettoyage' : '🧹 Schoonmaak Melding', value: 'cleaning_ticket' });
-    actions.push({ text: isFr ? '💡 Autre Problème' : '💡 Ander Probleem', value: 'other_problem' });
+  function sanitizeName(name){
+    return String(name||'').replace(/[^\w.\-()+ ]+/g,'_').trim() || 'upload.bin';
+  }
+  function guessMimeByName(name){
+    const n = (name||'').toLowerCase();
+    if(n.endsWith('.jpg')||n.endsWith('.jpeg')) return 'image/jpeg';
+    if(n.endsWith('.png'))  return 'image/png';
+    if(n.endsWith('.pdf'))  return 'application/pdf';
+    return 'application/octet-stream';
+  }
+  function fileToBase64(file){
+    return new Promise((res,rej)=>{
+      const r=new FileReader();
+      r.onload=()=>{
+        const s=String(r.result||'');
+        const i=s.indexOf('base64,');
+        res(i>0 ? s.substring(i+7) : s);
+      };
+      r.onerror=()=>rej(r.error||new Error('Kon bestand niet lezen'));
+      r.readAsDataURL(file);
+    });
+  }
 
-    const ans = await botui.action.button({ action: actions });
-    if (ans.value === 'poets') {
-      return await showCleaningProgramAndContinue();
-    } else if (ans.value === 'cleaning_ticket') {
-      return await startCleaningFlow();
-    } else {
-      return await startGenericFlow();
-    }
-  } else {
-    await botui.action.button({
-      action: [
-        { text: isFr ? '❗️ Je veux signaler un problème' : '❗️ Ik wil een probleem melden', value: 'other_problem' }
-      ]
-    });
-    return await startGenericFlow();
-  }
-}
+  async function pickOnePhotoWithConfirm() {
+    const $file = document.getElementById('portal-photo');
+    if (!$file) {
+      await botui.message.add({
+        content: isFr ? '❌ Entrée fichier manquante.' : '❌ Bestand-input ontbreekt.'
+      });
+      return { status: 'cancel' };
+    }
 
-async function showCleaningProgramAndContinue() {
-  Telemetry.send('poets_info_viewed');
-  await botui.message.add({
-    type: 'html',
-    content: isFr
-      ? `<b>Programme de nettoyage :</b><br>${cleaningProgramText}`
-      : `<b>Poetsprogramma:</b><br>${cleaningProgramText}`
-  });
+    // dialoog openen + wachten op selectie
+    $file.value = '';
+    $file.click();
+    const f = await new Promise(res => {
+      const h = () => {
+        $file.removeEventListener('change', h);
+        res($file.files && $file.files[0]);
+      };
+      $file.addEventListener('change', h, { once: true });
+    });
+    if (!f) return { status: 'cancel' };
 
-  const vervolg = await botui.action.button({
-    action: [
-      { text: isFr ? '🧹 Nouveau signalement Nettoyage' : '🧹 Schoonmaak Melding maken', value: "cleaning_ticket" },
-      { text: isFr ? '💡 Autre Problème' : '💡 Ander Probleem', value: "other_problem" },
-      { text: isFr ? "ℹ️ Plus d'info" : "ℹ️ Meer info", value: "info" }
-    ]
-  });
+    const name = f.name;
+    const mime = f.type || guessMimeByName(name);
+    const kind = mime.startsWith('image/')
+      ? 'image'
+      : (mime === 'application/pdf' ? 'pdf' : 'other');
 
-  if (vervolg.value === "cleaning_ticket") return await startCleaningFlow();
-  if (vervolg.value === "other_problem")    return await startGenericFlow();
-  await botui.message.add({
-    type: 'html',
-    content: isFr
-      ? 'Vous allez être redirigé vers notre site web externe.'
-      : 'Je wordt nu doorverwezen naar onze externe website.'
-  });
-  setTimeout(() => {
-    window.location.href = isFr
-      ? "https://www.atalian.be/?lang=fr"
-      : "https://www.atalian.be/?lang=nl";
-  }, 2000);
-}
+    // Korte preview
+    let previewUrl = '';
+    if (kind === 'image') {
+      previewUrl = URL.createObjectURL(f);
+      await botui.message.add({
+        type: 'html',
+        content: `<figure style="margin:0">
+          <img src="${previewUrl}" alt="${esc(name)}"
+               style="max-width:100%;height:auto;border:1px solid #ddd;border-radius:6px"/>
+          <figcaption style="font-size:.85rem;color:#6b7280;margin-top:.25rem">
+            ${esc(name)}
+          </figcaption>
+        </figure>`
+      });
+    } else {
+      await botui.message.add({
+        content: (isFr ? 'Fichier sélectionné: ' : 'Bestand geselecteerd: ') + esc(name)
+      });
+    }
 
-async function startGenericFlow() {
-  return await startProbleemFlow(false);
-}
-async function startCleaningFlow() {
-  return await startProbleemFlow(true);
-}
-async function startProbleemFlow(isCleaning) {
-  Telemetry.send('step', { step:'flow_start', stepIndex:1, isCleaning });
-  if (!parsedQR) {
+    return { status: 'ok', file: f, kind, name, previewUrl };
+  }
+
+  async function askPhotosLoop() {
+    while (true) {
+      const add = await botui.action.button({
+        action: [
+          { text: isFr ? '📎 Ajouter une photo ou document'
+                       : '📎 Foto of document toevoegen', value: 'add' },
+          { text: isFr ? '➡️ Continuer' : '➡️ Doorgaan', value: 'next' }
+        ]
+      });
+      if (add.value === 'next') break;
+
+      const result = await pickOnePhotoWithConfirm();
+      if (result?.status !== 'ok') continue;
+
+      const { file: f, kind, name, previewUrl } = result;
+
+      const remarkPrompt = isFr
+        ? (kind === 'image'
+            ? 'Votre remarque pour cette photo (max 200):'
+            : 'Votre remarque pour ce document (max 200):')
+        : (kind === 'image'
+            ? 'Jouw opmerking bij deze foto (max 200):'
+            : 'Jouw opmerking bij dit document (max 200):');
+
+      const t = await botui.action.text({
+        addMessage: { content: remarkPrompt },
+        action: {
+          placeholder: isFr
+            ? 'Décrivez la photo/le document…'
+            : 'Beschrijf de foto/het document…',
+          maxLength: 200
+        }
+      });
+
+      const remark = (t?.value || '').trim().slice(0, 200);
+
+      pickedFiles.push({
+        file: f,
+        kind,
+        name,
+        previewUrl: previewUrl || '',
+        remark
+      });
+    }
+  }
+
+  async function uploadCustomerDoc({ jobId, email, file, description }) {
+    const endpoint = '/.netlify/functions/jobsvendor' + (isTestEnv ? '?test=1' : '');
+    const safeFile  = await compressImageIfNeeded(file);
+    const fileName  = sanitizeName(safeFile.name);
+    const mimeType  = safeFile.type || guessMimeByName(fileName);
+    const base64    = await fileToBase64(safeFile);
+
+    if (base64.length > 6_000_000) {
+      throw new Error(
+        (isFr ? 'Fichier trop volumineux' : 'Bestand te groot') + ' (~>4.5MB).'
+      );
+    }
+
+    const payload = {
+      action: 'ADD_JOB_DOC',
+      jobId: String(jobId),
+      fileName,
+      mimeType,
+      description: (description || fileName).substring(0, 200),
+      base64
+    };
+
+    if (email && email.trim().length > 0) {
+      payload.email = email.trim();
+    }
+
+    const resp = await fetch(endpoint, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+
+    if (!resp.ok) {
+      const txt = await resp.text().catch(() => `HTTP ${resp.status}`);
+      throw new Error(`Upload mislukt: ${txt}`);
+    }
+    return resp.json();
+  }
+
+  /* ======================================================================
+     TELEMETRIE
+  ====================================================================== */
+  const Telemetry = (()=> {
+    const base = {
+      code: String(code ?? ''),
+      path: location.pathname,
+      lang,
+      id: (typeof id !== 'undefined' && id) ? String(id) : String(code),
+      isEquipment,
+      env: prefix
+    };
+    async function send(type, extra = {}) {
+      const payload = { type, ts: Date.now(), href: location.href, ...base, ...extra };
+      const json = JSON.stringify(payload);
+      try {
+        if (navigator.sendBeacon) {
+          const ok = navigator.sendBeacon(
+            '/.netlify/functions/formlog',
+            new Blob([json], { type: 'application/json' })
+          );
+          if (ok) return;
+        }
+        await fetch('/.netlify/functions/formlog', {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: json,
+          keepalive: true,
+          credentials: 'omit',
+          cache: 'no-store'
+        }).catch(()=>{});
+      } catch(_) {}
+    }
+    return { send };
+  })();
+  Telemetry.send('url_load');
+  addEventListener('pagehide', () => Telemetry.send('pagehide'), { capture: true });
+
+  /* ======================================================================
+     UI INIT
+  ====================================================================== */
+  const btnNl = document.getElementById('switch-nl');
+  const btnFr = document.getElementById('switch-fr');
+  btnNl.onclick = () => {
+    Telemetry.send('language_switch', {to:'nl'});
+    const u = new URL(window.location.href);
+    u.searchParams.set('lang','nl');
+    window.location.href = u;
+  };
+  btnFr.onclick = () => {
+    Telemetry.send('language_switch', {to:'fr'});
+    const u = new URL(window.location.href);
+    u.searchParams.set('lang','fr');
+    window.location.href = u;
+  };
+
+  const phoneLink = '<a href="tel:+3278152300">📞 +32 78 152 300</a>';
+  let   omschrijving = '';
+
+  /* ======================================================================
+     BIJLAGENBLOK
+  ====================================================================== */
+  function buildAttachmentsBlock(isFrFlag){
+    if (!Array.isArray(pickedFiles) || pickedFiles.length === 0) return '';
+    const head = isFrFlag ? 'Pièces jointes' : 'Bijlagen';
+    const lines = pickedFiles.map((it, idx) => {
+      const nm = String(it.name || 'upload.bin').slice(0, 60);
+      const rm = String(it.remark || '').trim();
+      return `📎 ${idx + 1}. ${nm}${rm ? ` — ${rm}` : ''}`;
+    });
+    const attachmentList = lines.join('<br/>');
+    return `<br/><br/>**${head}:**<br/>${attachmentList}`;
+  }
+
+  /* ======================================================================
+     CHATFLOW – INIT
+  ====================================================================== */
+  async function init() {
+    // Altijd eerst BotUI initialiseren
+    botui = new BotUI('botui-app');
+
+    if (!code) {
+      await botui.message.add({
+        type:'html',
+        content: isFr ? '❌ Code QR manquante.' : '❌ QR-code ontbreekt.'
+      });
+      Telemetry.send('missing_code');
+      return;
+    }
+    await startChat();
+  }
+
+  /* ======================================================================
+     CHATFLOW – START
+  ====================================================================== */
+  async function startChat(){
+    Telemetry.send('step', { step:'start', stepIndex:0 });
+
+    // Locatiekaart bovenaan vullen
+    showLocation();
+
+    await botui.message.add({
+      type:'html',
+      content: isFr
+        ? 'Bonjour, je suis votre assistant <span style="color:#EE7E00;font-weight:bold;">ATALIAN</span>.<br>Je recherche pour vous les <b>signalements en cours</b>…'
+        : 'Hallo, ik ben je <span style="color:#EE7E00;font-weight:bold;">ATALIAN</span>-assistent.<br>Ik haal even de <b>openstaande meldingen</b> voor je op…'
+    });
+
+    await preloadContextAndShow();
+
+    if (!isEquipment && hasCleaningActivities(cachedSvcWO)) {
+      const actions = [];
+      if (hasText(cleaningProgramText)) {
+        actions.push({
+          text: isFr ? '📋 Programme de Nettoyage' : '📋 Poetsprogramma',
+          value: 'poets'
+        });
+      }
+      actions.push({
+        text: isFr ? '🧹 Signaler un Nettoyage' : '🧹 Schoonmaak Melding',
+        value: 'cleaning_ticket'
+      });
+      actions.push({
+        text: isFr ? '💡 Autre Problème' : '💡 Ander Probleem',
+        value: 'other_problem'
+      });
+
+      const ans = await botui.action.button({ action: actions });
+      if (ans.value === 'poets') {
+        return await showCleaningProgramAndContinue();
+      } else if (ans.value === 'cleaning_ticket') {
+        return await startCleaningFlow();
+      } else {
+        return await startGenericFlow();
+      }
+    } else {
+      await botui.action.button({
+        action: [
+          {
+            text: isFr ? '❗️ Je veux signaler un problème'
+                       : '❗️ Ik wil een probleem melden',
+            value: 'other_problem'
+          }
+        ]
+      });
+      return await startGenericFlow();
+    }
+  }
+
+  async function showCleaningProgramAndContinue() {
+    Telemetry.send('poets_info_viewed');
     await botui.message.add({
       type: 'html',
-      content: '<span style="color:red;font-weight:bold">Geen geldige QR-code. Je kunt geen melding doen zonder geldige code.</span>'
+      content: isFr
+        ? `<b>Programme de nettoyage :</b><br>${cleaningProgramText}`
+        : `<b>Poetsprogramma:</b><br>${cleaningProgramText}`
     });
-    Telemetry.send('invalid_qr');
-    return;
-  }
-  await askUrgency(isCleaning);
-}
 
-function askUrgency(isCleaning){
-  Telemetry.send('step', { step:'ask_urgent', stepIndex:2, isCleaning });
-  return botui.message.add({content:isFr?'Le problème est urgent ?':'Is het dringend?'})
-    .then(()=>botui.action.button({action:[
-      {text:isFr?'🚨 Oui':'🚨 Ja',value:'ja'},
-      {text:isFr?'⏱ Non':'⏱ Nee',value:'nee'}
-    ]})).then(res=>{
-      Telemetry.send('urgent_answer', { urgent: res.value==='ja', isCleaning });
+    const vervolg = await botui.action.button({
+      action: [
+        {
+          text: isFr ? '🧹 Nouveau signalement Nettoyage'
+                     : '🧹 Schoonmaak Melding maken',
+          value: "cleaning_ticket"
+        },
+        {
+          text: isFr ? '💡 Autre Problème' : '💡 Ander Probleem',
+          value: "other_problem"
+        },
+        {
+          text: isFr ? "ℹ️ Plus d'info" : "ℹ️ Meer info",
+          value: "info"
+        }
+      ]
+    });
+
+    if (vervolg.value === "cleaning_ticket") return await startCleaningFlow();
+    if (vervolg.value === "other_problem")    return await startGenericFlow();
+
+    await botui.message.add({
+      type: 'html',
+      content: isFr
+        ? 'Vous allez être redirigé vers notre site web externe.'
+        : 'Je wordt nu doorverwezen naar onze externe website.'
+    });
+    setTimeout(() => {
+      window.location.href = isFr
+        ? 'https://www.atalian.be/?lang=fr'
+        : 'https://www.atalian.be/?lang=nl';
+    }, 2000);
+  }
+
+  async function startGenericFlow() {
+    return await startProbleemFlow(false);
+  }
+  async function startCleaningFlow() {
+    return await startProbleemFlow(true);
+  }
+
+  async function startProbleemFlow(isCleaning) {
+    Telemetry.send('step', { step:'flow_start', stepIndex:1, isCleaning });
+    if (!parsedQR) {
+      await botui.message.add({
+        type: 'html',
+        content: '<span style="color:red;font-weight:bold">Geen geldige QR-code. Je kunt geen melding doen zonder geldige code.</span>'
+      });
+      Telemetry.send('invalid_qr');
+      return;
+    }
+    await askUrgency(isCleaning);
+  }
+
+  function askUrgency(isCleaning){
+    Telemetry.send('step', { step:'ask_urgent', stepIndex:2, isCleaning });
+    return botui.message.add({
+      content: isFr ? 'Le problème est urgent ?' : 'Is het dringend?'
+    }).then(() =>
+      botui.action.button({
+        action:[
+          {text:isFr?'🚨 Oui':'🚨 Ja', value:'ja'},
+          {text:isFr?'⏱ Non':'⏱ Nee', value:'nee'}
+        ]
+      })
+    ).then(res => {
+      Telemetry.send('urgent_answer', {
+        urgent: res.value==='ja',
+        isCleaning
+      });
 
       const isUrgent = res.value === 'ja';
 
       if (isCleaning) {
         return askCleaningServiceWO(isUrgent);
       }
-
-      // 👉 Nieuwe logica voor "Andere problemen"
       if (hasOtherActivities(cachedSvcWO)) {
         return askOtherServiceWO(isUrgent);
       }
-
       return askDescription(isUrgent, false);
     });
-}
+  }
 
-async function askCleaningServiceWO(isUrgent) {
-  Telemetry.send('step', { step: 'ask_service_wo', stepIndex: 3, isUrgent });
-  const relevantSvcWOs = getRelevantCleaningServiceWOs(cachedSvcWO);
+  async function askCleaningServiceWO(isUrgent) {
+    Telemetry.send('step', {
+      step: 'ask_service_wo',
+      stepIndex: 3,
+      isUrgent
+    });
+    const relevantSvcWOs = getRelevantCleaningServiceWOs(cachedSvcWO);
 
-  if (relevantSvcWOs.length === 0) {
+    if (relevantSvcWOs.length === 0) {
+      await botui.message.add({
+        content: isFr
+          ? 'Aucun programme de nettoyage actif n’a pu être trouvé pour cette zone.'
+          : 'Er kon geen actief schoonmaakprogramma voor deze zone gevonden worden.'
+      });
+      return await askDescription(isUrgent, true);
+    }
+
     await botui.message.add({
       content: isFr
-        ? 'Aucun programme de nettoyage actif n’a pu être trouvé pour cette zone.'
-        : 'Er kon geen actief schoonmaakprogramma voor deze zone gevonden worden.'
+        ? 'Pour quel service de nettoyage signalez-vous un problème ?'
+        : 'Voor welke schoonmaakservice wil je een melding maken?'
     });
+
+    const actions = relevantSvcWOs.map(x => ({
+      text: `📍 ${esc(x.Description)}`,
+      value: x.Id
+    }));
+
+    const res = await botui.action.button({ action: actions });
+    selectedServiceWOId = res.value;
+    Telemetry.send('service_wo_selected', { id: selectedServiceWOId });
     return await askDescription(isUrgent, true);
   }
 
-  await botui.message.add({
-    content: isFr
-      ? 'Pour quel service de nettoyage signalez-vous un problème ?'
-      : 'Voor welke schoonmaakservice wil je een melding maken?'
-  });
+  async function askOtherServiceWO(isUrgent) {
+    Telemetry.send('step', {
+      step: 'ask_other_service_wo',
+      stepIndex: 3,
+      isCleaning: false
+    });
 
-  const actions = relevantSvcWOs.map(x => ({
-    text: `📍 ${esc(x.Description)}`,
-    value: x.Id
-  }));
+    const relevantSvcWOs = getRelevantOtherServiceWOs(cachedSvcWO);
 
-  const res = await botui.action.button({ action: actions });
-  selectedServiceWOId = res.value;
-  Telemetry.send('service_wo_selected', { id: selectedServiceWOId });
-  return await askDescription(isUrgent, true);
-}
+    if (relevantSvcWOs.length === 0) {
+      return await askDescription(isUrgent, false);
+    }
 
-async function askOtherServiceWO(isUrgent) {
-  Telemetry.send('step', { step: 'ask_other_service_wo', stepIndex: 3, isCleaning: false });
+    await botui.message.add({
+      content: isFr
+        ? 'Pour quel service signalez-vous un autre problème ?'
+        : 'Voor welke dienst wil je een ander probleem melden?'
+    });
 
-  const relevantSvcWOs = getRelevantOtherServiceWOs(cachedSvcWO);
+    const actions = relevantSvcWOs.map(x => ({
+      text: `📍 ${esc(x.Description)}`,
+      value: x.Id
+    }));
 
-  if (relevantSvcWOs.length === 0) {
-    // safety net, zou normaal niet gebeuren door de check in askUrgency
+    actions.push({
+      text: isFr ? '➕ Autre' : '➕ Andere',
+      value: 'OTHER_GENERIC'
+    });
+
+    const res = await botui.action.button({ action: actions });
+
+    if (res.value === 'OTHER_GENERIC') {
+      selectedOtherServiceWO = null;
+      return await askDescription(isUrgent, false);
+    }
+
+    selectedOtherServiceWO =
+      relevantSvcWOs.find(x => x.Id === res.value) || null;
+
     return await askDescription(isUrgent, false);
   }
 
-  await botui.message.add({
-    content: isFr
-      ? 'Pour quel service signalez-vous un autre problème ?'
-      : 'Voor welke dienst wil je een ander probleem melden?'
-  });
-
-	const actions = relevantSvcWOs.map(x => ({
-	  text: `📍 ${esc(x.Description)}`,
-	  value: x.Id
-	}));
-
-	// ➕ EXTRA KNOP “Andere”
-	actions.push({
-	  text: isFr ? '➕ Autre' : '➕ Andere',
-	  value: 'OTHER_GENERIC'
-	});
-
-
-	const res = await botui.action.button({ action: actions });
-
-	if (res.value === 'OTHER_GENERIC') {
-	  // ❗ gebruiker kiest voor gewone melding
-	  selectedOtherServiceWO = null;   // => geen WO
-	  return await askDescription(isUrgent, false);
-	}
-
-	// anders: normaal WO
-	selectedOtherServiceWO =
-	  relevantSvcWOs.find(x => x.Id === res.value) || null;
-
-	return await askDescription(isUrgent, false);
-
-	}
-
-
-async function askDescription(isUrgent, isCleaning) {
-  // 1) EERST de probleemomschrijving
-  await botui.message.add({
-    content: isFr ? 'Quel est le problème exactement ?' : 'Wat is het probleem precies?'
-  });
-  let res = await botui.action.text({
-    action: { placeholder: isFr ? 'Décrivez…' : 'Beschrijf…' }
-  });
-  omschrijving = (res?.value || '').trim();
-  if (!omschrijving) {
+  async function askDescription(isUrgent, isCleaning) {
     await botui.message.add({
-      content: isFr ? '📝 Une petite description aide l’équipe.' : '📝 Een korte beschrijving helpt het team.'
+      content: isFr
+        ? 'Quel est le problème exactement ?'
+        : 'Wat is het probleem precies?'
     });
-    res = await botui.action.text({
-      action: { placeholder: isFr ? 'Ex.: fuite au lavabo du 2e' : 'Bv.: lekkende kraan in lokaal 2.12' }
+    let res = await botui.action.text({
+      action: { placeholder: isFr ? 'Décrivez…' : 'Beschrijf…' }
     });
     omschrijving = (res?.value || '').trim();
-  }
+    if (!omschrijving) {
+      await botui.message.add({
+        content: isFr
+          ? '📝 Une petite description aide l’équipe.'
+          : '📝 Een korte beschrijving helpt het team.'
+      });
+      res = await botui.action.text({
+        action: {
+          placeholder: isFr
+            ? 'Ex.: fuite au lavabo du 2e'
+            : 'Bv.: lekkende kraan in lokaal 2.12'
+        }
+      });
+      omschrijving = (res?.value || '').trim();
+    }
 
-  // 2) DAN pas foto’s (0..n) – de opmerkingen per foto worden in askPhotosLoop() gevraagd (zie fix 2)
-  await botui.message.add({
-    content: isFr ? 'Souhaitez-vous ajouter des photos ?' : 'Wil je foto’s toevoegen?'
-  });
-  await askPhotosLoop();
+    await botui.message.add({
+      content: isFr
+        ? 'Souhaitez-vous ajouter des photos ?'
+        : 'Wil je foto’s toevoegen?'
+    });
+    await askPhotosLoop();
 
-  // 3) Telemetrie + door naar e-mail
-  Telemetry.send('desc_entered', {
-    length: omschrijving.length,
-    withPhotos: Array.isArray(pickedFiles) && pickedFiles.length > 0,
-    isUrgent,
-    isCleaning
-  });
+    Telemetry.send('desc_entered', {
+      length: omschrijving.length,
+      withPhotos: Array.isArray(pickedFiles) && pickedFiles.length > 0,
+      isUrgent,
+      isCleaning
+    });
 
-  return askEmail(isUrgent, isCleaning);
-}
-
-// === Nieuw: bijlagenblok voor ReportText =========================
-function buildAttachmentsBlock(isFr){
-  if (!Array.isArray(pickedFiles) || pickedFiles.length === 0) return '';
-  const head = isFr ? 'Pièces jointes' : 'Bijlagen';
-  const lines = pickedFiles.map((it, idx) => {
-    const nm = String(it.name || 'upload.bin').slice(0, 60);
-    const rm = String(it.remark || '').trim();
-    // Gebruik de emoji '📎' voor duidelijkheid
-    return `📎 ${idx + 1}. ${nm}${rm ? ` — ${rm}` : ''}`;
-  });
-
-  // Start met <br/><br/> om twee lege regels te forceren na de hoofdtekst (meldingTekst).
-  // Gebruik <br/> om de individuele bijlagen op een nieuwe lijn te zetten.
-  const attachmentList = lines.join('<br/>');
-  
-  return `<br/><br/>**${head}:**<br/>${attachmentList}`;
-}
-
-
-async function askEmail(isUrgent, isCleaning){
-  const stepIndex = isCleaning ? 5 : 4;
-  Telemetry.send('step', { step:'ask_email', stepIndex, isCleaning });
-
-  // 1) E-mail vragen
-  await botui.message.add({ content: isFr ? 'Quelle est votre adresse e-mail ?' : 'Wat is je e-mailadres?' });
-  const res = await botui.action.text({ action: { placeholder: 'jouw@email.com' } });
-  const email = (res.value || '').trim();
-  if (!isValidEmail(email)) {
-    await botui.message.add({ content: isFr ? 'Adresse e-mail invalide.' : 'Ongeldig e-mailadres.' });
-    Telemetry.send('email_invalid');
     return askEmail(isUrgent, isCleaning);
   }
-  Telemetry.send('email_entered');
 
-  // 2) Payload opbouwen
-  const meldingTekst = omschrijving;
+  async function askEmail(isUrgent, isCleaning){
+    const stepIndex = isCleaning ? 5 : 4;
+    Telemetry.send('step', { step:'ask_email', stepIndex, isCleaning });
 
-  let activityCode = null;
-  let serviceWorkOrderId = null;
-
-  if (isCleaning) {
-    // 🧹 Schoonmaak
-    activityCode = 20;
-    serviceWorkOrderId = selectedServiceWOId;
-  } else if (selectedOtherServiceWO) {
-    // 💡 "Andere problemen" mét gekozen service-WO (Activiteit ≥ 40)
-    activityCode = toInt(
-      selectedOtherServiceWO.Activiteit ?? selectedOtherServiceWO._Activiteit
-    );
-    serviceWorkOrderId = selectedOtherServiceWO.Id;
-  }
-
-
-  // 🔹 helper om ReportText te bouwen uit geselecteerde files
-  function buildReportTextFromFiles(files){
-    if (!Array.isArray(files) || !files.length) return '';
-    const header = isFr ? 'Pièces jointes:' : 'Bijlagen:';
-    const lines = files.map((it, i) => {
-      const base = `${i+1}. ${it.name}`;
-      const note = (it.remark || '').trim();
-      return note ? `${base} — ${note}` : base;
-    });
-    return [header, ...lines].join('\n');
-  }
-
-	const attachBlock = buildAttachmentsBlock(isFr);
-	const reportBody  = [attachBlock].filter(Boolean).join('');
-
-	const payload = {
-	  id,
-	  type: typeStr,
-	  JobDescr: meldingTekst,
-	  ReportText: reportBody,   // ← nu komt “Bijlagen:” meteen na de melder-lijn
-	  Email: email,
-	  lang,
-	  env: prefix,
-	  Activity: activityCode,
-	  ServiceWOId: serviceWorkOrderId
-	};
-
-
-  // 3) Posten + robuust jobId bepalen (inclusief fallbacks)
-  let jobId = null;
-
-  try {
-    Telemetry.send('submit_attempt', {
-      urgent: isUrgent,
-      withPhotos: Array.isArray(pickedFiles) && pickedFiles.length > 0,
-      isCleaning,
-      serviceWorkOrderId
-    });
-
-	const endpointMelding = '/.netlify/functions/melding' + (isTestEnv ? '?test=1' : '');
-
-const r = await fetch(endpointMelding, {
-  method: 'POST',
-  headers: { 'Content-Type': 'application/json' },
-  body: JSON.stringify(payload)
-});
-
-    // ---- Robuuste parsing (raw -> json -> inner object) ----
-    let raw = await r.text();
-    let resp;
-    try {
-      if (raw.includes('&quot;')) raw = raw.replace(/&quot;/g, '"'); // HTML-escaped quotes normaliseren
-      resp = JSON.parse(raw);
-      if (resp && typeof resp.object === 'string') {
-        const inner = resp.object.includes('&quot;') ? resp.object.replace(/&quot;/g, '"') : resp.object;
-        resp = JSON.parse(inner);
-      }
-    } catch (parseErr) {
-      console.warn('melding JSON parse error:', parseErr, raw);
-      resp = { _raw: raw };
-    }
-
-    if (!r.ok) throw new Error(resp?.error || `HTTP ${r.status}`);
-
-    // ---- Probeer alle gangbare velden ----
-    jobId =
-      resp?.JobId || resp?.jobId ||
-      resp?.Job?.Id || resp?.job?.Id ||
-      resp?.Id     || resp?.id     || null;
-
-    // ---- Regex fallback op raw ----
-    if (!jobId && typeof raw === 'string') {
-      const m = raw.match(/"Id"\s*:\s*"?(\d{5,})"?/);
-      if (m) jobId = m[1];
-    }
-
-    // ---- Fallback: vraag context (jobs) opnieuw op en match op beschrijving/e-mail ----
-    if (!jobId) {
-      try {
-        const jres = await fetch(`/.netlify/functions/jobs?code=${encodeURIComponent(code)}&env=${prefix}`);
-        let jtxt = await jres.text();
-        if (jtxt.includes('&quot;')) jtxt = jtxt.replace(/&quot;/g, '"');
-        let jdata = JSON.parse(jtxt);
-        if (jdata && typeof jdata.object === 'string') {
-          jdata = JSON.parse(jdata.object.replace(/&quot;/g, '"'));
-        }
-        const jobs = Array.isArray(jdata?.Jobs) ? jdata.Jobs : [];
-        const normalizedDesc = String(meldingTekst || '').trim();
-
-        // Heuristiek: exacte desc-match of Report bevat het e-mailadres; recentste eerst
-        const cand = jobs
-          .filter(j =>
-            String(j.Description || '').trim() === normalizedDesc ||
-            String(j.Report || '').includes(email)
-          )
-          .sort((a, b) => (b.Date || '').localeCompare(a.Date || ''));
-
-        if (cand.length) jobId = cand[0].Id;
-      } catch (e) {
-        console.warn('fallback jobs fetch error', e);
-      }
-    }
-
-	if (!jobId) {
-      await botui.message.add({
-        content: isFr 
-          ? '❌ Er is een probleem opgetreden. Je melding is mogelijk niet succesvol ingediend. Probeer het later opnieuw.'
-          : '❌ Un problème est survenu. Votre signalement n\'a peut-être pas été soumis avec succès. Veuillez réessayer plus tard.'
-      });
-      Telemetry.send('jobid_missing_fallback_fail');
-      return; // Belangrijk: hier afsluiten als er geen jobId is
-    }
-
-    // 4) Succesboodschap
     await botui.message.add({
-      content: isFr ? 'Merci ! Votre signalement a été envoyé.' : 'Bedankt! Jouw melding is verzonden.'
+      content: isFr
+        ? 'Quelle est votre adresse e-mail ?'
+        : 'Wat is je e-mailadres?'
     });
-    Telemetry.send('submit_success', { jobId });
+    const res = await botui.action.text({
+      action: { placeholder: 'jouw@email.com' }
+    });
+    const email = (res.value || '').trim();
+    if (!isValidEmail(email)) {
+      await botui.message.add({
+        content: isFr
+          ? 'Adresse e-mail invalide.'
+          : 'Ongeldig e-mailadres.'
+      });
+      Telemetry.send('email_invalid');
+      return askEmail(isUrgent, isCleaning);
+    }
+    Telemetry.send('email_entered');
 
-    // 5) Batch bestandsupload (0..n)
-    if (Array.isArray(pickedFiles) && pickedFiles.length) {
-      await botui.message.add({ content: isFr ? 'Téléversement des pièces…' : 'Bestanden uploaden…' });
+    const meldingTekst = omschrijving;
 
-      // Voor portal: enkel bij schoonmaak (vendor bekend) mag email mee.
-      const emailForDoc = isCleaning ? email : '';   // <<< hier ligt de fix
+    let activityCode = null;
+    let serviceWorkOrderId = null;
 
-      for (const it of pickedFiles) {
+    if (isCleaning) {
+      activityCode       = 20;
+      serviceWorkOrderId = selectedServiceWOId;
+    } else if (selectedOtherServiceWO) {
+      activityCode = toInt(
+        selectedOtherServiceWO.Activiteit
+        ?? selectedOtherServiceWO._Activiteit
+      );
+      serviceWorkOrderId = selectedOtherServiceWO.Id;
+    }
+
+    const attachBlock = buildAttachmentsBlock(isFr);
+    const reportBody  = [attachBlock].filter(Boolean).join('');
+
+    const payload = {
+      id,
+      type: typeStr,
+      JobDescr: meldingTekst,
+      ReportText: reportBody,
+      Email: email,
+      lang,
+      env: prefix,
+      Activity: activityCode,
+      ServiceWOId: serviceWorkOrderId
+    };
+
+    let jobId = null;
+
+    try {
+      Telemetry.send('submit_attempt', {
+        urgent: isUrgent,
+        withPhotos: Array.isArray(pickedFiles) && pickedFiles.length > 0,
+        isCleaning,
+        serviceWorkOrderId
+      });
+
+      const endpointMelding =
+        '/.netlify/functions/melding' + (isTestEnv ? '?test=1' : '');
+
+      const r = await fetch(endpointMelding, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+
+      let raw = await r.text();
+      let resp;
+      try {
+        if (raw.includes('&quot;')) raw = raw.replace(/&quot;/g, '"');
+        resp = JSON.parse(raw);
+        if (resp && typeof resp.object === 'string') {
+          const inner = resp.object.includes('&quot;')
+            ? resp.object.replace(/&quot;/g, '"')
+            : resp.object;
+          resp = JSON.parse(inner);
+        }
+      } catch (parseErr) {
+        console.warn('melding JSON parse error:', parseErr, raw);
+        resp = { _raw: raw };
+      }
+
+      if (!r.ok) throw new Error(resp?.error || `HTTP ${r.status}`);
+
+      jobId =
+        resp?.JobId || resp?.jobId ||
+        resp?.Job?.Id || resp?.job?.Id ||
+        resp?.Id     || resp?.id     || null;
+
+      if (!jobId && typeof raw === 'string') {
+        const m = raw.match(/"Id"\s*:\s*"?(\d{5,})"?/);
+        if (m) jobId = m[1];
+      }
+
+      if (!jobId) {
         try {
-          const baseRemark = (it.remark || '').trim();
-          const fallback   = (omschrijving || it.name || '').trim();
-          const docDescr   = (baseRemark ? baseRemark : fallback).slice(0, 200);
+          const jres = await fetch(
+            `/.netlify/functions/jobs?code=${encodeURIComponent(code)}&env=${prefix}`
+          );
+          let jtxt = await jres.text();
+          if (jtxt.includes('&quot;')) jtxt = jtxt.replace(/&quot;/g, '"');
+          let jdata = JSON.parse(jtxt);
+          if (jdata && typeof jdata.object === 'string') {
+            jdata = JSON.parse(jdata.object.replace(/&quot;/g, '"'));
+          }
+          const jobs = Array.isArray(jdata?.Jobs) ? jdata.Jobs : [];
+          const normalizedDesc = String(meldingTekst || '').trim();
 
-          await uploadCustomerDoc({
-            jobId,
-            email: emailForDoc,          // <<< niet-klantmail sturen als vendor ontbreekt
-            file: it.file,
-            description: docDescr
-          });
+          const cand = jobs
+            .filter(j =>
+              String(j.Description || '').trim() === normalizedDesc ||
+              String(j.Report || '').includes(email)
+            )
+            .sort((a, b) => (b.Date || '').localeCompare(a.Date || ''));
 
-          await botui.message.add({ content: '✅ ' + (isFr ? 'Ajouté: ' : 'Toegevoegd: ') + it.name });
+          if (cand.length) jobId = cand[0].Id;
         } catch (e) {
-          await botui.message.add({ content: '❌ ' + (isFr ? 'Échec: ' : 'Mislukt: ') + it.name + ' — ' + (e.message || e) });
+          console.warn('fallback jobs fetch error', e);
         }
       }
 
-      Telemetry.send('doc_upload_batch_done', { count: pickedFiles.length });
-    }
+      if (!jobId) {
+        await botui.message.add({
+          content: isFr
+            ? '❌ Er is een probleem opgetreden. Je melding is mogelijk niet succesvol ingediend. Probeer het later opnieuw.'
+            : '❌ Un problème est survenu. Votre signalement n\'a peut-être pas été soumis avec succès. Veuillez réessayer plus tard.'
+        });
+        Telemetry.send('jobid_missing_fallback_fail');
+        return;
+      }
 
-    // 6) Urgentie hint
-    if (isUrgent) {
       await botui.message.add({
-        type: 'html',
         content: isFr
-          ? `⚠️ <b>Problème urgent :</b> Appelez ${phoneLink}`
-          : `⚠️ <b>Dringend probleem:</b> Bel onmiddellijk ${phoneLink}`
+          ? 'Merci ! Votre signalement a été envoyé.'
+          : 'Bedankt! Jouw melding is verzonden.'
       });
-      return;
-    }
+      Telemetry.send('submit_success', { jobId });
 
-    // 7) Afsluitkeuze
-    await botui.message.add({ content: isFr ? 'Que voulez-vous faire maintenant?' : 'Wat wil je nu doen?' });
-    const k = await botui.action.button({
-      action: [
-        { text: isFr ? '🔄 Nouveau signalement' : '🔄 Nieuwe melding', value: 'restart' },
-        { text: isFr ? 'ℹ️ Plus d\'info' : 'ℹ️ Meer info', value: 'info' }
-      ]
-    });
-    if (k.value === 'restart') {
-      Telemetry.send('restart');
-      window.location.reload();
-    } else {
-      Telemetry.send('external_info');
-      window.location.href = isFr ? 'https://www.atalian.be/?lang=fr' : 'https://www.atalian.be/?lang=nl';
-    }
+      if (Array.isArray(pickedFiles) && pickedFiles.length) {
+        await botui.message.add({
+          content: isFr
+            ? 'Téléversement des pièces…'
+            : 'Bestanden uploaden…'
+        });
 
-  } catch (e) {
-    console.error(e);
-    await botui.message.add({ content: isFr ? 'Erreur lors de l’envoi.' : 'Fout bij verzenden.' });
-    Telemetry.send('submit_error', { message: String((e && e.message) || e) });
+        const emailForDoc = isCleaning ? email : '';
+
+        for (const it of pickedFiles) {
+          try {
+            const baseRemark = (it.remark || '').trim();
+            const fallback   = (omschrijving || it.name || '').trim();
+            const docDescr   = (baseRemark ? baseRemark : fallback).slice(0, 200);
+
+            await uploadCustomerDoc({
+              jobId,
+              email: emailForDoc,
+              file: it.file,
+              description: docDescr
+            });
+
+            await botui.message.add({
+              content: '✅ ' + (isFr ? 'Ajouté: ' : 'Toegevoegd: ') + it.name
+            });
+          } catch (e) {
+            await botui.message.add({
+              content: '❌ ' + (isFr ? 'Échec: ' : 'Mislukt: ')
+                     + it.name + ' — ' + (e.message || e)
+            });
+          }
+        }
+
+        Telemetry.send('doc_upload_batch_done', {
+          count: pickedFiles.length
+        });
+      }
+
+      if (isUrgent) {
+        await botui.message.add({
+          type: 'html',
+          content: isFr
+            ? `⚠️ <b>Problème urgent :</b> Appelez ${phoneLink}`
+            : `⚠️ <b>Dringend probleem:</b> Bel onmiddellijk ${phoneLink}`
+        });
+        return;
+      }
+
+      await botui.message.add({
+        content: isFr
+          ? 'Que voulez-vous faire maintenant?'
+          : 'Wat wil je nu doen?'
+      });
+      const k = await botui.action.button({
+        action: [
+          {
+            text: isFr ? '🔄 Nouveau signalement'
+                       : '🔄 Nieuwe melding',
+            value: 'restart'
+          },
+          {
+            text: isFr ? 'ℹ️ Plus d\'info'
+                       : 'ℹ️ Meer info',
+            value: 'info'
+          }
+        ]
+      });
+      if (k.value === 'restart') {
+        Telemetry.send('restart');
+        window.location.reload();
+      } else {
+        Telemetry.send('external_info');
+        window.location.href = isFr
+          ? 'https://www.atalian.be/?lang=fr'
+          : 'https://www.atalian.be/?lang=nl';
+      }
+
+    } catch (e) {
+      console.error(e);
+      await botui.message.add({
+        content: isFr
+          ? 'Erreur lors de l’envoi.'
+          : 'Fout bij verzenden.'
+      });
+      Telemetry.send('submit_error', {
+        message: String((e && e.message) || e)
+      });
+    }
   }
-}
 
-
-
-/* ======================================================================
-   IDLE DETECTIE + SCROLL
-====================================================================== */
-let lastActivity = Date.now();
-['click','keydown','touchstart'].forEach(ev=>document.addEventListener(ev,()=>{lastActivity=Date.now();},{passive:true}));
-const IDLE_MS = 45000;
-setInterval(()=>{
-  const inactive = Date.now()-lastActivity;
-  if (inactive>IDLE_MS){ Telemetry.send('idle', { inactiveMs: inactive }); lastActivity = Date.now(); }
-}, 5000);
-window.addEventListener('pagehide', ()=>{ Telemetry.send('pagehide'); });
-
-window.addEventListener('load',()=>{
-  const it=setInterval(()=>{
-    const b=document.querySelector('#botui-app');
-    if(b&&b.offsetTop>0){
-      window.scrollTo({top:Math.max(b.offsetTop-100,0),behavior:'smooth'});
-      clearInterval(it);
+  /* ======================================================================
+     IDLE DETECTIE + SCROLL
+  ====================================================================== */
+  let lastActivity = Date.now();
+  ['click','keydown','touchstart'].forEach(ev =>
+    document.addEventListener(ev, () => { lastActivity = Date.now(); }, {passive:true})
+  );
+  const IDLE_MS = 45000;
+  setInterval(() => {
+    const inactive = Date.now()-lastActivity;
+    if (inactive > IDLE_MS){
+      Telemetry.send('idle', { inactiveMs: inactive });
+      lastActivity = Date.now();
     }
-  },300);
-});
+  }, 5000);
 
-/* ======================================================================
-   START
-====================================================================== */
-init();
-/* ======================================================================
-   EIND MODULE
-====================================================================== */
-</script>
+  window.addEventListener('load', () => {
+    const it = setInterval(() => {
+      const b = document.querySelector('#botui-app');
+      if (b && b.offsetTop > 0){
+        window.scrollTo({
+          top: Math.max(b.offsetTop-100,0),
+          behavior:'smooth'
+        });
+        clearInterval(it);
+      }
+    }, 300);
+  });
 
-<!-- Verborgen file input voor foto’s/doc’s (0..n) -->
-<input id="portal-photo" type="file" accept="image/*,application/pdf" capture="environment" style="display:none" />
+  /* ======================================================================
+     START
+  ====================================================================== */
+  init();
+  /* ======================================================================
+     EIND MODULE
+  ====================================================================== */
+  </script>
+
+  <!-- Verborgen file input voor foto’s/doc’s (0..n) -->
+  <input id="portal-photo" type="file"
+         accept="image/*,application/pdf"
+         capture="environment"
+         style="display:none" />
 
 </body>
 </html>
