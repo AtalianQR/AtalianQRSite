@@ -389,10 +389,11 @@
       labelParts.push(`${id} – ${desc}`);
       const label = labelParts.join(' ');
 
-      const optHtml =
-        `<option value="${id.replace(/"/g,'&quot;')}">` +       <!-- FIX ; -->
-          `${label.replace(/</g,'&lt;')}` +
-        `</option>`;                                           <!-- FIX ; -->
+	const optHtml =
+	  `<option value="${id.replace(/"/g,'&quot;')}">` +
+		`${label.replace(/</g,'&lt;')}` +
+	  `</option>`;
+
 
       selectTarget.insertAdjacentHTML('beforeend', optHtml);
     });
@@ -406,48 +407,209 @@
   }
 
   // Spaces ophalen voor COMPLEX (LIST_COMPLEX / S006691)
-  async function fetchSpacesForComplex() {
-    const isFr = (lang === 'fr');
-    setStatus(isFr ? 'Chargement des données…' : 'Gegevens worden geladen…', false);
+// Haalt de verdiepingen op voor het complex (LIST_FLOORS)
+	async function fetchFloorsForComplex() {
+	  const isFr = (lang === 'fr');
+	  setStatus(isFr ? 'Chargement des données…' : 'Gegevens worden geladen…', false);
 
-    const prefix          = 'S';
-    const complexSelector = `${prefix}${COMPLEX_ID}`;
-    const url             = `${LIST_ENDPOINT}?complex=${encodeURIComponent(complexSelector)}&env=${encodeURIComponent(envPrefix)}`;
+	  const prefix          = 'S';
+	  const complexSelector = `${prefix}${COMPLEX_ID}`;
+	  const url             = `${LIST_ENDPOINT}?action=LIST_FLOORS&complex=${encodeURIComponent(complexSelector)}&env=${encodeURIComponent(envPrefix)}`;
 
-    const resp = await fetch(url, { cache: 'no-store' });
-    const txt  = await resp.text();
+	  const resp = await fetch(url, { cache: 'no-store' });
+	  const txt  = await resp.text();
 
-    let data;
-    try {
-      data = JSON.parse(txt);
-    } catch (e) {
-      console.error('JSON parse error', e, txt);
-      throw new Error('Geen geldige JSON van de backend.');
-    }
+	  let data;
+	  try {
+		data = JSON.parse(txt);
+	  } catch (e) {
+		console.error('JSON parse error', e, txt);
+		throw new Error('Geen geldige JSON van de backend.');
+	  }
 
-    const items = Array.isArray(data.Items) ? data.Items : [];
-    allSpaces   = items;
+	  const items = Array.isArray(data.Items) ? data.Items : [];
 
-    if (!allSpaces.length) {
-      setStatus(
-        isFr
-          ? "Aucun local trouvé pour ce complexe."
-          : "Geen ruimtes gevonden voor dit complex.",
-        true
-      );
-      selectFloor.innerHTML  = '<option value="">-- niets beschikbaar --</option>';
-      selectTarget.innerHTML = '<option value="">-- niets beschikbaar --</option>';
-      return;
-    }
+	  if (!items.length) {
+		setStatus(
+		  isFr
+			? "Aucun étage trouvé pour ce complexe."
+			: "Geen verdiepingen gevonden voor dit complex.",
+		  true
+		);
+		selectFloor.innerHTML  = '<option value="">-- niets beschikbaar --</option>';
+		selectTarget.innerHTML = '<option value="">-- niets beschikbaar --</option>';
+		return;
+	  }
 
-    buildFloorDropdown();
-    setStatus(
-      isFr
-        ? `✅ ${allSpaces.length} local(aux) trouvé(s).`
-        : `✅ ${allSpaces.length} ruimte(s) gevonden.`,
-      false
-    );
+	  // Debug: toon eerste item in de console (mag je verwijderen als je wil)
+	  console.log('LIST_FLOORS / Items[0]:', items[0]);
+
+	  // Unieke verdiepingsniveaus bepalen
+	  // key = level (bv. "-2", "-1", "0", "1", ...), value = BuildingFloorId
+	  const floorsMap = new Map();
+
+	  items.forEach(fl => {
+		// mogelijke property-namen voor het niveau
+		const levelRaw =
+		  fl.Level ??
+		  fl._Level ??
+		  fl.BuildingFloorLevel ??
+		  fl.buildingFloorLevel ??
+		  '';
+
+		const level = String(levelRaw).trim();
+		if (!level) return;
+
+		// id die we later naar LIST_FLOOR_SPACES sturen
+		const bfId = String(
+		  fl.BuildingFloorId ??
+		  fl.buildingFloorId ??
+		  fl.Id ??
+		  ''
+		).trim();
+
+		if (!bfId) return;
+
+		// enkel eerste keer level toevoegen
+		if (!floorsMap.has(level)) {
+		  floorsMap.set(level, bfId);
+		}
+	  });
+
+	  if (!floorsMap.size) {
+		setStatus(
+		  isFr
+			? "Aucun niveau exploitable trouvé dans la réponse."
+			: "Geen bruikbare verdiepingen gevonden in de respons.",
+		  true
+		);
+		selectFloor.innerHTML  = '<option value="">-- geen gegevens --</option>';
+		selectTarget.innerHTML = '<option value="">-- geen gegevens --</option>';
+		return;
+	  }
+
+	  // Niveaus numeriek sorteren: -2, -1, 0, 1, 2, ...
+	  const sortedLevels = Array.from(floorsMap.keys()).sort((a, b) => {
+		const na = parseFloat(String(a).replace(',', '.'));
+		const nb = parseFloat(String(b).replace(',', '.'));
+
+		if (!Number.isNaN(na) && !Number.isNaN(nb)) {
+		  return na - nb;
+		}
+		// fallback: alfabetisch
+		return String(a).localeCompare(String(b), undefined, { sensitivity: 'base' });
+	  });
+
+	  // Dropdown opnieuw opbouwen (oude "-- laden... --" weg)
+	  selectFloor.innerHTML = '';
+	  selectFloor.insertAdjacentHTML(
+		'beforeend',
+		`<option value="">${isFr ? '-- choisissez un étage --' : '-- kies een verdieping --'}</option>`
+	  );
+
+	  sortedLevels.forEach(level => {
+		const bfId = floorsMap.get(level);
+		const opt  = `<option value="${String(bfId).replace(/"/g,'&quot;')}">${level}</option>`;
+		selectFloor.insertAdjacentHTML('beforeend', opt);
+	  });
+
+	  // bij start: nog geen ruimte gekozen
+	  selectTarget.innerHTML =
+		`<option value="">${isFr ? '-- choisissez d\'abord un étage --'
+								 : '-- kies eerst een verdieping --'}</option>`;
+
+	  setStatus('', false);
+	}
+
+	
+// Haalt de ruimtes op voor 1 verdieping (LIST_FLOOR_SPACES)
+	async function fetchSpacesForFloor(buildingFloorId) {
+  const isFr = (lang === 'fr');
+
+  if (!buildingFloorId) {
+    selectTarget.innerHTML =
+      `<option value="">${isFr ? '-- choisissez d\'abord un étage --'
+                               : '-- kies eerst een verdieping --'}</option>`;
+    return;
   }
+
+  setStatus(isFr ? 'Chargement des locaux…' : 'Ruimtes worden geladen…', false);
+
+  // zelfde complex-prefix als elders
+  const prefix          = 'S';
+  const complexSelector = `${prefix}${COMPLEX_ID}`;
+
+  const url = `${LIST_ENDPOINT}` +
+    `?action=LIST_FLOOR_SPACES` +
+    `&complex=${encodeURIComponent(complexSelector)}` +
+    `&buildingFloorId=${encodeURIComponent(buildingFloorId)}` +
+    `&env=${encodeURIComponent(envPrefix)}`;
+
+  const resp = await fetch(url, { cache: 'no-store' });
+  const txt  = await resp.text();
+  console.log('LIST_FLOOR_SPACES raw response:', txt);
+
+  let data;
+  try {
+    data = JSON.parse(txt);
+  } catch (e) {
+    console.error('JSON parse error', e, txt);
+    throw new Error('Geen geldige JSON van de backend.');
+  }
+
+  const items = Array.isArray(data.Items) ? data.Items : [];
+
+  // basisoptie leegmaken + placeholder
+  selectTarget.innerHTML = '';
+  selectTarget.insertAdjacentHTML(
+    'beforeend',
+    `<option value="">${isFr ? '-- choisissez un local --'
+                             : '-- kies een ruimte --'}</option>`
+  );
+
+  if (!items.length) {
+    setStatus(
+      isFr ? "Aucun local trouvé pour cet étage."
+           : "Geen ruimtes gevonden op deze verdieping.",
+      true
+    );
+    return;
+  }
+
+  // sorteer: eerst RoomNumber, anders Id
+  items.sort((a, b) => {
+    const rnA = String(a.RoomNumber || '').trim();
+    const rnB = String(b.RoomNumber || '').trim();
+
+    const idA = String(a.Id || '').trim();
+    const idB = String(b.Id || '').trim();
+
+    const keyA = rnA || idA;
+    const keyB = rnB || idB;
+
+    return keyA.localeCompare(keyB, 'nl', { numeric: true, sensitivity: 'base' });
+  });
+
+  // opties opbouwen
+  items.forEach(sp => {
+    const id         = String(sp.Id || '');
+    const roomNumber = String(sp.RoomNumber || '').trim();
+    const desc       = String(sp.Description || id);
+    const tenant     = String(sp.Tenant || '').trim();
+
+    const primaryCode = roomNumber || id; // wat je eerst toont
+
+    let label = `${primaryCode} - ${desc}`;
+    if (tenant) label += ` – (${tenant})`;
+
+    const opt = `<option value="${id.replace(/"/g,'&quot;')}">${label.replace(/</g,'&lt;')}</option>`;
+    selectTarget.insertAdjacentHTML('beforeend', opt);
+  });
+
+  setStatus('', false);
+}
+
+
 
 	 function buildFloorDropdown() {
 	  const isFr = (lang === 'fr');
@@ -513,16 +675,18 @@
       selectFloor.innerHTML  = '<option value="">-- laden... --</option>';
       selectTarget.innerHTML = '<option value="">-- eerst een verdieping kiezen --</option>';
 
-      fetchSpacesForComplex().catch(err => {
+      fetchFloorsForComplex().catch(err => {
         console.error(err);
         const isFr = (lang === 'fr');
         setStatus(
-          isFr ? 'Erreur lors du chargement.' : 'Fout bij het laden.',
+          isFr ? 'Erreur lors du chargement des étages.'
+               : 'Fout bij het laden van de verdiepingen.',
           true
         );
         selectFloor.innerHTML  = '<option value="">-- geen gegevens --</option>';
         selectTarget.innerHTML = '<option value="">-- geen gegevens --</option>';
       });
+
     } else {
       // Installatie
       selectFloor.style.display = 'none';
@@ -644,83 +808,31 @@
   // Spaces filteren op gekozen floor
 	selectFloor.addEventListener('change', () => {
 	  const isFr = (lang === 'fr');
-	  const selectedLevel = selectFloor.value;
+	  const selectedFloorId = selectFloor.value;
 
-	  if (!selectedLevel) {
+	  if (!selectedFloorId) {
 		selectTarget.innerHTML =
 		  `<option value="">${isFr ? '-- choisissez d\'abord un étage --'
 								   : '-- kies eerst een verdieping --'}</option>`;
+		setStatus('', false);
 		return;
 	  }
 
-	  // 1) Filteren op gekozen verdieping (LEVEL!)
-	  const filtered = allSpaces.filter(sp => {
-		const itemLevel = String(
-		  sp.BuildingFloorLevel ||
-		  sp.buildingFloorLevel ||
-		  sp.Level ||
-		  sp.level ||
-		  ''
-		);
-		return itemLevel === selectedLevel;
-	  });
+	  selectTarget.innerHTML =
+		`<option value="">${isFr ? '-- chargement des locaux --'
+								 : '-- ruimtes worden geladen --'}</option>`;
 
-
-		// 2) Sorteren: eerst Tenant (A-Z), dan Description (A-Z)
-	  filtered.sort((a, b) => {
-		const ta = String(a.Tenant || a.tenant || '').trim().toLowerCase();
-		const tb = String(b.Tenant || b.tenant || '').trim().toLowerCase();
-
-		// lege tenants naar het einde
-		if (ta && !tb) return -1;
-		if (!ta && tb) return 1;
-
-		if (ta !== tb) {
-		  // tenantnaam alfabetisch (case-insensitive, NL logica)
-		  return ta.localeCompare(tb, 'nl', { sensitivity: 'base' });
-		}
-
-		// zelfde tenant → sorteer op Description
-		const da = String(a.Description || a.description || '').trim().toLowerCase();
-		const db = String(b.Description || b.description || '').trim().toLowerCase();
-
-		return da.localeCompare(db, 'nl', { sensitivity: 'base' });
-	  });
-
-
-	  // 3) Dropdown vullen
-	  selectTarget.innerHTML = '';
-	  selectTarget.insertAdjacentHTML(
-		'beforeend',
-		`<option value="">${isFr ? '-- choisissez un local --' : '-- kies een ruimte --'}</option>`
-	  );
-
-	  filtered.forEach(sp => {
-		const id     = String(sp.Id || sp.id || '');
-		const desc   = String(sp.Description || sp.description || id);
-		const tenant = String(sp.Tenant || sp.tenant || '').trim();
-
-		// Label: Id – Naam – (Tenant)
-		let label = `${id} - ${desc}`;
-		if (tenant) {
-		  label += ` – (${tenant})`;
-		}
-
-		const opt = `<option value="${id.replace(/"/g,'&quot')}">${label.replace(/</g,'&lt')}</option>`;
-		selectTarget.insertAdjacentHTML('beforeend', opt);
-	  });
-
-	  // 4) Statusboodschap
-	  if (!filtered.length) {
+	  fetchSpacesForFloor(selectedFloorId).catch(err => {
+		console.error(err);
 		setStatus(
-		  isFr
-			? "Aucun local trouvé pour cet étage."
-			: "Geen ruimtes gevonden op deze verdieping.",
+		  isFr ? 'Erreur lors du chargement des locaux.'
+			   : 'Fout bij het laden van de ruimtes.',
 		  true
 		);
-	  } else {
-		setStatus('', false);
-	  }
+		selectTarget.innerHTML =
+		  `<option value="">${isFr ? '-- aucune donnée --'
+								   : '-- geen gegevens --'}</option>`;
+	  });
 	});
 
 
