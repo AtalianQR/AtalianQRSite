@@ -1,4 +1,4 @@
-// complexinfo.js — LIST_COMPLEX / LIST_FLOORS / LIST_FLOOR_SPACES
+// complexinfo.js — LIST_COMPLEX / LIST_FLOORS / LIST_FLOOR_SPACES (+ generieke actions)
 
 const API_KEY       = process.env.ULTIMO_API_KEY;
 const BASE_URL      = process.env.ULTIMO_API_BASEURL;
@@ -41,9 +41,11 @@ export async function handler(event) {
     }
 
     const qs = event.queryStringParameters || {};
-    const complex        = qs.complex;
-    const action         = (qs.action || "LIST_COMPLEX").toUpperCase();
+    const complex         = qs.complex;
+    const action          = (qs.action || "LIST_COMPLEX").toUpperCase();
     const buildingFloorId = qs.buildingFloorId;
+    const buildingId      = qs.buildingId;      // optioneel
+    const buildingPartId  = qs.buildingPartId;  // optioneel
 
     if (!complex || !/^[SE]\d+$/.test(complex)) {
       return {
@@ -56,27 +58,42 @@ export async function handler(event) {
 
     // 👇 Payload opbouwen per actie
     let payload;
+
     if (action === "LIST_FLOORS") {
+      // enkel verdiepingen van het complex
       payload = {
         Action: "LIST_FLOORS",
         ComplexSelector: complex,
       };
+
     } else if (action === "LIST_FLOOR_SPACES") {
+      // ruimtes van een specifieke floor (en optioneel gefilterd op building / part)
       if (!buildingFloorId) {
         return {
           statusCode: 400,
           body: JSON.stringify({ error: "buildingFloorId is verplicht" }),
         };
       }
+
       payload = {
         Action: "LIST_FLOOR_SPACES",
         ComplexSelector: complex,
         BuildingFloorId: buildingFloorId,
       };
+
+      if (buildingId) {
+        payload.BuildingId = buildingId;
+      }
+      if (buildingPartId) {
+        payload.BuildingPartId = buildingPartId;
+      }
+
     } else {
-      // default: alle ruimtes
+      // 🔹 GENERIEKE fallback:
+      // elke andere action (bv. LIST_COMPLEX, LIST_EQUIPMENT, …)
+      // wordt gewoon doorgegeven zoals gevraagd
       payload = {
-        Action: "LIST_COMPLEX",
+        Action: action,          // ⬅️ belangrijk verschil
         ComplexSelector: complex,
       };
     }
@@ -84,7 +101,7 @@ export async function handler(event) {
     const r = await callUltimo(payload);
 
     if (!r.ok) {
-      // even doorduwen zodat je in de browser de echte Ultimo error ziet
+      // raw Ultimo-error doorgeven voor debug in browser / network-tab
       return { statusCode: r.status, body: r.text };
     }
 
