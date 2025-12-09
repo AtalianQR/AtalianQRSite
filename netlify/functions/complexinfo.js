@@ -34,23 +34,60 @@ function getOutputObject(raw) {
   return txt;
 }
 
+
 export async function handler(event) {
   try {
     if (event.httpMethod !== "GET") {
       return { statusCode: 405, body: "Method not allowed" };
     }
 
-    const qs = event.queryStringParameters || {};
-	const env = qs.env === "test" ? "test" : "prod";
+    const qs  = event.queryStringParameters || {};
+    const env = qs.env === "test" ? "test" : "prod";
 
-	const BASE_URL = env === "test"
-	  ? process.env.ULTIMO_API_BASEURL_TEST
-	  : process.env.ULTIMO_API_BASEURL;
+    // ⬅️ FIX: BASE_URL juist bepalen, en slechts één keer declareren
+    const BASE_URL =
+      env === "test"
+        ? process.env.ULTIMO_API_BASEURL_TEST
+        : process.env.ULTIMO_API_BASEURL;
+
+    const API_KEY       = process.env.ULTIMO_API_KEY;
+    const APP_ELEMENT   = process.env.APP_ELEMENT_QueryAtalianJobs;
+    const ULTIMO_ACTION = "_rest_QueryAtalianJobs";
+
+    async function callUltimo(payload) {
+      const res = await fetch(`${BASE_URL}/action/${ULTIMO_ACTION}`, {
+        method: "POST",
+        headers: {
+          accept: "application/json",
+          "Content-Type": "application/json",
+          ApiKey: API_KEY,
+          ApplicationElementId: APP_ELEMENT,
+        },
+        body: JSON.stringify(payload),
+      });
+
+      if (!res.ok) {
+        return { ok: false, status: res.status, text: await res.text() };
+      }
+      return { ok: true, json: await res.json() };
+    }
+
+    function getOutputObject(raw) {
+      const s = raw?.properties?.Output?.object;
+      if (!s) return null;
+
+      const txt = String(s).trim();
+      if (txt.startsWith("{") && txt.endsWith("}")) {
+        try { return JSON.parse(txt); } catch (e) {}
+      }
+      return txt;
+    }
+
     const complex         = qs.complex;
     const action          = (qs.action || "LIST_COMPLEX").toUpperCase();
     const buildingFloorId = qs.buildingFloorId;
-    const buildingId      = qs.buildingId;      // optioneel
-    const buildingPartId  = qs.buildingPartId;  // optioneel
+    const buildingId      = qs.buildingId;
+    const buildingPartId  = qs.buildingPartId;
 
     if (!complex || !/^[SE]\d+$/.test(complex)) {
       return {
@@ -61,18 +98,16 @@ export async function handler(event) {
       };
     }
 
-    // 👇 Payload opbouwen per actie
+    // Payload opbouwen
     let payload;
 
     if (action === "LIST_FLOORS") {
-      // enkel verdiepingen van het complex
       payload = {
         Action: "LIST_FLOORS",
         ComplexSelector: complex,
       };
 
     } else if (action === "LIST_FLOOR_SPACES") {
-      // ruimtes van een specifieke floor (en optioneel gefilterd op building / part)
       if (!buildingFloorId) {
         return {
           statusCode: 400,
@@ -86,19 +121,12 @@ export async function handler(event) {
         BuildingFloorId: buildingFloorId,
       };
 
-      if (buildingId) {
-        payload.BuildingId = buildingId;
-      }
-      if (buildingPartId) {
-        payload.BuildingPartId = buildingPartId;
-      }
+      if (buildingId)      payload.BuildingId = buildingId;
+      if (buildingPartId)  payload.BuildingPartId = buildingPartId;
 
     } else {
-      // 🔹 GENERIEKE fallback:
-      // elke andere action (bv. LIST_COMPLEX, LIST_EQUIPMENT, …)
-      // wordt gewoon doorgegeven zoals gevraagd
       payload = {
-        Action: action,          // ⬅️ belangrijk verschil
+        Action: action,
         ComplexSelector: complex,
       };
     }
@@ -106,24 +134,18 @@ export async function handler(event) {
     const r = await callUltimo(payload);
 
     if (!r.ok) {
-      // raw Ultimo-error doorgeven voor debug in browser / network-tab
       return { statusCode: r.status, body: r.text };
     }
 
     const out = getOutputObject(r.json);
-    if (!out || !out.Items) {
-      return {
-        statusCode: 200,
-        body: JSON.stringify({ Items: [] }),
-      };
-    }
-
     return {
       statusCode: 200,
-      body: JSON.stringify(out),
+      body: JSON.stringify(out || { Items: [] }),
     };
+
   } catch (err) {
     console.error("complexinfo error", err);
     return { statusCode: 500, body: JSON.stringify({ error: err.message }) };
   }
 }
+
