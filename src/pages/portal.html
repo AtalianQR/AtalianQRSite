@@ -1117,7 +1117,12 @@
             : 'Bestanden uploaden…'
         });
 
-        const emailForDoc = isCleaning ? email : '';
+        await uploadCustomerDoc({
+		  jobId,
+		  email,         // ← ALTIJD
+		  file: it.file,
+		  description: docDescr
+		});
 
         for (const it of pickedFiles) {
           try {
