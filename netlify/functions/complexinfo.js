@@ -41,6 +41,11 @@ export async function handler(event) {
     }
 
     const qs = event.queryStringParameters || {};
+	const env = qs.env === "test" ? "test" : "prod";
+
+	const BASE_URL = env === "test"
+	  ? process.env.ULTIMO_API_BASEURL_TEST
+	  : process.env.ULTIMO_API_BASEURL;
     const complex         = qs.complex;
     const action          = (qs.action || "LIST_COMPLEX").toUpperCase();
     const buildingFloorId = qs.buildingFloorId;
