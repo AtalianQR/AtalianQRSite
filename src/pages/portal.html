@@ -566,7 +566,8 @@
   }
 
   async function uploadCustomerDoc({ jobId, email, file, description }) {
-    const endpoint = '/.netlify/functions/jobsvendor' + (isTestEnv ? '?test=1' : '');
+    const endpoint = '/.netlify/functions/jobdocupload' + (isTestEnv ? '?test=1' : '');
+
     const safeFile  = await compressImageIfNeeded(file);
     const fileName  = sanitizeName(safeFile.name);
     const mimeType  = safeFile.type || guessMimeByName(fileName);
