@@ -41,13 +41,9 @@
       text-transform: uppercase;
       opacity: 0.9;
     }
-    body.is-test {
-      padding-top: 30px;
-    }
+    body.is-test { padding-top: 30px; }
 
-    header {
-      padding: 0.5rem 1rem 0;
-    }
+    header { padding: 0.5rem 1rem 0; }
     .lang-switch {
       text-align: right;
       margin-bottom: 0.5rem;
@@ -83,15 +79,8 @@
       padding: 1.25rem 1.5rem 1.5rem;
     }
 
-    .page-card h1 {
-      margin: 0 0 .5rem;
-      font-size: 1.4rem;
-    }
-    .page-card p {
-      margin-top: 0;
-      color: #4b5563;
-      font-size: .95rem;
-    }
+    .page-card h1 { margin: 0 0 .5rem; font-size: 1.4rem; }
+    .page-card p  { margin-top: 0; color: #4b5563; font-size: .95rem; }
 
     .choice-row {
       display: flex;
@@ -133,7 +122,7 @@
       font-weight: 600;
       margin-bottom: .25rem;
     }
-    select {
+    select, input[type="text"] {
       width: 100%;
       padding: .45rem .6rem;
       border-radius: 8px;
@@ -141,14 +130,8 @@
       font-size: .95rem;
     }
 
-    .status {
-      margin-top: .5rem;
-      font-size: .9rem;
-      color: #6b7280;
-    }
-    .status.error {
-      color: #b91c1c;
-    }
+    .status { margin-top: .5rem; font-size: .9rem; color: #6b7280; }
+    .status.error { color: #b91c1c; }
 
     .actions {
       margin-top: 1.25rem;
@@ -170,13 +153,8 @@
       color: #fff;
       box-shadow: 0 2px 6px rgba(0,0,0,.15);
     }
-    .btn-primary:active {
-      background: #d86e00;
-    }
-    .btn-secondary {
-      background: #e5e7eb;
-      color: #111827;
-    }
+    .btn-primary:active { background: #d86e00; }
+    .btn-secondary { background: #e5e7eb; color: #111827; }
 
     @media (max-width: 480px) {
       .page-card {
@@ -188,6 +166,7 @@
     }
   </style>
 </head>
+
 <body>
   <div id="test-indicator" style="display:none" class="test-banner">
     ⚠️ TEST OMGEVING ACTIEF
@@ -207,7 +186,7 @@
     <section class="page-card">
       <h1 id="title-text">Waarvoor wil je een ticket aanmaken?</h1>
       <p id="intro-text">
-        Kies eerst of je een probleem wil melden voor een installatie of voor een ruimte (complex 006691. 🌿)
+        Kies eerst of je een probleem wil melden voor een installatie of voor een ruimte (Greenhouse Collection. 🌿)
       </p>
 
       <div class="choice-row">
@@ -222,28 +201,30 @@
       </div>
 
       <div class="form-block" id="block-select" style="display:none">
-	  <label id="label-building" for="select-building" style="display:none;">
-		  Kies gebouw
-		</label>
-		<select id="select-building" style="display:none;">
-		  <option value="">-- kies een gebouw --</option>
-		</select>
+        <!-- SPACE: gebouw/gebouwdeel/verdieping -->
+        <label id="label-building" for="select-building" style="display:none;">Kies gebouw</label>
+        <select id="select-building" style="display:none;">
+          <option value="">-- kies een gebouw --</option>
+        </select>
 
-		<label id="label-part" for="select-part" style="display:none;">
-		  Kies gebouwdeel
-		</label>
-		<select id="select-part" style="display:none;">
-		  <option value="">-- kies een gebouwdeel --</option>
-		</select>
-        <label id="label-floor" for="select-floor">Kies verdieping</label>
-        <select id="select-floor">
+        <label id="label-part" for="select-part" style="display:none;">Kies gebouwdeel</label>
+        <select id="select-part" style="display:none;">
+          <option value="">-- kies een gebouwdeel --</option>
+        </select>
+
+        <label id="label-floor" for="select-floor" style="display:none;">Kies verdieping</label>
+        <select id="select-floor" style="display:none;">
           <option value="">-- eerst een verdieping kiezen --</option>
         </select>
 
-        <label id="label-select" for="select-target" style="margin-top:.75rem;display:block;">
-          Kies installatie of ruimte
+        <!-- EQUIPMENT: eerst type, dan installatie -->
+        <label id="label-equipmenttype" for="select-equipmenttype" style="display:none; margin-top:.75rem;">
+          Kies installatiesoort
         </label>
-		
+        <select id="select-equipmenttype" style="display:none;">
+          <option value="">-- eerst een installatiesoort kiezen --</option>
+        </select>
+
         <div id="filter-block" style="margin-top:.5rem; display:none;">
           <label id="label-filter-installation" for="filter-installation">
             Filter installaties (code, lokaal, tenant…)
@@ -254,748 +235,743 @@
             placeholder="Typ om te filteren…"
             autocomplete="off"
           />
-        </div>		
-		
+        </div>
+
+        <label id="label-select" for="select-target" style="margin-top:.75rem; display:block;">
+          Kies installatie of ruimte
+        </label>
         <select id="select-target">
           <option value="">-- eerst een keuze maken hierboven --</option>
         </select>
+
         <div id="status" class="status"></div>
       </div>
 
       <div class="actions">
-        <button type="button" class="btn btn-secondary" id="btn-cancel">
-          ⬅️ Terug
-        </button>
-        <button type="button" class="btn btn-primary" id="btn-go">
-          ➡️ Ga naar meldingsportaal
-        </button>
+        <button type="button" class="btn btn-secondary" id="btn-cancel">⬅️ Terug</button>
+        <button type="button" class="btn btn-primary" id="btn-go">➡️ Ga naar meldingsportaal</button>
       </div>
     </section>
   </main>
 
- <script>
-  /* ============================================================
-     CONFIG
-  ============================================================ */
-  const COMPLEX_ID    = '006691';
-  const ChooseBuilding = 'No';
-  const ChooseBuildingPart = 'Yes';
-  const LIST_ENDPOINT = '/.netlify/functions/complexinfo';
-  const selectBuilding = document.getElementById('select-building');
-  const selectPart     = document.getElementById('select-part');
+  <script>
+    /* ============================================================
+       CONFIG
+    ============================================================ */
+    const COMPLEX_ID           = '006691';
+    const ChooseBuilding       = 'No';
+    const ChooseBuildingPart   = 'Yes';
+    const LIST_ENDPOINT        = '/.netlify/functions/complexinfo';
 
-  /* ============================================================
-     TAAL EN OMGEVING
-  ============================================================ */
-  const qs        = new URLSearchParams(window.location.search);
-  let   lang      = qs.get('lang') || ((navigator.language || '').startsWith('fr') ? 'fr' : 'nl');
-  const host      = location.host || '';
-  const isTestEnv = qs.has('test') || qs.get('env') === 'test' || /test|staging/i.test(host);
-  const envPrefix = isTestEnv ? 'test' : 'prod';
+    /* ============================================================
+       TAAL EN OMGEVING
+    ============================================================ */
+    const qs        = new URLSearchParams(window.location.search);
+    let   lang      = qs.get('lang') || ((navigator.language || '').startsWith('fr') ? 'fr' : 'nl');
+    const host      = location.host || '';
+    const isTestEnv = qs.has('test') || qs.get('env') === 'test' || /test|staging/i.test(host);
+    const envPrefix = isTestEnv ? 'test' : 'prod';
 
-  function applyLanguage() {
-    const isFr = (lang === 'fr');
+    function applyLanguage() {
+      const isFr = (lang === 'fr');
+      document.documentElement.lang = isFr ? 'fr' : 'nl';
 
-    document.documentElement.lang = isFr ? 'fr' : 'nl';
+      document.getElementById('title-text').textContent =
+        isFr ? 'Pour quoi voulez-vous créer un ticket ?' : 'Waarvoor wil je een ticket aanmaken?';
 
-    document.getElementById('title-text').textContent =
-      isFr ? 'Pour quoi voulez-vous créer un ticket ?'
-           : 'Waarvoor wil je een ticket aanmaken?';
-
-    document.getElementById('intro-text').textContent =
-      isFr
-        ? "Choisissez d’abord si vous signalez un problème pour une installation ou pour un espace dans la Greenhouse Collection. 🌿"
-        : "Kies eerst of je een probleem wil melden voor een installatie of voor een ruimte in de Greenhouse Collection. 🌿";
-
-    document.getElementById('lbl-installation').textContent =
-      isFr ? 'Installation' : 'Installatie';
-
-    document.getElementById('lbl-room').textContent =
-      isFr ? 'Espace / Local' : 'Ruimte';
-
-    document.getElementById('label-floor').textContent =
-      isFr ? 'Choisissez un étage' : 'Kies verdieping';
-
-    document.getElementById('label-select').textContent =
-      isFr ? 'Sélectionnez une installation ou un espace'
-           : 'Kies installatie of ruimte';
-
-    document.getElementById('btn-cancel').textContent =
-      isFr ? '⬅️ Retour'
-           : '⬅️ Terug';
-
-    document.getElementById('btn-go').textContent =
-      isFr ? '➡️ Aller au portail de ticket'
-           : '➡️ Ga naar meldingsportaal';
-
-    document.getElementById('label-building').textContent =
-      isFr ? 'Choisissez un bâtiment' : 'Kies gebouw';
-
-    document.getElementById('label-part').textContent =
-      isFr ? 'Choisissez une partie du bâtiment' : 'Kies gebouwdeel';
-	  
-    const lblFilter = document.getElementById('label-filter-installation');
-    const inpFilter = document.getElementById('filter-installation');
-
-    if (lblFilter) {
-      lblFilter.textContent = isFr
-        ? 'Filtrer les installations (code, local, locataire…)'
-        : 'Filter installaties (code, lokaal, tenant…)';
-    }
-    if (inpFilter) {
-      inpFilter.placeholder = isFr
-        ? 'Tapez pour filtrer…'
-        : 'Typ om te filteren…';
-    }
-	  
-  }
-
-  function initEnvBanner() {
-    if (isTestEnv) {
-      document.getElementById('test-indicator').style.display = 'block';
-      document.body.classList.add('is-test');
-    }
-  }
-
-  /* ============================================================
-     LOGICA
-  ============================================================ */
-  const btnInstallation  = document.getElementById('btn-installation');
-  const btnRoom          = document.getElementById('btn-room');
-  const selectFloor      = document.getElementById('select-floor');
-  const selectTarget     = document.getElementById('select-target');
-  const statusEl         = document.getElementById('status');
-  const blockSelect      = document.getElementById('block-select');
-  const btnGo            = document.getElementById('btn-go');
-  const btnCancel        = document.getElementById('btn-cancel');
-  const filterBlock      = document.getElementById('filter-block');
-  const filterInstall    = document.getElementById('filter-installation');
-
-  let currentType        = null;  // 'equipment' of 'space'
-  let allFloors          = [];    // LIST_FLOORS-respons
-  let allInstallations   = [];    // volledige LIST_COMPLEX (E) respons
-
-
-  function setStatus(msg, isError = false) {
-    statusEl.textContent = msg || '';
-    statusEl.classList.toggle('error', !!isError);
-  }
-
-  /* ============================================================
-     INSTALLATIES – blijven via LIST_COMPLEX (E-prefix)
-  ============================================================ */
-  async function fetchItems(type) {
-    const isFr = (lang === 'fr');
-
-    setStatus(isFr ? 'Chargement des données…' : 'Gegevens worden geladen…', false);
-
-    const prefix          = 'E';
-    const complexSelector = `${prefix}${COMPLEX_ID}`;
-    const url             = `${LIST_ENDPOINT}?complex=${encodeURIComponent(complexSelector)}&env=${encodeURIComponent(envPrefix)}`;
-
-    const resp = await fetch(url, { cache: 'no-store' });
-    const txt  = await resp.text();
-
-    let data;
-    try {
-      data = JSON.parse(txt);
-    } catch (e) {
-      console.error('JSON parse error', e, txt);
-      throw new Error('Geen geldige JSON van de backend.');
-    }
-
-    const items = Array.isArray(data.Items)
-      ? data.Items
-      : (Array.isArray(data.items) ? data.items : []);
-
-    if (!items.length) {
-      setStatus(
+      document.getElementById('intro-text').textContent =
         isFr
-          ? "Aucun résultat trouvé pour ce complexe."
-          : "Geen resultaten gevonden voor dit complex.",
-        true
-      );
-      selectTarget.innerHTML =
-        '<option value="">-- niets beschikbaar --</option>';
-      return;
-    }
+          ? "Choisissez d’abord si vous signalez un problème pour une installation ou pour un espace dans la Greenhouse Collection. 🌿"
+          : "Kies eerst of je een probleem wil melden voor een installatie of voor een ruimte in de Greenhouse Collection. 🌿";
 
-    selectTarget.innerHTML = '';
-    selectTarget.insertAdjacentHTML(
-      'beforeend',
-      `<option value="">${isFr ? '-- faites un choix --' : '-- maak een keuze --'}</option>`
-    );
+      document.getElementById('lbl-installation').textContent = isFr ? 'Installation' : 'Installatie';
+      document.getElementById('lbl-room').textContent         = isFr ? 'Espace / Local' : 'Ruimte';
 
-    items.forEach(it => {
-      const id          = String(it.Id ?? it.id ?? '');
-      const desc        = String(it.Description ?? it.description ?? id);
-      const floorId     = String(it.BuildingFloorId ?? it.buildingFloorId ?? '');
-      const floorLevel  = String(it.BuildingFloorLevel ?? it.buildingFloorLevel ?? '');
+      document.getElementById('btn-cancel').textContent = isFr ? '⬅️ Retour' : '⬅️ Terug';
+      document.getElementById('btn-go').textContent     = isFr ? '➡️ Aller au portail de ticket' : '➡️ Ga naar meldingsportaal';
 
-      let labelParts = [];
-      if (floorId || floorLevel) {
-        let meta = '';
-        if (floorId)    meta += floorId;
-        if (floorLevel) meta += (meta ? ' ' : '') + `L${floorLevel}`;
-        labelParts.push(`[${meta}]`);
-      }
-      labelParts.push(`${id} – ${desc}`);
-      const label = labelParts.join(' ');
+      document.getElementById('label-building').textContent = isFr ? 'Choisissez un bâtiment' : 'Kies gebouw';
+      document.getElementById('label-part').textContent     = isFr ? 'Choisissez une partie du bâtiment' : 'Kies gebouwdeel';
+      document.getElementById('label-floor').textContent    = isFr ? 'Choisissez un étage' : 'Kies verdieping';
 
-      const optHtml =
-        `<option value="${id.replace(/"/g,'&quot;')}">` +
-          `${label.replace(/</g,'&lt;')}` +
-        `</option>`;
+      document.getElementById('label-equipmenttype').textContent =
+        isFr ? "Choisissez le type d'installation" : "Kies installatiesoort";
 
-      selectTarget.insertAdjacentHTML('beforeend', optHtml);
-    });
-
-    setStatus(
-      isFr
-        ? `✅ ${items.length} élément(s) trouvé(s).`
-        : `✅ ${items.length} item(s) gevonden.`,
-      false
-    );
-  }
-
-  /* ============================================================
-     LIST_FLOORS – alle verdiepingen voor dit complex
-  ============================================================ */
-  async function fetchFloorsForComplex() {
-    const isFr = (lang === 'fr');
-    setStatus(isFr ? 'Chargement des données…' : 'Gegevens worden geladen…', false);
-
-    const prefix          = 'S';
-    const complexSelector = `${prefix}${COMPLEX_ID}`;
-    const url             = `${LIST_ENDPOINT}?action=LIST_FLOORS&complex=${encodeURIComponent(complexSelector)}&env=${encodeURIComponent(envPrefix)}`;
-
-    const resp = await fetch(url, { cache: 'no-store' });
-    const txt  = await resp.text();
-
-    let data;
-    try {
-      data = JSON.parse(txt);
-    } catch (e) {
-      console.error('JSON parse error', e, txt);
-      throw new Error('Geen geldige JSON van de backend.');
-    }
-
-    const items = Array.isArray(data.Items) ? data.Items : [];
-
-    if (!items.length) {
-      setStatus(
-        isFr ? "Aucun étage trouvé pour ce complexe."
-             : "Geen verdiepingen gevonden voor dit complex.",
-        true
-      );
-      selectFloor.innerHTML  = '<option value="">-- niets beschikbaar --</option>';
-      selectTarget.innerHTML = '<option value="">-- niets beschikbaar --</option>';
-      return;
-    }
-
-    // bufferen voor alle filtering
-    allFloors = items;
-
-    // gebouw + buildingpart opbouwen
-    buildBuildingAndPartDropdowns(); // Vult de gebouw-dropdown (alleen als ChooseBuilding = 'Yes')
-    rebuildPartDropdown();           // NIEUW: Vult de gebouwdeel-dropdown onmiddellijk (als ChooseBuildingPart = 'Yes')
-    // eerste keer verdiepingen opbouwen (nog geen buildingpart gekozen)
-    buildFloorDropdown();
-
-    selectTarget.innerHTML =
-      `<option value="">${isFr ? "-- choisissez d'abord un étage --"
-                               : "-- kies eerst een verdieping --"}</option>`;
-    setStatus('', false);
-  }
-
-  /* ============================================================
-     LIST_FLOOR_SPACES – ruimtes per verdieping + buildingpart
-  ============================================================ */
-  async function fetchSpacesForFloor(buildingFloorId) {
-    const isFr = (lang === 'fr');
-
-    if (!buildingFloorId) {
-      selectTarget.innerHTML =
-        `<option value="">${isFr ? '-- choisissez d\'abord un étage --'
-                                 : '-- kies eerst een verdieping --'}</option>`;
-      return;
-    }
-
-    setStatus(isFr ? 'Chargement des locaux…' : 'Ruimtes worden geladen…', false);
-
-    const prefix          = 'S';
-    const complexSelector = `${prefix}${COMPLEX_ID}`;
-
-    // 🔑 huidige building en buildingpart uit de dropdowns
-    // Gebruik ChooseBuilding === 'Yes' om te bepalen of we bldId moeten ophalen
-    const bldId  = (ChooseBuilding === 'Yes')
-      ? (selectBuilding.value || '').trim()
-      : '';
-    const partId = (ChooseBuildingPart === 'Yes')
-      ? (selectPart.value || '').trim()
-      : '';
-
-    let url = `${LIST_ENDPOINT}?action=LIST_FLOOR_SPACES` +
-              `&complex=${encodeURIComponent(complexSelector)}` +
-              `&buildingFloorId=${encodeURIComponent(buildingFloorId)}` +
-              `&env=${encodeURIComponent(envPrefix)}`;
-
-    // deze twee parameters worden nu naar complexinfo.js gestuurd
-    if (partId) {
-      url += `&buildingPartId=${encodeURIComponent(partId)}`;
-    }
-    if (bldId) {
-      url += `&buildingId=${encodeURIComponent(bldId)}`;
-    }
-
-    const resp = await fetch(url, { cache: 'no-store' });
-    const txt  = await resp.text();
-    console.log('LIST_FLOOR_SPACES raw response:', txt);
-
-    let data;
-    try {
-      data = JSON.parse(txt);
-    } catch (e) {
-      console.error('JSON parse error', e, txt);
-      throw new Error('Geen geldige JSON van de backend.');
-    }
-
-    const items = Array.isArray(data.Items) ? data.Items : [];
-
-    selectTarget.innerHTML = '';
-    selectTarget.insertAdjacentHTML(
-      'beforeend',
-      `<option value="">${isFr ? '-- choisissez un local --'
-                               : '-- kies een ruimte --'}</option>`
-    );
-
-    if (!items.length) {
-      setStatus(
-        isFr ? "Aucun local trouvé pour cet étage."
-             : "Geen ruimtes gevonden op deze verdieping.",
-        true
-      );
-      return;
-    }
-
-    // sorteer: eerst RoomNumber, anders Id
-    items.sort((a, b) => {
-      const rnA = String(a.RoomNumber || '').trim();
-      const rnB = String(b.RoomNumber || '').trim();
-
-      const idA = String(a.Id || '').trim();
-      const idB = String(b.Id || '').trim();
-
-      const keyA = rnA || idA;
-      const keyB = rnB || idB;
-
-      return keyA.localeCompare(keyB, 'nl', { numeric: true, sensitivity: 'base' });
-    });
-
-    items.forEach(sp => {
-      const id         = String(sp.Id || '');
-      const roomNumber = String(sp.RoomNumber || '').trim();
-      const desc       = String(sp.Description || id);
-      const tenant     = String(sp.Tenant || '').trim();
-
-      const primaryCode = roomNumber || id;
-
-      let label = `${primaryCode} - ${desc}`;
-      if (tenant) label += ` – (${tenant})`;
-
-      const opt = `<option value="${id.replace(/"/g,'&quot;')}">${label.replace(/</g,'&lt;')}</option>`;
-      selectTarget.insertAdjacentHTML('beforeend', opt);
-    });
-
-    setStatus('', false);
-  }
-
-  /* ============================================================
-     Dropdowns: gebouw, buildingpart, verdieping
-  ============================================================ */
-  
-
-	function getShortPartId(raw) {
-	  const txt = String(raw || '');
-	  const m = txt.match(/BuildingPart\.Id\.Id='([^']+)'/);
-	  return m ? m[1] : txt;
-	}
-
-	function buildBuildingAndPartDropdowns() {
-	  const isFr = (lang === 'fr');
-	  // Bepaal alleen of we de gebouw-dropdown moeten vullen (onafhankelijk van ChooseBuildingPart)
-	  const showBuilding = (ChooseBuilding === 'Yes'); 
-
-	  if (showBuilding) {
-		const bldMap = new Map(); // id -> description
-
-		allFloors.forEach(f => {
-		  const id   = String(f.BuildingId || '').trim();
-		  if (!id) return;
-		  const desc = String(f.BuildingDescription || id).trim();
-		  if (!bldMap.has(id)) bldMap.set(id, desc);
-		});
-
-		selectBuilding.innerHTML =
-		  `<option value="">${isFr ? '-- choisissez un bâtiment --'
-								   : '-- kies een gebouw --'}</option>`;
-
-		for (const [id, desc] of bldMap.entries()) {
-		  const label = `${id} – ${desc}`;
-		  selectBuilding.insertAdjacentHTML(
-			'beforeend',
-			`<option value="${id.replace(/"/g,'&quot;')}">${label.replace(/</g,'&lt;')}</option>`
-		  );
-		}
-	  }
-      // De logica voor het initialiseren van selectPart is verplaatst naar rebuildPartDropdown(), 
-      // zodat deze altijd correct wordt gevuld na het laden van de gegevens.
-	}
-
-
-	function rebuildPartDropdown() {
-	  if (ChooseBuildingPart !== 'Yes') return;
-
-	  const isFr = (lang === 'fr');
-      // BldId alleen ophalen als het 'Kies Gebouw' veld wordt gebruikt
-	  const bldId = (ChooseBuilding === 'Yes') ? (selectBuilding.value || '').trim() : '';
-      
-      // Deze check is alleen van toepassing als ChooseBuilding op 'Yes' staat.
-      if (ChooseBuilding === 'Yes' && !bldId) {
-          selectPart.innerHTML =
-		    `<option value="">${isFr ? '-- choisissez un bâtiment d\'abord --'
-								     : '-- kies eerst een gebouw --'}</option>`;
-          return;
-      }
-
-	  // Dit is de correcte standaard placeholder als er geen gebouw gekozen hoeft te worden
-	  selectPart.innerHTML =
-		`<option value="">${isFr ? '-- choisissez un bâtimentdeel --'
-								 : '-- kies een gebouwdeel --'}</option>`;
-
-	  const partMap = new Map(); // shortId -> description
-
-	  allFloors.forEach(f => {
-        // FILTER: Alleen filteren op BuildingId als ChooseBuilding is ingesteld
-        if (ChooseBuilding === 'Yes') {
-            const fbld = String(f.BuildingId || '').trim();
-            if (fbld !== bldId) return;
-        }
-
-		const pidRaw  = String(f.BuildingPartId || '').trim();
-		const pid     = getShortPartId(pidRaw);             
-		if (!pid) return;
-
-		const pdesc = String(f.BuildingPartDescription || pid).trim();
-		if (!partMap.has(pid)) partMap.set(pid, pdesc);
-	  });
-
-	  for (const [pid, desc] of partMap.entries()) {
-		const label = `${desc}`;
-		selectPart.insertAdjacentHTML(
-		  'beforeend',
-		  `<option value="${pid.replace(/"/g,'&quot;')}">${label.replace(/</g,'&lt;')}</option>`
-		);
-	  }
-	}
-
-
-	function buildFloorDropdown() {
-	  const isFr = (lang === 'fr');
-
-	  const bldId  = (ChooseBuilding === 'Yes') ? (selectBuilding.value || '').trim() : '';
-	  const partId = (ChooseBuildingPart === 'Yes') ? (selectPart.value || '').trim()     : '';
-
-	  if (!Array.isArray(allFloors) || !allFloors.length) {
-		selectFloor.innerHTML =
-		  `<option value="">${isFr ? '-- aucun étage --' : '-- geen verdiepingen --'}</option>`;
-		return;
-	  }
-
-	  const levelToId = new Map(); // level -> BuildingFloorId
-
-	  allFloors.forEach(f => {
-		// Filter op Gebouw (alleen als ChooseBuilding = 'Yes')
-		if (bldId && String(f.BuildingId || '').trim() !== bldId) return;
-
-		// Filter op Gebouwdeel (alleen als ChooseBuildingPart = 'Yes' EN een deel is gekozen)
-		const pidShort = getShortPartId(f.BuildingPartId);
-		if (partId && pidShort !== partId) return;
-
-		const levelRaw =
-		  f.Level ??
-		  f._Level ??
-		  f.BuildingFloorLevel ??
-		  '';
-
-		const level = String(levelRaw).trim();
-		const bfId  = String(f.Id || '').trim(); // Id = BuildingFloor.Id.Id
-
-		if (!level || !bfId) return;
-		if (!levelToId.has(level)) levelToId.set(level, bfId);
-	  });
-
-	  if (!levelToId.size) {
-		selectFloor.innerHTML =
-		  `<option value="">${isFr ? '-- aucun étage filtré --'
-								   : '-- geen verdiepingen gevonden --'}</option>`;
-		return;
-	  }
-
-	  const sortedLevels = Array.from(levelToId.keys()).sort((a, b) => {
-		const na = parseFloat(String(a).replace(',', '.'));
-		const nb = parseFloat(String(b).replace(',', '.'));
-		if (!Number.isNaN(na) && !Number.isNaN(nb)) return na - nb;
-		return String(a).localeCompare(String(b), undefined, { sensitivity: 'base' });
-	  });
-
-	  selectFloor.innerHTML =
-		`<option value="">${isFr ? '-- choisissez un étage --'
-								 : '-- kies een verdieping --'}</option>`;
-
-	  sortedLevels.forEach(level => {
-		const bfId = levelToId.get(level);
-		const opt  =
-		  `<option value="${String(bfId).replace(/"/g,'&quot;')}">` +
-			`${String(level).replace(/</g,'&lt;')}` +
-		  `</option>`;
-		selectFloor.insertAdjacentHTML('beforeend', opt);
-	  });
-
-	  selectTarget.innerHTML =
-		`<option value="">${isFr ? "-- choisissez d'abord un étage --"
-								 : "-- kies eerst een verdieping --"}</option>`;
-	}
-
-
-  /* ============================================================
-     TYPE KIEZEN
-  ============================================================ */
-  function setActiveType(type) {
-    currentType = type;
-
-    btnInstallation.classList.toggle('active', type === 'equipment');
-    btnRoom.classList.toggle('active',         type === 'space');
-
-    blockSelect.style.display = 'block';
-
-    if (type === 'space') {
-      // 🧱 Configuratie voor het tonen van de velden
-      // Dit bepaalt de zichtbaarheid op basis van de CONFIG-variabelen
-      const showBuildingDropdown = (ChooseBuilding === 'Yes');
-      const showPartDropdown     = (ChooseBuildingPart === 'Yes');
-
-      document.getElementById('label-building').style.display = showBuildingDropdown ? 'block' : 'none';
-      selectBuilding.style.display                             = showBuildingDropdown ? 'block' : 'none';
-
-      document.getElementById('label-part').style.display      = showPartDropdown ? 'block' : 'none';
-      selectPart.style.display                                 = showPartDropdown ? 'block' : 'none';
-
-      // resetten van de dropdowns, ook al zijn ze verborgen
-      selectBuilding.innerHTML = '<option value="">-- kies een gebouw --</option>';
-      selectPart.innerHTML     = '<option value="">-- kies een gebouwdeel --</option>';
-
-      selectFloor.style.display = 'block';
-      document.getElementById('label-floor').style.display = 'block';
       document.getElementById('label-select').textContent =
-        (lang === 'fr') ? 'Sélectionnez un espace' : 'Kies ruimte';
+        isFr ? 'Sélectionnez une installation ou un espace' : 'Kies installatie of ruimte';
 
-      selectFloor.innerHTML  = '<option value="">-- laden... --</option>';
-      selectTarget.innerHTML = '<option value="">-- eerst een verdieping kiezen --</option>';
+      const lblFilter = document.getElementById('label-filter-installation');
+      const inpFilter = document.getElementById('filter-installation');
+      if (lblFilter) {
+        lblFilter.textContent = isFr
+          ? 'Filtrer les installations (code, local, locataire…)'
+          : 'Filter installaties (code, lokaal, tenant…)';
+      }
+      if (inpFilter) {
+        inpFilter.placeholder = isFr ? 'Tapez pour filtrer…' : 'Typ om te filteren…';
+      }
+    }
 
-      fetchFloorsForComplex().catch(err => {
-        console.error(err);
-        const isFr = (lang === 'fr');
-        setStatus(
-          isFr ? 'Erreur lors du chargement des étages.'
-               : 'Fout bij het laden van de verdiepingen.',
-          true
+    function initEnvBanner() {
+      if (isTestEnv) {
+        document.getElementById('test-indicator').style.display = 'block';
+        document.body.classList.add('is-test');
+      }
+    }
+
+    /* ============================================================
+       ELEMENTS
+    ============================================================ */
+    const btnInstallation     = document.getElementById('btn-installation');
+    const btnRoom             = document.getElementById('btn-room');
+
+    const blockSelect         = document.getElementById('block-select');
+    const statusEl            = document.getElementById('status');
+
+    const selectBuilding      = document.getElementById('select-building');
+    const selectPart          = document.getElementById('select-part');
+    const selectFloor         = document.getElementById('select-floor');
+
+    const selectEquipmentType = document.getElementById('select-equipmenttype');
+    const selectTarget        = document.getElementById('select-target');
+
+    const filterBlock         = document.getElementById('filter-block');
+    const filterInstall       = document.getElementById('filter-installation');
+
+    const btnGo               = document.getElementById('btn-go');
+    const btnCancel           = document.getElementById('btn-cancel');
+
+    /* ============================================================
+       STATE
+    ============================================================ */
+    let currentType        = null;   // 'equipment' of 'space'
+    let allFloors          = [];
+    let allInstallations   = [];     // Items[]
+    let allEquipmentTypes  = [];     // EquipmentTypes[]
+    let selectedEqType     = null;   // typeId of '__unknown__'
+
+    function setStatus(msg, isError = false) {
+      statusEl.textContent = msg || '';
+      statusEl.classList.toggle('error', !!isError);
+    }
+
+    /* ============================================================
+       HELPERS: Equipment types & filtering
+    ============================================================ */
+    function normalizeId(v) {
+      return String(v ?? '').trim();
+    }
+
+    function buildEquipmentTypeDropdown(types, items) {
+      const isFr = (lang === 'fr');
+
+      // detecteer onbekende types (lege EquipmentTypeId)
+      const hasUnknown = items.some(it => !normalizeId(it.EquipmentTypeId ?? it.equipmentTypeId));
+
+      // options
+      selectEquipmentType.innerHTML =
+        `<option value="">${isFr ? "-- choisissez d'abord un type --" : "-- kies eerst een installatiesoort --"}</option>`;
+
+      (types || []).forEach(t => {
+        const id   = normalizeId(t.Id ?? t.id);
+        const desc = String(t.Description ?? t.description ?? id).trim();
+        if (!id) return;
+        selectEquipmentType.insertAdjacentHTML(
+          'beforeend',
+          `<option value="${id.replace(/"/g,'&quot;')}">${desc.replace(/</g,'&lt;')}</option>`
         );
-        selectFloor.innerHTML  = '<option value="">-- geen gegevens --</option>';
-        selectTarget.innerHTML = '<option value="">-- geen gegevens --</option>';
       });
 
-    } else {
-      // 🔧 INSTALLATIES
-      selectFloor.style.display = 'none';
-      document.getElementById('label-floor').style.display = 'none';
-      document.getElementById('label-select').textContent =
-        (lang === 'fr') ? 'Sélectionnez une installation' : 'Kies installatie';
-
-      // Zorg ervoor dat de gebouw/gebouwdeel labels verborgen zijn voor installaties
-      document.getElementById('label-building').style.display = 'none';
-      selectBuilding.style.display                             = 'none';
-      document.getElementById('label-part').style.display      = 'none';
-      selectPart.style.display                                 = 'none';
-
-      selectTarget.innerHTML = '<option value="">-- laden... --</option>';
-      fetchItems(type).catch(err => {
-        console.error(err);
-        const isFr = (lang === 'fr');
-        setStatus(
-          isFr ? 'Erreur lors du chargement.' : 'Fout bij het laden.',
-          true
+      if (hasUnknown) {
+        selectEquipmentType.insertAdjacentHTML(
+          'beforeend',
+          `<option value="__unknown__">${isFr ? "Autre / Inconnu" : "Andere / Onbekend"}</option>`
         );
-        selectTarget.innerHTML = '<option value="">-- geen gegevens beschikbaar --</option>';
+      }
+
+      // auto-select als er exact 1 type is en geen unknown-only situatie
+      const optionCount = selectEquipmentType.querySelectorAll('option').length;
+      if (optionCount === 2 && !hasUnknown) {
+        // placeholder + 1 type
+        selectEquipmentType.selectedIndex = 1;
+        selectedEqType = selectEquipmentType.value;
+        renderEquipmentOptions();
+      } else {
+        selectedEqType = null;
+        selectTarget.innerHTML =
+          `<option value="">${isFr ? "-- choisissez d'abord un type --" : "-- kies eerst een installatiesoort --"}</option>`;
+      }
+    }
+
+    function matchesType(item, typeId) {
+      const itemType = normalizeId(item.EquipmentTypeId ?? item.equipmentTypeId);
+      if (typeId === "__unknown__") return !itemType;
+      return itemType === normalizeId(typeId);
+    }
+
+    function matchesText(item, q) {
+      if (!q) return true;
+      const needle = q.toLowerCase().trim();
+      if (!needle) return true;
+
+      const id   = String(item.Id ?? item.id ?? '').toLowerCase();
+      const desc = String(item.Description ?? item.description ?? '').toLowerCase();
+
+      // als je later extra velden meestuurt (SpaceDescription, Tenant, …) pakt dit ze automatisch mee
+      const extra = JSON.stringify(item).toLowerCase();
+
+      return id.includes(needle) || desc.includes(needle) || extra.includes(needle);
+    }
+
+    function renderEquipmentOptions() {
+      const isFr = (lang === 'fr');
+
+      const typeId = selectEquipmentType.value;
+      selectedEqType = typeId || null;
+
+      if (!selectedEqType) {
+        selectTarget.innerHTML =
+          `<option value="">${isFr ? "-- choisissez d'abord un type --" : "-- kies eerst een installatiesoort --"}</option>`;
+        return;
+      }
+
+      const q = String(filterInstall?.value || '');
+
+      const filtered = allInstallations
+        .filter(it => matchesType(it, selectedEqType))
+        .filter(it => matchesText(it, q));
+
+      selectTarget.innerHTML = '';
+      selectTarget.insertAdjacentHTML(
+        'beforeend',
+        `<option value="">${isFr ? '-- choisissez une installation --' : '-- kies een installatie --'}</option>`
+      );
+
+      if (!filtered.length) {
+        setStatus(isFr ? "Geen installaties gevonden (met deze filter)." : "Geen installaties gevonden (met deze filter).", true);
+        return;
+      }
+
+      filtered.forEach(it => {
+        const id   = String(it.Id ?? it.id ?? '');
+        const desc = String(it.Description ?? it.description ?? id);
+        const opt  = `<option value="${id.replace(/"/g,'&quot;')}">${(`${id} – ${desc}`).replace(/</g,'&lt;')}</option>`;
+        selectTarget.insertAdjacentHTML('beforeend', opt);
       });
-    }
-  }
 
-  /* ============================================================
-     CODE VOOR PORTAL
-  ============================================================ */
-  function buildCodeForPortal(type, id) {
-    const nummer = Number(id);
-
-    if (!Number.isFinite(nummer)) {
-      return String(id);
+      setStatus(isFr ? `✅ ${filtered.length} trouvée(s).` : `✅ ${filtered.length} gevonden.`, false);
     }
 
-    const orgId = String(Math.trunc(nummer)).padStart(6, "0");
-    const mult3 = Math.trunc(nummer * 3);
-    const last6 = String(mult3).padStart(6, "0");
+    /* ============================================================
+       INSTALLATIES (E): haalt Items + EquipmentTypes op
+    ============================================================ */
+    async function fetchEquipmentsForComplex() {
+      const isFr = (lang === 'fr');
+      setStatus(isFr ? 'Chargement des installations…' : 'Installaties worden geladen…', false);
 
-    let resultaat = "";
-    for (let i = 0; i < 6; i++) {
-      resultaat += orgId[i] + last6[i];
+      const complexSelector = `E${COMPLEX_ID}`;
+      const url = `${LIST_ENDPOINT}?complex=${encodeURIComponent(complexSelector)}&env=${encodeURIComponent(envPrefix)}`;
+
+      const resp = await fetch(url, { cache: 'no-store' });
+      const txt  = await resp.text();
+
+      let data;
+      try { data = JSON.parse(txt); }
+      catch (e) {
+        console.error('JSON parse error', e, txt);
+        throw new Error('Geen geldige JSON van de backend.');
+      }
+
+      const items = Array.isArray(data.Items) ? data.Items : (Array.isArray(data.items) ? data.items : []);
+      const types = Array.isArray(data.EquipmentTypes) ? data.EquipmentTypes : (Array.isArray(data.equipmentTypes) ? data.equipmentTypes : []);
+
+      allInstallations  = items;
+      allEquipmentTypes = types;
+
+      if (!items.length) {
+        setStatus(isFr ? "Aucune installation trouvée." : "Geen installaties gevonden.", true);
+        selectEquipmentType.innerHTML = `<option value="">-- niets beschikbaar --</option>`;
+        selectTarget.innerHTML        = `<option value="">-- niets beschikbaar --</option>`;
+        return;
+      }
+
+      // type-keuze opbouwen en dan pas installaties renderen na type-select
+      buildEquipmentTypeDropdown(allEquipmentTypes, allInstallations);
+      setStatus(isFr ? `✅ ${items.length} installation(s) chargée(s).` : `✅ ${items.length} installaties geladen.`, false);
     }
 
-    const isSpace = (type === "space");
-    let endDigit;
+    /* ============================================================
+       SPACES: LIST_FLOORS + LIST_FLOOR_SPACES (ongewijzigd)
+    ============================================================ */
+    async function fetchFloorsForComplex() {
+      const isFr = (lang === 'fr');
+      setStatus(isFr ? 'Chargement des étages…' : 'Verdiepingen worden geladen…', false);
 
-    if (isSpace) {
-      endDigit = Math.floor(Math.random() * 9); // 0-8
-    } else {
-      endDigit = 9;
-    }
+      const complexSelector = `S${COMPLEX_ID}`;
+      const url = `${LIST_ENDPOINT}?action=LIST_FLOORS&complex=${encodeURIComponent(complexSelector)}&env=${encodeURIComponent(envPrefix)}`;
 
-    resultaat += String(endDigit);
-    return resultaat;
-  }
+      const resp = await fetch(url, { cache: 'no-store' });
+      const txt  = await resp.text();
 
-  function goToPortal() {
-    const isFr = (lang === 'fr');
+      let data;
+      try { data = JSON.parse(txt); }
+      catch (e) {
+        console.error('JSON parse error', e, txt);
+        throw new Error('Geen geldige JSON van de backend.');
+      }
 
-    if (!currentType) {
-      alert(
-        isFr
-          ? 'Choisissez d’abord installation ou espace.'
-          : 'Kies eerst installatie of ruimte.'
-      );
-      return;
-    }
+      const items = Array.isArray(data.Items) ? data.Items : [];
+      if (!items.length) {
+        setStatus(isFr ? "Aucun étage trouvé." : "Geen verdiepingen gevonden.", true);
+        selectFloor.innerHTML  = '<option value="">-- niets beschikbaar --</option>';
+        selectTarget.innerHTML = '<option value="">-- niets beschikbaar --</option>';
+        return;
+      }
 
-    if (currentType === 'space' && !selectFloor.value) {
-      alert(
-        isFr
-          ? 'Sélectionnez un étage dans la liste.'
-          : 'Selecteer een verdieping in de lijst.'
-      );
-      return;
-    }
+      allFloors = items;
 
-    const id = selectTarget.value;
-    if (!id) {
-      alert(
-        isFr
-          ? `Sélectionnez un ${currentType === 'space' ? 'local' : 'élément'} dans la liste.`
-          : `Selecteer een ${currentType === 'space' ? 'ruimte' : 'item'} in de lijst.`
-      );
-      return;
-    }
-
-    const code = buildCodeForPortal(currentType, id);
-    const url  = new URL('/portal.html', window.location.origin);
-    url.searchParams.set('code', code);
-    url.searchParams.set('lang', lang);
-    url.searchParams.set('env', envPrefix);
-	url.searchParams.set('src', window.location.pathname + window.location.search);
-    window.location.href = url.toString();
-  }
-
-  /* ============================================================
-     EVENT HANDLERS
-  ============================================================ */
-  document.getElementById('switch-nl').onclick = (e) => {
-    e.preventDefault();
-    const u = new URL(window.location.href);
-    u.searchParams.set('lang','nl');
-    window.location.href = u.toString();
-  };
-  document.getElementById('switch-fr').onclick = (e) => {
-    e.preventDefault();
-    const u = new URL(window.location.href);
-    u.searchParams.set('lang','fr');
-    window.location.href = u.toString();
-  };
-
-  btnInstallation.addEventListener('click', () => setActiveType('equipment'));
-  btnRoom.addEventListener('click',         () => setActiveType('space'));
-  btnGo.addEventListener('click',           goToPortal);
-
-  btnCancel.addEventListener('click', () => {
-    currentType = null;
-    btnInstallation.classList.remove('active');
-    btnRoom.classList.remove('active');
-    blockSelect.style.display = 'none';
-    selectFloor.innerHTML  = '<option value="">-- eerst een verdieping kiezen --</option>';
-    selectTarget.innerHTML = '<option value="">-- eerst een keuze maken hierboven --</option>';
-    setStatus('', false);
-  });
-
-  // bij floor-change: ruimtes ophalen voor die floor + huidige buildingpart
-  selectFloor.addEventListener('change', () => {
-    const isFr = (lang === 'fr');
-    const selectedFloorId = selectFloor.value;
-
-    if (!selectedFloorId) {
-      selectTarget.innerHTML =
-        `<option value="">${isFr ? '-- choisissez d\'abord un étage --'
-                                 : '-- kies eerst een verdieping --'}</option>`;
-      setStatus('', false);
-      return;
-    }
-
-    selectTarget.innerHTML =
-      `<option value="">${isFr ? '-- chargement des locaux --'
-                               : '-- ruimtes worden geladen --'}</option>`;
-
-    fetchSpacesForFloor(selectedFloorId).catch(err => {
-      console.error(err);
-      setStatus(
-        isFr ? 'Erreur lors du chargement des locaux.'
-             : 'Fout bij het laden van de ruimtes.',
-        true
-      );
-      selectTarget.innerHTML =
-        `<option value="">${isFr ? '-- aucune donnée --'
-                                 : '-- geen gegevens --'}</option>`;
-    });
-  });
-
-  if (selectBuilding) {
-    // Alleen luisteren als de dropdown getoond wordt (ChooseBuilding='Yes')
-    selectBuilding.addEventListener('change', () => {
+      buildBuildingAndPartDropdowns();
       rebuildPartDropdown();
       buildFloorDropdown();
+
+      selectTarget.innerHTML =
+        `<option value="">${isFr ? "-- choisissez d'abord un étage --" : "-- kies eerst een verdieping --"}</option>`;
+      setStatus('', false);
+    }
+
+    async function fetchSpacesForFloor(buildingFloorId) {
+      const isFr = (lang === 'fr');
+
+      if (!buildingFloorId) {
+        selectTarget.innerHTML =
+          `<option value="">${isFr ? "-- choisissez d'abord un étage --" : "-- kies eerst een verdieping --"}</option>`;
+        return;
+      }
+
+      setStatus(isFr ? 'Chargement des locaux…' : 'Ruimtes worden geladen…', false);
+
+      const complexSelector = `S${COMPLEX_ID}`;
+      const bldId  = (ChooseBuilding === 'Yes') ? (selectBuilding.value || '').trim() : '';
+      const partId = (ChooseBuildingPart === 'Yes') ? (selectPart.value || '').trim() : '';
+
+      let url = `${LIST_ENDPOINT}?action=LIST_FLOOR_SPACES` +
+                `&complex=${encodeURIComponent(complexSelector)}` +
+                `&buildingFloorId=${encodeURIComponent(buildingFloorId)}` +
+                `&env=${encodeURIComponent(envPrefix)}`;
+
+      if (partId) url += `&buildingPartId=${encodeURIComponent(partId)}`;
+      if (bldId)  url += `&buildingId=${encodeURIComponent(bldId)}`;
+
+      const resp = await fetch(url, { cache: 'no-store' });
+      const txt  = await resp.text();
+
+      let data;
+      try { data = JSON.parse(txt); }
+      catch (e) {
+        console.error('JSON parse error', e, txt);
+        throw new Error('Geen geldige JSON van de backend.');
+      }
+
+      const items = Array.isArray(data.Items) ? data.Items : [];
+
+      selectTarget.innerHTML = '';
+      selectTarget.insertAdjacentHTML(
+        'beforeend',
+        `<option value="">${isFr ? '-- choisissez un local --' : '-- kies een ruimte --'}</option>`
+      );
+
+      if (!items.length) {
+        setStatus(isFr ? "Aucun local trouvé." : "Geen ruimtes gevonden.", true);
+        return;
+      }
+
+      items.sort((a, b) => {
+        const rnA = String(a.RoomNumber || '').trim();
+        const rnB = String(b.RoomNumber || '').trim();
+        const idA = String(a.Id || '').trim();
+        const idB = String(b.Id || '').trim();
+        const keyA = rnA || idA;
+        const keyB = rnB || idB;
+        return keyA.localeCompare(keyB, 'nl', { numeric: true, sensitivity: 'base' });
+      });
+
+      items.forEach(sp => {
+        const id         = String(sp.Id || '');
+        const roomNumber = String(sp.RoomNumber || '').trim();
+        const desc       = String(sp.Description || id);
+        const tenant     = String(sp.Tenant || '').trim();
+
+        const primaryCode = roomNumber || id;
+        let label = `${primaryCode} - ${desc}`;
+        if (tenant) label += ` – (${tenant})`;
+
+        selectTarget.insertAdjacentHTML(
+          'beforeend',
+          `<option value="${id.replace(/"/g,'&quot;')}">${label.replace(/</g,'&lt;')}</option>`
+        );
+      });
+
+      setStatus('', false);
+    }
+
+    /* ============================================================
+       Dropdowns: gebouw, buildingpart, verdieping
+    ============================================================ */
+    function getShortPartId(raw) {
+      const txt = String(raw || '');
+      const m = txt.match(/BuildingPart\.Id\.Id='([^']+)'/);
+      return m ? m[1] : txt;
+    }
+
+    function buildBuildingAndPartDropdowns() {
+      const isFr = (lang === 'fr');
+      const showBuilding = (ChooseBuilding === 'Yes');
+
+      if (showBuilding) {
+        const bldMap = new Map();
+        allFloors.forEach(f => {
+          const id   = String(f.BuildingId || '').trim();
+          if (!id) return;
+          const desc = String(f.BuildingDescription || id).trim();
+          if (!bldMap.has(id)) bldMap.set(id, desc);
+        });
+
+        selectBuilding.innerHTML =
+          `<option value="">${isFr ? '-- choisissez un bâtiment --' : '-- kies een gebouw --'}</option>`;
+
+        for (const [id, desc] of bldMap.entries()) {
+          const label = `${id} – ${desc}`;
+          selectBuilding.insertAdjacentHTML(
+            'beforeend',
+            `<option value="${id.replace(/"/g,'&quot;')}">${label.replace(/</g,'&lt;')}</option>`
+          );
+        }
+      }
+    }
+
+    function rebuildPartDropdown() {
+      if (ChooseBuildingPart !== 'Yes') return;
+
+      const isFr = (lang === 'fr');
+      const bldId = (ChooseBuilding === 'Yes') ? (selectBuilding.value || '').trim() : '';
+
+      if (ChooseBuilding === 'Yes' && !bldId) {
+        selectPart.innerHTML =
+          `<option value="">${isFr ? "-- choisissez un bâtiment d'abord --" : "-- kies eerst een gebouw --"}</option>`;
+        return;
+      }
+
+      selectPart.innerHTML =
+        `<option value="">${isFr ? '-- choisissez une partie --' : '-- kies een gebouwdeel --'}</option>`;
+
+      const partMap = new Map();
+
+      allFloors.forEach(f => {
+        if (ChooseBuilding === 'Yes') {
+          const fbld = String(f.BuildingId || '').trim();
+          if (fbld !== bldId) return;
+        }
+
+        const pidRaw = String(f.BuildingPartId || '').trim();
+        const pid    = getShortPartId(pidRaw);
+        if (!pid) return;
+
+        const pdesc  = String(f.BuildingPartDescription || pid).trim();
+        if (!partMap.has(pid)) partMap.set(pid, pdesc);
+      });
+
+      for (const [pid, desc] of partMap.entries()) {
+        selectPart.insertAdjacentHTML(
+          'beforeend',
+          `<option value="${pid.replace(/"/g,'&quot;')}">${desc.replace(/</g,'&lt;')}</option>`
+        );
+      }
+    }
+
+    function buildFloorDropdown() {
+      const isFr = (lang === 'fr');
+
+      const bldId  = (ChooseBuilding === 'Yes') ? (selectBuilding.value || '').trim() : '';
+      const partId = (ChooseBuildingPart === 'Yes') ? (selectPart.value || '').trim() : '';
+
+      if (!Array.isArray(allFloors) || !allFloors.length) {
+        selectFloor.innerHTML =
+          `<option value="">${isFr ? '-- aucun étage --' : '-- geen verdiepingen --'}</option>`;
+        return;
+      }
+
+      const levelToId = new Map();
+
+      allFloors.forEach(f => {
+        if (bldId && String(f.BuildingId || '').trim() !== bldId) return;
+
+        const pidShort = getShortPartId(f.BuildingPartId);
+        if (partId && pidShort !== partId) return;
+
+        const levelRaw = f.Level ?? f._Level ?? f.BuildingFloorLevel ?? '';
+        const level    = String(levelRaw).trim();
+        const bfId     = String(f.Id || '').trim();
+
+        if (!level || !bfId) return;
+        if (!levelToId.has(level)) levelToId.set(level, bfId);
+      });
+
+      if (!levelToId.size) {
+        selectFloor.innerHTML =
+          `<option value="">${isFr ? '-- aucun étage filtré --' : '-- geen verdiepingen gevonden --'}</option>`;
+        return;
+      }
+
+      const sortedLevels = Array.from(levelToId.keys()).sort((a, b) => {
+        const na = parseFloat(String(a).replace(',', '.'));
+        const nb = parseFloat(String(b).replace(',', '.'));
+        if (!Number.isNaN(na) && !Number.isNaN(nb)) return na - nb;
+        return String(a).localeCompare(String(b), undefined, { sensitivity: 'base' });
+      });
+
+      selectFloor.innerHTML =
+        `<option value="">${isFr ? '-- choisissez un étage --' : '-- kies een verdieping --'}</option>`;
+
+      sortedLevels.forEach(level => {
+        const bfId = levelToId.get(level);
+        selectFloor.insertAdjacentHTML(
+          'beforeend',
+          `<option value="${String(bfId).replace(/"/g,'&quot;')}">${String(level).replace(/</g,'&lt;')}</option>`
+        );
+      });
+
+      selectTarget.innerHTML =
+        `<option value="">${isFr ? "-- choisissez d'abord un étage --" : "-- kies eerst een verdieping --"}</option>`;
+    }
+
+    /* ============================================================
+       TYPE KIEZEN
+    ============================================================ */
+    function setActiveType(type) {
+      currentType = type;
+
+      btnInstallation.classList.toggle('active', type === 'equipment');
+      btnRoom.classList.toggle('active',         type === 'space');
+
+      blockSelect.style.display = 'block';
+      setStatus('', false);
+
+      const isFr = (lang === 'fr');
+
+      if (type === 'space') {
+        // toon space-velden
+        const showBuildingDropdown = (ChooseBuilding === 'Yes');
+        const showPartDropdown     = (ChooseBuildingPart === 'Yes');
+
+        document.getElementById('label-building').style.display = showBuildingDropdown ? 'block' : 'none';
+        selectBuilding.style.display                             = showBuildingDropdown ? 'block' : 'none';
+        document.getElementById('label-part').style.display      = showPartDropdown ? 'block' : 'none';
+        selectPart.style.display                                 = showPartDropdown ? 'block' : 'none';
+
+        document.getElementById('label-floor').style.display     = 'block';
+        selectFloor.style.display                                = 'block';
+
+        // verberg equipment-velden
+        document.getElementById('label-equipmenttype').style.display = 'none';
+        selectEquipmentType.style.display                             = 'none';
+        filterBlock.style.display                                      = 'none';
+
+        // labels
+        document.getElementById('label-select').textContent = isFr ? 'Sélectionnez un espace' : 'Kies ruimte';
+
+        // resets
+        selectEquipmentType.innerHTML = `<option value="">${isFr ? "-- choisissez d'abord un type --" : "-- kies eerst een installatiesoort --"}</option>`;
+        filterInstall.value = '';
+        selectTarget.innerHTML = `<option value="">${isFr ? "-- choisissez d'abord un étage --" : "-- kies eerst een verdieping --"}</option>`;
+        selectFloor.innerHTML  = `<option value="">-- laden... --</option>`;
+
+        fetchFloorsForComplex().catch(err => {
+          console.error(err);
+          setStatus(isFr ? "Erreur lors du chargement des étages." : "Fout bij het laden van de verdiepingen.", true);
+          selectFloor.innerHTML  = '<option value="">-- geen gegevens --</option>';
+          selectTarget.innerHTML = '<option value="">-- geen gegevens --</option>';
+        });
+
+      } else {
+        // toon equipment-velden
+        document.getElementById('label-equipmenttype').style.display = 'block';
+        selectEquipmentType.style.display                             = 'block';
+        filterBlock.style.display                                      = 'block';
+
+        // verberg space-velden
+        document.getElementById('label-building').style.display = 'none';
+        selectBuilding.style.display                             = 'none';
+        document.getElementById('label-part').style.display      = 'none';
+        selectPart.style.display                                 = 'none';
+        document.getElementById('label-floor').style.display     = 'none';
+        selectFloor.style.display                                = 'none';
+
+        // labels
+        document.getElementById('label-select').textContent = isFr ? 'Sélectionnez une installation' : 'Kies installatie';
+
+        // resets
+        filterInstall.value = '';
+        selectTarget.innerHTML = `<option value="">${isFr ? "-- choisissez d'abord un type --" : "-- kies eerst een installatiesoort --"}</option>`;
+        selectEquipmentType.innerHTML = `<option value="">${isFr ? "-- chargement... --" : "-- laden... --"}</option>`;
+
+        fetchEquipmentsForComplex().catch(err => {
+          console.error(err);
+          setStatus(isFr ? 'Erreur lors du chargement.' : 'Fout bij het laden.', true);
+          selectEquipmentType.innerHTML = '<option value="">-- geen gegevens --</option>';
+          selectTarget.innerHTML        = '<option value="">-- geen gegevens --</option>';
+        });
+      }
+    }
+
+    /* ============================================================
+       CODE VOOR PORTAL
+    ============================================================ */
+    function buildCodeForPortal(type, id) {
+      const nummer = Number(id);
+      if (!Number.isFinite(nummer)) return String(id);
+
+      const orgId = String(Math.trunc(nummer)).padStart(6, "0");
+      const mult3 = Math.trunc(nummer * 3);
+      const last6 = String(mult3).padStart(6, "0");
+
+      let resultaat = "";
+      for (let i = 0; i < 6; i++) resultaat += orgId[i] + last6[i];
+
+      const isSpace = (type === "space");
+      const endDigit = isSpace ? Math.floor(Math.random() * 9) : 9; // space: 0-8, equipment: 9
+      resultaat += String(endDigit);
+      return resultaat;
+    }
+
+    function goToPortal() {
+      const isFr = (lang === 'fr');
+
+      if (!currentType) {
+        alert(isFr ? 'Choisissez d’abord installation ou espace.' : 'Kies eerst installatie of ruimte.');
+        return;
+      }
+
+      if (currentType === 'equipment') {
+        const typeSel = selectEquipmentType.value;
+        if (!typeSel) {
+          alert(isFr ? "Choisissez d'abord un type d'installation." : "Kies eerst een installatiesoort.");
+          return;
+        }
+      }
+
+      if (currentType === 'space' && !selectFloor.value) {
+        alert(isFr ? 'Sélectionnez un étage dans la liste.' : 'Selecteer een verdieping in de lijst.');
+        return;
+      }
+
+      const id = selectTarget.value;
+      if (!id) {
+        alert(
+          isFr
+            ? `Sélectionnez un ${currentType === 'space' ? 'local' : 'élément'} dans la liste.`
+            : `Selecteer een ${currentType === 'space' ? 'ruimte' : 'item'} in de lijst.`
+        );
+        return;
+      }
+
+      const code = buildCodeForPortal(currentType, id);
+      const url  = new URL('/portal.html', window.location.origin);
+      url.searchParams.set('code', code);
+      url.searchParams.set('lang', lang);
+      url.searchParams.set('env', envPrefix);
+      url.searchParams.set('src', window.location.pathname + window.location.search);
+      window.location.href = url.toString();
+    }
+
+    /* ============================================================
+       EVENTS
+    ============================================================ */
+    document.getElementById('switch-nl').onclick = (e) => {
+      e.preventDefault();
+      const u = new URL(window.location.href);
+      u.searchParams.set('lang','nl');
+      window.location.href = u.toString();
+    };
+    document.getElementById('switch-fr').onclick = (e) => {
+      e.preventDefault();
+      const u = new URL(window.location.href);
+      u.searchParams.set('lang','fr');
+      window.location.href = u.toString();
+    };
+
+    btnInstallation.addEventListener('click', () => setActiveType('equipment'));
+    btnRoom.addEventListener('click',         () => setActiveType('space'));
+    btnGo.addEventListener('click',           goToPortal);
+
+    btnCancel.addEventListener('click', () => {
+      currentType = null;
+      btnInstallation.classList.remove('active');
+      btnRoom.classList.remove('active');
+      blockSelect.style.display = 'none';
+
+      // reset visible inputs
+      selectFloor.innerHTML         = '<option value="">-- eerst een verdieping kiezen --</option>';
+      selectEquipmentType.innerHTML = '<option value="">-- eerst een installatiesoort kiezen --</option>';
+      selectTarget.innerHTML        = '<option value="">-- eerst een keuze maken hierboven --</option>';
+      filterInstall.value           = '';
+
+      setStatus('', false);
     });
-  }
 
-  if (selectPart) {
-    selectPart.addEventListener('change', () => {
-      buildFloorDropdown();
+    // space: floor change => spaces ophalen
+    selectFloor.addEventListener('change', () => {
+      const isFr = (lang === 'fr');
+      const selectedFloorId = selectFloor.value;
+
+      if (!selectedFloorId) {
+        selectTarget.innerHTML =
+          `<option value="">${isFr ? "-- choisissez d'abord un étage --" : "-- kies eerst een verdieping --"}</option>`;
+        setStatus('', false);
+        return;
+      }
+
+      selectTarget.innerHTML =
+        `<option value="">${isFr ? '-- chargement des locaux --' : '-- ruimtes worden geladen --'}</option>`;
+
+      fetchSpacesForFloor(selectedFloorId).catch(err => {
+        console.error(err);
+        setStatus(isFr ? 'Erreur lors du chargement des locaux.' : 'Fout bij het laden van de ruimtes.', true);
+        selectTarget.innerHTML = `<option value="">${isFr ? '-- aucune donnée --' : '-- geen gegevens --'}</option>`;
+      });
     });
-  }
 
-  /* ============================================================
-     INIT
-  ============================================================ */
-  (function init() {
-    initEnvBanner();
-    applyLanguage();
-  })();
-</script>
+    if (selectBuilding) {
+      selectBuilding.addEventListener('change', () => {
+        rebuildPartDropdown();
+        buildFloorDropdown();
+      });
+    }
+    if (selectPart) {
+      selectPart.addEventListener('change', () => {
+        buildFloorDropdown();
+      });
+    }
 
+    // equipment: type change => installaties vullen
+    selectEquipmentType.addEventListener('change', () => {
+      filterInstall.value = '';
+      renderEquipmentOptions();
+    });
 
+    // equipment: filter text => opnieuw renderen (zelfde type)
+    filterInstall.addEventListener('input', () => {
+      if (currentType !== 'equipment') return;
+      if (!selectEquipmentType.value) return;
+      renderEquipmentOptions();
+    });
+
+    /* ============================================================
+       INIT
+    ============================================================ */
+    (function init() {
+      initEnvBanner();
+      applyLanguage();
+    })();
+  </script>
 </body>
 </html>

@@ -1158,28 +1158,22 @@ const sourceUrl = safeSameOriginUrl(srcRaw);
       }
 
 	await botui.message.add({
-	  content: isFr
-		? 'Que voulez-vous faire maintenant?'
-		: 'Wat wil je nu doen?'
+	  content: isFr ? 'Que voulez-vous faire maintenant?' : 'Wat wil je nu doen?'
 	});
 
 	const actions = [
-	  {
-		text: isFr ? '🔄 Nouveau signalement' : '🔄 Nieuwe melding',
-		value: 'restart'
-	  }
+	  { text: isFr ? '🔄 Nouveau signalement' : '🔄 Nieuwe melding', value: 'restart' }
 	];
 
-	// ✅ toon enkel als Portal een geldige bron-URL meekreeg (?src=...)
 	if (sourceUrl) {
 	  actions.push({
-		text: isFr ? '🏢 Choisir un autre local' : '🏢 Ander lokaal kiezen',
+		text: isFr ? '🏢 Revenir à l’écran de choix' : '🏢 Naar keuzescherm gaan',
 		value: 'back'
 	  });
 	}
 
 	actions.push({
-	  text: isFr ? 'ℹ️ Plus d\'info' : 'ℹ️ Meer info',
+	  text: isFr ? "ℹ️ Plus d'info" : 'ℹ️ Meer info',
 	  value: 'info'
 	});
 
@@ -1187,16 +1181,17 @@ const sourceUrl = safeSameOriginUrl(srcRaw);
 
 	if (k.value === 'back' && sourceUrl) {
 	  Telemetry.send('back_to_source', { sourceUrl });
-	  window.location.href = sourceUrl;       // 🔁 terug naar Greenhouse/selector
+	  window.location.href = sourceUrl;
 	} else if (k.value === 'restart') {
 	  Telemetry.send('restart');
-	  window.location.reload();               // ♻️ zelfde lokaal (QR/zelfde code)
+	  window.location.reload();
 	} else {
 	  Telemetry.send('external_info');
 	  window.location.href = isFr
 		? 'https://www.atalian.be/?lang=fr'
 		: 'https://www.atalian.be/?lang=nl';
 	}
+
 
 
     } catch (e) {
