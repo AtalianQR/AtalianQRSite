@@ -3,20 +3,38 @@ import fetch from "node-fetch";
 export async function handler(event) {
   try {
     if (event.httpMethod !== "POST") {
+      return { statusCode: 405, body: "Method Not Allowed" };
+    }
+
+    const isTest =
+      event.queryStringParameters?.test === "1" ||
+      event.queryStringParameters?.env === "test";
+
+    const baseUrl = isTest
+      ? process.env.ULTIMO_TEST_BASE_URL
+      : process.env.ULTIMO_PROD_BASE_URL;
+
+    if (!baseUrl) {
       return {
-        statusCode: 405,
-        body: "Method Not Allowed"
+        statusCode: 500,
+        body: JSON.stringify({
+          error: "Configuratiefout",
+          message: "ULTIMO_*_BASE_URL ontbreekt"
+        })
       };
     }
 
-    const body = JSON.parse(event.body || "{}");
+    let body;
+    try {
+      body = JSON.parse(event.body || "{}");
+    } catch {
+      return {
+        statusCode: 400,
+        body: JSON.stringify({ error: "Ongeldige JSON body" })
+      };
+    }
 
-    const {
-      jobId,
-      fileName,
-      description,
-      base64
-    } = body;
+    const { jobId, fileName, description, base64 } = body;
 
     if (!jobId || !fileName || !base64) {
       return {
@@ -30,25 +48,27 @@ export async function handler(event) {
 
     const ultimoPayload = {
       Action: "ADD_JOB_DOC",
-      JobId: jobId,
+      JobId: String(jobId),
       AddDoc_FileName: fileName,
-      AddDoc_Description: description || fileName,
+      AddDoc_Description: (description || fileName).substring(0, 200),
       AddDoc_Base64: base64,
-      AddDoc_FileSystemPathId: "001" // TD
+      AddDoc_FileSystemPathId: "001"
     };
 
-    const response = await fetch(
-      `${process.env.ULTIMO_BASE_URL}/action/_rest_QueryAtalianJobs`,
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "ApiKey": process.env.ULTIMO_API_KEY,
-          "ApplicationElementId": process.env.ULTIMO_APP_ELEMENT_ID
-        },
-        body: JSON.stringify(ultimoPayload)
-      }
-    );
+    const url = new URL(
+      "/action/_rest_QueryAtalianJobs",
+      baseUrl
+    ).toString();
+
+    const response = await fetch(url, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        ApiKey: process.env.ULTIMO_API_KEY,
+        ApplicationElementId: process.env.ULTIMO_APP_ELEMENT_ID
+      },
+      body: JSON.stringify(ultimoPayload)
+    });
 
     const text = await response.text();
 
