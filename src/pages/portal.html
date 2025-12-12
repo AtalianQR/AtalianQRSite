@@ -583,7 +583,6 @@
       action: 'ADD_JOB_DOC',
       jobId: String(jobId),
       fileName,
-      mimeType,
       description: (description || fileName).substring(0, 200),
       base64
     };
@@ -664,20 +663,6 @@
   const phoneLink = '<a href="tel:+3278152300">📞 +32 78 152 300</a>';
   let   omschrijving = '';
 
-  /* ======================================================================
-     BIJLAGENBLOK
-  ====================================================================== */
-  function buildAttachmentsBlock(isFrFlag){
-    if (!Array.isArray(pickedFiles) || pickedFiles.length === 0) return '';
-    const head = isFrFlag ? 'Pièces jointes' : 'Bijlagen';
-    const lines = pickedFiles.map((it, idx) => {
-      const nm = String(it.name || 'upload.bin').slice(0, 60);
-      const rm = String(it.remark || '').trim();
-      return `📎 ${idx + 1}. ${nm}${rm ? ` — ${rm}` : ''}`;
-    });
-    const attachmentList = lines.join('<br/>');
-    return `<br/><br/>**${head}:**<br/>${attachmentList}`;
-  }
 
   /* ======================================================================
      CHATFLOW – INIT
@@ -1005,8 +990,7 @@
       serviceWorkOrderId = selectedOtherServiceWO.Id;
     }
 
-    const attachBlock = buildAttachmentsBlock(isFr);
-    const reportBody  = [attachBlock].filter(Boolean).join('');
+    const reportBody = '';
 
     const payload = {
       id,
@@ -1145,6 +1129,7 @@
         Telemetry.send('doc_upload_batch_done', {
           count: pickedFiles.length
         });
+		pickedFiles = [];
       }
 
       if (isUrgent) {
