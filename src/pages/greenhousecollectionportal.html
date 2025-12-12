@@ -909,6 +909,7 @@
     url.searchParams.set('code', code);
     url.searchParams.set('lang', lang);
     url.searchParams.set('env', envPrefix);
+	url.searchParams.set('src', window.location.pathname + window.location.search);
     window.location.href = url.toString();
   }
 

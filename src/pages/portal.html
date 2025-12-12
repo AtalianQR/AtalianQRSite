@@ -318,6 +318,21 @@
   const endpointLoc = isEquipment
     ? '/.netlify/functions/equipment'
     : '/.netlify/functions/space';
+	
+	const srcRaw = qs.get('src') ?? '';
+
+	function safeSameOriginUrl(raw) {
+	  if (!raw) return '';
+	  try {
+		const u = new URL(raw, window.location.origin);
+		return (u.origin === window.location.origin) ? u.toString() : '';
+	  } catch {
+		return '';
+	  }
+	}
+
+const sourceUrl = safeSameOriginUrl(srcRaw);
+	
 
   /* ======================================================================
      CONTEXT LOADERS (jobs + serviceWO + locatie)
@@ -1142,34 +1157,47 @@
         return;
       }
 
-      await botui.message.add({
-        content: isFr
-          ? 'Que voulez-vous faire maintenant?'
-          : 'Wat wil je nu doen?'
-      });
-      const k = await botui.action.button({
-        action: [
-          {
-            text: isFr ? '🔄 Nouveau signalement'
-                       : '🔄 Nieuwe melding',
-            value: 'restart'
-          },
-          {
-            text: isFr ? 'ℹ️ Plus d\'info'
-                       : 'ℹ️ Meer info',
-            value: 'info'
-          }
-        ]
-      });
-      if (k.value === 'restart') {
-        Telemetry.send('restart');
-        window.location.reload();
-      } else {
-        Telemetry.send('external_info');
-        window.location.href = isFr
-          ? 'https://www.atalian.be/?lang=fr'
-          : 'https://www.atalian.be/?lang=nl';
-      }
+	await botui.message.add({
+	  content: isFr
+		? 'Que voulez-vous faire maintenant?'
+		: 'Wat wil je nu doen?'
+	});
+
+	const actions = [
+	  {
+		text: isFr ? '🔄 Nouveau signalement' : '🔄 Nieuwe melding',
+		value: 'restart'
+	  }
+	];
+
+	// ✅ toon enkel als Portal een geldige bron-URL meekreeg (?src=...)
+	if (sourceUrl) {
+	  actions.push({
+		text: isFr ? '🏢 Choisir un autre local' : '🏢 Ander lokaal kiezen',
+		value: 'back'
+	  });
+	}
+
+	actions.push({
+	  text: isFr ? 'ℹ️ Plus d\'info' : 'ℹ️ Meer info',
+	  value: 'info'
+	});
+
+	const k = await botui.action.button({ action: actions });
+
+	if (k.value === 'back' && sourceUrl) {
+	  Telemetry.send('back_to_source', { sourceUrl });
+	  window.location.href = sourceUrl;       // 🔁 terug naar Greenhouse/selector
+	} else if (k.value === 'restart') {
+	  Telemetry.send('restart');
+	  window.location.reload();               // ♻️ zelfde lokaal (QR/zelfde code)
+	} else {
+	  Telemetry.send('external_info');
+	  window.location.href = isFr
+		? 'https://www.atalian.be/?lang=fr'
+		: 'https://www.atalian.be/?lang=nl';
+	}
+
 
     } catch (e) {
       console.error(e);
