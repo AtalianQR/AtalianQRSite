@@ -227,7 +227,7 @@
 
         <div id="filter-block" style="margin-top:.5rem; display:none;">
           <label id="label-filter-installation" for="filter-installation">
-            Filter installaties (code, lokaal, tenant…)
+            Filter installaties (benaming, lokaal, tenant…)
           </label>
           <input
             type="text"
@@ -255,6 +255,8 @@
   </main>
 
   <script>
+   console.log("JS loaded ✅");
+
     /* ============================================================
        CONFIG
     ============================================================ */
@@ -304,8 +306,8 @@
       const inpFilter = document.getElementById('filter-installation');
       if (lblFilter) {
         lblFilter.textContent = isFr
-          ? 'Filtrer les installations (code, local, locataire…)'
-          : 'Filter installaties (code, lokaal, tenant…)';
+          ? 'Filtrer les installations (nom, local, locataire…)'
+          : 'Filter installaties (benaming, lokaal, tenant…)';
       }
       if (inpFilter) {
         inpFilter.placeholder = isFr ? 'Tapez pour filtrer…' : 'Typ om te filteren…';
@@ -358,6 +360,8 @@
     /* ============================================================
        HELPERS: Equipment types & filtering
     ============================================================ */
+	
+
     function normalizeId(v) {
       return String(v ?? '').trim();
     }
@@ -423,82 +427,162 @@
       return id.includes(needle) || desc.includes(needle) || extra.includes(needle);
     }
 
-    function renderEquipmentOptions() {
-      const isFr = (lang === 'fr');
 
-      const typeId = selectEquipmentType.value;
-      selectedEqType = typeId || null;
 
-      if (!selectedEqType) {
-        selectTarget.innerHTML =
-          `<option value="">${isFr ? "-- choisissez d'abord un type --" : "-- kies eerst een installatiesoort --"}</option>`;
-        return;
-      }
 
-      const q = String(filterInstall?.value || '');
 
-      const filtered = allInstallations
-        .filter(it => matchesType(it, selectedEqType))
-        .filter(it => matchesText(it, q));
 
-      selectTarget.innerHTML = '';
-      selectTarget.insertAdjacentHTML(
-        'beforeend',
-        `<option value="">${isFr ? '-- choisissez une installation --' : '-- kies een installatie --'}</option>`
-      );
-
-      if (!filtered.length) {
-        setStatus(isFr ? "Geen installaties gevonden (met deze filter)." : "Geen installaties gevonden (met deze filter).", true);
-        return;
-      }
-
-      filtered.forEach(it => {
-        const id   = String(it.Id ?? it.id ?? '');
-        const desc = String(it.Description ?? it.description ?? id);
-        const opt  = `<option value="${id.replace(/"/g,'&quot;')}">${(`${id} – ${desc}`).replace(/</g,'&lt;')}</option>`;
-        selectTarget.insertAdjacentHTML('beforeend', opt);
-      });
-
-      setStatus(isFr ? `✅ ${filtered.length} trouvée(s).` : `✅ ${filtered.length} gevonden.`, false);
-    }
 
     /* ============================================================
        INSTALLATIES (E): haalt Items + EquipmentTypes op
     ============================================================ */
-    async function fetchEquipmentsForComplex() {
-      const isFr = (lang === 'fr');
-      setStatus(isFr ? 'Chargement des installations…' : 'Installaties worden geladen…', false);
+	
+	function floorToNumber(v) {
+	  const s = String(v ?? '').trim().replace(',', '.');
+	  const n = parseFloat(s);
+	  return Number.isFinite(n) ? n : 999999;
+	}
 
-      const complexSelector = `E${COMPLEX_ID}`;
-      const url = `${LIST_ENDPOINT}?complex=${encodeURIComponent(complexSelector)}&env=${encodeURIComponent(envPrefix)}`;
+	function renderEquipmentOptions() {
+	  const isFr = (lang === 'fr');
 
-      const resp = await fetch(url, { cache: 'no-store' });
-      const txt  = await resp.text();
+	  const typeId = String(selectEquipmentType.value || '').trim(); // kan leeg zijn
+	  selectedEqType = typeId || null;
 
-      let data;
-      try { data = JSON.parse(txt); }
-      catch (e) {
-        console.error('JSON parse error', e, txt);
-        throw new Error('Geen geldige JSON van de backend.');
-      }
+	  const q = String(filterInstall?.value || '');
 
-      const items = Array.isArray(data.Items) ? data.Items : (Array.isArray(data.items) ? data.items : []);
-      const types = Array.isArray(data.EquipmentTypes) ? data.EquipmentTypes : (Array.isArray(data.equipmentTypes) ? data.equipmentTypes : []);
+	  // ✅ geen type gekozen = toon ALLES
+	  const filtered = allInstallations
+		.filter(it => !selectedEqType || matchesType(it, selectedEqType))
+		.filter(it => matchesText(it, q));
 
-      allInstallations  = items;
-      allEquipmentTypes = types;
+	  selectTarget.innerHTML = '';
+	  selectTarget.insertAdjacentHTML(
+		'beforeend',
+		`<option value="">${isFr ? '-- choisissez une installation --' : '-- kies een installatie --'}</option>`
+	  );
 
-      if (!items.length) {
-        setStatus(isFr ? "Aucune installation trouvée." : "Geen installaties gevonden.", true);
-        selectEquipmentType.innerHTML = `<option value="">-- niets beschikbaar --</option>`;
-        selectTarget.innerHTML        = `<option value="">-- niets beschikbaar --</option>`;
-        return;
-      }
+	  if (!filtered.length) {
+		setStatus(isFr ? "Aucune installation trouvée." : "Geen installaties gevonden.", true);
+		return;
+	  }
 
-      // type-keuze opbouwen en dan pas installaties renderen na type-select
-      buildEquipmentTypeDropdown(allEquipmentTypes, allInstallations);
-      setStatus(isFr ? `✅ ${items.length} installation(s) chargée(s).` : `✅ ${items.length} installaties geladen.`, false);
-    }
+	  // sorteren
+	  filtered.sort((a, b) => {
+		const fa = floorToNumber(a.BuildingFloor);
+		const fb = floorToNumber(b.BuildingFloor);
+		if (fa !== fb) return fa - fb;
+
+		const na = String(a.Description ?? '').trim();
+		const nb = String(b.Description ?? '').trim();
+		const cmp = na.localeCompare(nb, 'nl', { numeric: true, sensitivity: 'base' });
+		if (cmp !== 0) return cmp;
+
+		const ida = String(a.Id ?? '').trim();
+		const idb = String(b.Id ?? '').trim();
+		return ida.localeCompare(idb, 'nl', { numeric: true, sensitivity: 'base' });
+	  });
+
+	  filtered.forEach(it => {
+		const id     = String(it.Id ?? it.id ?? '');
+		const floor  = String(it.BuildingFloor ?? '').trim();
+		const name   = String(it.Description ?? '').trim() || id;
+		const space  = String(it.SpaceDescription ?? '').trim();
+		const tenant = String(it.Tenant ?? '').trim();
+
+		let label = `[${floor || '-'}] - ${name}`;
+		if (space)  label += ` - ${space}`;
+		if (tenant) label += ` - ${tenant}`;
+
+		selectTarget.insertAdjacentHTML(
+		  'beforeend',
+		  `<option value="${id.replace(/"/g,'&quot;')}">${label.replace(/</g,'&lt;')}</option>`
+		);
+	  });
+
+	  setStatus(isFr ? `✅ ${filtered.length} trouvée(s).` : `✅ ${filtered.length} gevonden.`, false);
+	}
+
+	
+	
+	function buildTypesFromItems(items) {
+	  const map = new Map();
+
+	  (items || []).forEach(it => {
+		const id = String(it.EquipmentTypeId ?? '').trim();
+		const desc = String(it.EquipmentType ?? id).trim(); // trim is belangrijk (je hebt "Koffiemachine ")
+
+		if (!id) return;
+		if (!map.has(id)) map.set(id, desc);
+	  });
+
+	  return Array.from(map.entries())
+		.map(([Id, Description]) => ({ Id, Description }))
+		.sort((a, b) => String(a.Description).localeCompare(String(b.Description), 'nl', { sensitivity: 'base' }));
+	}
+
+
+	
+	async function fetchEquipmentsForComplex() {
+	  const isFr = (lang === 'fr');
+	  setStatus(isFr ? 'Chargement des installations…' : 'Installaties worden geladen…', false);
+
+	  const complexSelector = `E${COMPLEX_ID}`;
+	  const url = `${LIST_ENDPOINT}?complex=${encodeURIComponent(complexSelector)}&env=${encodeURIComponent(envPrefix)}`;
+
+	  let resp, txt, data;
+
+	  try {
+		resp = await fetch(url, { cache: 'no-store' });
+		txt  = await resp.text();
+	  } catch (e) {
+		console.error("Fetch error:", e);
+		setStatus(isFr ? "Erreur réseau." : "Netwerkfout.", true);
+		return;
+	  }
+
+	  try {
+		data = JSON.parse(txt);
+	  } catch (e) {
+		console.error('JSON parse error', e, txt);
+		setStatus(isFr ? "Réponse invalide (JSON)." : "Ongeldige response (JSON).", true);
+		return;
+	  }
+
+	  const items = Array.isArray(data.Items) ? data.Items : (Array.isArray(data.items) ? data.items : []);
+	  const types = buildTypesFromItems(items);
+
+	  console.log("Items geladen:", items.length);
+	  console.log("Types gevonden:", types);
+
+	  allInstallations  = items;
+	  allEquipmentTypes = types;
+
+	  if (!items.length) {
+		setStatus(isFr ? "Aucune installation trouvée." : "Geen installaties gevonden.", true);
+		selectEquipmentType.innerHTML = `<option value="">-- niets beschikbaar --</option>`;
+		selectTarget.innerHTML        = `<option value="">-- niets beschikbaar --</option>`;
+		return;
+	  }
+
+	  if (!types.length) {
+		setStatus(isFr ? "Aucun type trouvé dans les données." : "Geen installatiesoorten gevonden in de data.", true);
+		selectEquipmentType.innerHTML = `<option value="">-- geen types --</option>`;
+		selectTarget.innerHTML        = `<option value="">-- kies eerst een installatiesoort --</option>`;
+		return;
+	  }
+
+	  // dropdown opbouwen
+	  buildEquipmentTypeDropdown(allEquipmentTypes, allInstallations);
+	  selectEquipmentType.value = '';
+	  filterInstall.value = '';
+	  renderEquipmentOptions();
+
+	  // UX: zet target dropdown terug op “kies eerst type”
+
+	  setStatus(isFr ? `✅ ${items.length} installation(s) chargée(s).` : `✅ ${items.length} installaties geladen.`, false);
+	}
+
 
     /* ============================================================
        SPACES: LIST_FLOORS + LIST_FLOOR_SPACES (ongewijzigd)
@@ -844,44 +928,39 @@
     }
 
     function goToPortal() {
-      const isFr = (lang === 'fr');
+	  const isFr = (lang === 'fr');
 
-      if (!currentType) {
-        alert(isFr ? 'Choisissez d’abord installation ou espace.' : 'Kies eerst installatie of ruimte.');
-        return;
-      }
+	  if (!currentType) {
+		alert(isFr ? 'Choisissez d’abord installation ou espace.' : 'Kies eerst installatie of ruimte.');
+		return;
+	  }
 
-      if (currentType === 'equipment') {
-        const typeSel = selectEquipmentType.value;
-        if (!typeSel) {
-          alert(isFr ? "Choisissez d'abord un type d'installation." : "Kies eerst een installatiesoort.");
-          return;
-        }
-      }
+	  // ✅ SPACE blijft zoals bij jou (verdieping verplicht)
+	  if (currentType === 'space' && !selectFloor.value) {
+		alert(isFr ? 'Sélectionnez un étage dans la liste.' : 'Selecteer een verdieping in de lijst.');
+		return;
+	  }
 
-      if (currentType === 'space' && !selectFloor.value) {
-        alert(isFr ? 'Sélectionnez un étage dans la liste.' : 'Selecteer een verdieping in de lijst.');
-        return;
-      }
+	  // ✅ INSTALLATIE blijft verplicht (ongeacht type)
+	  const id = selectTarget.value;
+	  if (!id) {
+		alert(
+		  isFr
+			? `Sélectionnez un ${currentType === 'space' ? 'local' : 'élément'} dans la liste.`
+			: `Selecteer een ${currentType === 'space' ? 'ruimte' : 'installatie'} in de lijst.`
+		);
+		return;
+	  }
 
-      const id = selectTarget.value;
-      if (!id) {
-        alert(
-          isFr
-            ? `Sélectionnez un ${currentType === 'space' ? 'local' : 'élément'} dans la liste.`
-            : `Selecteer een ${currentType === 'space' ? 'ruimte' : 'item'} in de lijst.`
-        );
-        return;
-      }
+	  const code = buildCodeForPortal(currentType, id);
+	  const url  = new URL('/portal.html', window.location.origin);
+	  url.searchParams.set('code', code);
+	  url.searchParams.set('lang', lang);
+	  url.searchParams.set('env', envPrefix);
+	  url.searchParams.set('src', window.location.pathname + window.location.search);
+	  window.location.href = url.toString();
+	}
 
-      const code = buildCodeForPortal(currentType, id);
-      const url  = new URL('/portal.html', window.location.origin);
-      url.searchParams.set('code', code);
-      url.searchParams.set('lang', lang);
-      url.searchParams.set('env', envPrefix);
-      url.searchParams.set('src', window.location.pathname + window.location.search);
-      window.location.href = url.toString();
-    }
 
     /* ============================================================
        EVENTS
@@ -959,11 +1038,11 @@
     });
 
     // equipment: filter text => opnieuw renderen (zelfde type)
-    filterInstall.addEventListener('input', () => {
-      if (currentType !== 'equipment') return;
-      if (!selectEquipmentType.value) return;
-      renderEquipmentOptions();
-    });
+	filterInstall.addEventListener('input', () => {
+	  if (currentType !== 'equipment') return;
+	  renderEquipmentOptions();
+	});
+
 
     /* ============================================================
        INIT
