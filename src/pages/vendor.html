@@ -381,40 +381,157 @@
     }catch{ return { text, detected:null } } 
   }
 
-  async function showJobTextsThenAskTranslate(job){
-    renderJobHeader(job);
-    const rawDesc=job.Description||''; const rawReport=job.Report||job.JobReportText||''; const rawInstr=job.Instructions||job.JobText||'';
-    if(rawDesc.trim())   await botui.message.add({ type:'html', content:`<div class='job-description-box'><b>${isFr?'Description (originale)':'Beschrijving (origineel)'}</b><br>${stripHtml(rawDesc)}</div>` });
-    if(rawReport.trim()) await botui.message.add({ type:'html', content:`<div class='meldingen-lijst'><b>${isFr?'Remarque (originale)':'Toelichting (origineel)'}</b><br>${stripHtml(rawReport)}</div>` });
-    if(rawInstr.trim())  await botui.message.add({ type:'html', content:`<div class='meldingen-lijst'><b>${isFr?'Instructions (original)':'Werkinstructies (origineel)'}</b><br>${stripHtml(rawInstr)}</div>` });
+async function showJobTextsThenAskTranslate(job){
+  renderJobHeader(job);
 
-    await botui.message.add({ content: isFr?'Les détails originaux sont affichés ci-dessus. Voulez-vous une version traduite ?':'De originele details worden hierboven weergegeven. Wil je een vertaalde versie zien?' });
-    const choice=await botui.action.button({ action:[ {text:isFr?'🌐 Traduire en français':'🌐 Vertalen naar Nederlands',value:'yes'},{text:isFr?'Sans traduction':'Zonder vertaling',value:'no'} ] });
-    if(choice.value==='yes'){
-      await botui.message.add({ content: isFr?'Veuillez patienter, traduction en cours...':'Even geduld, vertaling bezig...' });
-      const dst=isFr?'fr':'nl';
-      const descRes=await translateText(rawDesc,'auto',dst);
-      const repRes =await translateText(rawReport,'auto',dst);
-      const insRes =await translateText(rawInstr,'auto',dst);
-      const badge =(d)=> d?`<small style='color:#6b7280'>(${isFr?'traduit de':'vertaald uit'}: ${d.toUpperCase()})</small>`:'';
-      const shouldDisplay=(res,target,raw)=>{ const t=target.toLowerCase(); if(!(res.text||'').trim()) return false; if(res.detected&&res.detected.toLowerCase()!==t) return true; const a=stripHtml(raw).trim(), b=stripHtml(res.text).trim(); return a!==b };
-      if(shouldDisplay(descRes,dst,rawDesc)) await botui.message.add({ type:'html', content:`<div class='job-description-box'><b>${isFr?'Description (traduite)':'Beschrijving (vertaald)'}</b> ${badge(descRes.detected)}<br>${stripHtml(descRes.text)}</div>` });
-      if(shouldDisplay(repRes ,dst,rawReport)) await botui.message.add({ type:'html', content:`<div class='meldingen-lijst'><b>${isFr?'Remarque (traduite)':'Toelichting (vertaald)'}</b> ${badge(repRes.detected)}<br>${stripHtml(repRes.text)}</div>` });
-      if(shouldDisplay(insRes ,dst,rawInstr))  await botui.message.add({ type:'html', content:`<div class='meldingen-lijst'><b>${isFr?'Instructions (traduite)':'Werkinstructies (vertaald)'}</b> ${badge(insRes.detected)}<br>${stripHtml(insRes.text)}</div>` });
-      await botui.message.add({ type:'html', content:`<small style='color:#6b7280'>${isFr?'Affichage traduit ajouté sous l’original.':'Vertaalde weergave toegevoegd onder het origineel.'}</small>` });
-    }
+  const rawDesc     = job.Description   || '';
+  const rawReport   = job.Report || job.JobReportText || '';
+  const rawFeedback = job.FeedbackText || '';
+  const rawInstr    = job.Instructions || job.JobText || '';
 
-    if (hasJobDocuments) { 
-      await botui.message.add({ 
-        type: 'html', 
-        content: `<div class="document-tip">
-          ${isFr ? '<b>Important :</b> Les documents liés à cette tâche peuvent être consultés à tout moment via le bouton <b>📎 Documents</b> en bas à droite.' 
-                  : '<b>Belangrijk:</b> Documenten gekoppeld aan deze taak zijn op elk moment in te zien via de zwevende knop <b>📎 Documenten</b> rechtsonder.'}
-        </div>` 
+  // Newlines → <br>, maar verder HTML laten staan (voor blauwe tekst / links / bold)
+  const normalizeWithBr = (s = '') =>
+    String(s).replace(/(?:\r\n|\r|\n)/g, '<br>');
+
+  /* ===== ORIGINEEL ===== */
+
+  if (rawDesc.trim())
+    await botui.message.add({
+      type: 'html',
+      content: `<div class='job-description-box'>
+        <b>${isFr ? 'Description (originale)' : 'Beschrijving (origineel)'}</b><br>${stripHtml(rawDesc)}
+      </div>`
+    });
+
+  // 1) Werkinstructies
+  if (rawInstr.trim())
+    await botui.message.add({
+      type: 'html',
+      content: `<div class='meldingen-lijst'>
+        <b>${isFr ? 'Instructions (original)' : 'Werkinstructies (origineel)'}</b><br>${stripHtml(rawInstr)}
+      </div>`
+    });
+
+  // 2) Toelichting
+  if (rawReport.trim())
+    await botui.message.add({
+      type: 'html',
+      content: `<div class='meldingen-lijst'>
+        <b>${isFr ? 'Remarque (originale)' : 'Toelichting (origineel)'}</b><br>${stripHtml(rawReport)}
+      </div>`
+    });
+
+	// 3) Uitgevoerde werkzaamheden — zelfde look als Beschrijving
+	if (rawFeedback.trim()){
+	  const fbHtml = normalizeWithBr(rawFeedback);
+	  await botui.message.add({
+		type: 'html',
+		content: `<div class='job-description-box'>
+		  <b>${isFr ? 'Travaux exécutés (original)' : 'Uitgevoerde werkzaamheden (origineel)'}</b><br>${fbHtml}
+		</div>`
+	  });
+	}
+
+
+  /* ===== VERTALING ===== */
+
+  await botui.message.add({
+    content: isFr
+      ? 'Les détails originaux sont affichés ci-dessus. Voulez-vous une version traduite ?'
+      : 'De originele details worden hierboven weergegeven. Wil je een vertaalde versie zien?'
+  });
+
+  const choice = await botui.action.button({
+    action: [
+      { text: isFr ? '🌐 Traduire en français' : '🌐 Vertalen naar Nederlands', value: 'yes' },
+      { text: isFr ? 'Sans traduction' : 'Zonder vertaling', value: 'no' }
+    ]
+  });
+
+  if (choice.value === 'yes') {
+    await botui.message.add({
+      content: isFr ? 'Veuillez patienter, traduction en cours...' : 'Even geduld, vertaling bezig...'
+    });
+
+    const dst = isFr ? 'fr' : 'nl';
+
+    const descRes = await translateText(rawDesc,     'auto', dst);
+    const repRes  = await translateText(rawReport,   'auto', dst);
+    const fbRes   = await translateText(stripHtml(rawFeedback), 'auto', dst); // vertalen zonder HTML
+    const insRes  = await translateText(rawInstr,    'auto', dst);
+
+    const badge = (d) =>
+      d
+        ? `<small style='color:#6b7280'>(${isFr ? 'traduit de' : 'vertaald uit'}: ${d.toUpperCase()})</small>`
+        : '';
+
+    const shouldDisplay = (res, target, raw) => {
+      const t = target.toLowerCase();
+      if (!(res.text || '').trim()) return false;
+      if (res.detected && res.detected.toLowerCase() !== t) return true;
+      const a = stripHtml(raw).trim();
+      const b = stripHtml(res.text).trim();
+      return a !== b;
+    };
+
+    if (shouldDisplay(descRes, dst, rawDesc))
+      await botui.message.add({
+        type: 'html',
+        content: `<div class='job-description-box'>
+          <b>${isFr ? 'Description (traduite)' : 'Beschrijving (vertaald)'}</b> ${badge(descRes.detected)}<br>${stripHtml(descRes.text)}
+        </div>`
       });
-	  revealFab();
+
+    if (shouldDisplay(insRes, dst, rawInstr))
+      await botui.message.add({
+        type: 'html',
+        content: `<div class='meldingen-lijst'>
+          <b>${isFr ? 'Instructions (traduite)' : 'Werkinstructies (vertaald)'}</b> ${badge(insRes.detected)}<br>${stripHtml(insRes.text)}
+        </div>`
+      });
+
+    if (shouldDisplay(repRes, dst, rawReport))
+      await botui.message.add({
+        type: 'html',
+        content: `<div class='meldingen-lijst'>
+          <b>${isFr ? 'Remarque (traduite)' : 'Toelichting (vertaald)'}</b> ${badge(repRes.detected)}<br>${stripHtml(repRes.text)}
+        </div>`
+      });
+
+    if (shouldDisplay(fbRes, dst, rawFeedback)){
+      const fbTranslatedHtml = normalizeWithBr(fbRes.text);
+      await botui.message.add({
+        type: 'html',
+        content: `<div class='meldingen-lijst'>
+          <b>${isFr ? 'Travaux exécutés (traduits)' : 'Uitgevoerde werkzaamheden (vertaald)'}</b> ${badge(fbRes.detected)}<br>${fbTranslatedHtml}
+        </div>`
+      });
     }
+
+    await botui.message.add({
+      type: 'html',
+      content: `<small style='color:#6b7280'>
+        ${isFr ? 'Affichage traduit ajouté sous l’original.' : 'Vertaalde weergave toegevoegd onder het origineel.'}
+      </small>`
+    });
   }
+
+  if (hasJobDocuments) {
+    await botui.message.add({
+      type: 'html',
+      content: `<div class="document-tip">
+        ${
+          isFr
+            ? '<b>Important :</b> Les documents liés à cette tâche peuvent être consultés à tout moment via le bouton <b>📎 Documents</b> en bas à droite.'
+            : '<b>Belangrijk:</b> Documenten gekoppeld aan deze taak zijn op elk moment in te zien via de zwevende knop <b>📎 Documenten</b> rechtsonder.'
+        }
+      </div>`
+    });
+    revealFab();
+  }
+}
+
+
 
   /* ==================== 8. Update wrapper ==================== */
    async function submitUpdate(payload, successMsg){
@@ -643,7 +760,7 @@
   }
 
   // 5) Feedbacktekst opbouwen
-  const feedbackText = pickedFile ? `${comment} (zie bestand: ${pickedName})` : comment;
+  const feedbackText = pickedFile ? `${comment} (zie Documenten: ${pickedName})` : comment;
   const formatted = createFormattedText(feedbackText);
 
   // 6) Submit volgens actie
