@@ -1096,7 +1096,7 @@
 	  if (!cleaned) return '';
 
 	  // placeholders als leeg behandelen
-	  if (/^(-|n\/a|na|geen|leeg)$/i.test(cleaned)) return '';
+	  if (/^(n\/a|na|geen|leeg)$/i.test(cleaned)) return '';
 
 	  return cleaned;
 	}
@@ -1439,10 +1439,10 @@ async function complaintFlow(job){
 		  if (editable) {
 			conf = await botui.action.button({
 			  action: [
+			    { text: isFr ? '➕ Ajouter une info' : '➕ Info toevoegen', value: 'info_add' },
 				{ text: isFr ? '✅ Traiter la plainte' : '✅ Klacht afhandelen', value: 'finish' },
-				{ text: isFr ? '🕒 Enregistrer provisoirement' : '🕒 Klacht tijdelijk bewaren', value: 'save_temp' },
-				{ text: isFr ? '➕ Ajouter une info' : '➕ Info toevoegen', value: 'info_add' },
-				{ text: isFr ? '⚠️ Plainte mal attribuée' : '⚠️ De klacht werd verkeerd toegewezen', value: 'misassigned' }
+				{ text: isFr ? '🕒 Enregistrer provisoirement' : '🕒 Klacht tijdelijk bewaren', value: 'save_temp' } //,
+			//	{ text: isFr ? '⚠️ Plainte mal attribuée' : '⚠️ De klacht werd verkeerd toegewezen', value: 'misassigned' }
 			  ]
 			});
 		  } else {
