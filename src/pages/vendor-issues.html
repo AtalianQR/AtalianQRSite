@@ -1,0 +1,1714 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Vendorklacht — Klacht afhandelen</title>
+
+  <link rel="icon" href="/AtalianFavicon.png" />
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/botui/build/botui.min.css" />
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/botui/build/botui-theme-default.css" />
+<style>
+  html, body{height:auto;min-height:100vh;width:100%;margin:0;padding:0;box-sizing:border-box;
+    font-family:'Segoe UI',sans-serif;background-color:#f4f6fa;overflow-y:auto}
+  body{background-image:url('/Klachtbehandeling.png');background-size:cover;background-repeat:no-repeat;background-position:center}
+  *{box-sizing:border-box}
+
+  .test-banner{
+    position:fixed;top:0;left:0;width:100%;
+    background-color:#28a745;color:#fff;text-align:center;
+    padding:5px 0;font-weight:bold;z-index:1000;font-size:14px;
+    text-transform:uppercase;opacity:.9
+  }
+  body.is-test{ padding-top:30px; }
+
+  .header-flex{display:flex;flex-direction:column;align-items:center;max-width:600px;width:100%;margin:0 auto;padding:.5rem 0;gap:.5rem}
+  img.logo{max-height:60px;height:auto;width:auto;display:block;margin:0 auto;background:rgba(255,255,255,.85);padding:.1rem;border-radius:12px}
+  .header-flex .ruimte-label{display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;background:rgba(255,255,255,.95);color:#1a202c;padding:.5rem 1rem;border-radius:12px;font-size:1rem;font-weight:500;white-space:normal;box-shadow:0 2px 6px rgba(0,0,0,.05);border:2px solid #EE7E00;box-shadow:0 2px 8px rgba(238,126,0,.06);width:100%;max-width:600px;margin:0 auto;border-bottom-width:4px}
+  .lang-switch{text-align:right;padding-right:1rem;margin-top:1rem}
+  .lang-switch a{margin:0 .5rem;text-decoration:none;font-size:1.2rem}
+
+  #botui-app{width:100%;max-width:600px;margin:1rem auto 0 auto;padding:.5rem 1rem 1rem}
+
+  .botui-container{
+    max-width:600px;width:100%;margin:0 auto;
+    background:linear-gradient(120deg,#fff 85%,#f4f6fa 100%);
+    border:2px solid #EE7E00;
+    box-shadow:0 6px 32px rgba(0,0,0,.12),0 1.5px 8px rgba(238,126,0,.10);
+    border-radius:12px;
+    padding:1rem;
+    box-sizing:border-box;
+    opacity:0;
+    animation:fadeIn 3s ease forwards;
+    position:relative;
+    overflow:hidden;
+  }
+
+  /* 🔥 EXTRA FEL: enkel actief als body.is-issue aanwezig is */
+  body.is-issue .botui-container{
+    background:linear-gradient(120deg,#ffffff 55%, #ffe2c6 100%);
+    border:2px solid #EE7E00;
+
+    box-shadow:
+      0 18px 55px rgba(0,0,0,.18),
+      0 0 0 8px rgba(238,126,0,.20),
+      0 0 34px 10px rgba(238,126,0,.18);
+
+    /* fadeIn + pulse (2 sec) */
+    animation:fadeIn 1.0s ease forwards, urgentPulse 2s ease-in-out infinite;
+  }
+
+  /* ✅ TEKSTBANNER (zichtbaar) */
+  body.is-issue .botui-container::before{
+    content:"⚠️ Klacht — graag snel oplossen";
+    display:block;
+
+    font-weight:900;
+    letter-spacing:.02em;
+    font-size:.95rem;
+
+    padding:.65rem .9rem;
+    border-radius:10px;
+    margin-bottom:.85rem;
+
+    background:#ffedd5;
+    color:#9a3412;
+
+    border:1px solid rgba(238,126,0,.55);
+    box-shadow:0 8px 22px rgba(238,126,0,.22);
+
+    position:relative;
+    z-index:2;
+  }
+
+  /* ✅ extra accentstrip achter de banner (niet over tekst) */
+  body.is-issue .botui-container::after{
+    content:"";
+    position:absolute;
+    left:10px; right:10px; top:10px;
+    height:6px;
+    border-radius:999px;
+    background:linear-gradient(90deg, rgba(238,126,0,.15), rgba(238,126,0,.85), rgba(238,126,0,.15));
+    filter:blur(.2px);
+    opacity:.95;
+    z-index:1;
+    pointer-events:none;
+  }
+
+  /* 🔥 FELLE pulse: duidelijk, maar nog “netjes” */
+  @keyframes urgentPulse{
+    0%,100%{
+      box-shadow:
+        0 18px 55px rgba(0,0,0,.18),
+        0 0 0 8px rgba(238,126,0,.20),
+        0 0 34px 10px rgba(238,126,0,.18);
+    }
+    50%{
+      box-shadow:
+        0 18px 55px rgba(0,0,0,.18),
+        0 0 0 14px rgba(238,126,0,.38),
+        0 0 52px 18px rgba(238,126,0,.32);
+    }
+  }
+
+  @keyframes fadeIn{to{opacity:1}}
+
+  /* ✅ Respecteert “reduce motion” */
+  @media (prefers-reduced-motion: reduce){
+    .botui-container{ animation:none !important; opacity:1 !important; }
+    body.is-issue .botui-container{ animation:none !important; }
+  }
+
+  .botui-container,.botui-message-content{font-family:'Segoe UI',sans-serif}
+  .botui-button{font-weight:600;border:none;box-shadow:0 2px 6px rgba(238,126,0,.04);transition:background .12s}
+  .botui-button:active{background:#d86e00}
+
+  .meldingen-lijst{background:#f5f8fc;border-radius:10px;padding:.7em 1em;margin:.7em 0;border-left:4px solid #EE7E00}
+  .job-description-box{background:#e0f2fe;border-radius:10px;padding:.7em 1em;margin:.7em 0;border-left:4px solid #3b82f6}
+
+  .ruimte-label .customer { font-size: 1.25rem; font-weight: 700; color: #111827; line-height: 1.25; margin-bottom: .15rem; }
+  .ruimte-label .complex  { font-size: 1rem;   font-weight: 600; color: #374151; margin-bottom: .25rem; }
+  .ruimte-label .jobidline{ font-size: .9rem;  font-weight: 600; color: #1f2937; }
+
+  .botui-actions-text-input{
+    width: 100% !important;
+    max-width: 80% !important;
+    flex-grow: 1 !important;
+  }
+
+  .view-doc-btn{background:none;border:1px solid #EE7E00;color:#EE7E00;padding:4px 8px;cursor:pointer;font-size:.8rem;border-radius:4px;transition:background-color .1s}
+  .view-doc-btn:hover{background-color:#EE7E00;color:#fff}
+
+  @media(max-width:768px){
+    .header-flex{flex-wrap:wrap;justify-content:center}
+    .header-flex .ruimte-label,img.logo{flex:0 0 90%;max-width:90%;text-align:center}
+    .header-flex .ruimte-label{font-size:.95rem;padding:.5rem}
+    .botui-container{padding:.75rem;max-width:95%}
+    .botui-actions-text-input{max-width:100% !important}
+  }
+
+  .doc-backdrop{position:fixed;inset:0;background:rgba(0,0,0,.25);backdrop-filter:saturate(140%) blur(1px);z-index:990;opacity:0;transition:opacity .18s ease}
+  .doc-backdrop[hidden]{display:none}
+  .doc-panel{position:fixed;top:0;right:0;height:100vh;width:min(560px,96vw);background:#ffffff;box-shadow:-2px 0 18px rgba(0,0,0,.18);border-left:3px solid #EE7E00;z-index:999;transform:translateX(100%);transition:transform .22s ease}
+  .doc-panel.open{transform:translateX(0)}
+  .doc-panel-header{display:flex;align-items:center;justify-content:space-between;padding:.75rem 1rem;border-bottom:1px solid #eee}
+  .doc-panel-header #doc-panel-title{font-weight:700}
+  .doc-close-btn{background:none;border:0;font-size:1.2rem;cursor:pointer;color:#1f2937}
+  .doc-panel-body{display:grid;grid-template-columns:1fr;grid-template-rows:auto 1fr;gap:.75rem;height:calc(100vh - 56px);padding:0 .75rem .75rem}
+  .doc-preview{border:1px solid #e5e7eb;border-radius:8px;padding:.5rem;overflow:auto;min-height:160px;background:#fafafa}
+  .doc-preview .pdf-tip{font-size:.85rem;color:#6b7280}
+  .doc-list{border:1px solid #e5e7eb;border-radius:8px;overflow:auto}
+  .doc-table{width:100%;border-collapse:collapse;font-size:.92rem}
+  .doc-table th,.doc-table td{padding:.4rem .5rem;border-bottom:1px solid #f0f0f0}
+  .doc-table th{text-align:left;background:#fafafa;position:sticky;top:0;z-index:1}
+
+  .doc-fab{position:fixed;right:16px;bottom:16px;height:48px;min-width:48px;border-radius:24px;border:2px solid #EE7E00;background:#fff;color:#EE7E00;padding:0 14px;display:flex;align-items:center;gap:.5rem;cursor:pointer;box-shadow:0 8px 30px rgba(0,0,0,.16);z-index:980;font-weight:700}
+  .doc-fab:hover{background:#FFF8F1}
+
+  .document-tip{ background:#ffedd5; border-left:4px solid #EE7E00; padding:.7em 1em; margin-top:.7em; border-radius:4px; font-size:.95rem; }
+
+  @media (max-width:640px){
+    .doc-panel{width:100vw;border-left-width:0;border-top:3px solid #EE7E00}
+    .doc-panel-body{grid-template-rows:1fr 1fr}
+  }
+
+  /* ✅ editor-styles */
+  .summary-editor{
+    background:#f5f8fc;border-radius:10px;padding:.9em 1em;margin:.7em 0;border-left:4px solid #EE7E00
+  }
+  .summary-editor h4{margin:.1rem 0 .7rem 0;font-size:1rem}
+  .se-row{margin:.6rem 0}
+  .se-row label{display:block;font-weight:700;margin-bottom:.25rem}
+  .se-row textarea{
+    width:100%;min-height:70px;resize:vertical;
+    border:1px solid #e5e7eb;border-radius:8px;padding:.55rem .6rem;
+    font-family:'Segoe UI',sans-serif;font-size:.95rem;line-height:1.25;
+    background:#fff;
+  }
+  .se-hint{font-size:.85rem;color:#6b7280;margin-top:.4rem}
+
+  .summary-editor textarea[readonly]{ background:#f3f4f6; opacity:.85; }
+
+  #job-info .space { margin-top:.25rem; font-weight:600; }
+  #job-info .muted { color:#666; font-weight:400; }
+  #job-info .type  { font-size:.85rem; color:#666; margin-top:.15rem; }
+</style>
+
+
+
+</head>
+<body>
+<div id="test-indicator" class="test-banner" style="display:none">
+  ⚠️ TEST OMGEVING ACTIEF
+</div>
+
+  <header>
+    <div class="lang-switch">
+      <a href="#" id="switch-nl">🇳🇱 NL</a> |
+      <a href="#" id="switch-fr">🇫🇷 FR</a>
+    </div>
+    <div class="header-flex">
+      <img src="/AtalianLogo.png" alt="Atalian Logo" class="logo" />
+      <div id="job-info" class="ruimte-label" style="display:none"></div>
+    </div>
+  </header>
+
+  <div id="botui-app"><bot-ui></bot-ui></div>
+
+  <div id="doc-backdrop" class="doc-backdrop" hidden></div>
+  <aside id="doc-panel" class="doc-panel" aria-hidden="true">
+    <div class="doc-panel-header">
+      <div id="doc-panel-title">📎 Documenten</div>
+      <button id="doc-panel-close" class="doc-close-btn" aria-label="Sluiten">✕</button>
+    </div>
+    <div class="doc-panel-body">
+      <div id="doc-preview" class="doc-preview">
+        <div class="pdf-tip">Selecteer een document uit de lijst om de preview te zien. PDF's openen in een nieuw tabblad of via downloadlink.</div>
+      </div>
+      <div id="doc-list" class="doc-list"></div>
+    </div>
+  </aside>
+  <button id="doc-fab" class="doc-fab" type="button"
+        style="display:none"
+        aria-hidden="true"
+        tabindex="-1">📎 Documenten</button>
+
+  <script src="https://cdn.jsdelivr.net/npm/vue@2"></script>
+  <script src="https://cdn.jsdelivr.net/npm/botui/build/botui.min.js"></script>
+
+  <script type="module">
+  (function fixDoubleQuestionMark(){
+    const href = String(location.href);
+    const first = href.indexOf('?');
+    const second = href.indexOf('?', first + 1);
+    if (second !== -1) {
+      const fixed = href.slice(0, second) + '&' + href.slice(second + 1);
+      location.replace(fixed);
+    }
+  })();
+
+  const qs = new URLSearchParams(window.location.search);
+  const srcRaw = qs.get('src') ?? '';
+  document.body.classList.add('is-issue');
+
+
+  function safeSameOriginUrl(raw) {
+    if (!raw) return '';
+    try {
+      const u = new URL(raw, window.location.origin);
+      return (u.origin === window.location.origin) ? u.toString() : '';
+    } catch {
+      return '';
+    }
+  }
+
+  const sourceUrl = safeSameOriginUrl(srcRaw);
+  const cameFromPortalSelf = !!sourceUrl && /portalself/i.test(sourceUrl);
+
+  function goBackAfterVendor(){
+    if (sourceUrl) window.location.href = sourceUrl;
+    else window.location.href = '/';
+  }
+
+  function isLocalhostHost() {
+    const h = String(location.hostname || '').toLowerCase();
+    return h === 'localhost' || h === '127.0.0.1' || h === '::1';
+  }
+
+  function getGeoFix({ timeoutMs = 8000, enableHighAccuracy = true } = {}) {
+    return new Promise((resolve) => {
+      if (!navigator.geolocation) {
+        resolve({ ok:false, reason:'UNSUPPORTED', message:'geolocation not available' });
+        return;
+      }
+
+      let done = false;
+      const timer = setTimeout(() => {
+        if (done) return;
+        done = true;
+        resolve({ ok:false, reason:'TIMEOUT', message:`timeout ${timeoutMs}ms` });
+      }, timeoutMs);
+
+      navigator.geolocation.getCurrentPosition(
+        (pos) => {
+          if (done) return;
+          done = true;
+          clearTimeout(timer);
+          resolve({
+            ok: true,
+            lat: pos.coords.latitude,
+            lon: pos.coords.longitude,
+            acc: Math.round(pos.coords.accuracy || 0),
+            ts: pos.timestamp || Date.now()
+          });
+        },
+        (err) => {
+          if (done) return;
+          done = true;
+          clearTimeout(timer);
+
+          const code = err?.code;
+          const reason =
+            code === 1 ? 'DENIED' :
+            code === 2 ? 'UNAVAILABLE' :
+            code === 3 ? 'TIMEOUT' :
+            'ERROR';
+
+          resolve({ ok:false, reason, message: err?.message || '' });
+        },
+        { enableHighAccuracy, timeout: timeoutMs, maximumAge: 0 }
+      );
+    });
+  }
+  
+	function getProgressStatusId(job){
+	  const raw =
+		// 1) klassiek
+		job?.ProgressStatus?.Id ??
+		job?.ProgressStatusId ??
+		job?.progressStatusId ??
+		job?.ProgressStatus?.id ??
+		job?.ProgressStatus ??
+
+		// 2) jouw payload: Status (komt effectief voor in job keys)
+		job?.Status?.Id ??
+		job?.StatusId ??
+		job?.statusId ??
+		job?.Status?.id ??
+		job?.Status ??
+
+		// 3) laatste redmiddel
+		'';
+
+	  const ps = String(raw ?? '').trim();
+
+	  return ps;
+	}
+
+
+	function canEditVendorIssues(job){
+	  return getProgressStatusId(job) === '1008';
+	}
+
+
+  
+
+  async function requireGpsIfPortalSelf({ botui, Telemetry, isFr, cameFromPortalSelf }){
+    if (!cameFromPortalSelf) return { ok:true, skipped:true };
+
+    if (isLocalhostHost()) {
+      return { ok:true, bypass:true, lat:0, lon:0, acc:0, ts:Date.now(), reason:'LOCALHOST_BYPASS' };
+    }
+
+    await botui.message.add({ content: isFr ? '📍 Localisation…' : '📍 Locatie ophalen…' });
+    const geo = await getGeoFix({ timeoutMs: 8000, enableHighAccuracy: true });
+    if (geo.ok) return geo;
+
+    Telemetry?.send?.('gps_required_block_vendor', { reason: geo.reason, message: geo.message || '' });
+
+    await botui.message.add({
+      type:'html',
+      content: isFr
+        ? `❌ <b>Localisation GPS requise</b>.<br>Activez la localisation (GPS) et autorisez ce site.<br>Ensuite, réessayez.`
+        : `❌ <b>GPS is verplicht</b>.<br>Zet je locatie (GPS) aan en geef toestemming voor deze site.<br>Probeer daarna opnieuw.`
+    });
+
+    await botui.action.button({ action: [{ text: isFr ? '🔄 Réessayer' : '🔄 Opnieuw proberen', value:'retry' }] });
+    return await requireGpsIfPortalSelf({ botui, Telemetry, isFr, cameFromPortalSelf });
+  }
+
+  const host = (window.location && window.location.host) ? window.location.host : '';
+  const isTest =
+    qs.has('test') ||
+    qs.get('env') === 'test' ||
+    /test|staging/i.test(host);
+
+  const envQ = isTest ? '&test=1' : '';
+  if (isTest) {
+    const showBanner = () => {
+      const $ti = document.getElementById('test-indicator');
+      if ($ti) $ti.style.display = 'block';
+      document.body.classList.add('is-test');
+    };
+    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', showBanner);
+    else showBanner();
+  }
+
+  const endpointJobDetails = '/.netlify/functions/jobsvendor';
+  const endpointUpdate     = endpointJobDetails;
+
+  const jobIdRaw = qs.get('job') || qs.get('jobId') || '';
+  const jobId = String(jobIdRaw).split(/[?&#]/)[0];
+  let   lang  = qs.get('lang') || ((navigator.language||'').startsWith('fr') ? 'fr' : 'nl');
+  const isFr  = (lang === 'fr');
+  if (isFr) document.body.style.backgroundImage = "url('/afmeldentaak_fr.png')";
+
+  const Telemetry = (()=>{ 
+    const base = { jobId: String(jobId), lang, env: isTest ? 'test' : 'prod', cameFromPortalSelf };
+    async function send(type, extra={}){
+      const json = JSON.stringify({ type, ts: Date.now(), href: location.href, ...base, ...extra });
+      try{
+        if (navigator.sendBeacon && navigator.sendBeacon('/.netlify/functions/formlog', new Blob([json],{type:'application/json'}))) return;
+        await fetch('/.netlify/functions/formlog',{ method:'POST', headers:{'content-type':'application/json'}, body: json, keepalive:true });
+      }catch{}
+    }
+    return { send };
+  })();
+  Telemetry.send('vendorklacht_html_load');
+
+  const botui = new BotUI('botui-app');
+  const elInfo = document.getElementById('job-info');
+  document.getElementById('switch-nl').onclick = ()=>{const u=new URL(location.href);u.searchParams.set('lang','nl');location.href=u;};
+  document.getElementById('switch-fr').onclick = ()=>{const u=new URL(location.href);u.searchParams.set('lang','fr');location.href=u;};
+
+  let sessionEmail = '';
+  let jobPayload   = null;
+  let documentCache = {};
+  let hasJobDocuments = false;
+
+  const $panel    = document.getElementById('doc-panel');
+  const $backdrop = document.getElementById('doc-backdrop');
+  const $fab      = document.getElementById('doc-fab');
+  let fabShown = false;
+
+  function revealFab(){
+    if (fabShown) return;
+    $fab.style.display = 'flex';
+    $fab.removeAttribute('aria-hidden');
+    $fab.removeAttribute('tabindex');
+    fabShown = true;
+  }
+
+  const $close    = document.getElementById('doc-panel-close');
+  const $preview  = document.getElementById('doc-preview');
+  const $title    = document.getElementById('doc-panel-title');
+
+  $fab.textContent = isFr ? '📎 Documents' : '📎 Documenten';
+
+  function openDocPanel(){
+    $panel.classList.add('open');
+    $panel.setAttribute('aria-hidden','false');
+    $backdrop.hidden=false; requestAnimationFrame(()=>{$backdrop.style.opacity=1});
+  }
+  function closeDocPanel(){
+    $panel.classList.remove('open');
+    $panel.setAttribute('aria-hidden','true');
+    $backdrop.style.opacity=0; setTimeout(()=>{$backdrop.hidden=true},180);
+  }
+  $fab.addEventListener('click', async ()=>{ openDocPanel(); await loadAndRenderDocuments(jobId).catch(console.error); });
+  $close.addEventListener('click', closeDocPanel);
+  $backdrop.addEventListener('click', closeDocPanel);
+
+  const stripHtml=(s='')=>s.replace(/<[^>]*>/g,'').replace(/&nbsp;/g,' ').replace(/\s{2,}/g,' ').trim();
+
+  async function fetchJobDocuments(jobId){
+    const url = `${endpointJobDetails}?action=LIST_JOB_DOCS&jobId=${encodeURIComponent(jobId)}${envQ}`;
+    const r=await fetch(url,{headers:{accept:'application/json'}});
+    if(!r.ok) throw new Error(`HTTP ${r.status}`);
+    const data=await r.json();
+    return Array.isArray(data?.Documents)?data.Documents:[];
+  }
+
+  async function fetchDocumentBase64(docId){
+    const url = `${endpointJobDetails}?action=GET_JOB_DOC&docId=${encodeURIComponent(docId)}${envQ}`;
+    const r=await fetch(url,{headers:{accept:'application/json'}});
+    if(!r.ok) throw new Error(`HTTP ${r.status}`);
+    const data=await r.json();
+    const b64 = (typeof data === 'string') ? data : (data?.Document || data?.Base64 || '');
+    if(!b64 || typeof b64!=='string') throw new Error(isFr?'Données du document introuvables.':'Documentdata niet gevonden.');
+    return b64;
+  }
+
+  function getMimeType(docType, description, base64Data){
+    const t=(docType||'').toUpperCase();
+    if(t==='PDF') return 'application/pdf';
+    if(t==='JPEG'||t==='JPG') return 'image/jpeg';
+    if(t==='PNG') return 'image/png';
+    const desc=(description||'').toLowerCase();
+    if(desc.endsWith('.pdf')) return 'application/pdf';
+    if(desc.endsWith('.jpg')||desc.endsWith('.jpeg')) return 'image/jpeg';
+    if(desc.endsWith('.png')) return 'image/png';
+    if(desc.endsWith('.doc')||desc.endsWith('.docx')) return 'application/msword';
+    if(desc.endsWith('.xls')||desc.endsWith('.xlsx')) return 'application/vnd.ms-excel';
+    if (base64Data && base64Data.length > 10) {
+      const prefix = base64Data.substring(0, 20);
+      if (prefix.startsWith('/9j/')) return 'image/jpeg';
+      if (prefix.startsWith('iVBORw0KGgo')) return 'image/png';
+      if (prefix.startsWith('JVBERi0x')) return 'application/pdf';
+    }
+    return 'application/octet-stream';
+  }
+
+  async function displayBase64InPanel(docId, docType, docDescription, base64Data){
+    const mimeType=getMimeType(docType, docDescription, base64Data);
+    const dataUrl=`data:${mimeType};base64,${base64Data}`;
+    const fileName=(docDescription||`${docId}.${(docType||'bin').toLowerCase()}`);
+
+    let html='';
+    if(mimeType.startsWith('image/')){
+      html = `<figure style="margin:0"><img src="${dataUrl}" alt="${docId}" style="max-width:100%;height:auto;border:1px solid #ddd;border-radius:6px"/><figcaption style="font-size:.85rem;color:#6b7280;margin-top:.25rem">${fileName}</figcaption></figure>`;
+    } else if (mimeType==='application/pdf'){
+      html = `<div class="pdf-tip">${isFr? 'Ce document est un PDF. Ouvrez/le téléchargez via le lien ci-dessous.' : 'Dit is een PDF. Open of download via de link hieronder.'}</div>
+              <p><a href="${dataUrl}" target="_blank" download="${fileName}" style="display:inline-block;padding:8px 14px;background:#EE7E00;color:#fff;text-decoration:none;border-radius:6px;font-weight:700">${isFr?'Ouvrir/Télécharger PDF':'PDF openen/downloaden'}</a></p>`;
+    } else {
+      html = `<p style="color:#b91c1c">${isFr?`Type non supporté (${mimeType}).`:`Niet-ondersteund type (${mimeType}).`}</p>
+              <p><a href="${dataUrl}" target="_blank" download="${fileName}${mimeType==='application/octet-stream'?'.dat':''}" style="color:#EE7E00;font-weight:700">${isFr?'Télécharger l\'original':'Origineel downloaden'}</a></p>`;
+    }
+    $preview.innerHTML = html;
+  }
+
+  const copy = {
+    nl:{ intro1:"Welkom! We helpen je om deze klacht correct af te handelen. 👋", ask:"Gelieve uw login in te voeren:", invalid:"Foutieve login." },
+    fr:{ intro1:"Bienvenue ! Nous vous aidons à traiter cette plainte correctement. 👋", ask:"Veuillez entrer votre identifiant :", invalid:"Erreur d'identifiant." }
+  };
+
+
+
+
+	async function isAllowedBusinessMail(e=''){
+	  const okSyntax = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e);
+	  if (!okSyntax) return false;
+
+	  try {
+		const url =
+		  `${endpointJobDetails}` +
+		  `?jobId=${encodeURIComponent(jobId)}` +
+		  `&email=${encodeURIComponent(e)}` +
+		  `&controle=1` +
+		  `${envQ}`;
+
+
+		const r = await fetch(url, { headers: { accept: 'application/json' } });
+		if (!r.ok) return false;
+
+		const data = await r.json();
+		return data?.allowed === true;
+	  } catch {
+		return false;
+	  }
+	}
+
+  
+	function getVendorSessionEmail({ maxAgeMinutes = 60 } = {}) {
+	  try {
+		const email = String(sessionStorage.getItem('vendor_session_email') || '').trim().toLowerCase();
+		const ts = Number(sessionStorage.getItem('vendor_session_ts') || 0);
+		if (!email || !ts) return '';
+		const ageMs = Date.now() - ts;
+		if (ageMs > maxAgeMinutes * 60 * 1000) return '';
+		return email;
+	  } catch {
+		return '';
+	  }
+	}
+
+	function setVendorSessionEmail(email) {
+	  try {
+		sessionStorage.setItem('vendor_session_email', String(email || '').trim().toLowerCase());
+		sessionStorage.setItem('vendor_session_ts', String(Date.now()));
+	  } catch {}
+	}
+  
+
+	async function emailIntroAndLogin(){
+	  // ✅ 1) eerst kijken of we al een sessie hebben
+	  const rememberedEmail = getVendorSessionEmail({ maxAgeMinutes: 120 });
+	  if (rememberedEmail) {
+		sessionEmail = rememberedEmail;
+		Telemetry.send('login_skip_sessionstorage', {
+		  emailMasked: rememberedEmail.replace(/(.).+(@.*)/,'$1***$2')
+		});
+		return true; // 👈 geen prompts, meteen door
+	  }
+
+	  // ✅ 2) anders normale login-flow
+	  const t = isFr ? copy.fr : copy.nl;
+	  await botui.message.add({ content:t.intro1 });
+
+	  let attempts = 0;
+	  while (attempts < 3) {
+		await botui.message.add({ content:t.ask });
+
+		const a = await botui.action.text({
+		  action:{ placeholder: isFr?'prenom.nom@exemple.com':'voornaam.naam@voorbeeld.com' }
+		});
+
+		const email = (a.value || '').trim().toLowerCase();
+
+		if (!(await isAllowedBusinessMail(email))) {
+		  attempts++;
+		  if (attempts >= 3) {
+			await botui.message.add({
+			  content: isFr
+				? '❌ Maximum d\'essais atteint. Le flux de travail est terminé.'
+				: '❌ Maximum aantal pogingen bereikt. De workflow is beëindigd.'
+			});
+			Telemetry.send('login_max_attempts');
+			return false;
+		  }
+
+		  const remaining = 3 - attempts;
+		  const msg = isFr
+			? `${t.invalid} Il vous reste ${remaining} essai${remaining!==1?'s':''}.`
+			: `${t.invalid} Je hebt nog ${remaining} poging(en) over.`;
+
+		  await botui.message.add({ content: msg });
+		  continue;
+		}
+
+		sessionEmail = email;
+		Telemetry.send('email_ok',{ emailMasked: email.replace(/(.).+(@.*)/,'$1***$2') });
+
+		// ✅ 3) sessie opslaan voor issues.html
+		try {
+		  sessionStorage.setItem('vendor_session_email', String(sessionEmail || ''));
+		  sessionStorage.setItem('vendor_session_ts', String(Date.now()));
+		} catch {}
+
+		return true;
+	  }
+
+	  return false;
+	}
+
+
+  async function fetchJobDetails(){
+    const url=`${endpointJobDetails}?jobId=${encodeURIComponent(jobId)}&lang=${lang}&action=VIEW&email=${encodeURIComponent(sessionEmail)}${envQ}`;
+    const r=await fetch(url,{headers:{accept:'application/json'}});
+    if(!r.ok){
+      const errorText=await r.text();
+      console.error(`Fetch error ${r.status}: ${errorText}`);
+      throw new Error(`HTTP ${r.status} - ${r.statusText||'Server Error'}`);
+    }
+    return r.json();
+  }
+
+	function renderJobHeader(job){
+	  const klant   = (job.CustomerName || '').trim();
+	  const complex = (job.ComplexName  || '').trim();
+
+	  // ✅ Space object (uit backend payload)
+	  const sp = job.Space || {};
+
+	  const partDesc  = (sp.BuildingPartDescription || '').toString().trim();
+	  const floorLvl  = (sp.BuildingFloorLevel || '').toString().trim();
+	  const spaceDesc = (sp.Description || '').toString().trim();
+	  const roomNr    = (sp.RoomNumber || '').toString().trim();
+
+	  const lineCustomer = klant || (isFr ? 'Client inconnu' : 'Onbekende klant');
+	  const lineComplex  = complex || (isFr ? 'Complexe inconnu' : 'Onbekend complex');
+
+	  // 1) Bouwdeel + verdieping (boven de ruimte)
+	  const partFloorLine = (partDesc || floorLvl)
+		? `<div class="type">
+			 ${partDesc ? `<span>${partDesc}</span>` : ''}
+			 ${(partDesc && floorLvl) ? `<span class="muted"> — </span>` : ''}
+			 ${floorLvl ? `<span class="muted">${isFr ? 'Étage' : 'Verdieping'} ${floorLvl}</span>` : ''}
+		   </div>`
+		: '';
+
+	  // 2) Ruimte + RoomNumber (als die niet leeg is)
+	  const spaceLine = spaceDesc
+		? `<div class="space">
+			 ${spaceDesc}${roomNr ? ` <span class="muted">(${roomNr})</span>` : ''}
+		   </div>`
+		: `<div class="space muted">${isFr ? 'Espace: inconnu' : 'Ruimte: onbekend'}</div>`;
+
+	  elInfo.innerHTML = `
+		<div class="customer">${lineCustomer}</div>
+		<div class="complex">${lineComplex}</div>
+		${partFloorLine}
+		${spaceLine}
+		<div class="jobidline">${isFr ? 'ID tâche' : 'Job ID'}: ${job.Id}</div>
+	  `;
+	  elInfo.style.display = 'flex';
+	}
+
+
+
+  function getKwisId(job){
+    return String(
+      job?.Kwis?.Id ??
+      job?.KwisId ??
+      job?.Kwis ??
+      job?.Kwis?.id ??
+      ''
+    ).trim();
+  }
+
+  function isComplaintJob(job){
+    return getKwisId(job) === '002';
+  }
+
+  async function translateText(text, from, to){
+    if(!text||from===to) return {text, detected:null};
+    try{
+      const r=await fetch('/.netlify/functions/translate',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({text,source:from||undefined,target:to})});
+      if(!r.ok) throw new Error(await r.text());
+      const data=await r.json();
+      return { text:data?.text??text, detected:data?.detected??null }
+    }catch{ return { text, detected:null } }
+  }
+
+  async function showJobTextsThenAskTranslate(job){
+    renderJobHeader(job);
+
+    const rawDesc     = job.Description   || '';
+    const rawReport   = job.Report || job.JobReportText || '';
+    const rawFeedback = job.FeedbackText || '';
+    const rawInstr    = job.Instructions || job.JobText || '';
+	const rawCommVdr =
+	  job.CommunicationTextVdr ??
+	  job.communicationTextVdr ??
+	  job._COMMUNICATIONTEXTVDR ??
+	  job._JobCommunicationTextVdr ??
+	  '';
+
+    const normalizeWithBr = (s = '') => String(s).replace(/(?:\r\n|\r|\n)/g, '<br>');
+
+    if (rawDesc.trim())
+      await botui.message.add({
+        type: 'html',
+        content: `<div class='job-description-box'>
+          <b>${isFr ? 'Description (originale)' : 'Beschrijving (origineel)'}</b><br>${stripHtml(rawDesc)}
+        </div>`
+      });
+
+
+
+
+    if (rawInstr.trim())
+      await botui.message.add({
+        type: 'html',
+        content: `<div class='meldingen-lijst'>
+          <b>${isFr ? 'Instructions (original)' : 'Werkinstructies (origineel)'}</b><br>${stripHtml(rawInstr)}
+        </div>`
+      });
+
+    if (rawReport.trim())
+      await botui.message.add({
+        type: 'html',
+        content: `<div class='meldingen-lijst'>
+          <b>${isFr ? 'Remarque (originale)' : 'Toelichting (origineel)'}</b><br>${stripHtml(rawReport)}
+        </div>`
+      });
+	  
+	if (String(rawCommVdr).trim())
+	  await botui.message.add({
+		type: 'html',
+		content: `<div class='meldingen-lijst'>
+		  <b>${isFr ? 'Historique communication fournisseur (original)' : 'Communicatie leverancier (origineel)'}</b><br>
+		  ${normalizeWithBr(String(rawCommVdr))}
+		</div>`
+	  });  	  
+
+    if (rawFeedback.trim()){
+      const fbHtml = normalizeWithBr(rawFeedback);
+      await botui.message.add({
+        type: 'html',
+        content: `<div class='job-description-box'>
+          <b>${isFr ? 'Travaux exécutés (original)' : 'Uitgevoerde werkzaamheden (origineel)'}</b><br>${fbHtml}
+        </div>`
+      });
+	  
+
+	  
+    }
+
+    await botui.message.add({
+      content: isFr
+        ? 'Les détails originaux sont affichés ci-dessus. Voulez-vous une version traduite ?'
+        : 'De originele details worden hierboven weergegeven. Wil je een vertaalde versie zien?'
+    });
+
+    const choice = await botui.action.button({
+      action: [
+        { text: isFr ? '🌐 Traduire en français' : '🌐 Vertalen naar Nederlands', value: 'yes' },
+        { text: isFr ? 'Sans traduction' : 'Zonder vertaling', value: 'no' }
+      ]
+    });
+
+    if (choice.value === 'yes') {
+      await botui.message.add({
+        content: isFr ? 'Veuillez patienter, traduction en cours...' : 'Even geduld, vertaling bezig...'
+      });
+
+      const dst = isFr ? 'fr' : 'nl';
+
+      const descRes = await translateText(rawDesc,     'auto', dst);
+      const repRes  = await translateText(rawReport,   'auto', dst);
+      const fbRes   = await translateText(stripHtml(rawFeedback), 'auto', dst);
+      const insRes  = await translateText(rawInstr,    'auto', dst);
+	  const commRes = await translateText(stripHtml(rawCommVdr), 'auto', dst);
+
+      const badge = (d) =>
+        d
+          ? `<small style='color:#6b7280'>(${isFr ? 'traduit de' : 'vertaald uit'}: ${d.toUpperCase()})</small>`
+          : '';
+
+      const shouldDisplay = (res, target, raw) => {
+        const t = target.toLowerCase();
+        if (!(res.text || '').trim()) return false;
+        if (res.detected && res.detected.toLowerCase() !== t) return true;
+        const a = stripHtml(raw).trim();
+        const b = stripHtml(res.text).trim();
+        return a !== b;
+      };
+
+      if ((descRes, dst, rawDesc))
+        await botui.message.add({
+          type: 'html',
+          content: `<div class='job-description-box'>
+            <b>${isFr ? 'Description (traduite)' : 'Beschrijving (vertaald)'}</b> ${badge(descRes.detected)}<br>${stripHtml(descRes.text)}
+          </div>`
+        });
+
+      if ((insRes, dst, rawInstr))
+        await botui.message.add({
+          type: 'html',
+          content: `<div class='meldingen-lijst'>
+            <b>${isFr ? 'Instructions (traduite)' : 'Werkinstructies (vertaald)'}</b> ${badge(insRes.detected)}<br>${stripHtml(insRes.text)}
+          </div>`
+        });
+
+      if ((repRes, dst, rawReport))
+        await botui.message.add({
+          type: 'html',
+          content: `<div class='meldingen-lijst'>
+            <b>${isFr ? 'Remarque (traduite)' : 'Toelichting (vertaald)'}</b> ${badge(repRes.detected)}<br>${stripHtml(repRes.text)}
+          </div>`
+        });
+
+		if ((commRes, dst, rawCommVdr)){
+		  const commTranslatedHtml = normalizeWithBr(commRes.text);
+		  await botui.message.add({
+			type: 'html',
+			content: `<div class='meldingen-lijst'>
+			  <b>${isFr ? 'Historique communication fournisseur (traduit)' : 'Communicatie leverancier (vertaald)'}</b> ${badge(commRes.detected)}<br>
+			  ${commTranslatedHtml}
+			</div>`
+		  });
+ 	  	  	}
+
+
+      if ((fbRes, dst, rawFeedback)){
+        const fbTranslatedHtml = normalizeWithBr(fbRes.text);
+        await botui.message.add({
+          type: 'html',
+          content: `<div class='meldingen-lijst'>
+            <b>${isFr ? 'Travaux exécutés (traduits)' : 'Uitgevoerde werkzaamheden (vertaald)'}</b> ${badge(fbRes.detected)}<br>${fbTranslatedHtml}
+          </div>`
+        });
+      }
+
+      await botui.message.add({
+        type: 'html',
+        content: `<small style='color:#6b7280'>
+          ${isFr ? 'Affichage traduit ajouté sous l’original.' : 'Vertaalde weergave toegevoegd onder het origineel.'}
+        </small>`
+      });
+	  
+	  await botui.action.button({
+		  action: [
+			{ text: isFr ? '➡️ Continuer' : '➡️ Verder', value: 'continue' }
+		  ]
+		});
+    }
+
+
+
+    if (hasJobDocuments) {
+      await botui.message.add({
+        type: 'html',
+        content: `<div class="document-tip">
+          ${
+            isFr
+              ? '<b>Important :</b> Les documents liés à cette tâche peuvent être consultés à tout moment via le bouton <b>📎 Documents</b> en bas à droite.'
+              : '<b>Belangrijk:</b> Documenten gekoppeld aan deze taak zijn op elk moment in te zien via de zwevende knop <b>📎 Documenten</b> rechtsonder.'
+          }
+        </div>`
+      });
+      revealFab();
+    }
+  }
+
+	async function submitVendorComplaint({ jobId, rootCause, correction, correctiveMeasure, effectiveness, loopVendorId }) {
+	  const payload = {
+		action: 'VENDOR_COMPLAINT_FIELDS',
+		jobId,
+		email: sessionEmail,
+		lang,
+		loopVendorId: String(loopVendorId || '').trim(), // 👈 extra context
+		rootCause,
+		correction,
+		correctiveMeasure,
+		effectiveness
+	  };
+
+	  const url = `${endpointUpdate}?action=${encodeURIComponent(payload.action)}&jobId=${encodeURIComponent(payload.jobId)}${envQ}`;
+	  const r = await fetch(url, {
+		method: 'POST',
+		headers: { 'Content-Type': 'application/json' },
+		body: JSON.stringify(payload)
+	  });
+	  if (!r.ok) throw new Error(await r.text());
+	}
+
+	  
+	async function activateVendorJobIfNeeded(job){
+	  const ps = getProgressStatusId(job);
+
+	  // enkel activeren als nog 1012
+	  if (ps !== '1012') return { activated:false, ps };
+
+	  // Optioneel: enkel als we van PortalSelf komen (zoals bij GPS flow)
+	  // als jij dat wil afdwingen:
+	  // if (!cameFromPortalSelf) return { activated:false, ps, skipped:true };
+
+	  const payload = {
+		action: 'ACTIVATE_VENDORJOB',
+		jobId: job.Id,
+		email: sessionEmail,
+		lang,
+		text: '' // ✅ bewust leeg: geen FeedbackText
+	  };
+
+	  const url = `${endpointUpdate}?action=${encodeURIComponent(payload.action)}&jobId=${encodeURIComponent(payload.jobId)}${envQ}`;
+	  const r = await fetch(url, {
+		method: 'POST',
+		headers: { 'Content-Type':'application/json' },
+		body: JSON.stringify(payload)
+	  });
+	  if (!r.ok) throw new Error(await r.text());
+
+	  return { activated:true, from:'1012', to:'1008' };
+	}
+  
+
+	async function finalizeVendorComplaint({ jobId, rootCause, correction, correctiveMeasure, effectiveness }) {
+	  const payload = {
+		action: 'VENDOR_COMPLAINT_FINISH',   // 👈 nieuwe backend action
+		jobId,
+		email: sessionEmail,
+		lang,
+		rootCause,
+		correction,
+		correctiveMeasure,
+		effectiveness
+	  };
+
+	  const url = `${endpointUpdate}?action=${encodeURIComponent(payload.action)}&jobId=${encodeURIComponent(payload.jobId)}${envQ}`;
+	  const r = await fetch(url, {
+		method: 'POST',
+		headers: { 'Content-Type': 'application/json' },
+		body: JSON.stringify(payload)
+	  });
+	  if (!r.ok) throw new Error(await r.text());
+	}
+  
+	async function setProgressStatus({ jobId, newProgressStatusId }) {
+	  const payload = {
+		action: 'JOB_PROGRESSSTATUS_NOI',
+		jobId,
+		email: sessionEmail,
+		lang,
+		newProgressStatusId
+	  };
+
+	  const url = `${endpointUpdate}?action=${encodeURIComponent(payload.action)}&jobId=${encodeURIComponent(payload.jobId)}${envQ}`;
+	  const r = await fetch(url, {
+		method: 'POST',
+		headers: { 'Content-Type': 'application/json' },
+		body: JSON.stringify(payload)
+	  });
+	  if (!r.ok) throw new Error(await r.text());
+	}
+  
+  
+  async function loadAndRenderDocuments(jobId){
+    $title.textContent = isFr? '📎 Documents' : '📎 Documenten';
+    $preview.innerHTML = `<div class="pdf-tip">Selecteer een document uit de lijst om de preview te zien. PDF's openen in een nieuw tabblad of via downloadlink.</div>`;
+
+    const $oldList = document.getElementById('doc-list');
+    $oldList.innerHTML = `<div style="padding:.75rem;color:#6b7280">${isFr?'Chargement des documents…':'Documenten laden…'}</div>`;
+
+    let $newList = $oldList;
+    if ($oldList && $oldList.parentNode) {
+      $newList = $oldList.cloneNode(false);
+      $newList.id = $oldList.id;
+      $oldList.parentNode.replaceChild($newList, $oldList);
+    }
+
+    documentCache = {};
+
+    try{
+      const allDocs = await fetchJobDocuments(jobId);
+      const docs = allDocs;
+
+      if(!docs.length){
+        $newList.innerHTML=`<div style='padding:.75rem'>${isFr?'Aucun document lié à cette tâche.':'Geen documenten gekoppeld aan deze taak.'}</div>`;
+        return;
+      }
+
+      const rows = docs.map(d=>{
+        const id  = d.Id || '';
+        const typ = d.DocumentType || '';
+        const rawDesc = stripHtml(d.Description||'');
+        let decodedDesc = rawDesc;
+        try { decodedDesc = decodeURIComponent(rawDesc); } catch { decodedDesc = rawDesc; }
+        documentCache[id] = { id, type: typ, desc: decodedDesc };
+        return `<tr>
+          <td>${decodedDesc}</td>
+          <td style='width:1%;white-space:nowrap'>
+            <button class='view-doc-btn' data-docid='${id}'>${isFr?'Voir':'Bekijken'}</button>
+          </td>
+        </tr>`;
+      }).join('');
+
+      $newList.innerHTML = `<div style='overflow:auto'>
+        <table class='doc-table'>
+          <thead>
+            <tr>
+              <th>${isFr?'Description':'Omschrijving'}</th>
+              <th>${isFr?'Actie':'Actie'}</th>
+            </tr>
+          </thead>
+          <tbody>${rows}</tbody>
+        </table>
+      </div>`;
+
+      $newList.addEventListener('click', async (ev)=>{
+        const btn = ev.target.closest('button.view-doc-btn'); if(!btn) return;
+        const docIdFromDom = btn.dataset.docid;
+        const docData = documentCache[docIdFromDom];
+        if (!docData) {
+          await botui.message.add({ content: isFr?'❌ Données du document introuvables.':'❌ Documentgegevens niet gevonden.' });
+          return;
+        }
+        btn.disabled=true; const old=btn.textContent; btn.textContent=isFr?'Chargement…':'Laden…';
+        try{
+          const b64 = await fetchDocumentBase64(docData.id);
+          await displayBase64InPanel(docData.id, docData.type, docData.desc, b64);
+        }catch(e){
+          await botui.message.add({ content: isFr?`❌ Erreur de chargement du contenu: ${e.message}`:`❌ Fout bij laden inhoud: ${e.message}` });
+        }finally{
+          btn.disabled=false; btn.textContent=old;
+        }
+      });
+    }catch(e){
+      console.error(e);
+      $newList.innerHTML = `<div style='padding:.75rem;color:#b91c1c'>${isFr?'Échec du chargement des documents.':'Documenten laden mislukt.'} (${e.message})</div>`;
+    }
+  }
+
+  function trimToMax(s, max=800){
+    const t = String(s||'').trim();
+    if (!t) return '';
+    return t.length > max ? t.slice(0, max) : t;
+  }
+
+  async function askRequiredText({ titleNl, titleFr, placeholderNl, placeholderFr, maxLen=800 }){
+    await botui.message.add({ content: isFr ? titleFr : titleNl });
+    const a = await botui.action.text({
+      action: { placeholder: isFr ? placeholderFr : placeholderNl, maxLength: maxLen }
+    });
+    const v = trimToMax(a.value, maxLen);
+    if (!v) {
+      await botui.message.add({ content: isFr ? '⚠️ Champ obligatoire. Réessayez.' : '⚠️ Verplicht veld. Probeer opnieuw.' });
+      return await askRequiredText({ titleNl, titleFr, placeholderNl, placeholderFr, maxLen });
+    }
+    return v;
+  }
+  
+	function cleanField(v){
+	  // 1) als Ultimo ooit een object terugstuurt i.p.v. string
+	  if (v && typeof v === 'object') {
+		v = v.Value ?? v.value ?? v.Text ?? v.text ?? v.Description ?? v.description ?? '';
+	  }
+
+	  const s = String(v ?? '');
+
+	  const cleaned = s
+		.replace(/\u00A0/g, ' ')                 // NBSP
+		.replace(/[\u200B-\u200D\uFEFF]/g, '')   // zero-width
+		.trim();
+
+	  if (!cleaned) return '';
+
+	  // placeholders als leeg behandelen
+	  if (/^(-|n\/a|na|geen|leeg)$/i.test(cleaned)) return '';
+
+	  return cleaned;
+	}
+  
+
+	 
+
+	/* ==================== INFO TOEVOEGEN (commentaar of foto) ==================== */
+	function _escapeHtml(s){
+		return String(s||'')
+			.replace(/&/g,'&amp;')
+			.replace(/</g,'&lt;')
+			.replace(/>/g,'&gt;')
+			.replace(/"/g,'&quot;')
+			.replace(/'/g,'&#39;');
+	}
+	function _stripHtml(s){
+		return String(s||'').replace(/<[^>]*>/g,'').replace(/\s+/g,' ').trim();
+	}
+	function _sanitizeFileName(name){
+		return String(name||'')
+			.replace(/\u00A0/g,' ')
+			.replace(/[\\/:*?"<>|]+/g,'_')
+			.replace(/\s+/g,' ')
+			.trim() || 'upload.bin';
+	}
+	function _guessMimeByName(name){
+		const n=String(name||'').toLowerCase();
+		if(n.endsWith('.jpg')||n.endsWith('.jpeg')) return 'image/jpeg';
+		if(n.endsWith('.png')) return 'image/png';
+		if(n.endsWith('.pdf')) return 'application/pdf';
+		return 'application/octet-stream';
+	}
+	function _fileToBase64(file){
+		return new Promise((resolve,reject)=>{
+			const r=new FileReader();
+			r.onload=()=>{
+				const s=String(r.result||'');
+				const i=s.indexOf('base64,');
+				resolve(i>=0 ? s.slice(i+7) : s);
+			};
+			r.onerror=()=>reject(r.error||new Error('Bestand lezen mislukt'));
+			r.readAsDataURL(file);
+		});
+	}
+	function _formatTextForUltimo(s){
+		// Ultimo gebruikt <br> in html-text velden
+		return _escapeHtml(String(s||'')).replace(/\r\n|\r|\n/g,'<br>');
+	}
+
+	async function submitAddInfoUltimo(jobId, text){
+		const email = String(sessionEmail||'').trim();
+		if(!email){
+			throw new Error('email ontbreekt');
+		}
+		const url = `${endpointJobDetails}?action=ADD_INFO&jobId=${encodeURIComponent(jobId)}&email=${encodeURIComponent(email)}&lang=${encodeURIComponent(lang)}${envQ}`;
+		const payload = {
+			action:'ADD_INFO',
+			jobId:String(jobId),
+			email: email,
+			Email: email,
+			lang,
+			text: String(text||''),
+			Text: String(text||'')
+		};
+		const r = await fetch(url, { method:'POST', headers:{'content-type':'application/json','accept':'application/json'}, body: JSON.stringify(payload) });
+		const raw = await r.text().catch(()=> '');
+		let data=null; try{ data = raw ? JSON.parse(raw) : null; }catch{ data = raw; }
+		if(!r.ok){
+			const msg = (data && typeof data==='object' && (data.error||data.message)) ? (data.error||data.message) : (raw || `HTTP ${r.status}`);
+			throw new Error(msg);
+		}
+		return data;
+	}
+
+	async function uploadJobDocUltimo(jobId, file, description){
+		const email = String(sessionEmail||'').trim();
+		if(!email) throw new Error('email ontbreekt');
+		if(!file) throw new Error('bestand ontbreekt');
+		const MAX_MB = 7;
+		if(file.size > MAX_MB*1024*1024) throw new Error(`Bestand is groter dan ${MAX_MB} MB`);
+
+		const originalName = _sanitizeFileName(file.name);
+		const mimeType = file.type || _guessMimeByName(originalName);
+		const base64 = await _fileToBase64(file);
+
+		const cleanDesc = _stripHtml(String(description||originalName)).slice(0,200) || originalName;
+
+		const url = `${endpointJobDetails}?action=ADD_JOB_DOC&jobId=${encodeURIComponent(jobId)}&email=${encodeURIComponent(email)}&lang=${encodeURIComponent(lang)}${envQ}`;
+		const payload = {
+			action:'ADD_JOB_DOC',
+			jobId:String(jobId),
+			email: email,
+			Email: email,
+			// verschillende mappings, netlify/ultimoflow kan één van deze verwachten
+			fileName: originalName,
+			AddDoc_FileName: originalName,
+			mimeType,
+			AddDoc_MimeType: mimeType,
+			description: cleanDesc,
+			AddDoc_Description: cleanDesc,
+			base64,
+			AddDoc_Base64: base64
+		};
+		const r = await fetch(url, { method:'POST', headers:{'content-type':'application/json','accept':'application/json'}, body: JSON.stringify(payload) });
+		const raw = await r.text().catch(()=> '');
+		let data=null; try{ data = raw ? JSON.parse(raw) : null; }catch{ data = raw; }
+		if(!r.ok){
+			const msg = (data && typeof data==='object' && (data.error||data.message)) ? (data.error||data.message) : (raw || `HTTP ${r.status}`);
+			throw new Error(msg);
+		}
+		return data;
+	}
+
+	async function runAddInfo(job){
+		// 1) keuze: foto of commentaar
+		await botui.message.add({ content: isFr ? '➕ Ajouter une info: que voulez-vous ajouter ?' : '➕ Info toevoegen: wat wil je meegeven?' });
+		const pick = await botui.action.button({
+			action: [
+				{ text: isFr ? '📎 Ajouter une photo/document' : '📎 Foto/document toevoegen', value: 'photo' },
+				{ text: isFr ? '🖊️ Seulement un commentaire' : '🖊️ Enkel commentaar', value: 'comment' },
+				{ text: isFr ? '↩️ Annuler' : '↩️ Annuleren', value: 'cancel' }
+			]
+		});
+		if(pick.value === 'cancel') return false;
+
+		let file = null;
+		if(pick.value === 'photo'){
+			const $fi = document.getElementById('info-file-vendor');
+			if(!$fi){
+				await botui.message.add({ content: isFr ? '❌ Champ fichier manquant.' : '❌ File-input ontbreekt.' });
+				return false;
+			}
+			$fi.value='';
+			$fi.click();
+			file = await new Promise(resolve=>{
+				const h=()=>{ $fi.removeEventListener('change',h); resolve($fi.files && $fi.files[0]); };
+				$fi.addEventListener('change',h,{once:true});
+			});
+			if(!file) return false;
+
+			// kleine preview
+			try{
+				const mime = file.type || _guessMimeByName(file.name);
+				if(mime.startsWith('image/')){
+					const blobUrl = URL.createObjectURL(file);
+					await botui.message.add({
+						type:'html',
+						content:`<figure style="margin:0"><img src="${blobUrl}" alt="${_escapeHtml(file.name)}" style="max-width:100%;height:auto;border:1px solid #ddd;border-radius:6px"/><figcaption style="font-size:.85rem;color:#6b7280;margin-top:.25rem">${_escapeHtml(file.name)}</figcaption></figure>`
+					});
+					setTimeout(()=>URL.revokeObjectURL(blobUrl),15000);
+				}else{
+					await botui.message.add({ content: (isFr?'📄 Fichier sélectionné: ':'📄 Bestand geselecteerd: ') + file.name });
+				}
+			}catch{}
+		}
+
+		// 2) beschrijving (wordt gebruikt als doc-omschrijving + in info-tekst)
+		await botui.message.add({ content: isFr ? 'Décrivez brièvement (max. 200):' : 'Beschrijf kort (max. 200):' });
+		const a = await botui.action.text({ action:{ placeholder: isFr ? 'ex: photo après réparation…' : 'bv: foto na herstelling…', maxLength: 200 } });
+		const desc = String(a.value||'').trim().slice(0,200);
+		if(!desc){
+			await botui.message.add({ content: isFr ? '⚠️ Texte obligatoire.' : '⚠️ Tekst is verplicht.' });
+			return false;
+		}
+
+		// 3) upload (optioneel)
+		if(file){
+			await botui.message.add({ content: isFr ? '⏳ Téléversement…' : '⏳ Uploaden…' });
+			await uploadJobDocUltimo(job.Id, file, desc);
+			await botui.message.add({ content: isFr ? '✅ Document ajouté.' : '✅ Document toegevoegd.' });
+		}
+
+		// 4) ADD_INFO altijd
+		await botui.message.add({ content: isFr ? '⏳ Enregistrement…' : '⏳ Bewaren…' });
+		const infoText = file ? `${desc} (document: ${file.name})` : desc;
+		await submitAddInfoUltimo(job.Id, _formatTextForUltimo(infoText));
+		await botui.message.add({ content: isFr ? '✅ Info ajoutée.' : '✅ Info toegevoegd.' });
+		return true;
+	}
+	/* ==================== /INFO TOEVOEGEN ==================== */
+
+async function complaintFlow(job){
+
+	 const editable = canEditVendorIssues(job);
+	 
+	const vendorEmail = String(job?.VendorEmailAddress || '').trim().toLowerCase();
+	const loopVendorId = String(job?.LoopVendorId || '').trim();
+
+	if (!vendorEmail && !loopVendorId) {
+	  await botui.message.add({
+		type: 'html',
+		content: isFr
+		  ? '⛔ <b>Impossible d’enregistrer.</b><br>Aucun fournisseur n’est lié à cette tâche. Contactez votre gestionnaire.'
+		  : '⛔ <b>Kan niet bewaren.</b><br>Er is geen leverancier gekoppeld aan deze job. Contacteer je beheerder.'
+	  });
+	  Telemetry.send('vendorklacht_block_no_vendor_link', { jobId: job?.Id || '', hasVendorEmail: !!vendorEmail, hasLoopVendorId: !!loopVendorId });
+	  return;
+	}
+	 
+
+	if (editable) {
+	  await botui.message.add({
+		content: isFr
+		  ? '🧾 Traitement de plainte: veuillez compléter/valider les champs ci-dessous.'
+		  : '🧾 Klachtbehandeling: vul/valideer de velden hieronder in.'
+	  });
+	}
+
+
+	  // ✅ 1) Probeer bestaande waarden uit job te halen (meerdere key-namen als fallback)
+	const existing = (() => {
+	  const rootCause = cleanField(job?.RootCause ?? job?.rootCause ?? job?.CPLRoot ?? job?._CPLRoot);
+	  const correction = cleanField(job?.Correction ?? job?.correction ?? job?.CPLCorrection ?? job?._CPLCorrection);
+	  const correctiveMeasure = cleanField(job?.CorrectiveMeasure ?? job?.correctiveMeasure ?? job?.CPLCorMeasure ?? job?._CPLCorMeasure);
+	  const effectiveness = cleanField(job?.Effectiveness ?? job?.effectiveness ?? job?.CPLEffectiveness ?? job?._CPLEffectiveness);
+
+	  return { rootCause, correction, correctiveMeasure, effectiveness };
+	})();
+
+
+	  const hadAllOnLoad =
+		!!existing.rootCause &&
+		!!existing.correction &&
+		!!existing.correctiveMeasure &&
+		!!existing.effectiveness;
+
+	  let rootCause = existing.rootCause;
+	  let correction = existing.correction;
+	  let correctiveMeasure = existing.correctiveMeasure;
+	  let effectiveness = existing.effectiveness;
+
+	  // ✅ 2) Vraag enkel wat ontbreekt
+	  if (!rootCause) {
+		rootCause = await askRequiredText({
+		  titleNl: '1/4 Root cause (Wat is de oorzaak van de klacht?):',
+		  titleFr: '1/4 Root cause (Quell est la cause de la plainte?):',
+		  placeholderNl: 'Beschrijf de oorzaak…',
+		  placeholderFr: 'Décrivez la cause…',
+		  maxLen: 1000
+		});
+	  }
+
+	  if (!correction) {
+		correction = await askRequiredText({
+		  titleNl: '2/4 Correction (Hoe werd het opgelost?):',
+		  titleFr: '2/4 Correction (Comment cela a-t-il été résolu ?):',
+		  placeholderNl: 'Wat heb je meteen gecorrigeerd?…',
+		  placeholderFr: 'Qu’avez-vous corrigé immédiatement ?…',
+		  maxLen: 1000
+		});
+	  }
+
+	  if (!correctiveMeasure) {
+		correctiveMeasure = await askRequiredText({
+		  titleNl: '3/4 Corrective measure (Welke maateregel is er ingevoerd om deze klacht in de toekomst te voorkomen?):',
+		  titleFr: '3/4 Corrective measure (Quelle mesure a été mise en place pour éviter que cette plainte ne se reproduise à l’avenir ?):',
+		  placeholderNl: 'Welke structurele maatregel neem je?…',
+		  placeholderFr: 'Quelle mesure structurelle prenez-vous ?…',
+		  maxLen: 1200
+		});
+	  }
+
+	  if (!effectiveness) {
+		effectiveness = await askRequiredText({
+		  titleNl: '4/4 Effectiveness of decision (Heeft de maatregel gewerkt? In welke mate?):',
+		  titleFr: '4/4 Effectiveness of decision (Est-ce que la mesure a bien marché ? Dans quelle mesure?):',
+		  placeholderNl: 'Hoe ga je opvolgen/valideren dat dit werkt?…',
+		  placeholderFr: 'Comment allez-vous vérifier que cela fonctionne ?…',
+		  maxLen: 1200
+		});
+	  }
+
+		// ✅ 3) Als alles al bestond: geef een kleine duiding (alleen als editable)
+		if (hadAllOnLoad && editable) {
+		  await botui.message.add({
+			content: isFr
+			  ? '✅ Des champs existants ont été trouvés. Vous pouvez les ajuster avant envoi.'
+			  : '✅ Ik vond al ingevulde velden. Je kan ze hieronder nog aanpassen vóór je verzendt.'
+		  });
+		}
+
+
+	  const esc = (s='') =>
+		String(s)
+		  .replace(/&/g,'&amp;')
+		  .replace(/</g,'&lt;')
+		  .replace(/>/g,'&gt;')
+		  .replace(/"/g,'&quot;')
+		  .replace(/'/g,'&#039;');
+
+	  const title  = isFr ? 'Résumé' : 'Samenvatting';
+		const suffix = editable
+		  ? (isFr ? ' (modifiable avant envoi)' : ' (nog bewerkbaar vóór verzending)')
+		  : '';
+
+		const hint = editable
+		  ? (isFr
+			  ? 'Relisez et ajustez si nécessaire. Ensuite, envoyez.'
+			  : 'Lees nog eens na en pas aan waar nodig. Daarna: verzenden.')
+		  : (isFr
+			  ? 'Lecture seule.'
+			  : 'Alleen-lezen.');
+
+		await botui.message.add({
+		  type: 'html',
+		  content: `
+			<div class="summary-editor">
+			  <h4>${title}${suffix}</h4>
+
+			  <div class="se-row">
+				<label for="vc_root">Root cause</label>
+				<textarea id="vc_root" maxlength="1000" ${editable ? '' : 'readonly'}>${esc(rootCause)}</textarea>
+			  </div>
+
+			  <div class="se-row">
+				<label for="vc_correction">Correction</label>
+				<textarea id="vc_correction" maxlength="1000" ${editable ? '' : 'readonly'}>${esc(correction)}</textarea>
+			  </div>
+
+			  <div class="se-row">
+				<label for="vc_corrective">Corrective measure</label>
+				<textarea id="vc_corrective" maxlength="1200" ${editable ? '' : 'readonly'}>${esc(correctiveMeasure)}</textarea>
+			  </div>
+
+			  <div class="se-row">
+				<label for="vc_effectiveness">Effectiveness</label>
+				<textarea id="vc_effectiveness" maxlength="1200" ${editable ? '' : 'readonly'}>${esc(effectiveness)}</textarea>
+			  </div>
+
+			  <div class="se-hint">${hint}</div>
+			</div>
+		  `
+		});
+
+
+		let conf = { value: 'continue' }; // default
+
+		while (true) {
+		  if (editable) {
+			conf = await botui.action.button({
+			  action: [
+				{ text: isFr ? '✅ Traiter la plainte' : '✅ Klacht afhandelen', value: 'finish' },
+				{ text: isFr ? '🕒 Enregistrer provisoirement' : '🕒 Klacht tijdelijk bewaren', value: 'save_temp' },
+				{ text: isFr ? '➕ Ajouter une info' : '➕ Info toevoegen', value: 'info_add' },
+				{ text: isFr ? '⚠️ Plainte mal attribuée' : '⚠️ De klacht werd verkeerd toegewezen', value: 'misassigned' }
+			  ]
+			});
+		  } else {
+			await botui.message.add({
+			  content: isFr
+				? '🔒 Modification non autorisée. Vous pouvez continuer.'
+				: '🔒 Bewerken niet toegelaten. Je kan verdergaan.'
+			});
+			conf = await botui.action.button({
+			  action: [{ text: isFr ? '➡️ Continuer' : '➡️ Verder gaan', value: 'continue' }]
+			});
+		  }
+
+		  if (conf.value === 'info_add') {
+			try { await runAddInfo(job); }
+			catch (e) {
+			  const msg = (e && e.message) ? e.message : String(e);
+			  await botui.message.add({ content: (isFr ? '❌ Erreur: ' : '❌ Fout: ') + msg });
+			}
+			continue; // terug naar knoppen
+		  }
+		  break;
+		}
+
+		// daarna je bestaande if/else op conf.value behouden
+		if (conf.value === 'continue') {
+		  // TODO: later: redirect naar ander portaal
+		  // window.location.href = '...';
+		  return;
+		}
+
+
+
+	// ✅ lees de *aangepaste* waarden
+	const vRoot          = trimToMax(document.getElementById('vc_root')?.value, 1000);
+	const vCorrection    = trimToMax(document.getElementById('vc_correction')?.value, 1000);
+	const vCorrective    = trimToMax(document.getElementById('vc_corrective')?.value, 1200);
+	const vEffectiveness = trimToMax(document.getElementById('vc_effectiveness')?.value, 1200);
+
+	if (!vRoot || !vCorrection || !vCorrective || !vEffectiveness) {
+	  await botui.message.add({
+		content: isFr
+		  ? '⚠️ Tous les champs sont obligatoires. Complétez-les dans le résumé et réessayez.'
+		  : '⚠️ Alle velden zijn verplicht. Vul ze aan in de samenvatting en probeer opnieuw.'
+	  });
+	  return;
+	}
+
+	// ✅ Bewaren / tijdelijk bewaren => enkel velden opslaan (geen GPS, geen status)
+	if (conf.value === 'save_temp') {
+	  const isTemp = (conf.value === 'save_temp');
+
+	  Telemetry.send(isTemp ? 'vendorklacht_saved_temp' : 'vendorklacht_saved');
+
+	  await botui.message.add({
+		content: isFr
+		  ? (isTemp ? '💾 Enregistrement provisoire…' : '💾 Enregistrement…')
+		  : (isTemp ? '💾 Tijdelijk bewaren…' : '💾 Bewaren…')
+	  });
+	  
+	  //TEMP
+	  console.log('[vendor-auth]', {
+  sessionEmail,
+  vendorEmail: job?.VendorEmailAddress,
+  loopVendorId: job?.LoopVendorId
+});
+//TEMP
+
+	await submitVendorComplaint({
+	  jobId: job.Id,
+	  loopVendorId: job?.LoopVendorId,
+	  rootCause: vRoot,
+	  correction: vCorrection,
+	  correctiveMeasure: vCorrective,
+	  effectiveness: vEffectiveness
+	});
+
+
+	  await botui.message.add({
+		content: isFr ? '✅ Champs enregistrés.' : '✅ Velden bewaard.'
+	  });
+
+	  closeDocPanel();
+	  if (cameFromPortalSelf) return goBackAfterVendor();
+
+	  await botui.message.add({
+		content: isFr ? '🔚 Vous pouvez fermer cette fenêtre.' : '🔚 Je mag dit venster sluiten.'
+	  });
+	  return;
+	}
+
+	
+	if (conf.value === 'finish') {
+	  Telemetry.send('vendorklacht_finish_clicked');
+
+	  await botui.message.add({
+		content: isFr ? '✅ Traitement…' : '✅ Afhandelen…'
+	  });
+
+	  // 1) eerst velden bewaren
+	await submitVendorComplaint({
+	  jobId: job.Id,
+	  loopVendorId: job?.LoopVendorId,
+	  rootCause: vRoot,
+	  correction: vCorrection,
+	  correctiveMeasure: vCorrective,
+	  effectiveness: vEffectiveness
+	});
+
+
+	  // 2) dan status naar 1016
+	  await setProgressStatus({ jobId: job.Id, newProgressStatusId: '1016' });
+
+	  await botui.message.add({
+		content: isFr
+		  ? '✅ Plainte traitée.'
+		  : '✅ Klacht afgehandeld.'
+	  });
+
+	  closeDocPanel();
+	  if (cameFromPortalSelf) return goBackAfterVendor();
+
+	  await botui.message.add({
+		content: isFr ? '🔚 Vous pouvez fermer cette fenêtre.' : '🔚 Je mag dit venster sluiten.'
+	  });
+	  return;
+	}
+
+
+
+	if (conf.value === 'misassigned') {
+	  Telemetry.send('vendorklacht_misassigned_clicked');
+
+	  await botui.message.add({
+		content: isFr
+		  ? '⚠️ Mise à jour “mal attribuée”…'
+		  : '⚠️ “Verkeerd toegewezen” instellen…'
+	  });
+
+	  // 1) eerst velden bewaren
+	await submitVendorComplaint({
+	  jobId: job.Id,
+	  loopVendorId: job?.LoopVendorId,
+	  rootCause: vRoot,
+	  correction: vCorrection,
+	  correctiveMeasure: vCorrective,
+	  effectiveness: vEffectiveness
+	});
+
+
+	  // 2) status zetten via GENERIEKE functie
+	  await setProgressStatus({
+		jobId: job.Id,
+		newProgressStatusId: '1001'
+	  });
+
+	  await botui.message.add({
+		content: isFr
+		  ? '✅ Plainte marquée “mal attribuée”.'
+		  : '✅ Klacht gemarkeerd als “verkeerd toegewezen”.'
+	  });
+
+	  closeDocPanel();
+	  if (cameFromPortalSelf) return goBackAfterVendor();
+
+	  await botui.message.add({
+		content: isFr ? '🔚 Vous pouvez fermer cette fenêtre.' : '🔚 Je mag dit venster sluiten.'
+	  });
+	  return;
+	}
+
+
+
+	}
+
+
+  async function startFlow(){
+    try{
+      if(!jobId){
+        await botui.message.add({ type:'html', content:'<span style="color:red;font-weight:bold">Geen geldige Job ID.</span>' });
+        Telemetry.send('invalid_job_id');
+        return;
+      }
+
+      const loginSuccess=await emailIntroAndLogin();
+      if(!loginSuccess) return;
+
+      await botui.message.add({ content:isFr?'Je récupère les détails de la tâche…':'Ik haal de taakdetails op…' });
+
+		jobPayload = await fetchJobDetails();
+		let job = jobPayload?.Job || {};
+
+		const act = await activateVendorJobIfNeeded(job);
+		if (act.activated){
+		  Telemetry.send('vendor_job_activated_1012_to_1008');
+
+		  await botui.message.add({
+			content: isFr
+			  ? '✅ Tâche activée.'
+			  : '✅ Job geactiveerd.'
+		  });
+
+		  // ✅ herladen zodat status echt 1008 is in de payload
+		  jobPayload = await fetchJobDetails();
+		  job = jobPayload?.Job || {};
+		}
+
+	  
+
+	  
+	  
+      if (!job.Id) throw new Error('Job details ontvangen, maar taak-ID ontbreekt in de payload.');
+
+      // ✅ FIX: pre-check docs zodat tip/FAB werkt
+      try {
+        const docs = await fetchJobDocuments(job.Id);
+        hasJobDocuments = docs.length > 0;
+      } catch (e) {
+        console.warn('Kon documenten niet vooraf controleren:', e.message);
+        hasJobDocuments = false;
+      }
+
+      // ✅ klacht-check
+      if (!isComplaintJob(job)) {
+        const kwis = getKwisId(job) || '(leeg)';
+        Telemetry.send('vendor_issues_block_not_complaint', { kwis });
+
+        await botui.message.add({
+          content: isFr
+            ? `⛔ Cette tâche n’est pas une plainte (KWIS=${kwis}).`
+            : `⛔ Dit is géén klacht (KWIS=${kwis}).`
+        });
+
+        await botui.message.add({
+          content: isFr
+            ? 'Cette page est uniquement pour les plaintes. Fermez cette fenêtre.'
+            : 'Deze pagina is enkel voor klachten. Sluit dit venster.'
+        });
+        return;
+      }
+
+      await showJobTextsThenAskTranslate(job);
+
+      if (hasJobDocuments) revealFab();
+
+      await complaintFlow(job);
+
+    }catch(e){
+      const errorDetail=String(e.message||e);
+      console.error('FATALE FOUT IN FLOW:', e);
+      let userMessage=isFr?'❌ Erreur: Une erreur inattendue est survenue. Veuillez réessayer plus tard.':'❌ Fout: Er is een onverwachte fout opgetreden. Probeer later opnieuw.';
+      if(errorDetail.includes('HTTP')) userMessage=isFr?`❌ Erreur de connexion: Le chargement a échoué (Détail: ${errorDetail}).`:`❌ Verbindingsfout: Laden is onderbroken (Détail: ${errorDetail}).`;
+      await botui.message.add({ content:userMessage, type:'html', cssClass:'error-message' });
+      Telemetry.send('fatal_error',{ err:errorDetail });
+    }
+  }
+
+  let lastActivity=Date.now(); ['click','keydown','touchstart'].forEach(ev=>document.addEventListener(ev,()=>lastActivity=Date.now(),{passive:true}));
+  setInterval(()=>{ const ms=Date.now()-lastActivity; if(ms>45000){ Telemetry.send('idle',{inactiveMs:ms}); lastActivity=Date.now() } },5000);
+  addEventListener('pagehide',()=>Telemetry.send('pagehide'));
+
+  startFlow();
+  </script>
+
+  <input id="doc-file-vendor" type="file" accept="image/*,application/pdf" capture="environment" style="display:none" />
+  <input id="info-file-vendor" type="file" accept="image/*,application/pdf" capture="environment" style="display:none" />
+
+</body>
+</html>

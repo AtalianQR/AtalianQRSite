@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Vendor — Actieve jobs</title>
+
+  <link rel="icon" href="/AtalianFavicon.png" />
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/botui/build/botui.min.css" />
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/botui/build/botui-theme-default.css" />
+
+  <style>
+    html, body{height:auto;min-height:100vh;width:100%;margin:0;padding:0;box-sizing:border-box;font-family:'Segoe UI',sans-serif;background-color:#f4f6fa;overflow-y:auto}
+    body{background-image:url('/building-cleaning.png');background-size:cover;background-repeat:no-repeat;background-position:center}
+    *{box-sizing:border-box}
+
+    .test-banner{position:fixed;top:0;left:0;width:100%;background-color:#28a745;color:#fff;text-align:center;padding:5px 0;font-weight:bold;z-index:1000;font-size:14px;text-transform:uppercase;opacity:.9}
+    body.is-test{ padding-top:30px; }
+
+    .header-flex{display:flex;flex-direction:column;align-items:center;max-width:680px;width:100%;margin:0 auto;padding:.5rem 0;gap:.5rem}
+    img.logo{max-height:60px;height:auto;width:auto;display:block;margin:0 auto;background:rgba(255,255,255,.85);padding:.1rem;border-radius:12px}
+    .header-flex .ruimte-label{display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;background:rgba(255,255,255,.95);color:#1a202c;padding:.55rem 1rem;border-radius:12px;font-size:1rem;font-weight:600;white-space:normal;box-shadow:0 2px 6px rgba(0,0,0,.05);border:2.5px solid #EE7E00;width:100%;max-width:680px;margin:0 auto;border-bottom-width:4px}
+    .ruimte-label .sub{font-size:.9rem;font-weight:500;color:#374151;margin-top:.2rem}
+
+    .lang-switch{text-align:right;padding-right:1rem;margin-top:1rem}
+    .lang-switch a{margin:0 .5rem;text-decoration:none;font-size:1.2rem}
+
+    #botui-app{width:100%;max-width:680px;margin:1rem auto 0 auto;padding:.5rem 1rem 1rem}
+    .botui-container{max-width:680px;width:100%;margin:0 auto;background:linear-gradient(120deg,#fff 85%,#f4f6fa 100%);border:2px solid #EE7E00;box-shadow:0 6px 32px rgba(0,0,0,.12),0 1.5px 8px rgba(238,126,0,.10);border-radius:12px;padding:1rem;box-sizing:border-box;opacity:0;animation:fadeIn 2.2s ease forwards}
+    .botui-container,.botui-message-content{font-family:'Segoe UI',sans-serif}
+    .botui-button{font-weight:700;border:none;box-shadow:0 2px 6px rgba(238,126,0,.04);transition:background .12s}
+    .botui-button:active{background:#d86e00}
+    .botui-actions-text-input{width:100% !important;max-width:80% !important;flex-grow:1 !important}
+    @media(max-width:768px){.botui-actions-text-input{max-width:100% !important}.header-flex{max-width:95%}.botui-container{max-width:95%}}
+
+    @keyframes fadeIn{to{opacity:1}}
+
+    .card{background:#f5f8fc;border-radius:10px;padding:.75em 1em;margin:.65em 0;border-left:4px solid #EE7E00}
+    .pill{display:inline-block;padding:.15rem .55rem;border-radius:999px;font-size:.78rem;font-weight:800;background:#fff7ed;border:1px solid #fdba74;color:#9a3412;margin-left:.35rem}
+    .muted{color:#6b7280;font-size:.88rem}
+    .btn-like{display:inline-block;margin-top:.5rem;padding:.45rem .75rem;border-radius:8px;background:#EE7E00;color:#fff;font-weight:800;text-decoration:none}
+    .btn-like:hover{filter:brightness(.96)}
+  </style>
+</head>
+
+<body>
+  <div id="test-indicator" class="test-banner" style="display:none">⚠️ TEST OMGEVING ACTIEF</div>
+
+  <header>
+    <div class="lang-switch">
+      <a href="#" id="switch-nl">🇳🇱 NL</a> |
+      <a href="#" id="switch-fr">🇫🇷 FR</a>
+    </div>
+    <div class="header-flex">
+      <img src="/AtalianLogo.png" alt="Atalian Logo" class="logo" />
+      <div id="hdr" class="ruimte-label">
+        <div>Actieve jobs voor leveranciers</div>
+        <div id="hdr-sub" class="sub"></div>
+      </div>
+    </div>
+  </header>
+
+  <div id="botui-app"><bot-ui></bot-ui></div>
+
+  <script src="https://cdn.jsdelivr.net/npm/vue@2"></script>
+  <script src="https://cdn.jsdelivr.net/npm/botui/build/botui.min.js"></script>
+
+  <script type="module">
+    // --- querystring + env -------------------------------------------------
+    const qs = new URLSearchParams(location.search);
+    const srcRaw = qs.get('src') ?? '';
+
+    function safeSameOriginUrl(raw) {
+      if (!raw) return '';
+      try {
+        const u = new URL(raw, window.location.origin);
+        return (u.origin === window.location.origin) ? u.toString() : '';
+      } catch { return ''; }
+    }
+
+    const sourceUrl = safeSameOriginUrl(srcRaw);
+
+    const host = (location && location.host) ? location.host : '';
+    const isTest = qs.has('test') || qs.get('env') === 'test' || /test|staging/i.test(host);
+    const envQ = isTest ? '&test=1' : '';
+    if (isTest) {
+      const showBanner = () => {
+        const $ti = document.getElementById('test-indicator');
+        if ($ti) $ti.style.display = 'block';
+        document.body.classList.add('is-test');
+      };
+      if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', showBanner);
+      else showBanner();
+    }
+
+    let lang = qs.get('lang') || ((navigator.language||'').startsWith('fr') ? 'fr' : 'nl');
+    const isFr = (lang === 'fr');
+    document.getElementById('switch-nl').onclick = () => { const u=new URL(location.href); u.searchParams.set('lang','nl'); location.href=u; };
+    document.getElementById('switch-fr').onclick = () => { const u=new URL(location.href); u.searchParams.set('lang','fr'); location.href=u; };
+
+    const endpoint = '/.netlify/functions/vendorlist';
+    const botui = new BotUI('botui-app');
+
+    // --- kleine helpers ----------------------------------------------------
+    const esc = (s='') => String(s)
+      .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+      .replace(/"/g,'&quot;').replace(/'/g,'&#039;');
+
+    function setHeaderSub(txt){
+      const el = document.getElementById('hdr-sub');
+      if (el) el.textContent = txt || '';
+    }
+
+    function getVendorSessionEmail({ maxAgeMinutes = 120 } = {}) {
+      try {
+        const email = String(sessionStorage.getItem('vendor_session_email') || '').trim().toLowerCase();
+        const ts = Number(sessionStorage.getItem('vendor_session_ts') || 0);
+        if (!email || !ts) return '';
+        if ((Date.now() - ts) > maxAgeMinutes * 60 * 1000) return '';
+        return email;
+      } catch { return ''; }
+    }
+    function setVendorSessionEmail(email) {
+      try {
+        sessionStorage.setItem('vendor_session_email', String(email || '').trim().toLowerCase());
+        sessionStorage.setItem('vendor_session_ts', String(Date.now()));
+      } catch {}
+    }
+
+    async function apiGet(path, params={}){
+      const u = new URL(endpoint, location.origin);
+      Object.entries(params).forEach(([k,v]) => u.searchParams.set(k, String(v)));
+      if (isTest) u.searchParams.set('test','1');
+      const r = await fetch(u.toString(), { headers:{ accept:'application/json' }});
+      if (!r.ok) throw new Error(`HTTP ${r.status}: ${await r.text().catch(()=>r.statusText)}`);
+      return r.json();
+    }
+
+    async function requireLogin(){
+      const remembered = getVendorSessionEmail({ maxAgeMinutes: 180 });
+      if (remembered) return remembered;
+
+      const t = {
+        nl:{ hi:'👋 Hallo! Ik toon je alle actieve jobs die op jou als leveranciercontact staan.', ask:'Geef je e-mail in om in te loggen:', bad:'❌ Deze login is niet gekend als leverancierscontact.' },
+        fr:{ hi:'👋 Bonjour ! Je vais afficher toutes les tâches actives liées à votre contact fournisseur.', ask:'Entrez votre e-mail pour vous connecter :', bad:'❌ Cet identifiant n\'est pas reconnu comme contact fournisseur.' }
+      };
+      const c = isFr ? t.fr : t.nl;
+      await botui.message.add({ content: c.hi });
+
+      for (let i=0;i<3;i++){
+        await botui.message.add({ content: c.ask });
+        const a = await botui.action.text({ action:{ placeholder: isFr?'prenom.nom@exemple.com':'voornaam.naam@bedrijf.com' } });
+        const email = String(a.value||'').trim().toLowerCase();
+        const okSyntax = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+        if (!okSyntax){
+          await botui.message.add({ content: isFr?'⚠️ Format e-mail invalide.':'⚠️ Ongeldig e-mailformaat.' });
+          continue;
+        }
+
+        const auth = await apiGet('', { action:'AUTH', email });
+        if (auth?.allowed === true){
+          setVendorSessionEmail(email);
+          return email;
+        }
+
+        await botui.message.add({ content: c.bad });
+      }
+      throw new Error('Max login attempts');
+    }
+
+    function jobBadge(job){
+      const kw = String(job?.KwisId || job?.Kwis?.Id || job?.Kwis || '').trim();
+      if (kw === '002') return isFr ? 'PLAINTE' : 'KLACHT';
+      return isFr ? 'TÂCHE' : 'JOB';
+    }
+
+    function buildJobUrl(job){
+      const id = String(job?.Id||'').trim();
+      if (!id) return '#';
+      const kw = String(job?.KwisId || job?.Kwis?.Id || job?.Kwis || '').trim();
+      const base = (kw === '002') ? '/vendor-issues.html' : '/vendor.html';
+
+      // origin meegeven zodat vendor.html / vendor-issues.html terug kunnen
+      const me = new URL(location.href);
+      const u = new URL(base, location.origin);
+      u.searchParams.set('job', id);
+      u.searchParams.set('lang', lang);
+      u.searchParams.set('src', me.toString());
+      if (isTest) u.searchParams.set('test','1');
+      return u.toString();
+    }
+
+    async function showComplexes(list){
+      const complexes = Array.isArray(list?.complexes)
+        ? list.complexes
+        : (Array.isArray(list?.Complexes) ? list.Complexes : []);
+
+      if (!complexes.length){
+        await botui.message.add({
+          content: isFr ? '✅ Aucun job actif trouvé pour votre compte.' : '✅ Geen actieve jobs gevonden voor jouw account.'
+        });
+        if (sourceUrl){
+          const backText = isFr ? '↩️ Retour' : '↩️ Terug';
+          await botui.action.button({ action:[{ text: backText, value:'back' }] });
+          location.href = sourceUrl;
+        }
+        return;
+      }
+
+      await botui.message.add({
+        content: isFr
+          ? 'Kies eerst een site/complex. Daarna zie je de jobs & klachten.'
+          : 'Kies eerst een site/complex. Daarna zie je de jobs & klachten.'
+      });
+
+      const actions = complexes.slice(0, 10).map(c => ({
+        text: `${c.CustomerName || ''} — ${c.ComplexName || c.ComplexId || 'Onbekend'}`.trim(),
+        value: String(c.ComplexId || c.ComplexName || '')
+      }));
+
+      // Als er >10 zijn, tonen we de top 10 + "meer"
+      if (complexes.length > 10) {
+        actions.push({ text: isFr ? '➡️ Plus…' : '➡️ Meer…', value: '__MORE__' });
+      }
+
+      const pick = await botui.action.button({ action: actions });
+      if (pick.value === '__MORE__'){
+        await botui.message.add({ content: isFr ? 'Er zijn veel complexen. Gebruik voorlopig de zoekfunctie in je browser (Ctrl+F) op de lijst die ik toon.' : 'Er zijn veel complexen. Gebruik voorlopig de zoekfunctie in je browser (Ctrl+F) op de lijst die ik toon.' });
+        const html = complexes.map(c => `
+          <div class='card'>
+            <b>${esc(c.CustomerName||'')}</b><br>
+            ${esc(c.ComplexName||c.ComplexId||'')}
+            <div class='muted'>${esc(String(c.JobCount||0))} items</div>
+          </div>
+        `).join('');
+        await botui.message.add({ type:'html', content: html });
+        return;
+      }
+
+      const chosen = complexes.find(c => String(c.ComplexId||c.ComplexName||'') === String(pick.value));
+      if (!chosen) return;
+
+      await showJobsForComplex(chosen);
+    }
+
+    async function showJobsForComplex(complex){
+      const complexId = String(complex?.ComplexId || '').trim();
+      const title = `${complex.CustomerName || ''} — ${complex.ComplexName || complexId}`.trim();
+      await botui.message.add({ content: isFr ? `📍 ${title}` : `📍 ${title}` });
+
+      const html = (complex.Jobs || []).map(j => {
+        const badge = jobBadge(j);
+        return `
+          <div class='card'>
+            <b>${esc(j.Description || '(zonder omschrijving)')}</b>
+            <span class='pill'>${esc(badge)}</span>
+            <div class='muted'>ID: ${esc(j.Id)} · Status: ${esc(j.ProgressStatusId || j.Status || '')}</div>
+            <a class='btn-like' href='${esc(buildJobUrl(j))}'>${isFr?'Ouvrir':'Openen'} ➜</a>
+          </div>
+        `;
+      }).join('');
+
+      await botui.message.add({ type:'html', content: html || (isFr?'Aucune tâche ici.':'Geen jobs hier.') });
+
+      const again = await botui.action.button({
+        action: [
+          { text: isFr ? '🔁 Autre complex' : '🔁 Ander complex', value:'again' },
+          ...(sourceUrl ? [{ text: isFr ? '↩️ Retour' : '↩️ Terug', value:'back' }] : [])
+        ]
+      });
+      if (again.value === 'back') return (location.href = sourceUrl);
+
+      const list = await apiGet('', { action:'LIST', email: sessionEmail, lang });
+      await showComplexes(list);
+    }
+
+    let sessionEmail = '';
+
+    async function start(){
+      sessionEmail = await requireLogin();
+      setHeaderSub(sessionEmail);
+
+      await botui.message.add({ content: isFr ? '📦 Je charge vos jobs actifs…' : '📦 Ik laad jouw actieve jobs…' });
+      const list = await apiGet('', { action:'LIST', email: sessionEmail, lang });
+      await showComplexes(list);
+    }
+
+    start().catch(async (e)=>{
+      console.error(e);
+      await botui.message.add({ content: isFr ? '❌ Erreur inattendue. Réessayez plus tard.' : '❌ Onverwachte fout. Probeer later opnieuw.' });
+    });
+  </script>
+</body>
+</html>
