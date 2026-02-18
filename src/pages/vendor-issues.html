@@ -1108,6 +1108,17 @@
     return v;
   }
   
+  async function askOptionalText({ titleNl, titleFr, placeholderNl, placeholderFr, maxLen=800 }){
+	  await botui.message.add({ content: isFr ? titleFr : titleNl });
+
+	  const a = await botui.action.text({
+		action: { placeholder: isFr ? placeholderFr : placeholderNl, maxLength: maxLen }
+	  });
+
+	  return trimToMax(a.value, maxLen); // GEEN validatie
+  }
+  
+  
 	function cleanField(v){
 	  // 1) als Ultimo ooit een object terugstuurt i.p.v. string
 	  if (v && typeof v === 'object') {
@@ -1379,7 +1390,7 @@ async function complaintFlow(job){
 	  }
 
 	  if (!correctiveMeasure) {
-		correctiveMeasure = await askRequiredText({
+		correctiveMeasure = await askOptionalText({
 		  titleNl: '3/4 Corrective measure (Welke maateregel is er ingevoerd om deze klacht in de toekomst te voorkomen?):',
 		  titleFr: '3/4 Corrective measure (Quelle mesure a été mise en place pour éviter que cette plainte ne se reproduise à l’avenir ?):',
 		  placeholderNl: 'Welke structurele maatregel neem je?…',
@@ -1389,7 +1400,7 @@ async function complaintFlow(job){
 	  }
 
 	  if (!effectiveness) {
-		effectiveness = await askRequiredText({
+		effectiveness = await askOptionalText({
 		  titleNl: '4/4 Effectiveness of decision (Heeft de maatregel gewerkt? In welke mate?):',
 		  titleFr: '4/4 Effectiveness of decision (Est-ce que la mesure a bien marché ? Dans quelle mesure?):',
 		  placeholderNl: 'Hoe ga je opvolgen/valideren dat dit werkt?…',
