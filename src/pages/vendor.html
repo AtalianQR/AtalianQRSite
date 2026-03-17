@@ -388,43 +388,87 @@ async function requireGpsIfPortalSelf({ botui, Telemetry, isFr, cameFromPortalSe
     return b64;
   }
 
-  function getMimeType(docType, description, base64Data){
-    const t=(docType||'').toUpperCase();
-    if(t==='PDF') return 'application/pdf';
-    if(t==='JPEG'||t==='JPG') return 'image/jpeg';
-    if(t==='PNG') return 'image/png';
-    const desc=(description||'').toLowerCase();
-    if(desc.endsWith('.pdf')) return 'application/pdf';
-    if(desc.endsWith('.jpg')||desc.endsWith('.jpeg')) return 'image/jpeg';
-    if(desc.endsWith('.png')) return 'image/png';
-    if(desc.endsWith('.doc')||desc.endsWith('.docx')) return 'application/msword';
-    if(desc.endsWith('.xls')||desc.endsWith('.xlsx')) return 'application/vnd.ms-excel';
-    if (base64Data && base64Data.length > 10) {
-      const prefix = base64Data.substring(0, 20);
-      if (prefix.startsWith('/9j/')) return 'image/jpeg';
-      if (prefix.startsWith('iVBORw0KGgo')) return 'image/png';
-      if (prefix.startsWith('JVBERi0x')) return 'application/pdf';
-    }
-    return 'application/octet-stream';
-  }
+	function getMimeType(docType, description, base64Data){
+	  const t = (docType || '').toUpperCase().trim();
 
-  async function displayBase64InPanel(docId, docType, docDescription, base64Data){
-    const mimeType=getMimeType(docType, docDescription, base64Data);
-    const dataUrl=`data:${mimeType};base64,${base64Data}`;
-    const fileName=(docDescription||`${docId}.${(docType||'bin').toLowerCase()}`);
+	  if (t === 'PDF') return 'application/pdf';
+	  if (t === 'JPEG' || t === 'JPG') return 'image/jpeg';
+	  if (t === 'PNG') return 'image/png';
+	  if (t === 'EML') return 'message/rfc822';
+	  if (t === 'MSG') return 'application/vnd.ms-outlook';
 
-    let html='';
-    if(mimeType.startsWith('image/')){
-      html = `<figure style="margin:0"><img src="${dataUrl}" alt="${docId}" style="max-width:100%;height:auto;border:1px solid #ddd;border-radius:6px"/><figcaption style="font-size:.85rem;color:#6b7280;margin-top:.25rem">${fileName}</figcaption></figure>`;
-    } else if (mimeType==='application/pdf'){
-      html = `<div class="pdf-tip">${isFr? 'Ce document est un PDF. Ouvrez/le téléchargez via le lien ci-dessous.' : 'Dit is een PDF. Open of download via de link hieronder.'}</div>
-              <p><a href="${dataUrl}" target="_blank" download="${fileName}" style="display:inline-block;padding:8px 14px;background:#EE7E00;color:#fff;text-decoration:none;border-radius:6px;font-weight:700">${isFr?'Ouvrir/Télécharger PDF':'PDF openen/downloaden'}</a></p>`;
-    } else {
-      html = `<p style="color:#b91c1c">${isFr?`Type non supporté (${mimeType}).`:`Niet-ondersteund type (${mimeType}).`}</p>
-              <p><a href="${dataUrl}" target="_blank" download="${fileName}${mimeType==='application/octet-stream'?'.dat':''}" style="color:#EE7E00;font-weight:700">${isFr?'Télécharger l\'original':'Origineel downloaden'}</a></p>`;
-    }
-    $preview.innerHTML = html;
-  }
+	  const desc = (description || '').toLowerCase().trim();
+	  if (desc.endsWith('.pdf')) return 'application/pdf';
+	  if (desc.endsWith('.jpg') || desc.endsWith('.jpeg')) return 'image/jpeg';
+	  if (desc.endsWith('.png')) return 'image/png';
+	  if (desc.endsWith('.eml')) return 'message/rfc822';
+	  if (desc.endsWith('.msg')) return 'application/vnd.ms-outlook';
+	  if (desc.endsWith('.doc') || desc.endsWith('.docx')) return 'application/msword';
+	  if (desc.endsWith('.xls') || desc.endsWith('.xlsx')) return 'application/vnd.ms-excel';
+
+	  if (base64Data && base64Data.length > 16) {
+		const prefix = base64Data.substring(0, 32);
+
+		if (prefix.startsWith('/9j/')) return 'image/jpeg';
+		if (prefix.startsWith('iVBORw0KGgo')) return 'image/png';
+		if (prefix.startsWith('JVBERi0x')) return 'application/pdf';
+
+		// EML bevat vaak leesbare mail headers in plain text/base64
+		if (
+		  prefix.startsWith('RnJvbTog') ||      // "From: "
+		  prefix.startsWith('TUlNRS1WZXJzaW9uOi') || // "MIME-Version:"
+		  prefix.startsWith('UmVjZWl2ZWQ6')      // "Received:"
+		) {
+		  return 'message/rfc822';
+		}
+
+		// MSG / Outlook OLE Compound File
+		if (prefix.startsWith('0M8R4KGxGuE')) {
+		  return 'application/vnd.ms-outlook';
+		}
+	  }
+
+	  return 'application/octet-stream';
+	}
+	
+	
+
+	async function displayBase64InPanel(docId, docType, docDescription, base64Data){
+	  const mimeType = getMimeType(docType, docDescription, base64Data);
+	  const dataUrl = `data:${mimeType};base64,${base64Data}`;
+	  const rawName = (docDescription || `${docId}.${(docType || 'bin').toLowerCase()}`);
+	  const fileName = String(rawName).trim();
+
+	  let html = '';
+
+	  if (mimeType.startsWith('image/')) {
+		html = `<figure style="margin:0">
+		  <img src="${dataUrl}" alt="${docId}" style="max-width:100%;height:auto;border:1px solid #ddd;border-radius:6px"/>
+		  <figcaption style="font-size:.85rem;color:#6b7280;margin-top:.25rem">${fileName}</figcaption>
+		</figure>`;
+
+	  } else if (mimeType === 'application/pdf') {
+		html = `<div class="pdf-tip">Dit is een PDF. Open of download via de link hieronder.</div>
+				<p><a href="${dataUrl}" target="_blank" download="${fileName.endsWith('.pdf') ? fileName : fileName + '.pdf'}" style="display:inline-block;padding:8px 14px;background:#EE7E00;color:#fff;text-decoration:none;border-radius:6px;font-weight:700">PDF openen/downloaden</a></p>`;
+
+	  } else if (mimeType === 'message/rfc822') {
+		html = `<div class="pdf-tip">Dit is een e-mailbestand (.eml). Je browser previewt dit meestal niet rechtstreeks.</div>
+				<p><a href="${dataUrl}" target="_blank" download="${fileName.endsWith('.eml') ? fileName : fileName + '.eml'}" style="display:inline-block;padding:8px 14px;background:#EE7E00;color:#fff;text-decoration:none;border-radius:6px;font-weight:700">EML downloaden</a></p>`;
+
+	  } else if (mimeType === 'application/vnd.ms-outlook') {
+		html = `<div class="pdf-tip">Dit is een Outlook-mailbestand (.msg). Je browser previewt dit meestal niet rechtstreeks.</div>
+				<p><a href="${dataUrl}" target="_blank" download="${fileName.endsWith('.msg') ? fileName : fileName + '.msg'}" style="display:inline-block;padding:8px 14px;background:#EE7E00;color:#fff;text-decoration:none;border-radius:6px;font-weight:700">MSG downloaden</a></p>`;
+
+	  } else {
+		html = `<p style="color:#b91c1c">Niet-ondersteund type (${mimeType}).</p>
+				<p><a href="${dataUrl}" target="_blank" download="${fileName}" style="color:#EE7E00;font-weight:700">Origineel downloaden</a></p>`;
+	  }
+
+	  $preview.innerHTML = html;
+	}
+  
+
+  
 
   /* ==================== 5. Login ==================== */
 	function getVendorSessionEmail({ maxAgeMin = 120 } = {}) {
@@ -885,7 +929,7 @@ async function requireGpsIfPortalSelf({ botui, Telemetry, isFr, cameFromPortalSe
           await botui.message.add({ content: isFr ? '⚠️ Téléversement déjà en cours.' : '⚠️ Upload is al bezig.' });
           return false;
         }
-        const $file = document.getElementById('doc-file-vendor');
+        const $file = document.getElementById('photo-file-vendor');
         if (!$file) {
           await botui.message.add({ content: isFr ? '❌ Pièce jointe manquante.' : '❌ Bestand-component ontbreekt.' });
           return false;
@@ -984,7 +1028,8 @@ async function requireGpsIfPortalSelf({ botui, Telemetry, isFr, cameFromPortalSe
       } catch (e) {
         await botui.message.add({ content: (isFr ? '❌ Échec du téléversement: ' : '❌ Upload mislukt: ') + (e?.message || e) });
       } finally {
-        const $f = document.getElementById('doc-file-vendor'); if ($f) $f.value = '';
+        const $f = document.getElementById('photo-file-vendor');
+		if ($f) $f.value = '';
         isUploading = false;
       }
     }
@@ -1106,13 +1151,17 @@ async function requireGpsIfPortalSelf({ botui, Telemetry, isFr, cameFromPortalSe
 
   /* ==================== 11. Upload helpers ==================== */
   function sanitizeName(name){ return String(name||'').replace(/[^\w.\-()+ ]+/g,'_').trim() || 'upload.bin'; }
-  function guessMimeByName(name){
-    const n=name.toLowerCase();
-    if(n.endsWith('.jpg')||n.endsWith('.jpeg')) return 'image/jpeg';
-    if(n.endsWith('.png')) return 'image/png';
-    if(n.endsWith('.pdf')) return 'application/pdf';
-    return 'application/octet-stream';
-  }
+  
+function guessMimeByName(name){
+  const n = String(name || '').toLowerCase();
+  if (n.endsWith('.jpg') || n.endsWith('.jpeg')) return 'image/jpeg';
+  if (n.endsWith('.png')) return 'image/png';
+  if (n.endsWith('.pdf')) return 'application/pdf';
+  if (n.endsWith('.eml')) return 'message/rfc822';
+  if (n.endsWith('.msg')) return 'application/vnd.ms-outlook';
+  return 'application/octet-stream';
+}
+
   function fileToBase64(file){
     return new Promise((res,rej)=>{
       const r=new FileReader();
@@ -1260,6 +1309,18 @@ async function requireGpsIfPortalSelf({ botui, Telemetry, isFr, cameFromPortalSe
   startFlow();
   </script>
 
-  <input id="doc-file-vendor" type="file" accept="image/*,application/pdf" capture="environment" style="display:none" />
+<input
+  id="photo-file-vendor"
+  type="file"
+  accept="image/*"
+  capture="environment"
+  style="display:none" />
+
+<input
+  id="doc-file-vendor"
+  type="file"
+  accept="application/pdf,.eml,message/rfc822,.msg,application/vnd.ms-outlook"
+  style="display:none" />
+  
 </body>
 </html>
