@@ -12,32 +12,78 @@
         <link rel="stylesheet" href="gedeeld/css/fontawesome-all.min.css">
         <link rel="stylesheet" href="gedeeld/css/leaflet.photon.css">
         <style>
-        html, body, #map {
-            width: 100%;
-            height: 100%;
-            padding: 0;
-            margin: 0;
-        }
-		.map-title {
+		html, body {
+			width: 100%;
+			height: 100%;
+			padding: 0;
+			margin: 0;
+			background: linear-gradient(180deg, #f3efe8 0%, #e8e2d8 100%);
+			font-family: 'Segoe UI', Arial, sans-serif;
+		}
+
+		#map {
 			position: absolute;
-			top: 10px;
-			left: 50px;
+			top: 78px;
+			left: 20px;
+			right: 20px;
+			bottom: 20px;
+			border-radius: 18px;
+			overflow: hidden;
+			box-shadow: 0 10px 30px rgba(0,0,0,0.14);
+			border: 1px solid rgba(0,0,0,0.06);
+			background: linear-gradient(180deg, #f5f1ea 0%, #e9e3d8 100%);
+		}
+		.page-header {
+			position: absolute;
+			top: 18px;
+			left: 20px;
+			right: 20px;
 			z-index: 1000;
-			background: rgba(255,255,255,0.95);
-			padding: 10px 14px;
-			border-radius: 8px;
-			font-family: Arial, sans-serif;
-			font-size: 18px;
+			display: flex;
+			justify-content: space-between;
+			align-items: center;
+			background: rgba(255,255,255,0.88);
+			backdrop-filter: blur(8px);
+			padding: 14px 18px;
+			border-radius: 14px;
+			box-shadow: 0 4px 18px rgba(0,0,0,0.10);
+			border: 1px solid rgba(0,0,0,0.06);
+		}
+
+		.page-header-left {
+			display: flex;
+			align-items: center;
+			gap: 12px;
+		}
+
+		.header-logo {
+			height: 34px;
+			width: auto;
+			display: block;
+		}
+
+		.page-title {
+			font-size: 20px;
 			font-weight: 700;
-			color: #333;
-			box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+			color: #2b2b2b;
+		}
+
+		.page-subtitle {
+			font-size: 13px;
+			color: #6b7280;
 		}
         </style>
         <title></title>
     </head>
     <body>
-		<div class="map-title">Worxinvest Gelijkvloers</div>
-        <div id="map">
+	<div class="page-header">
+		<div class="page-header-left">
+			<img src="/AtalianLogo.png" alt="Atalian Logo" class="header-logo">
+			<div class="page-title">Worxinvest Gelijkvloers</div>
+		</div>
+		<div class="page-subtitle">Interactieve plattegrond</div>
+	</div>
+	<div id="map"></div>
         </div>
         <script src="gedeeld/js/qgis2web_expressions.js"></script>
         <script src="gedeeld/js/leaflet.js"></script>
@@ -65,8 +111,7 @@ var floorTiles = L.tileLayer('./verdiep00/tiles/{z}/{x}/{y}.png', {
 map.addLayer(floorTiles);	
 	
         var hash = new L.Hash(map);
-        map.attributionControl.setPrefix('<a href="https://github.com/tomchadwin/qgis2web" target="_blank">qgis2web</a> &middot; <a href="https://leafletjs.com" title="A JS library for interactive maps">Leaflet</a> &middot; <a href="https://qgis.org">QGIS</a>');
-        var autolinker = new Autolinker({truncate: {length: 30, location: 'smart'}});
+		map.attributionControl.setPrefix('<a href="https://www.atalian.be/" target="_blank" rel="noopener noreferrer">Powered by Atalian</a>');        var autolinker = new Autolinker({truncate: {length: 30, location: 'smart'}});
         // remove popup's row if "visible-with-data"
         function removeEmptyRowsFromPopupContent(content, feature) {
          var tempDiv = document.createElement('div');
@@ -156,6 +201,9 @@ map.addLayer(floorTiles);
 			const omschrijving = feature.properties['_Omschrijving'] || '';
 			const huurder = feature.properties['_Huurder'] || '';
 			const ultimo = feature.properties['Ultimo'] || '';
+			
+			const currentQs = new URLSearchParams(window.location.search);
+			const returnSrc = currentQs.get('src') || '/greenhousecollectionportal/';
 
 			const portalCode = buildCodeForPortal('space', ultimo);
 
@@ -166,7 +214,8 @@ map.addLayer(floorTiles);
 			  '&spaceCode=' + encodeURIComponent(code) +
 			  '&spaceName=' + encodeURIComponent(omschrijving) +
 			  '&tenant=' + encodeURIComponent(huurder) +
-			  '&ultimo=' + encodeURIComponent(ultimo);
+			  '&ultimo=' + encodeURIComponent(ultimo) +
+			  '&src=' + encodeURIComponent(returnSrc);
 
 			var popupContent = '<table>\
 					<tr><td colspan="2"><strong>' + ultimo + '</strong></td></tr>\

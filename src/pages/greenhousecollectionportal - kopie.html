@@ -266,13 +266,10 @@
         <div id="status" class="status"></div>
       </div>
 
-	<div class="actions">
-	  <a id="btn-floor-map" class="btn btn-secondary" href="#" style="display:none; text-decoration:none;">
-		🗺️ Via plattegrond
-	  </a>
-	  <button type="button" class="btn btn-secondary" id="btn-cancel">⬅️ Terug</button>
-	  <button type="button" class="btn btn-primary" id="btn-go">➡️ Ga naar meldingsportaal</button>
-	</div>
+      <div class="actions">
+        <button type="button" class="btn btn-secondary" id="btn-cancel">⬅️ Terug</button>
+        <button type="button" class="btn btn-primary" id="btn-go">➡️ Ga naar meldingsportaal</button>
+      </div>
     </section>
   </main>
 
@@ -371,7 +368,6 @@
 
     const btnGo               = document.getElementById('btn-go');
     const btnCancel           = document.getElementById('btn-cancel');
-	const btnFloorMap         = document.getElementById('btn-floor-map');
 
     /* ============================================================
        STATE
@@ -394,32 +390,6 @@
     /* ============================================================
        HELPERS: Equipment types & filtering
     ============================================================ */
-	
-	function getFloorMapUrl() {
-	  if (currentType !== 'space') return null;
-	  if (!selectFloor || !selectFloor.value) return null;
-
-	  const selectedText = selectFloor.options[selectFloor.selectedIndex]?.text?.trim();
-
-	  const floorMap = {
-		'0': '/worxinvest/verdiep00.html'
-	  };
-
-	  return floorMap[selectedText] || null;
-	}
-
-	function updateFloorMapButton() {
-	  const url = getFloorMapUrl();
-
-	  if (url) {
-		btnFloorMap.href = url;
-		btnFloorMap.style.display = 'inline-block';
-	  } else {
-		btnFloorMap.style.display = 'none';
-		btnFloorMap.removeAttribute('href');
-	  }
-	}	
-	
 	
 
     function normalizeId(v) {
@@ -906,70 +876,61 @@
       }
     }
 
-	function buildFloorDropdown() {
-	  const isFr = (lang === 'fr');
+    function buildFloorDropdown() {
+      const isFr = (lang === 'fr');
 
-	  const bldId  = (ChooseBuilding === 'Yes') ? (selectBuilding.value || '').trim() : '';
-	  const partId = (ChooseBuildingPart === 'Yes') ? (selectPart.value || '').trim() : '';
+      const bldId  = (ChooseBuilding === 'Yes') ? (selectBuilding.value || '').trim() : '';
+      const partId = (ChooseBuildingPart === 'Yes') ? (selectPart.value || '').trim() : '';
 
-	  if (!Array.isArray(allFloors) || !allFloors.length) {
-		selectFloor.innerHTML =
-		  `<option value="">${isFr ? '-- aucun étage --' : '-- geen verdiepingen --'}</option>`;
-		return;
-	  }
+      if (!Array.isArray(allFloors) || !allFloors.length) {
+        selectFloor.innerHTML =
+          `<option value="">${isFr ? '-- aucun étage --' : '-- geen verdiepingen --'}</option>`;
+        return;
+      }
 
-	  // NIEUW: gebouwdeel verplicht maken
-	  if (ChooseBuildingPart === 'Yes' && !partId) {
-		selectFloor.innerHTML =
-		  `<option value="">${isFr ? '-- choisissez d’abord une partie du bâtiment --' : '-- kies eerst een gebouwdeel --'}</option>`;
-		selectTarget.innerHTML =
-		  `<option value="">${isFr ? '-- choisissez d’abord une partie du bâtiment --' : '-- kies eerst een gebouwdeel --'}</option>`;
-		return;
-	  }
+      const levelToId = new Map();
 
-	  const levelToId = new Map();
+      allFloors.forEach(f => {
+        if (bldId && String(f.BuildingId || '').trim() !== bldId) return;
 
-	  allFloors.forEach(f => {
-		if (bldId && String(f.BuildingId || '').trim() !== bldId) return;
+        const pidShort = getShortPartId(f.BuildingPartId);
+        if (partId && pidShort !== partId) return;
 
-		const pidShort = getShortPartId(f.BuildingPartId);
-		if (partId && pidShort !== partId) return;
+        const levelRaw = f.Level ?? f._Level ?? f.BuildingFloorLevel ?? '';
+        const level    = String(levelRaw).trim();
+        const bfId     = String(f.Id || '').trim();
 
-		const levelRaw = f.Level ?? f._Level ?? f.BuildingFloorLevel ?? '';
-		const level    = String(levelRaw).trim();
-		const bfId     = String(f.Id || '').trim();
+        if (!level || !bfId) return;
+        if (!levelToId.has(level)) levelToId.set(level, bfId);
+      });
 
-		if (!level || !bfId) return;
-		if (!levelToId.has(level)) levelToId.set(level, bfId);
-	  });
+      if (!levelToId.size) {
+        selectFloor.innerHTML =
+          `<option value="">${isFr ? '-- aucun étage filtré --' : '-- geen verdiepingen gevonden --'}</option>`;
+        return;
+      }
 
-	  if (!levelToId.size) {
-		selectFloor.innerHTML =
-		  `<option value="">${isFr ? '-- aucun étage filtré --' : '-- geen verdiepingen gevonden --'}</option>`;
-		return;
-	  }
+      const sortedLevels = Array.from(levelToId.keys()).sort((a, b) => {
+        const na = parseFloat(String(a).replace(',', '.'));
+        const nb = parseFloat(String(b).replace(',', '.'));
+        if (!Number.isNaN(na) && !Number.isNaN(nb)) return na - nb;
+        return String(a).localeCompare(String(b), undefined, { sensitivity: 'base' });
+      });
 
-	  const sortedLevels = Array.from(levelToId.keys()).sort((a, b) => {
-		const na = parseFloat(String(a).replace(',', '.'));
-		const nb = parseFloat(String(b).replace(',', '.'));
-		if (!Number.isNaN(na) && !Number.isNaN(nb)) return na - nb;
-		return String(a).localeCompare(String(b), undefined, { sensitivity: 'base' });
-	  });
+      selectFloor.innerHTML =
+        `<option value="">${isFr ? '-- choisissez un étage --' : '-- kies een verdieping --'}</option>`;
 
-	  selectFloor.innerHTML =
-		`<option value="">${isFr ? '-- choisissez un étage --' : '-- kies een verdieping --'}</option>`;
+      sortedLevels.forEach(level => {
+        const bfId = levelToId.get(level);
+        selectFloor.insertAdjacentHTML(
+          'beforeend',
+          `<option value="${String(bfId).replace(/"/g,'&quot;')}">${String(level).replace(/</g,'&lt;')}</option>`
+        );
+      });
 
-	  sortedLevels.forEach(level => {
-		const bfId = levelToId.get(level);
-		selectFloor.insertAdjacentHTML(
-		  'beforeend',
-		  `<option value="${String(bfId).replace(/"/g,'&quot;')}">${String(level).replace(/</g,'&lt;')}</option>`
-		);
-	  });
-
-	  selectTarget.innerHTML =
-		`<option value="">${isFr ? "-- choisissez d'abord un étage --" : "-- kies eerst een verdieping --"}</option>`;
-	}
+      selectTarget.innerHTML =
+        `<option value="">${isFr ? "-- choisissez d'abord un étage --" : "-- kies eerst een verdieping --"}</option>`;
+    }
 
     /* ============================================================
        TYPE KIEZEN
@@ -986,8 +947,7 @@
 	  const isFr = (lang === 'fr');
 
 	  if (type === 'space') {
-        
-		updateFloorMapButton();
+
 		const showBuildingDropdown = (ChooseBuilding === 'Yes');
 		const showPartDropdown     = (ChooseBuildingPart === 'Yes');
 
@@ -1141,8 +1101,6 @@
 
     btnCancel.addEventListener('click', () => {
       currentType = null;
-	  btnFloorMap.style.display = 'none';
-	  btnFloorMap.removeAttribute('href');
       btnInstallation.classList.remove('active');
       btnRoom.classList.remove('active');
       blockSelect.style.display = 'none';
@@ -1157,56 +1115,40 @@
     });
 
     // space: floor change => spaces ophalen
-	selectFloor.addEventListener('change', () => {
-	  updateFloorMapButton();
+    selectFloor.addEventListener('change', () => {
+      const isFr = (lang === 'fr');
+      const selectedFloorId = selectFloor.value;
 
-	  const isFr = (lang === 'fr');
-	  const selectedFloorId = selectFloor.value;
-	  const partId = (ChooseBuildingPart === 'Yes') ? (selectPart.value || '').trim() : '';
+      if (!selectedFloorId) {
+        selectTarget.innerHTML =
+          `<option value="">${isFr ? "-- choisissez d'abord un étage --" : "-- kies eerst een verdieping --"}</option>`;
+        setStatus('', false);
+        return;
+      }
 
-	  // NIEUW: gebouwdeel verplicht
-	  if (ChooseBuildingPart === 'Yes' && !partId) {
-		selectFloor.value = '';
-		updateFloorMapButton();
-		selectTarget.innerHTML =
-		  `<option value="">${isFr ? '-- choisissez d’abord une partie du bâtiment --' : '-- kies eerst een gebouwdeel --'}</option>`;
-		setStatus(isFr ? 'Choisissez d’abord une partie du bâtiment.' : 'Kies eerst een gebouwdeel.', true);
-		return;
-	  }
+      selectTarget.innerHTML =
+        `<option value="">${isFr ? '-- chargement des locaux --' : '-- ruimtes worden geladen --'}</option>`;
 
-	  if (!selectedFloorId) {
-		updateFloorMapButton();
-		selectTarget.innerHTML =
-		  `<option value="">${isFr ? "-- choisissez d'abord un étage --" : "-- kies eerst een verdieping --"}</option>`;
-		setStatus('', false);
-		return;
-	  }
+      fetchSpacesForFloor(selectedFloorId).catch(err => {
+        console.error(err);
+        setStatus(isFr ? 'Erreur lors du chargement des locaux.' : 'Fout bij het laden van de ruimtes.', true);
+        selectTarget.innerHTML = `<option value="">${isFr ? '-- aucune donnée --' : '-- geen gegevens --'}</option>`;
+      });
+    });
 
-	  selectTarget.innerHTML =
-		`<option value="">${isFr ? '-- chargement des locaux --' : '-- ruimtes worden geladen --'}</option>`;
-
-	  fetchSpacesForFloor(selectedFloorId).catch(err => {
-		console.error(err);
-		setStatus(isFr ? 'Erreur lors du chargement des locaux.' : 'Fout bij het laden van de ruimtes.', true);
-		selectTarget.innerHTML = `<option value="">${isFr ? '-- aucune donnée --' : '-- geen gegevens --'}</option>`;
-	  });
-	});
-
-	if (selectBuilding) {
-	  selectBuilding.addEventListener('change', () => {
-		rebuildPartDropdown();
-		buildFloorDropdown();
-		updateSpaceFilterAvailability();
-		updateFloorMapButton();
-	  });
-	}
-	if (selectPart) {
-	  selectPart.addEventListener('change', () => {
-		buildFloorDropdown();
-		updateSpaceFilterAvailability();
-		updateFloorMapButton();
-	  });
-	}
+    if (selectBuilding) {
+      selectBuilding.addEventListener('change', () => {
+        rebuildPartDropdown();
+        buildFloorDropdown();
+		updateSpaceFilterAvailability(); // ✅
+      });
+    }
+    if (selectPart) {
+      selectPart.addEventListener('change', () => {
+        buildFloorDropdown();
+		updateSpaceFilterAvailability(); // ✅
+      });
+    }
 
     // equipment: type change => installaties vullen
     selectEquipmentType.addEventListener('change', () => {
