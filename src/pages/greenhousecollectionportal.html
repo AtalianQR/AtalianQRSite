@@ -517,7 +517,12 @@
 		const desc       = ellipsize(sp.Description || id, 42);
 
 		const primaryCode = roomNumber || id;
-		const label = `${primaryCode} - ${desc}`;
+		const tenant = String(sp.Tenant || '').trim();
+		const normalizedTenant = tenant.replace(/\s+/g, ' ').toLowerCase();
+		const isHiddenTenant = normalizedTenant === 'worxinvest (landlord)';
+
+		let label = `${primaryCode} - ${desc}`;
+		if (tenant && !isHiddenTenant) label += ` [${tenant}]`;
 
 		selectTarget.insertAdjacentHTML(
 		  'beforeend',
