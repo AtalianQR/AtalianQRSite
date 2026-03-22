@@ -406,7 +406,14 @@
 		'0': '/worxinvest/verdiep00.html'
 	  };
 
-	  return floorMap[selectedText] || null;
+	  const basePath = floorMap[selectedText];
+	  if (!basePath) return null;
+
+	  const url = new URL(basePath, window.location.origin);
+	  url.searchParams.set('env', envPrefix);
+	  url.searchParams.set('lang', lang);
+
+	  return url.toString();
 	}
 
 	function updateFloorMapButton() {

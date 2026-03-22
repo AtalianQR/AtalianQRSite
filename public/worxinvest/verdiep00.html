@@ -98,17 +98,20 @@
         <script src="gedeeld/js/leaflet.photon.js"></script>
         <script src="verdiep00/data/SPACETenants_0.js"></script>
         <script>
+		
+	
+		
         var map = L.map('map', {
             zoomControl:false, maxZoom:28, minZoom:1
         }).fitBounds([[51.19408856336775,4.403487490843143],[51.19465952402086,4.404606722307745]]);
 		
-var floorTiles = L.tileLayer('./verdiep00/tiles/{z}/{x}/{y}.png', {
-    minZoom: 12,
-    maxZoom: 22,
-    tms: false,
-    opacity: 1
-});
-map.addLayer(floorTiles);	
+		var floorTiles = L.tileLayer('./verdiep00/tiles/{z}/{x}/{y}.png', {
+			minZoom: 12,
+			maxZoom: 22,
+			tms: false,
+			opacity: 1
+		});
+		map.addLayer(floorTiles);	
 	
         var hash = new L.Hash(map);
 		map.attributionControl.setPrefix('<a href="https://www.atalian.be/" target="_blank" rel="noopener noreferrer">Powered by Atalian</a>');        var autolinker = new Autolinker({truncate: {length: 30, location: 'smart'}});
@@ -197,25 +200,14 @@ map.addLayer(floorTiles);
 		}
 
 		function pop_SPACETenants_0(feature, layer) {
-			const code = feature.properties['_Code'] || '';
-			const omschrijving = feature.properties['_Omschrijving'] || '';
-			const huurder = feature.properties['_Huurder'] || '';
-			const ultimo = feature.properties['Ultimo'] || '';
-			
-			const currentQs = new URLSearchParams(window.location.search);
-			const returnSrc = currentQs.get('src') || '/greenhousecollectionportal/';
-
-			const portalCode = buildCodeForPortal('space', ultimo);
+			const qs = new URLSearchParams(window.location.search);
+			const env = qs.get('env') || 'prod';
+			const lang = qs.get('lang') || 'nl';
 
 			const appUrl =
-			  'https://atalianqrportal.netlify.app/portal/?code=' + encodeURIComponent(portalCode) +
-			  '&lang=nl' +
-			  '&type=space' +
-			  '&spaceCode=' + encodeURIComponent(code) +
-			  '&spaceName=' + encodeURIComponent(omschrijving) +
-			  '&tenant=' + encodeURIComponent(huurder) +
-			  '&ultimo=' + encodeURIComponent(ultimo) +
-			  '&src=' + encodeURIComponent(returnSrc);
+				'https://atalianqrportal.netlify.app/portal/?code=' + encodeURIComponent(portalCode) +
+				'&lang=' + encodeURIComponent(lang) +
+				'&env=' + encodeURIComponent(env);
 
 			var popupContent = '<table>\
 					<tr><td colspan="2"><strong>' + ultimo + '</strong></td></tr>\
