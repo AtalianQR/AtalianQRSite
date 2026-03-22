@@ -700,6 +700,21 @@ const sourceUrl = safeSameOriginUrl(srcRaw);
   /* ======================================================================
      CHATFLOW – START
   ====================================================================== */
+	function setPortalBackground(imageName) {
+	  document.body.style.backgroundImage = `url('/${imageName}')`;
+	  document.body.style.backgroundSize = 'cover';
+	  document.body.style.backgroundRepeat = 'no-repeat';
+	  document.body.style.backgroundPosition = 'center';
+	}
+
+	function setDefaultBackground() {
+	  setPortalBackground('building-cleaning.png');
+	}
+
+	function setCleaningBackground() {
+	  setPortalBackground('meldenschoonmaak.png');
+	}
+  
   async function startChat(){
     Telemetry.send('step', { step:'start', stepIndex:0 });
 
@@ -733,13 +748,18 @@ const sourceUrl = safeSameOriginUrl(srcRaw);
       });
 
       const ans = await botui.action.button({ action: actions });
-      if (ans.value === 'poets') {
-        return await showCleaningProgramAndContinue();
-      } else if (ans.value === 'cleaning_ticket') {
-        return await startCleaningFlow();
-      } else {
-        return await startGenericFlow();
-      }
+		if (ans.value === 'poets') {
+		  setCleaningBackground();
+		  return await showCleaningProgramAndContinue();
+		}
+
+		if (ans.value === 'cleaning_ticket') {
+		  setCleaningBackground();
+		  return await startCleaningFlow();
+		}
+
+		setDefaultBackground();
+		return await startGenericFlow();
     } else {
       await botui.action.button({
         action: [
@@ -754,48 +774,59 @@ const sourceUrl = safeSameOriginUrl(srcRaw);
     }
   }
 
-  async function showCleaningProgramAndContinue() {
-    Telemetry.send('poets_info_viewed');
-    await botui.message.add({
-      type: 'html',
-      content: isFr
-        ? `<b>Programme de nettoyage :</b><br>${cleaningProgramText}`
-        : `<b>Poetsprogramma:</b><br>${cleaningProgramText}`
-    });
+	async function showCleaningProgramAndContinue() {
+	  Telemetry.send('poets_info_viewed');
 
-    const vervolg = await botui.action.button({
-      action: [
-        {
-          text: isFr ? '🧹 Nouveau signalement Nettoyage'
-                     : '🧹 Schoonmaak Melding maken',
-          value: "cleaning_ticket"
-        },
-        {
-          text: isFr ? '💡 Autre Problème' : '💡 Ander Probleem',
-          value: "other_problem"
-        },
-        {
-          text: isFr ? "ℹ️ Plus d'info" : "ℹ️ Meer info",
-          value: "info"
-        }
-      ]
-    });
+	  await botui.message.add({
+		type: 'html',
+		content: isFr
+		  ? `<b>Programme de nettoyage :</b><br>${cleaningProgramText}`
+		  : `<b>Poetsprogramma:</b><br>${cleaningProgramText}`
+	  });
 
-    if (vervolg.value === "cleaning_ticket") return await startCleaningFlow();
-    if (vervolg.value === "other_problem")    return await startGenericFlow();
+	  const vervolg = await botui.action.button({
+		action: [
+		  {
+			text: isFr ? '🧹 Nouveau signalement Nettoyage'
+					   : '🧹 Schoonmaak Melding maken',
+			value: 'cleaning_ticket'
+		  },
+		  {
+			text: isFr ? '💡 Autre Problème' : '💡 Ander Probleem',
+			value: 'other_problem'
+		  },
+		  {
+			text: isFr ? "ℹ️ Plus d'info" : 'ℹ️ Meer info',
+			value: 'info'
+		  }
+		]
+	  });
 
-    await botui.message.add({
-      type: 'html',
-      content: isFr
-        ? 'Vous allez être redirigé vers notre site web externe.'
-        : 'Je wordt nu doorverwezen naar onze externe website.'
-    });
-    setTimeout(() => {
-      window.location.href = isFr
-        ? 'https://www.atalian.be/?lang=fr'
-        : 'https://www.atalian.be/?lang=nl';
-    }, 2000);
-  }
+	  if (vervolg.value === 'cleaning_ticket') {
+		setCleaningBackground();
+		return await startCleaningFlow();
+	  }
+
+	  if (vervolg.value === 'other_problem') {
+		setDefaultBackground();
+		return await startGenericFlow();
+	  }
+
+	  setDefaultBackground();
+
+	  await botui.message.add({
+		type: 'html',
+		content: isFr
+		  ? 'Vous allez être redirigé vers notre site web externe.'
+		  : 'Je wordt nu doorverwezen naar onze externe website.'
+	  });
+
+	  setTimeout(() => {
+		window.location.href = isFr
+		  ? 'https://www.atalian.be/?lang=fr'
+		  : 'https://www.atalian.be/?lang=nl';
+	  }, 2000);
+	}
 
   async function startGenericFlow() {
     return await startProbleemFlow(false);
