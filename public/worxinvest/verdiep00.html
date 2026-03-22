@@ -11,6 +11,7 @@
         <link rel="stylesheet" href="gedeeld/css/qgis2web.css">
         <link rel="stylesheet" href="gedeeld/css/fontawesome-all.min.css">
         <link rel="stylesheet" href="gedeeld/css/leaflet.photon.css">
+		<link rel="stylesheet" href="gedeeld/css/env-banner.css">
         <style>
 		html, body {
 			width: 100%;
@@ -72,6 +73,13 @@
 			font-size: 13px;
 			color: #6b7280;
 		}
+		body.is-test .page-header {
+			top: 48px;
+		}
+
+		body.is-test #map {
+			top: 108px;
+		}		
         </style>
         <title></title>
     </head>
@@ -97,6 +105,7 @@
         <script src="gedeeld/js/labels.js"></script>
         <script src="gedeeld/js/leaflet.photon.js"></script>
         <script src="verdiep00/data/SPACETenants_0.js"></script>
+		<script src="gedeeld/js/env-banner.js"></script>
         <script>
 		
 	
