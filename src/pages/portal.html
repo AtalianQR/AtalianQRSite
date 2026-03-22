@@ -260,6 +260,117 @@
   function isValidEmail(e){
     return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e);
   }
+  
+  function setPortalBackground(imageName) {
+	  document.body.style.backgroundImage = `url('/${imageName}')`;
+	  document.body.style.backgroundSize = 'cover';
+	  document.body.style.backgroundRepeat = 'no-repeat';
+	  document.body.style.backgroundPosition = 'center';
+	}
+
+	function setDefaultBackground() {
+	  setPortalBackground('building-cleaning.png');
+	}
+
+	function setCleaningBackground() {
+	  setPortalBackground('meldenschoonmaak.png');
+	}
+
+	async function startOtherIssueChoice() {
+	  setDefaultBackground();
+
+	  await botui.message.add({
+		content: isFr
+		  ? "S’agit-il d’un problème ou d’une plainte ?"
+		  : "Gaat het om een probleem of om een klacht?"
+	  });
+
+	  const res = await botui.action.button({
+		action: [
+		  {
+			text: isFr ? '🔧 Signaler un problème' : '🔧 Probleem melden',
+			value: 'problem'
+		  },
+		  {
+			text: isFr ? '⚠️ Introduire une plainte' : '⚠️ Klacht indienen',
+			value: 'complaint'
+		  }
+		]
+	  });
+
+	  if (res.value === 'problem') {
+		return await startGenericFlow();
+	  }
+
+	  return await showComplaintPlaceholder();
+	}
+	
+	async function startCleaningChoice() {
+	  setCleaningBackground();
+
+	  await botui.message.add({
+		content: isFr
+		  ? "S’agit-il d’un problème de nettoyage ou d’une plainte ?"
+		  : "Gaat het om een schoonmaakprobleem of een klacht?"
+	  });
+
+	  const res = await botui.action.button({
+		action: [
+		  {
+			text: isFr ? '🧹 Demander un nettoyage' : '🧹 Schoonmaak vragen',
+			value: 'cleaning_problem'
+		  },
+		  {
+			text: isFr ? '⚠️ Plainte concernant le nettoyage' : '⚠️ Klacht over schoonmaak',
+			value: 'cleaning_complaint'
+		  }
+		]
+	  });
+
+	  if (res.value === 'cleaning_problem') {
+		setCleaningBackground();
+		return await startCleaningFlow(); // bestaande flow
+	  }
+
+	  return await showComplaintPlaceholder(); // zelfde placeholder
+	}	
+	
+
+	async function showComplaintPlaceholder() {
+	  setDefaultBackground();
+	  Telemetry.send('complaint_placeholder_viewed');
+
+	  await botui.message.add({
+		type: 'html',
+		content: isFr
+		  ? 'Merci.<br><br>Ici, vous pourrez bientôt introduire une plainte.<br>Pour l’instant, ce parcours n’est pas encore relié à Ultimo.'
+		  : 'Bedankt.<br><br>Hier zal binnenkort de klachtenflow beschikbaar zijn.<br>Voorlopig is dit nog niet gekoppeld aan Ultimo.'
+	  });
+
+	  const res = await botui.action.button({
+		action: [
+		  {
+			text: isFr ? '🔄 Recommencer' : '🔄 Opnieuw beginnen',
+			value: 'restart'
+		  },
+		  {
+			text: isFr ? "ℹ️ Plus d'info" : 'ℹ️ Meer info',
+			value: 'info'
+		  }
+		]
+	  });
+
+	  if (res.value === 'restart') {
+		Telemetry.send('complaint_restart');
+		window.location.reload();
+		return;
+	  }
+
+	  Telemetry.send('complaint_external_info');
+	  window.location.href = isFr
+		? 'https://www.atalian.be/?lang=fr'
+		: 'https://www.atalian.be/?lang=nl';
+	}
 
   /* ======================================================================
      URL NORMALISATIE (pipes/tilde)
@@ -700,79 +811,71 @@ const sourceUrl = safeSameOriginUrl(srcRaw);
   /* ======================================================================
      CHATFLOW – START
   ====================================================================== */
-	function setPortalBackground(imageName) {
-	  document.body.style.backgroundImage = `url('/${imageName}')`;
-	  document.body.style.backgroundSize = 'cover';
-	  document.body.style.backgroundRepeat = 'no-repeat';
-	  document.body.style.backgroundPosition = 'center';
-	}
-
-	function setDefaultBackground() {
-	  setPortalBackground('building-cleaning.png');
-	}
-
-	function setCleaningBackground() {
-	  setPortalBackground('meldenschoonmaak.png');
-	}
   
-  async function startChat(){
-    Telemetry.send('step', { step:'start', stepIndex:0 });
+	async function startChat() {
+	  Telemetry.send('step', { step: 'start', stepIndex: 0 });
 
-    // Locatiekaart bovenaan vullen
-    showLocation();
+	  // Locatiekaart bovenaan vullen
+	  await showLocation();
 
-    await botui.message.add({
-      type:'html',
-      content: isFr
-        ? 'Bonjour, je suis votre assistant <span style="color:#EE7E00;font-weight:bold;">ATALIAN</span>.<br>Je recherche pour vous les <b>signalements en cours</b>…'
-        : 'Hallo, ik ben je <span style="color:#EE7E00;font-weight:bold;">ATALIAN</span>-assistent.<br>Ik haal even de <b>openstaande meldingen</b> voor je op…'
-    });
+	  // Start altijd met standaardachtergrond
+	  setDefaultBackground();
 
-    await preloadContextAndShow();
+	  await botui.message.add({
+		type: 'html',
+		content: isFr
+		  ? 'Bonjour, je suis votre assistant <span style="color:#EE7E00;font-weight:bold;">ATALIAN</span>.<br>Je recherche pour vous les <b>signalements en cours</b>…'
+		  : 'Hallo, ik ben je <span style="color:#EE7E00;font-weight:bold;">ATALIAN</span>-assistent.<br>Ik haal even de <b>openstaande meldingen</b> voor je op…'
+	  });
 
-    if (!isEquipment && hasCleaningActivities(cachedSvcWO)) {
-      const actions = [];
-      if (hasText(cleaningProgramText)) {
-        actions.push({
-          text: isFr ? '📋 Programme de Nettoyage' : '📋 Poetsprogramma',
-          value: 'poets'
-        });
-      }
-      actions.push({
-        text: isFr ? '🧹 Signaler un Nettoyage' : '🧹 Schoonmaak Melding',
-        value: 'cleaning_ticket'
-      });
-      actions.push({
-        text: isFr ? '💡 Autre Problème' : '💡 Ander Probleem',
-        value: 'other_problem'
-      });
+	  await preloadContextAndShow();
 
-      const ans = await botui.action.button({ action: actions });
+	  if (!isEquipment && hasCleaningActivities(cachedSvcWO)) {
+		const actions = [];
+
+		if (hasText(cleaningProgramText)) {
+		  actions.push({
+			text: isFr ? '📋 Programme de Nettoyage' : '📋 Poetsprogramma',
+			value: 'poets'
+		  });
+		}
+
+		actions.push({
+		  text: isFr ? '🧹 Signaler un Nettoyage' : '🧹 Schoonmaak Melding',
+		  value: 'cleaning_ticket'
+		});
+
+		actions.push({
+		  text: isFr ? '💡 Autre Problème' : '💡 Ander Probleem',
+		  value: 'other_problem'
+		});
+
+		const ans = await botui.action.button({ action: actions });
+
 		if (ans.value === 'poets') {
 		  setCleaningBackground();
 		  return await showCleaningProgramAndContinue();
 		}
 
 		if (ans.value === 'cleaning_ticket') {
-		  setCleaningBackground();
-		  return await startCleaningFlow();
+		  return await startCleaningChoice();
 		}
 
-		setDefaultBackground();
-		return await startGenericFlow();
-    } else {
-      await botui.action.button({
-        action: [
-          {
-            text: isFr ? '❗️ Je veux signaler un problème'
-                       : '❗️ Ik wil een probleem melden',
-            value: 'other_problem'
-          }
-        ]
-      });
-      return await startGenericFlow();
-    }
-  }
+		return await startOtherIssueChoice();
+	  }
+
+	  await botui.action.button({
+		action: [
+		  {
+			text: isFr ? '❗️ Je veux signaler un problème'
+					   : '❗️ Ik wil een probleem melden',
+			value: 'other_problem'
+		  }
+		]
+	  });
+
+	  return await startOtherIssueChoice();
+	}
 
 	async function showCleaningProgramAndContinue() {
 	  Telemetry.send('poets_info_viewed');
@@ -802,14 +905,12 @@ const sourceUrl = safeSameOriginUrl(srcRaw);
 		]
 	  });
 
-	  if (vervolg.value === 'cleaning_ticket') {
-		setCleaningBackground();
-		return await startCleaningFlow();
-	  }
+	if (vervolg.value === 'cleaning_ticket') {
+	  return await startCleaningChoice();
+	}
 
 	  if (vervolg.value === 'other_problem') {
-		setDefaultBackground();
-		return await startGenericFlow();
+		return await startOtherIssueChoice();
 	  }
 
 	  setDefaultBackground();
