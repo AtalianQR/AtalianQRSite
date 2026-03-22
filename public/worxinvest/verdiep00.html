@@ -200,14 +200,21 @@
 		}
 
 		function pop_SPACETenants_0(feature, layer) {
+			const code = feature.properties['_Code'] || '';
+			const omschrijving = feature.properties['_Omschrijving'] || '';
+			const huurder = feature.properties['_Huurder'] || '';
+			const ultimo = feature.properties['Ultimo'] || '';
+
 			const qs = new URLSearchParams(window.location.search);
 			const env = qs.get('env') || 'prod';
 			const lang = qs.get('lang') || 'nl';
 
+			const portalCode = buildCodeForPortal('space', ultimo);
+
 			const appUrl =
-				'https://atalianqrportal.netlify.app/portal/?code=' + encodeURIComponent(portalCode) +
-				'&lang=' + encodeURIComponent(lang) +
-				'&env=' + encodeURIComponent(env);
+			  'https://atalianqrportal.netlify.app/portal/?code=' + encodeURIComponent(portalCode) +
+			  '&lang=' + encodeURIComponent(lang) +
+			  '&env=' + encodeURIComponent(env);
 
 			var popupContent = '<table>\
 					<tr><td colspan="2"><strong>' + ultimo + '</strong></td></tr>\
