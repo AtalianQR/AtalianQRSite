@@ -210,6 +210,7 @@
   let botui; // globaal beschikbaar
   let selectedServiceWOId = null;      // Gekozen ServiceWO bij schoonmaak
   let selectedOtherServiceWO = null;   // Gekozen ServiceWO bij "Andere problemen"
+  let isComplaint = false;  
 
   // FOTO-state (ENKEL deze gebruiken)
   let pickedFiles = []; // [{file, kind:'image'|'pdf'|'other', name, previewUrl, remark}]
@@ -279,6 +280,29 @@
 	async function startOtherIssueChoice() {
 	  setDefaultBackground();
 
+	  // Bij installaties/equipment: geen klachtoptie tonen
+	  if (isEquipment) {
+		isComplaint = false;
+
+		await botui.message.add({
+		  content: isFr
+			? "Pour une installation, vous pouvez uniquement signaler un problème."
+			: "Voor een installatie kun je alleen een probleem melden."
+		});
+
+		await botui.action.button({
+		  action: [
+			{
+			  text: isFr ? '🔧 Signaler un problème' : '🔧 Probleem melden',
+			  value: 'problem'
+			}
+		  ]
+		});
+
+		return await startGenericFlow();
+	  }
+
+	  // Voor ruimtes: probleem of klacht
 	  await botui.message.add({
 		content: isFr
 		  ? "S’agit-il d’un problème ou d’une plainte ?"
@@ -298,11 +322,8 @@
 		]
 	  });
 
-	  if (res.value === 'problem') {
-		return await startGenericFlow();
-	  }
-
-	  return await showComplaintPlaceholder();
+	  isComplaint = (res.value === 'complaint');
+	  return await startGenericFlow();
 	}
 	
 	async function startCleaningChoice() {
@@ -327,50 +348,12 @@
 		]
 	  });
 
-	  if (res.value === 'cleaning_problem') {
-		setCleaningBackground();
-		return await startCleaningFlow(); // bestaande flow
-	  }
-
-	  return await showComplaintPlaceholder(); // zelfde placeholder
+	  isComplaint = (res.value === 'cleaning_complaint');
+	  setCleaningBackground();
+	  return await startCleaningFlow();
 	}	
 	
 
-	async function showComplaintPlaceholder() {
-	  setDefaultBackground();
-	  Telemetry.send('complaint_placeholder_viewed');
-
-	  await botui.message.add({
-		type: 'html',
-		content: isFr
-		  ? 'Merci.<br><br>Ici, vous pourrez bientôt introduire une plainte.<br>Pour l’instant, ce parcours n’est pas encore relié à Ultimo.'
-		  : 'Bedankt.<br><br>Hier zal binnenkort de klachtenflow beschikbaar zijn.<br>Voorlopig is dit nog niet gekoppeld aan Ultimo.'
-	  });
-
-	  const res = await botui.action.button({
-		action: [
-		  {
-			text: isFr ? '🔄 Recommencer' : '🔄 Opnieuw beginnen',
-			value: 'restart'
-		  },
-		  {
-			text: isFr ? "ℹ️ Plus d'info" : 'ℹ️ Meer info',
-			value: 'info'
-		  }
-		]
-	  });
-
-	  if (res.value === 'restart') {
-		Telemetry.send('complaint_restart');
-		window.location.reload();
-		return;
-	  }
-
-	  Telemetry.send('complaint_external_info');
-	  window.location.href = isFr
-		? 'https://www.atalian.be/?lang=fr'
-		: 'https://www.atalian.be/?lang=nl';
-	}
 
   /* ======================================================================
      URL NORMALISATIE (pipes/tilde)
@@ -448,66 +431,99 @@ const sourceUrl = safeSameOriginUrl(srcRaw);
   /* ======================================================================
      CONTEXT LOADERS (jobs + serviceWO + locatie)
   ====================================================================== */
-  async function preloadContextAndShow() {
+async function preloadContextAndShow() {
+  try {
+    const url = `/.netlify/functions/jobs?code=${encodeURIComponent(code)}&env=${prefix}`;
+    const res = await fetch(url);
+    let txt = await res.text();
+
+    // a) HTML-escaped quotes -> echte quotes
+    if (txt.includes('&quot;')) txt = txt.replace(/&quot;/g, '"');
+
+    // b) Mogelijke wrapper {"object":"{...}"}
+    let data;
     try {
-      const url = `/.netlify/functions/jobs?code=${encodeURIComponent(code)}&env=${prefix}`;
-      const res = await fetch(url);
-      let txt = await res.text();
-
-      // a) HTML-escaped quotes -> echte quotes
-      if (txt.includes('&quot;')) txt = txt.replace(/&quot;/g, '"');
-
-      // b) Mogelijke wrapper {"object":"{...}"}
-      let data;
-      try {
-        data = JSON.parse(txt);
-        if (data && typeof data.object === 'string') {
-          const inner = data.object.includes('&quot;')
-            ? data.object.replace(/&quot;/g, '"')
-            : data.object;
-          data = JSON.parse(inner);
-        }
-      } catch (e) {
-        throw new Error(`Bad JSON from /jobs: ${e.message}\n---\n${txt.slice(0,800)}`);
+      data = JSON.parse(txt);
+      if (data && typeof data.object === 'string') {
+        const inner = data.object.includes('&quot;')
+          ? data.object.replace(/&quot;/g, '"')
+          : data.object;
+        data = JSON.parse(inner);
       }
-
-      if (!res.ok) throw new Error(data?.error || `HTTP ${res.status}`);
-
-      cachedJobs       = Array.isArray(data.Jobs) ? data.Jobs : [];
-      cachedSvcWO      = Array.isArray(data.ComplexServiceWO) ? data.ComplexServiceWO : [];
-      cachedQRCommando = data.QRCommando || "";
-      contextFetched   = true;
-
-      if (cachedJobs.length) {
-        await botui.message.add({
-          type:'html',
-          content: '⚠️ Er zijn al openstaande meldingen in deze ruimte:'
-        });
-        await botui.message.add({
-          type:'html',
-          content: '<div class="meldingen-lijst">'
-                 + cachedJobs.map(j => {
-                     const idPart =
-                       (isTestEnv && j?.Id)
-                         ? `<span class="jobid">${esc(j.Id)}</span> — `
-                         : '';
-                     return `✅ ${idPart}${esc(j.Description)}`;
-                   }).join('<br>')
-                 + '</div>'
-        });
-      } else {
-        await botui.message.add({ content: 'ℹ️ Geen openstaande meldingen gevonden.' });
-      }
-
     } catch (e) {
-      console.error('preload error', e);
+      throw new Error(`Bad JSON from /jobs: ${e.message}\n---\n${txt.slice(0,800)}`);
+    }
+
+    if (!res.ok) throw new Error(data?.error || `HTTP ${res.status}`);
+
+    cachedJobs       = Array.isArray(data.Jobs) ? data.Jobs : [];
+    cachedSvcWO      = Array.isArray(data.ComplexServiceWO) ? data.ComplexServiceWO : [];
+    cachedQRCommando = data.QRCommando || "";
+    contextFetched   = true;
+
+    if (cachedJobs.length) {
       await botui.message.add({
         type: 'html',
-        content: '❌ Fout bij laden van context (jobs/ServiceWO’s).'
-               + `<br><small>${esc(String(e.message)).slice(0,400)}</small>`
+        content: isFr
+          ? '⚠️ Il y a déjà des signalements en cours dans cet espace :'
+          : '⚠️ Er zijn al openstaande meldingen in deze ruimte:'
+      });
+
+      const complaints = cachedJobs.filter(j => j.IsComplaint);
+      const normalJobs = cachedJobs.filter(j => !j.IsComplaint);
+
+      const rows = [];
+
+      // Altijd maar 1 generieke klachtregel, ongeacht het aantal klachten
+      if (complaints.length > 0) {
+        rows.push(
+          `📝️ ${esc(
+            isFr
+              ? 'Une plainte a déjà été enregistrée'
+              : 'Er werd reeds een klacht geregistreerd'
+          )}`
+        );
+      }
+
+      // Gewone meldingen blijven apart zichtbaar
+      rows.push(
+        ...normalJobs.map(j => {
+          const idPart =
+            (isTestEnv && j?.Id)
+              ? `<span class="jobid">${esc(j.Id)}</span> — `
+              : '';
+
+          const text = isFr
+            ? (j.DisplayDescriptionFr || j.DisplayDescription || j.Description || '')
+            : (j.DisplayDescription || j.Description || '');
+
+          return `✅ ${idPart}${esc(text)}`;
+        })
+      );
+
+      await botui.message.add({
+        type: 'html',
+        content: '<div class="meldingen-lijst">' + rows.join('<br>') + '</div>'
+      });
+    } else {
+      await botui.message.add({
+        content: isFr
+          ? 'ℹ️ Aucun signalement en cours trouvé.'
+          : 'ℹ️ Geen openstaande meldingen gevonden.'
       });
     }
+
+  } catch (e) {
+    console.error('preload error', e);
+    await botui.message.add({
+      type: 'html',
+      content: (isFr
+        ? '❌ Erreur lors du chargement du contexte (jobs / services).'
+        : '❌ Fout bij laden van context (jobs/ServiceWO’s).')
+        + `<br><small>${esc(String(e.message)).slice(0,400)}</small>`
+    });
   }
+}
 
   let cleaningProgramText = ""; // wordt gevuld door showLocation()
 
@@ -519,19 +535,21 @@ const sourceUrl = safeSameOriginUrl(srcRaw);
     if(!d.description) return;
     const el = document.getElementById('ruimte-info');
 
-    el.innerHTML = `
-      <div style="font-size:.8rem;margin-bottom:.25rem;color:${isTestEnv ? '#b45309' : '#374151'}">
-        ${isTestEnv ? '🧪 TEST-omgeving' : ''}
-      </div>
-      ${d.description}
-      <div class="type">
-        ${
-          isEquipment
-            ? (isFr ? '🔧 Installation' : '🔧 Installatie')
-            : (isFr ? '🏢 Espace'       : '🏢 Ruimte')
-        }
-      </div>
-    `;
+	const portalTitle = `[${id}] ${d.description}`;
+
+	el.innerHTML = `
+	  <div style="font-size:.8rem;margin-bottom:.25rem;color:${isTestEnv ? '#b45309' : '#374151'}">
+		${isTestEnv ? '🧪 TEST-omgeving' : ''}
+	  </div>
+	  ${portalTitle}
+	  <div class="type">
+		${
+		  isEquipment
+			? (isFr ? '🔧 Installatie' : '🔧 Installatie')
+			: (isFr ? '🏢 Espace'      : '🏢 Ruimte')
+		}
+	  </div>
+	`;
     el.style.display='flex';
     cleaningProgramText = d.cleaningProgramFormatted || "";
   }
@@ -813,6 +831,12 @@ const sourceUrl = safeSameOriginUrl(srcRaw);
   ====================================================================== */
   
 	async function startChat() {
+	
+	  isComplaint = false;
+      selectedServiceWOId = null;
+      selectedOtherServiceWO = null;
+      pickedFiles = [];
+      omschrijving = '';
 	  Telemetry.send('step', { step: 'start', stepIndex: 0 });
 
 	  // Locatiekaart bovenaan vullen
@@ -936,18 +960,30 @@ const sourceUrl = safeSameOriginUrl(srcRaw);
     return await startProbleemFlow(true);
   }
 
-  async function startProbleemFlow(isCleaning) {
-    Telemetry.send('step', { step:'flow_start', stepIndex:1, isCleaning });
-    if (!parsedQR) {
-      await botui.message.add({
-        type: 'html',
-        content: '<span style="color:red;font-weight:bold">Geen geldige QR-code. Je kunt geen melding doen zonder geldige code.</span>'
-      });
-      Telemetry.send('invalid_qr');
-      return;
-    }
-    await askUrgency(isCleaning);
-  }
+	async function startProbleemFlow(isCleaning) {
+	  Telemetry.send('step', { step:'flow_start', stepIndex:1, isCleaning, isComplaint });
+
+	  if (!parsedQR) {
+		await botui.message.add({
+		  type: 'html',
+		  content: '<span style="color:red;font-weight:bold">Geen geldige QR-code. Je kunt geen melding doen zonder geldige code.</span>'
+		});
+		Telemetry.send('invalid_qr');
+		return;
+	  }
+
+	  if (isComplaint) {
+		if (isCleaning) {
+		  return await askCleaningServiceWO(false);
+		}
+		if (hasOtherActivities(cachedSvcWO)) {
+		  return await askOtherServiceWO(false);
+		}
+		return await askDescription(false, false);
+	  }
+
+	  return await askUrgency(isCleaning);
+	}
 
   function askUrgency(isCleaning){
     Telemetry.send('step', { step:'ask_urgent', stepIndex:2, isCleaning });
@@ -997,9 +1033,13 @@ const sourceUrl = safeSameOriginUrl(srcRaw);
 
     await botui.message.add({
       content: isFr
-        ? 'Pour quel service de nettoyage signalez-vous un problème ?'
-        : 'Voor welke schoonmaakservice wil je een melding maken?'
-    });
+		  ? (isComplaint
+			  ? 'Pour quel service de nettoyage introduisez-vous une plainte ?'
+			  : 'Pour quel service de nettoyage signalez-vous un problème ?')
+		  : (isComplaint
+			  ? 'Voor welke schoonmaakservice dien je een klacht in?'
+			  : 'Voor welke schoonmaakservice wil je een melding maken?')
+			});
 
     const actions = relevantSvcWOs.map(x => ({
       text: `📍 ${esc(x.Description)}`,
@@ -1027,8 +1067,12 @@ const sourceUrl = safeSameOriginUrl(srcRaw);
 
     await botui.message.add({
       content: isFr
-        ? 'Pour quel service signalez-vous un autre problème ?'
-        : 'Voor welke dienst wil je een ander probleem melden?'
+		  ? (isComplaint
+			  ? 'Pour quel service introduisez-vous une plainte ?'
+			  : 'Pour quel service signalez-vous un autre problème ?')
+		  : (isComplaint
+			  ? 'Voor welke dienst dien je een klacht in?'
+			  : 'Voor welke dienst wil je een ander probleem melden?')
     });
 
     const actions = relevantSvcWOs.map(x => ({
@@ -1054,50 +1098,67 @@ const sourceUrl = safeSameOriginUrl(srcRaw);
     return await askDescription(isUrgent, false);
   }
 
-  async function askDescription(isUrgent, isCleaning) {
-    await botui.message.add({
-      content: isFr
-        ? 'Quel est le problème exactement ?'
-        : 'Wat is het probleem precies?'
-    });
-    let res = await botui.action.text({
-      action: { placeholder: isFr ? 'Décrivez…' : 'Beschrijf…' }
-    });
-    omschrijving = (res?.value || '').trim();
-    if (!omschrijving) {
-      await botui.message.add({
-        content: isFr
-          ? '📝 Une petite description aide l’équipe.'
-          : '📝 Een korte beschrijving helpt het team.'
-      });
-      res = await botui.action.text({
-        action: {
-          placeholder: isFr
-            ? 'Ex.: fuite au lavabo du 2e'
-            : 'Bv.: lekkende kraan in lokaal 2.12'
-        }
-      });
-      omschrijving = (res?.value || '').trim();
-    }
+	async function askDescription(isUrgent, isCleaning) {
+	  await botui.message.add({
+		content: isFr
+		  ? (isComplaint ? 'Quelle est la plainte exactement ?' : 'Quel est le problème exactement ?')
+		  : (isComplaint ? 'Wat is de klacht precies?' : 'Wat is het probleem precies?')
+	  });
 
-    await botui.message.add({
-      content: isFr
-        ? 'Souhaitez-vous ajouter des photos ?'
-        : 'Wil je foto’s toevoegen?'
-    });
-    await askPhotosLoop();
+	  let res = await botui.action.text({
+		action: {
+		  placeholder: isFr
+			? (isComplaint ? 'Décrivez votre plainte…' : 'Décrivez…')
+			: (isComplaint ? 'Beschrijf je klacht…' : 'Beschrijf…')
+		}
+	  });
 
-    Telemetry.send('desc_entered', {
-      length: omschrijving.length,
-      withPhotos: Array.isArray(pickedFiles) && pickedFiles.length > 0,
-      isUrgent,
-      isCleaning
-    });
+	  omschrijving = (res?.value || '').trim();
 
-    return askEmail(isUrgent, isCleaning);
-  }
+	  if (!omschrijving) {
+		await botui.message.add({
+		  content: isFr
+			? '📝 Une petite description aide l’équipe.'
+			: '📝 Een korte beschrijving helpt het team.'
+		});
+
+		res = await botui.action.text({
+		  action: {
+			placeholder: isFr
+			  ? (isComplaint ? 'Ex.: nettoyage insuffisant au 2e étage'
+							 : 'Ex.: fuite au lavabo du 2e')
+			  : (isComplaint ? 'Bv.: schoonmaak niet goed uitgevoerd op verdieping 2'
+							 : 'Bv.: lekkende kraan in lokaal 2.12')
+		  }
+		});
+
+		omschrijving = (res?.value || '').trim();
+	  }
+
+	  await botui.message.add({
+		content: isFr
+		  ? 'Souhaitez-vous ajouter des photos ?'
+		  : 'Wil je foto’s toevoegen?'
+	  });
+
+	  await askPhotosLoop();
+
+	  Telemetry.send('desc_entered', {
+		length: omschrijving.length,
+		withPhotos: Array.isArray(pickedFiles) && pickedFiles.length > 0,
+		isUrgent,
+		isCleaning,
+		isComplaint
+	  });
+
+	  return askEmail(isUrgent, isCleaning);
+	}
 
   async function askEmail(isUrgent, isCleaning){
+  
+  
+
+
     const stepIndex = isCleaning ? 5 : 4;
     Telemetry.send('step', { step:'ask_email', stepIndex, isCleaning });
 
@@ -1138,37 +1199,43 @@ const sourceUrl = safeSameOriginUrl(srcRaw);
     }
 
     const reportBody = '';
+	const KwisId = isComplaint ? '002' : '005';
 
-    const payload = {
-      id,
-      type: typeStr,
-      JobDescr: meldingTekst,
-      ReportText: reportBody,
-      Email: email,
-      lang,
-      env: prefix,
-      Activity: activityCode,
-      ServiceWOId: serviceWorkOrderId
-    };
+	const payload = {
+	  id,
+	  type: typeStr,
+	  JobDescr: meldingTekst,
+	  ReportText: reportBody,
+	  Email: email,
+	  lang,
+	  env: prefix,
+	  Activity: activityCode,
+	  ServiceWOId: serviceWorkOrderId,
+	  KwisId
+	};
 
     let jobId = null;
 
     try {
       Telemetry.send('submit_attempt', {
-        urgent: isUrgent,
-        withPhotos: Array.isArray(pickedFiles) && pickedFiles.length > 0,
-        isCleaning,
-        serviceWorkOrderId
-      });
+		  urgent: isUrgent,
+		  withPhotos: Array.isArray(pickedFiles) && pickedFiles.length > 0,
+		  isCleaning,
+		  isComplaint,
+		  KwisId,
+		  serviceWorkOrderId
+		});
 
       const endpointMelding =
         '/.netlify/functions/melding' + (isTestEnv ? '?test=1' : '');
-
+		
+		
       const r = await fetch(endpointMelding, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
       });
+	  
 
       let raw = await r.text();
       let resp;
@@ -1225,12 +1292,12 @@ const sourceUrl = safeSameOriginUrl(srcRaw);
         }
       }
 
-      if (!jobId) {
-        await botui.message.add({
-          content: isFr
-            ? '❌ Er is een probleem opgetreden. Je melding is mogelijk niet succesvol ingediend. Probeer het later opnieuw.'
-            : '❌ Un problème est survenu. Votre signalement n\'a peut-être pas été soumis avec succès. Veuillez réessayer plus tard.'
-        });
+		if (!jobId) {
+		  await botui.message.add({
+			content: isFr
+			  ? '❌ Un problème est survenu. Votre signalement n\'a peut-être pas été soumis avec succès. Veuillez réessayer plus tard.'
+			  : '❌ Er is een probleem opgetreden. Je melding is mogelijk niet succesvol ingediend. Probeer het later opnieuw.'
+		  });
         Telemetry.send('jobid_missing_fallback_fail');
         return;
       }

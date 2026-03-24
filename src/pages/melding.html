@@ -51,6 +51,13 @@
       font-weight: 600;
     }
 
+    .ruimte-label .idline {
+      font-size: 0.95rem;
+      font-weight: 700;
+      color: #f07c10;
+      margin-bottom: 0.35rem;
+    }
+
     .ruimte-label .type {
       font-size: 0.95rem;
       font-weight: normal;
@@ -159,12 +166,12 @@
     const id = params.get('id');
     const type = params.get('type');
     const lang = params.get('lang') || 'nl';
+    const env = params.get('env') || 'prod';
     const isFr = lang === 'fr';
 
-    // Teksten dynamisch aanpassen
     document.getElementById('formTitle').textContent = isFr ? "Nouveau signalement" : "Nieuwe melding";
-    document.getElementById('emailLabel').textContent = isFr ? "Votre adresse e-mail :" : "Jouw e-mailadres:";
-    document.getElementById('descLabel').textContent = isFr ? "Description du problème :" : "Probleembeschrijving:";
+    document.getElementById('emailLabel').textContent = isFr ? "Votre adresse e-mail :" : "Jouw e-mailadres:";
+    document.getElementById('descLabel').textContent = isFr ? "Description du problème :" : "Probleembeschrijving:";
     document.getElementById('sendBtn').textContent = isFr ? "📨 Envoyer" : "📨 Versturen";
     document.getElementById('btn-terug').textContent = isFr ? "🔙 Retour" : "🔙 Terug";
 
@@ -173,20 +180,29 @@
     const form = document.getElementById('meldingForm');
     const feedback = document.getElementById('feedback');
 
-    terugBtn.href = `/storing.html?id=${id}&type=${type}&lang=${lang}`;
+    terugBtn.href = `/storing.html?id=${encodeURIComponent(id || '')}&type=${encodeURIComponent(type || '')}&lang=${encodeURIComponent(lang)}&env=${encodeURIComponent(env)}`;
 
     if (id && type) {
       const endpoint = type === "eq" ? "/.netlify/functions/equipment" : "/.netlify/functions/space";
-      fetch(`${endpoint}?id=${encodeURIComponent(id)}`)
+
+      fetch(`${endpoint}?id=${encodeURIComponent(id)}&lang=${encodeURIComponent(lang)}&env=${encodeURIComponent(env)}`)
         .then(res => res.json())
         .then(data => {
           if (data.description) {
             ruimte.innerHTML = `
+              <div class="idline">[#${id}]</div>
               ${data.description}
-              <div class="type">${type === "eq" ? (isFr ? "🔧 Installation" : "🔧 Installatie") : (isFr ? "🏢 Espace" : "🏢 Ruimte")}</div>
+              <div class="type">
+                ${type === "eq"
+                  ? (isFr ? "🔧 Installation" : "🔧 Installatie")
+                  : (isFr ? "🏢 Espace" : "🏢 Ruimte")}
+              </div>
             `;
             ruimte.style.display = "block";
           }
+        })
+        .catch(err => {
+          console.error('Fout bij laden locatie:', err);
         });
     }
 
@@ -202,9 +218,13 @@
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            id, type, lang,
+            id,
+            type,
+            lang,
+            env,
             JobDescr: omschrijving,
-            ReportText: email
+            ReportText: '',
+            Email: email
           })
         });
 
@@ -221,13 +241,13 @@
           form.reset();
 
           setTimeout(() => {
-            window.location.href = `/storing.html?id=${id}&type=${type}&lang=${lang}`;
+            window.location.href = `/storing.html?id=${encodeURIComponent(id || '')}&type=${encodeURIComponent(type || '')}&lang=${encodeURIComponent(lang)}&env=${encodeURIComponent(env)}`;
           }, 500);
         } else {
           feedback.innerHTML = `<div class="message error">❌ ${result.error || (isFr ? "Une erreur s’est produite." : "Er is iets misgelopen.")}</div>`;
         }
       } catch (err) {
-        feedback.innerHTML = `<div class="message error">❌ ${isFr ? "Erreur réseau :" : "Netwerkfout:"} ${err.message}</div>`;
+        feedback.innerHTML = `<div class="message error">❌ ${isFr ? "Erreur réseau :" : "Netwerkfout:"} ${err.message}</div>`;
       }
     });
   </script>

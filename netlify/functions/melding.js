@@ -156,12 +156,13 @@ export async function handler(event) {
   }
 
   // ===== Inputs (CREATE only) =====
-  const id       = s(data.id);
-  const type     = s(data.type);             // 'sp' of 'eq'
-  const JobDescr = s(data.JobDescr);
-  const Email    = s(data.Email);
-  const ServiceWOId  = s(data.ServiceWOId);
-  const ReportTextIn = typeof data.ReportText === 'string' ? data.ReportText : '';
+	const id          = s(data.id);
+	const type        = s(data.type);             // 'sp' of 'eq'
+	const JobDescr    = s(data.JobDescr);
+	const Email       = s(data.Email);
+	const ServiceWOId = s(data.ServiceWOId);
+	const KwisId      = s(data.KwisId);
+	const ReportTextIn = typeof data.ReportText === 'string' ? data.ReportText : '';
 
   if (!id || !type || !JobDescr) {
     return json(400, { error: 'Vereist: id, type, JobDescr.' });
@@ -183,16 +184,17 @@ export async function handler(event) {
 
   const actionUrl = `${base}/action/${ACTION_CREATE}`;
 
-  const wfPayload = {
-    JobDescr,
-    Provider,
-    ReportText,
-    ExternalId,
-  };
+	const wfPayload = {
+	  JobDescr,
+	  Provider,
+	  ReportText,
+	  ExternalId,
+	};
 
-  // Optional fields
-  if (Email) wfPayload.Email = Email;
-  if (ServiceWOId) wfPayload.ServiceWOId = ServiceWOId;
+	// Optional fields
+	if (Email) wfPayload.Email = Email;
+	if (ServiceWOId) wfPayload.ServiceWOId = ServiceWOId;
+	if (KwisId) wfPayload.KwisId = KwisId;
 
   if (type === 'sp') wfPayload.SpaceId = `QR:${id}`;
   if (type === 'eq') wfPayload.EquipmentId = id;
