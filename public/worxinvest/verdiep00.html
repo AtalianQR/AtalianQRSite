@@ -230,23 +230,23 @@
 			}
 
 			const labels = {
-				nl: {
-					goToPortal: 'Ga naar meldingsportaal'
-				},
-				fr: {
-					goToPortal: 'Aller vers le portail de signalement'
-				},
-				en: {
-					goToPortal: 'Go to reporting portal'
-				}
+				nl: { goToPortal: 'Ga naar meldingsportaal' },
+				fr: { goToPortal: 'Aller vers le portail de signalement' },
+				en: { goToPortal: 'Go to reporting portal' }
 			};
 
 			const t = labels[lang];
 
 			const portalCode = buildCodeForPortal('space', ultimo);
 
+			let basePortalUrl = 'https://atalianqrportal.netlify.app';
+
+			if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+				basePortalUrl = 'http://localhost:8888';
+			}
+
 			const appUrl =
-				'https://atalianqrportal.netlify.app/portal/?code=' + encodeURIComponent(portalCode) +
+				basePortalUrl + '/portal/?code=' + encodeURIComponent(portalCode) +
 				'&lang=' + encodeURIComponent(lang) +
 				'&env=' + encodeURIComponent(env);
 
@@ -268,7 +268,6 @@
 			});
 			layer.bindPopup(content, { maxHeight: 400 });
 		}
-
         function style_SPACETenants_0_0(feature) {
             switch(String(feature.properties['_Huurder'])) {
                 case 'DHL':
