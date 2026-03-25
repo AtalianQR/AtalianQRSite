@@ -191,7 +191,7 @@
     <section class="page-card">
       <h1 id="title-text">Waarvoor wil je een ticket aanmaken?</h1>
       <p id="intro-text">
-        Kies eerst of je een probleem wil melden voor een installatie of voor een ruimte (Greenhouse Collection. 🌿)
+        Kies eerst of je een probleem wil melden voor een installatie of voor een ruimte in de Greenhouse Collection. 🌿
       </p>
 
       <div class="choice-row">
@@ -268,7 +268,7 @@
 
 		<div class="actions">
 		  <a id="btn-floor-map" class="btn btn-secondary" href="#" style="display:none; text-decoration:none;">
-			🗺️ Via plattegrond
+			🗺️
 		  </a>
 		  <button type="button" class="btn btn-secondary" id="btn-cancel">⬅️ Terug</button>
 		  <button type="button" class="btn btn-primary" id="btn-go">➡️ Ga naar meldingsportaal</button>
@@ -297,52 +297,94 @@
     const isTestEnv = qs.has('test') || qs.get('env') === 'test' || /test|staging/i.test(host);
     const envPrefix = isTestEnv ? 'test' : 'prod';
 
-    function applyLanguage() {
-      const isFr = (lang === 'fr');
+	function applyLanguage() {
+	  const isFr = (lang === 'fr');
+
 	  const lblSpace = document.getElementById('label-filter-space');
-		const inpSpace = document.getElementById('filter-space');
-		if (lblSpace) lblSpace.textContent = isFr ? 'Filtrer les espaces (code, nom…)'
-												 : 'Filter ruimtes (code, naam…)';
-		if (inpSpace) inpSpace.placeholder = isFr ? 'Tapez pour filtrer…'
-												 : 'Typ om te filteren…';
+	  const inpSpace = document.getElementById('filter-space');
+	  const btnFloorMap = document.getElementById('btn-floor-map');
 
-      document.documentElement.lang = isFr ? 'fr' : 'nl';
+	  if (lblSpace) {
+		lblSpace.textContent = isFr
+		  ? 'Filtrer les espaces (code, nom…)'
+		  : 'Filter ruimtes (code, naam…)';
+	  }
 
-      document.getElementById('title-text').textContent =
-        isFr ? 'Pour quoi voulez-vous créer un ticket ?' : 'Waarvoor wil je een ticket aanmaken?';
+	  if (inpSpace) {
+		inpSpace.placeholder = isFr
+		  ? 'Tapez pour filtrer…'
+		  : 'Typ om te filteren…';
+	  }
 
-      document.getElementById('intro-text').textContent =
-        isFr
-          ? "Choisissez d’abord si vous signalez un problème pour une installation ou pour un espace dans la Greenhouse Collection. 🌿"
-          : "Kies eerst of je een probleem wil melden voor een installatie of voor een ruimte in de Greenhouse Collection. 🌿";
+	  if (btnFloorMap) {
+		btnFloorMap.textContent = isFr
+		  ? '🗺️ Via plan'
+		  : '🗺️ Via plan';
+	  }
 
-      document.getElementById('lbl-installation').textContent = isFr ? 'Installation' : 'Installatie';
-      document.getElementById('lbl-room').textContent         = isFr ? 'Espace / Local' : 'Ruimte';
+	  document.documentElement.lang = isFr ? 'fr' : 'nl';
 
-      document.getElementById('btn-cancel').textContent = isFr ? '⬅️ Retour' : '⬅️ Terug';
-      document.getElementById('btn-go').textContent     = isFr ? '➡️ Aller au portail de ticket' : '➡️ Ga naar meldingsportaal';
+	  document.getElementById('title-text').textContent =
+		isFr ? 'Pour quoi voulez-vous créer un ticket ?' : 'Waarvoor wil je een ticket aanmaken?';
 
-      document.getElementById('label-building').textContent = isFr ? 'Choisissez un bâtiment' : 'Kies gebouw';
-      document.getElementById('label-part').textContent     = isFr ? 'Choisissez une partie du bâtiment' : 'Kies gebouwdeel';
-      document.getElementById('label-floor').textContent    = isFr ? 'Choisissez un étage' : 'Kies verdieping';
+	  document.getElementById('intro-text').textContent =
+		isFr
+		  ? "Choisissez d’abord si vous signalez un problème pour une installation ou pour un espace dans la Greenhouse Collection. 🌿"
+		  : "Kies eerst of je een probleem wil melden voor een installatie of voor een ruimte in de Greenhouse Collection. 🌿";
 
-      document.getElementById('label-equipmenttype').textContent =
-        isFr ? "Choisissez le type d'installation" : "Kies installatiesoort";
+	  document.getElementById('lbl-installation').textContent =
+		isFr ? 'Installation' : 'Installatie';
 
-      document.getElementById('label-select').textContent =
-        isFr ? 'Sélectionnez une installation ou un espace' : 'Kies installatie of ruimte';
+	  document.getElementById('lbl-room').textContent =
+		isFr ? 'Espace / Local' : 'Ruimte';
 
-      const lblFilter = document.getElementById('label-filter-installation');
-      const inpFilter = document.getElementById('filter-installation');
-      if (lblFilter) {
-        lblFilter.textContent = isFr
-          ? 'Filtrer les installations (nom, local, locataire…)'
-          : 'Filter installaties (benaming, lokaal, tenant…)';
-      }
-      if (inpFilter) {
-        inpFilter.placeholder = isFr ? 'Tapez pour filtrer…' : 'Typ om te filteren…';
-      }
-    }
+	  document.getElementById('btn-cancel').textContent =
+		isFr ? '⬅️ Retour' : '⬅️ Terug';
+
+	  document.getElementById('btn-go').textContent =
+		isFr ? '➡️ Aller au portail de ticket' : '➡️ Ga naar meldingsportaal';
+
+	  document.getElementById('label-building').textContent =
+		isFr ? 'Choisissez un bâtiment' : 'Kies gebouw';
+
+	  document.getElementById('label-part').textContent =
+		isFr ? 'Choisissez une partie du bâtiment' : 'Kies gebouwdeel';
+
+	  document.getElementById('label-floor').textContent =
+		isFr ? 'Choisissez un étage' : 'Kies verdieping';
+
+	  document.getElementById('label-equipmenttype').textContent =
+		isFr ? "Choisissez le type d'installation" : 'Kies installatiesoort';
+
+	  const labelSelect = document.getElementById('label-select');
+
+		if (labelSelect) {
+		  if (currentType === 'space') {
+			labelSelect.textContent = isFr ? 'Sélectionnez un espace' : 'Kies ruimte';
+		  } else if (currentType === 'equipment') {
+			labelSelect.textContent = isFr ? 'Sélectionnez une installation' : 'Kies installatie';
+		  } else {
+			labelSelect.textContent = isFr
+			  ? 'Sélectionnez une installation ou un espace'
+			  : 'Kies installatie of ruimte';
+		  }
+		}
+
+	  const lblFilter = document.getElementById('label-filter-installation');
+	  const inpFilter = document.getElementById('filter-installation');
+
+	  if (lblFilter) {
+		lblFilter.textContent = isFr
+		  ? 'Filtrer les installations (nom, local, locataire…)'
+		  : 'Filter installaties (benaming, lokaal, tenant…)';
+	  }
+
+	  if (inpFilter) {
+		inpFilter.placeholder = isFr
+		  ? 'Tapez pour filtrer…'
+		  : 'Typ om te filteren…';
+	  }
+	}
 
     function initEnvBanner() {
       if (isTestEnv) {
@@ -548,7 +590,7 @@
 		return keyA.localeCompare(keyB, 'nl', { numeric: true, sensitivity: 'base' });
 	  });
 
-	  // ✅ Tenant blijft NIET zichtbaar in de dropdown
+	  // ✅ Landlord blijft NIET zichtbaar in de dropdown
 	  filtered.forEach(sp => {
 		const id         = String(sp.Id || '');
 		const roomNumber = String(sp.RoomNumber || '').trim();
@@ -746,43 +788,47 @@
     /* ============================================================
        SPACES: LIST_FLOORS + LIST_FLOOR_SPACES (ongewijzigd)
     ============================================================ */
-    async function fetchFloorsForComplex() {
-      const isFr = (lang === 'fr');
-      setStatus(isFr ? 'Chargement des étages…' : 'Verdiepingen worden geladen…', false);
+	 async function fetchFloorsForComplex() {
+	  const isFr = (lang === 'fr');
+	  setStatus(isFr ? 'Chargement des étages…' : 'Verdiepingen worden geladen…', false);
 
-      const complexSelector = `S${COMPLEX_ID}`;
-      const url = `${LIST_ENDPOINT}?action=LIST_FLOORS&complex=${encodeURIComponent(complexSelector)}&env=${encodeURIComponent(envPrefix)}`;
+	  const complexSelector = `S${COMPLEX_ID}`;
+	  const url = `${LIST_ENDPOINT}?action=LIST_FLOORS&complex=${encodeURIComponent(complexSelector)}&env=${encodeURIComponent(envPrefix)}`;
 
-      const resp = await fetch(url, { cache: 'no-store' });
-      const txt  = await resp.text();
+	  const resp = await fetch(url, { cache: 'no-store' });
+	  const txt  = await resp.text();
 
-      let data;
-      try { data = JSON.parse(txt); }
-      catch (e) {
-        console.error('JSON parse error', e, txt);
-        throw new Error('Geen geldige JSON van de backend.');
-      }
+	  let data;
+	  try {
+		data = JSON.parse(txt);
+	  } catch (e) {
+		console.error('JSON parse error', e, txt);
+		throw new Error(isFr ? 'Réponse JSON invalide du backend.' : 'Geen geldige JSON van de backend.');
+	  }
 
-      const items = Array.isArray(data.Items) ? data.Items : [];
-      if (!items.length) {
-        setStatus(isFr ? "Aucun étage trouvé." : "Geen verdiepingen gevonden.", true);
-        selectFloor.innerHTML  = '<option value="">-- niets beschikbaar --</option>';
-        selectTarget.innerHTML = '<option value="">-- niets beschikbaar --</option>';
-        return;
-      }
+	  const items = Array.isArray(data.Items) ? data.Items : [];
+	  if (!items.length) {
+		setStatus(isFr ? 'Aucun étage trouvé.' : 'Geen verdiepingen gevonden.', true);
+		selectFloor.innerHTML =
+		  `<option value="">${isFr ? '-- rien de disponible --' : '-- niets beschikbaar --'}</option>`;
+		selectTarget.innerHTML =
+		  `<option value="">${isFr ? '-- rien de disponible --' : '-- niets beschikbaar --'}</option>`;
+		return;
+	  }
 
-      allFloors = items;
+	  allFloors = items;
 
-      buildBuildingAndPartDropdowns();
-      rebuildPartDropdown();
-      buildFloorDropdown();
+	  buildBuildingAndPartDropdowns();
+	  rebuildPartDropdown();
+	  buildFloorDropdown();
 
-      selectTarget.innerHTML =
-        `<option value="">${isFr ? "-- choisissez d'abord un étage --" : "-- kies eerst een verdieping --"}</option>`;
-      setStatus('', false);
-    }
+	  selectTarget.innerHTML =
+		`<option value="">${isFr ? "-- choisissez d'abord un étage --" : "-- kies eerst een verdieping --"}</option>`;
 
-	 async function fetchSpacesForFloor(buildingFloorId) {
+	  setStatus('', false);
+	}
+
+	async function fetchSpacesForFloor(buildingFloorId) {
 	  const isFr = (lang === 'fr');
 
 	  if (!buildingFloorId) {
@@ -812,8 +858,9 @@
 		data = JSON.parse(txt);
 	  } catch (e) {
 		console.error('Fetch/JSON error', e, txt);
-		setStatus(isFr ? "Erreur lors du chargement des locaux." : "Fout bij het laden van de ruimtes.", true);
-		selectTarget.innerHTML = `<option value="">${isFr ? '-- aucune donnée --' : '-- geen gegevens --'}</option>`;
+		setStatus(isFr ? 'Erreur lors du chargement des locaux.' : 'Fout bij het laden van de ruimtes.', true);
+		selectTarget.innerHTML =
+		  `<option value="">${isFr ? '-- aucune donnée --' : '-- geen gegevens --'}</option>`;
 		return;
 	  }
 
@@ -823,20 +870,16 @@
 		allSpaces = [];
 		selectTarget.innerHTML =
 		  `<option value="">${isFr ? '-- choisissez un local --' : '-- kies een ruimte --'}</option>`;
-		setStatus(isFr ? "Aucun local trouvé." : "Geen ruimtes gevonden.", true);
+		setStatus(isFr ? 'Aucun local trouvé.' : 'Geen ruimtes gevonden.', true);
 		return;
 	  }
 
-	  // ✅ 1) bewaar ruimtes voor filter/render
 	  allSpaces = items;
 
-	  // ✅ 2) filterveld resetten (optioneel maar handig)
 	  if (filterSpace) filterSpace.value = '';
 
-	  // ✅ 3) render dropdown via jouw renderer (tenant wordt daar NIET getoond)
 	  renderSpaceOptions();
 	  updateSpaceFilterAvailability();
-
 	}
 
 
@@ -1033,8 +1076,8 @@
 		fetchFloorsForComplex().catch(err => {
 		  console.error(err);
 		  setStatus(isFr ? "Erreur lors du chargement des étages." : "Fout bij het laden van de verdiepingen.", true);
-		  selectFloor.innerHTML  = '<option value="">-- geen gegevens --</option>';
-		  selectTarget.innerHTML = '<option value="">-- geen gegevens --</option>';
+		  selectFloor.innerHTML =  `<option value="">${isFr ? '-- aucune donnée --' : '-- geen gegevens --'}</option>`;
+		  selectTarget.innerHTML = `<option value="">${isFr ? '-- aucune donnée --' : '-- geen gegevens --'}</option>`;
 		});
 
 	  } else {
@@ -1147,22 +1190,31 @@
     btnRoom.addEventListener('click',         () => setActiveType('space'));
     btnGo.addEventListener('click',           goToPortal);
 
-    btnCancel.addEventListener('click', () => {
-      currentType = null;
+	btnCancel.addEventListener('click', () => {
+	  const isFr = (lang === 'fr');
+
+	  currentType = null;
 	  btnFloorMap.style.display = 'none';
 	  btnFloorMap.removeAttribute('href');
-      btnInstallation.classList.remove('active');
-      btnRoom.classList.remove('active');
-      blockSelect.style.display = 'none';
 
-      // reset visible inputs
-      selectFloor.innerHTML         = '<option value="">-- eerst een verdieping kiezen --</option>';
-      selectEquipmentType.innerHTML = '<option value="">-- eerst een installatiesoort kiezen --</option>';
-      selectTarget.innerHTML        = '<option value="">-- eerst een keuze maken hierboven --</option>';
-      filterInstall.value           = '';
+	  btnInstallation.classList.remove('active');
+	  btnRoom.classList.remove('active');
+	  blockSelect.style.display = 'none';
 
-      setStatus('', false);
-    });
+	  selectFloor.innerHTML =
+		`<option value="">${isFr ? '-- choisissez d’abord un étage --' : '-- kies eerst een verdieping --'}</option>`;
+
+	  selectEquipmentType.innerHTML =
+		`<option value="">${isFr ? "-- choisissez d’abord un type d'installation --" : '-- kies eerst een installatiesoort --'}</option>`;
+
+	  selectTarget.innerHTML =
+		`<option value="">${isFr ? '-- faites d’abord un choix ci-dessus --' : '-- eerst een keuze maken hierboven --'}</option>`;
+
+	  filterInstall.value = '';
+	  if (filterSpace) filterSpace.value = '';
+
+	  setStatus('', false);
+	});
 
     // space: floor change => spaces ophalen
 	selectFloor.addEventListener('change', () => {

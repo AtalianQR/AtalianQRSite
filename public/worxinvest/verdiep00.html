@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en">
+<html>
     <head>
         <meta charset="utf-8">
         <meta http-equiv="X-UA-Compatible" content="IE=edge">
@@ -216,14 +216,39 @@
 
 			const qs = new URLSearchParams(window.location.search);
 			const env = qs.get('env') || 'prod';
-			const lang = qs.get('lang') || 'nl';
+
+			let lang =
+				qs.get('lang') ||
+				document.documentElement.lang ||
+				(navigator.language ? navigator.language.slice(0, 2) : '') ||
+				'nl';
+
+			lang = lang.toLowerCase();
+
+			if (lang !== 'nl' && lang !== 'fr' && lang !== 'en') {
+				lang = 'nl';
+			}
+
+			const labels = {
+				nl: {
+					goToPortal: 'Ga naar meldingsportaal'
+				},
+				fr: {
+					goToPortal: 'Aller vers le portail de signalement'
+				},
+				en: {
+					goToPortal: 'Go to reporting portal'
+				}
+			};
+
+			const t = labels[lang];
 
 			const portalCode = buildCodeForPortal('space', ultimo);
 
 			const appUrl =
-			  'https://atalianqrportal.netlify.app/portal/?code=' + encodeURIComponent(portalCode) +
-			  '&lang=' + encodeURIComponent(lang) +
-			  '&env=' + encodeURIComponent(env);
+				'https://atalianqrportal.netlify.app/portal/?code=' + encodeURIComponent(portalCode) +
+				'&lang=' + encodeURIComponent(lang) +
+				'&env=' + encodeURIComponent(env);
 
 			var popupContent = '<table>\
 					<tr><td colspan="2"><strong>' + ultimo + '</strong></td></tr>\
@@ -232,7 +257,7 @@
 					<tr><td colspan="2">\
 					  <a href="' + appUrl + '" target="_blank" rel="noopener noreferrer" \
 						 style="display:inline-block;padding:8px 12px;background:#EE7E00;color:#fff;text-decoration:none;border-radius:8px;font-weight:600;">\
-						 Ga naar meldingsportaal\
+						 ' + t.goToPortal + '\
 					  </a>\
 					</td></tr>\
 				</table>';
