@@ -149,22 +149,14 @@ async function fetchJobVendorId(cfg, jobId) {
 
 function isTestRequested(event) {
   const qs = event.queryStringParameters || {};
-  const hdr = event.headers || {};
-  const h = (k) => String(hdr[k] || hdr[k?.toLowerCase()] || "").toLowerCase();
-  const ref = h("referer");   // volledige pagina-URL
-  const org = h("origin");    // bv. http://localhost:8888
-  const xenv = h("x-atalian-env"); // expliciete override vanuit frontend
+  const env = String(qs.env || "").toLowerCase();
+  const test = String(qs.test || "").toLowerCase();
 
-  // 1) Expliciet in query
-  if (qs.test === "1" || qs.test === "true" || (qs.env || "").toLowerCase() === "test") return true;
-  // 2) Expliciet via header
-  if (xenv === "test") return true;
-  // 3) Overgenomen uit Referer (UI url)
-  if (/\b(test=1|env=test)\b/i.test(ref)) return true;
-  // 4) Lokale dev: origin localhost ⇒ default naar TEST tenzij expliciet tegengehouden
-  if (/localhost:8888/.test(org)) return true;
-
-  return false;
+  return (
+    env === "test" ||
+    test === "1" ||
+    test === "true"
+  );
 }
 
 function buildEnvConfig(event) {
@@ -304,6 +296,65 @@ async function handlePostAction(event, body, cfg) {
   const jobId = String(qs.jobId || body.jobId || "").trim();
   const email = String(body.email || qs.email || "").trim();
   const channel = String(body.channel || body.Channel || "PortalSelf").trim();
+  
+  if (!action) return respond(400, { error: "action ontbreekt" });
+  if (!jobId) return respond(400, { error: "jobId ontbreekt" });
+  if (!email) return respond(400, { error: "email ontbreekt" });
+
+if (action === "ACCEPTED") {
+  const signatureBase64 = String(
+    body.SignatureBase64 ||
+    body.signatureBase64 ||
+    ""
+  ).trim();
+  
+  const acceptanceRemarkText = String(
+	  body.AcceptanceRemarkText ||
+	  body.acceptanceRemarkText ||
+	  ""
+	).trim();
+
+  if (!signatureBase64) {
+    return respond(400, { error: "SignatureBase64 ontbreekt." });
+  }
+
+	const ultPayload = {
+	  Action: "ACCEPTED",
+	  JobId: String(jobId),
+	  Email: email,
+	  SignatureBase64: signatureBase64 || "TEST_SIGNATURE",
+	  AcceptanceRemarkText: acceptanceRemarkText
+	};
+
+	console.log("[jobsvendor][ACCEPTED payload]", JSON.stringify({
+	  Action: ultPayload.Action,
+	  JobId: ultPayload.JobId,
+	  Email: ultPayload.Email,
+	  SignatureBase64: `len=${signatureBase64.length}`,
+	  AcceptanceRemarkText: acceptanceRemarkText
+	}));
+
+  try {
+    const r = await callUltimo(cfg, ultPayload);
+    const out = getOutputObject(r.json);
+
+    return respond(200, {
+      ok: true,
+      action: "ACCEPTED",
+      jobId,
+      result: out
+    });
+  } catch (err) {
+    console.error("[jobsvendor][ACCEPTED error]", err);
+
+    return respond(500, {
+      ok: false,
+      action: "ACCEPTED",
+      jobId,
+      error: err?.message || String(err)
+    });
+  }
+}
 
 	const gps = {
 	  ok: body.gpsOk === true || body.gpsOk === "true",
@@ -312,9 +363,8 @@ async function handlePostAction(event, body, cfg) {
 	  acc: (typeof body.gpsAcc === "number") ? body.gpsAcc : null
 	};
 
-  if (!action) return respond(400, { error: "action ontbreekt" });
-  if (!jobId) return respond(400, { error: "jobId ontbreekt" });
-  if (!email) return respond(400, { error: "email ontbreekt" });
+
+
 
   const isAtalian = getDomain(email) === "atalianworld.com";
   const isDocAction = action === "ADD_JOB_DOC";
@@ -572,10 +622,10 @@ async function handlePostAction(event, body, cfg) {
 	  return respond(200, { ok: true, jobId, action: "JOB_PROGRESSSTATUS_NOI", result: out });
 	}
 
- 
+
 
   // ✅ Nieuw: ACTIVATE_VENDORJOB ook ondersteunen + StatusText meesturen
-	if (action === "ADD_INFO" || action === "CLOSE" || action === "ACTIVATE_VENDORJOB") {
+	  if (action === "ADD_INFO" || action === "CLOSE" || action === "ACTIVATE_VENDORJOB") {
 	  const text = String(body.text || "");
 
 	  // ✅ text enkel verplicht voor ADD_INFO en CLOSE (niet voor ACTIVATE_VENDORJOB)

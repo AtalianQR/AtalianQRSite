@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+  <meta charset="UTF-8" />
+  <title>Ultimo API performance test</title>
+  <style>
+    body {
+      font-family: Segoe UI, Arial, sans-serif;
+      padding: 2rem;
+      background: #f4f6fa;
+      color: #111827;
+    }
+
+    .card {
+      max-width: 980px;
+      margin: 0 auto;
+      background: white;
+      border-radius: 14px;
+      padding: 1.5rem;
+      box-shadow: 0 8px 24px rgba(0,0,0,.12);
+    }
+
+    button {
+      background: #EE7E00;
+      color: white;
+      border: none;
+      padding: .7rem 1.4rem;
+      border-radius: 999px;
+      font-weight: 700;
+      cursor: pointer;
+      margin-bottom: 1rem;
+    }
+
+    button:disabled {
+      opacity: .6;
+      cursor: wait;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 1rem;
+      background: white;
+    }
+
+    th, td {
+      padding: .65rem;
+      border-bottom: 1px solid #e5e7eb;
+      text-align: left;
+    }
+
+    th {
+      background: #f9fafb;
+    }
+
+    pre {
+      background: #111827;
+      color: #f9fafb;
+      padding: 1rem;
+      border-radius: 10px;
+      overflow-x: auto;
+      margin-top: 1rem;
+      font-size: .85rem;
+    }
+
+    .status {
+      margin-top: .75rem;
+      color: #4b5563;
+    }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h1>Ultimo API performance test</h1>
+    <p>
+      Vergelijking tussen <strong>LIST_BUILDINGS_BY_COUNTRY</strong> en
+      <strong>LIST_SPACES_BY_COUNTRY</strong>.
+    </p>
+
+    <button id="btn-run">Start meting</button>
+
+    <div id="status" class="status"></div>
+
+    <table id="summary-table" style="display:none;">
+      <thead>
+        <tr>
+          <th>Call</th>
+          <th>Gemiddeld</th>
+          <th>Min</th>
+          <th>Max</th>
+          <th>Items</th>
+          <th>Bytes</th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+
+    <pre id="log"></pre>
+  </div>
+
+  <script>
+    const btnRun = document.getElementById('btn-run');
+    const statusEl = document.getElementById('status');
+    const logEl = document.getElementById('log');
+    const table = document.getElementById('summary-table');
+    const tbody = table.querySelector('tbody');
+
+    function log(message) {
+      console.log(message);
+      logEl.textContent += message + '\n';
+    }
+
+    async function measureUrl(label, url, runs = 5) {
+      const results = [];
+
+      for (let i = 1; i <= runs; i++) {
+        const start = performance.now();
+
+        const resp = await fetch(url, { cache: 'no-store' });
+        const text = await resp.text();
+
+        const end = performance.now();
+        const ms = Math.round(end - start);
+
+        let itemCount = null;
+
+        try {
+          const json = JSON.parse(text);
+          itemCount = Array.isArray(json.Items) ? json.Items.length : null;
+        } catch (e) {
+          log(`${label} run ${i}: JSON parse error`);
+        }
+
+        results.push({
+          run: i,
+          ms,
+          status: resp.status,
+          itemCount,
+          bytes: text.length
+        });
+
+        log(`${label} run ${i}: ${ms} ms | status ${resp.status} | items ${itemCount} | bytes ${text.length}`);
+      }
+
+      const avg = Math.round(results.reduce((s, r) => s + r.ms, 0) / results.length);
+      const min = Math.min(...results.map(r => r.ms));
+      const max = Math.max(...results.map(r => r.ms));
+
+      return { label, avg, min, max, results };
+    }
+
+    function addSummaryRow(result) {
+      const last = result.results[result.results.length - 1];
+
+      tbody.insertAdjacentHTML('beforeend', `
+        <tr>
+          <td>${result.label}</td>
+          <td>${result.avg} ms</td>
+          <td>${result.min} ms</td>
+          <td>${result.max} ms</td>
+          <td>${last.itemCount ?? ''}</td>
+          <td>${last.bytes}</td>
+        </tr>
+      `);
+    }
+
+    btnRun.addEventListener('click', async () => {
+      btnRun.disabled = true;
+      logEl.textContent = '';
+      tbody.innerHTML = '';
+      table.style.display = 'none';
+      statusEl.textContent = 'Meting loopt...';
+
+      const buildingsUrl = 'http://localhost:8888/.netlify/functions/complexinfo?action=LIST_BUILDINGS_BY_COUNTRY&CountryId=BE&DepartmentId=000793&env=prod';
+      const spacesUrl = 'http://localhost:8888/.netlify/functions/complexinfo?action=LIST_SPACES_BY_COUNTRY&CountryId=BE&DepartmentId=000793&env=prod';
+
+      try {
+        log('--- LIST_BUILDINGS_BY_COUNTRY ---');
+        const buildings = await measureUrl('Buildings', buildingsUrl, 5);
+
+        log('');
+        log('--- LIST_SPACES_BY_COUNTRY ---');
+        const spaces = await measureUrl('Spaces', spacesUrl, 5);
+
+        addSummaryRow(buildings);
+        addSummaryRow(spaces);
+        table.style.display = 'table';
+
+        const diff = spaces.avg - buildings.avg;
+        const pct = buildings.avg > 0 ? Math.round((diff / buildings.avg) * 100) : null;
+
+        log('');
+        log(`Verschil: Spaces is gemiddeld ${diff} ms ${diff >= 0 ? 'trager' : 'sneller'} dan Buildings.`);
+        if (pct !== null) log(`Relatief verschil: ${pct}%`);
+
+        statusEl.textContent = 'Meting klaar.';
+      } catch (err) {
+        console.error(err);
+        statusEl.textContent = 'Fout tijdens meting: ' + err.message;
+        log('ERROR: ' + err.message);
+      } finally {
+        btnRun.disabled = false;
+      }
+    });
+  </script>
+</body>
+</html>

@@ -605,13 +605,24 @@ async function requireGpsIfPortalSelf({ botui, Telemetry, isFr, cameFromPortalSe
     return r.json();
   }
 
-  function isJobOpen(job){ 
-    const statusId = job?.Status?.Id || job?.StatusId || job?.Status;
-    const s = String(statusId ?? '').trim(); 
-    const closedStatuses = ['1016', '1017', '1018', '1020', '1024', '1027', '1010'];
-    if(!s) return true; 
-    return !closedStatuses.includes(s);
-  }
+	function getProgressStatusId(job) {
+	  return String(
+		job?.ProgressStatusId ||
+		job?.ProgressStatus?.Id ||
+		job?.Status ||
+		''
+	  ).trim();
+	}
+
+	function isJobOpen(job){ 
+	  const ps = getProgressStatusId(job);
+
+	  // 1016 blijft toegestaan, want dat is het startpunt voor acceptatie.
+	  const blockedProgressStatuses = ['1017', '1018', '1020', '1024', '1027', '1010', '1030'];
+
+	  if (!ps) return true;
+	  return !blockedProgressStatuses.includes(ps);
+	}
 
 	function renderJobHeader(job){
 	  const klant   = (job.CustomerName || '').trim();
@@ -1081,73 +1092,292 @@ async function requireGpsIfPortalSelf({ botui, Telemetry, isFr, cameFromPortalSe
 
     return true;
   }
+  
+async function askSignaturePad() {
+  return new Promise(async (resolve) => {
+    const id = `sig-${Date.now()}`;
 
-  async function menu(job, opts = {}) {
-    if (!opts.silent) {
-      await botui.message.add({
-        content: isFr
-          ? `Que voulez-vous faire pour la tâche ${job.Id}?`
-          : `Wat wil je doen voor taak ${job.Id}?`
-      });
-    }
-
-    const ans = await botui.action.button({
-      action: [
-        { text: isFr ? '➕ Ajouter un commentaire' : '➕ Info toevoegen', value: 'info' },
-        { text: isFr ? '✅ Terminer la tâche' : '✅ Taak afronden', value: 'done' },
-        { text: isFr ? '🛑 Quitter la session' : '🛑 Sessie verlaten', value: 'exit', cssClass: 'secondary-button' }
-      ]
+    await botui.message.add({
+      type: 'html',
+      content: `
+        <div style="border:2px solid #EE7E00;border-radius:8px;padding:10px;background:#fff;width:100%;box-sizing:border-box">
+          <canvas id="${id}"
+            style="width:100%;height:180px;border:1px solid #ccc;border-radius:6px;touch-action:none;background:#fff;display:block;box-sizing:border-box"></canvas>
+          <div style="margin-top:8px">
+            <button type="button" id="${id}-clear">Wissen</button>
+            <button type="button" id="${id}-ok">Bevestigen</button>
+          </div>
+        </div>
+      `
     });
 
-    if (ans.value === 'info') {
-      const ok = await runCommentWithOptionalPhoto(job, { action: 'ADD_INFO' });
-      if (ok) {
-        const jobPayload = await fetchJobDetails();
-        return menu(jobPayload.Job, { silent: true });
-      }
-      return;
+    const canvas = document.getElementById(id);
+    const ratio = Math.max(window.devicePixelRatio || 1, 1);
+    const rect = canvas.getBoundingClientRect();
+
+    canvas.width = rect.width * ratio;
+    canvas.height = rect.height * ratio;
+
+    const ctx = canvas.getContext('2d');
+    ctx.scale(ratio, ratio);
+    ctx.lineWidth = 2;
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+
+    let drawing = false;
+    let hasDrawn = false;
+
+    function pos(e) {
+      const r = canvas.getBoundingClientRect();
+      const p = e.touches ? e.touches[0] : e;
+      return { x: p.clientX - r.left, y: p.clientY - r.top };
     }
 
-	 if (ans.value === 'done') {
-	  const ok = await runCommentWithOptionalPhoto(job, { action: 'CLOSE' });
-	  if (!ok) return;
+    function start(e) {
+      e.preventDefault();
+      drawing = true;
+      hasDrawn = true;
+      const p = pos(e);
+      ctx.beginPath();
+      ctx.moveTo(p.x, p.y);
+    }
 
-	  Telemetry.send('close_done_force_exit', { cameFromPortalSelf });
+    function move(e) {
+      if (!drawing) return;
+      e.preventDefault();
+      const p = pos(e);
+      ctx.lineTo(p.x, p.y);
+      ctx.stroke();
+    }
 
-	  await botui.message.add({
-		content: isFr
-		  ? '✅ Tâche clôturée. Retour au portail…'
-		  : '✅ Taak afgerond. Terug naar portal…'
-	  });
+    function end() {
+      drawing = false;
+    }
 
-	  closeDocPanel();
+    canvas.addEventListener('mousedown', start);
+    canvas.addEventListener('mousemove', move);
+    canvas.addEventListener('mouseup', end);
+    canvas.addEventListener('mouseleave', end);
+    canvas.addEventListener('touchstart', start, { passive: false });
+    canvas.addEventListener('touchmove', move, { passive: false });
+    canvas.addEventListener('touchend', end);
 
-	  if (cameFromPortalSelf) {
-		return goBackAfterVendor();
+    document.getElementById(`${id}-clear`).onclick = () => {
+      ctx.clearRect(0, 0, rect.width, rect.height);
+      hasDrawn = false;
+    };
+
+    document.getElementById(`${id}-ok`).onclick = async () => {
+      if (!hasDrawn) {
+        await botui.message.add({
+          content: isFr ? '⚠️ Signature obligatoire.' : '⚠️ Handtekening is verplicht.'
+        });
+        return;
+      }
+
+      resolve(canvas.toDataURL('image/png').replace(/^data:image\/png;base64,/, ''));
+    };
+  });
+}
+  
+async function runAcceptanceSignature(job) {
+  const feedbackText = String(
+    job.EdtJobFeedbackText ||
+    job.FeedbackText ||
+    ''
+  ).trim();
+
+  if (feedbackText) {
+    await botui.message.add({
+      type: 'html',
+      content: `
+        <div class="job-description-box">
+          <b>${isFr ? 'Travaux exécutés' : 'Uitgevoerde werkzaamheden'}</b><br>
+          ${feedbackText}
+        </div>
+      `
+    });
+  }
+
+  await botui.message.add({
+    content: isFr
+      ? 'Nom du signataire :'
+      : 'Naam van de ondertekenaar:'
+  });
+
+  const nameAnswer = await botui.action.text({
+    action: {
+      placeholder: isFr ? 'Nom et prénom' : 'Naam en voornaam',
+      maxLength: 100
+    }
+  });
+
+  const signerName = String(nameAnswer?.value || '').trim();
+
+  if (!signerName) {
+    await botui.message.add({
+      content: isFr
+        ? '⚠️ Le nom du signataire est obligatoire.'
+        : '⚠️ Naam van de ondertekenaar is verplicht.'
+    });
+    return false;
+  }
+
+  const wantsRemark = await botui.action.button({
+    action: [
+      { text: isFr ? 'Ajouter une remarque' : 'Opmerking toevoegen', value: 'yes' },
+      { text: isFr ? 'Sans remarque' : 'Geen opmerking', value: 'no' }
+    ]
+  });
+
+  let remark = '';
+
+  if (wantsRemark.value === 'yes') {
+    await botui.message.add({
+      content: isFr
+        ? 'Remarque du client pour acceptation :'
+        : 'Opmerking van de klant voor acceptatie:'
+    });
+
+    const remarkAnswer = await botui.action.text({
+      action: {
+        placeholder: isFr ? 'Remarque…' : 'Opmerking…',
+        maxLength: 500
+      }
+    });
+
+    remark = String(remarkAnswer?.value || '').trim();
+  }
+
+	const acceptanceRemarkText = [
+	  `${isFr ? 'Signé par' : 'Ondertekend door'}: ${signerName}`,
+	  remark ? `${isFr ? 'Remarque' : 'Opmerking'}: ${remark}` : ''
+	].filter(Boolean).join('<br>');
+
+  await botui.message.add({
+    content: isFr
+      ? 'Veuillez faire signer le client ci-dessous.'
+      : 'Laat de klant hieronder tekenen.'
+  });
+
+  const signatureBase64 = await askSignaturePad();
+
+  await submitUpdate({
+    action: 'ACCEPTED',
+    jobId: job.Id,
+    email: sessionEmail,
+    SignatureBase64: signatureBase64,
+    AcceptanceRemarkText: acceptanceRemarkText
+  }, isFr ? '✅ Acceptation enregistrée.' : '✅ Acceptatie vastgelegd.');
+
+  closeDocPanel();
+
+  if (cameFromPortalSelf) {
+    await botui.message.add({
+      content: isFr
+        ? 'Retour au portail…'
+        : 'Terug naar portal…'
+    });
+
+    return goBackAfterVendor();
+  }
+
+  return true;
+}
+
+ 
+
+	async function menu(job, opts = {}) {
+	  const ps = getProgressStatusId(job);
+
+	  const needsAcceptance =
+		job.CustomerNeedsAcceptance === true ||
+		String(job.CustomerNeedsAcceptance || '').toLowerCase() === 'true';
+
+	  const showAcceptanceButton = ps === '1016' && needsAcceptance;
+
+	  const doneText = showAcceptanceButton
+		? (isFr ? '✅ À accepter' : '✅ Ter acceptatie')
+		: (isFr ? '✅ Terminer la tâche' : '✅ Taak uitgevoerd');
+
+	  if (!opts.silent) {
+		await botui.message.add({
+		  content: isFr
+			? `Que voulez-vous faire pour la tâche ${job.Id}?`
+			: `Wat wil je doen voor taak ${job.Id}?`
+		});
 	  }
 
-	  return;
+	  const ans = await botui.action.button({
+		action: [
+		  { text: isFr ? '➕ Ajouter un commentaire' : '➕ Info toevoegen', value: 'info' },
+		  { text: doneText, value: 'done' },
+		  { text: isFr ? '🛑 Quitter la session' : '🛑 Sessie verlaten', value: 'exit', cssClass: 'secondary-button' }
+		]
+	  });
+
+	  if (ans.value === 'info') {
+		const ok = await runCommentWithOptionalPhoto(job, { action: 'ADD_INFO' });
+		if (ok) {
+		  const jobPayload = await fetchJobDetails();
+		  return menu(jobPayload.Job, { silent: true });
+		}
+		return;
+	  }
+
+	  if (ans.value === 'done') {
+		// Alleen bij 1016 + acceptatie vereist: acceptatieprocedure starten.
+		if (showAcceptanceButton) {
+		  return await runAcceptanceSignature(job);
+		}
+
+		// Bij 1008 of andere uitvoerbare status: eerst normale CLOSE-flow naar 1016.
+		const ok = await runCommentWithOptionalPhoto(job, { action: 'CLOSE' });
+		if (!ok) return;
+
+		const refreshed = await fetchJobDetails();
+		const newJob = refreshed.Job || {};
+		const newPs = getProgressStatusId(newJob);
+
+		const newNeedsAcceptance =
+		  newJob.CustomerNeedsAcceptance === true ||
+		  String(newJob.CustomerNeedsAcceptance || '').toLowerCase() === 'true';
+
+		// Na CLOSE niet automatisch acceptatie starten; opnieuw menu tonen met correcte knop.
+		if (newPs === '1016' && newNeedsAcceptance) {
+		  return menu(newJob, { silent: true });
+		}
+
+		await botui.message.add({
+		  content: isFr
+			? '✅ Tâche clôturée. Retour au portail…'
+			: '✅ Taak afgerond. Terug naar portal…'
+		});
+
+		closeDocPanel();
+		if (cameFromPortalSelf) return goBackAfterVendor();
+		return;
+	  }
+
+	  if (ans.value === 'exit') {
+		Telemetry.send('session_exit', { cameFromPortalSelf });
+
+		if (cameFromPortalSelf) {
+		  await botui.message.add({
+			content: isFr
+			  ? '🔚 Session terminée. Retour au portail…'
+			  : '🔚 Sessie beëindigd. Terug naar portal…'
+		  });
+		  return goBackAfterVendor();
+		}
+
+		await botui.message.add({
+		  content: isFr
+			? '🔚 Merci. Vous pouvez fermer cette fenêtre.'
+			: '🔚 Bedankt. Je kunt dit venster sluiten.'
+		});
+	  }
 	}
-
-
-    if (ans.value === 'exit') {
-      Telemetry.send('session_exit', { cameFromPortalSelf });
-      if (cameFromPortalSelf) {
-        await botui.message.add({
-          content: isFr
-            ? '🔚 Session terminée. Retour au portail…'
-            : '🔚 Sessie beëindigd. Terug naar portal…'
-        });
-        return goBackAfterVendor();
-      }
-      await botui.message.add({
-        content: isFr
-          ? '🔚 Merci. Vous pouvez fermer cette fenêtre. Si vous avez encore des actions pour cette tâche, veuillez rafraîchir la page.'
-          : '🔚 Bedankt. Je kunt dit venster sluiten. Als je later nog acties voor deze taak hebt, ververs dan de pagina.'
-      });
-      return;
-    }
-  }
 
   /* ==================== 11. Upload helpers ==================== */
   function sanitizeName(name){ return String(name||'').replace(/[^\w.\-()+ ]+/g,'_').trim() || 'upload.bin'; }

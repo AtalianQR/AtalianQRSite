@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Handtekening demo</title>
+
+  <style>
+    body {
+      margin: 0;
+      padding: 2rem;
+      font-family: "Segoe UI", sans-serif;
+      background: #f4f6fa;
+      color: #1f2937;
+    }
+
+    .signature-box {
+      max-width: 620px;
+      margin: 0 auto;
+      background: #fff;
+      border: 2px solid #EE7E00;
+      border-radius: 14px;
+      padding: 1rem;
+      box-shadow: 0 6px 24px rgba(0,0,0,.12);
+    }
+
+    h1 {
+      font-size: 1.35rem;
+      margin: 0 0 1rem;
+    }
+
+    label {
+      display: block;
+      font-weight: 700;
+      margin: .75rem 0 .35rem;
+    }
+
+    textarea {
+      width: 100%;
+      min-height: 90px;
+      resize: vertical;
+      border: 1px solid #d1d5db;
+      border-radius: 8px;
+      padding: .65rem;
+      font-family: "Segoe UI", sans-serif;
+      font-size: .95rem;
+      box-sizing: border-box;
+    }
+
+    canvas {
+      width: 100%;
+      height: 180px;
+      border: 1px solid #d1d5db;
+      border-radius: 8px;
+      background: #fff;
+      touch-action: none;
+      cursor: crosshair;
+      display: block;
+    }
+
+    .actions {
+      display: flex;
+      gap: .5rem;
+      justify-content: flex-end;
+      margin-top: .75rem;
+      flex-wrap: wrap;
+    }
+
+    button {
+      border: 1px solid #EE7E00;
+      background: #fff;
+      color: #EE7E00;
+      border-radius: 6px;
+      padding: .5rem .8rem;
+      font-weight: 700;
+      cursor: pointer;
+    }
+
+    button.primary {
+      background: #EE7E00;
+      color: #fff;
+    }
+
+    .preview {
+      margin-top: 1rem;
+      padding: .75rem;
+      background: #f9fafb;
+      border: 1px solid #e5e7eb;
+      border-radius: 8px;
+      display: none;
+    }
+
+    .preview img {
+      max-width: 100%;
+      border: 1px solid #d1d5db;
+      border-radius: 6px;
+      background: #fff;
+      margin-top: .5rem;
+    }
+  </style>
+</head>
+
+<body>
+  <section class="signature-box">
+    <h1>Opmerking en handtekening</h1>
+
+    <label for="comment">Opmerking</label>
+    <textarea id="comment" placeholder="Typ hier je opmerking..."></textarea>
+
+    <label for="signature-pad">Handtekening</label>
+    <canvas id="signature-pad"></canvas>
+
+    <div class="actions">
+      <button type="button" id="clear-signature">Wissen</button>
+      <button type="button" class="primary" id="show-result">Toon resultaat</button>
+    </div>
+
+    <div id="preview" class="preview">
+      <strong>Resultaat</strong>
+      <p id="preview-comment"></p>
+      <img id="preview-signature" alt="Handtekening preview" />
+    </div>
+  </section>
+
+  <script>
+    const canvas = document.getElementById('signature-pad');
+    const ctx = canvas.getContext('2d');
+    const clearBtn = document.getElementById('clear-signature');
+    const showBtn = document.getElementById('show-result');
+    const preview = document.getElementById('preview');
+    const previewComment = document.getElementById('preview-comment');
+    const previewSignature = document.getElementById('preview-signature');
+
+    let drawing = false;
+
+    function resizeCanvas() {
+      const rect = canvas.getBoundingClientRect();
+      const ratio = window.devicePixelRatio || 1;
+
+      canvas.width = rect.width * ratio;
+      canvas.height = rect.height * ratio;
+
+      ctx.setTransform(ratio, 0, 0, ratio, 0, 0);
+      ctx.lineWidth = 2.2;
+      ctx.lineCap = 'round';
+      ctx.lineJoin = 'round';
+      ctx.strokeStyle = '#111827';
+    }
+
+    function getPos(event) {
+      const rect = canvas.getBoundingClientRect();
+      const point = event.touches ? event.touches[0] : event;
+
+      return {
+        x: point.clientX - rect.left,
+        y: point.clientY - rect.top
+      };
+    }
+
+    function startDraw(event) {
+      event.preventDefault();
+      drawing = true;
+
+      const pos = getPos(event);
+      ctx.beginPath();
+      ctx.moveTo(pos.x, pos.y);
+    }
+
+    function draw(event) {
+      if (!drawing) return;
+
+      event.preventDefault();
+      const pos = getPos(event);
+
+      ctx.lineTo(pos.x, pos.y);
+      ctx.stroke();
+    }
+
+    function stopDraw() {
+      drawing = false;
+    }
+
+    clearBtn.addEventListener('click', () => {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      preview.style.display = 'none';
+    });
+
+    showBtn.addEventListener('click', () => {
+      const comment = document.getElementById('comment').value.trim();
+      const signatureImage = canvas.toDataURL('image/png');
+
+      previewComment.textContent = comment || 'Geen opmerking ingevuld.';
+      previewSignature.src = signatureImage;
+      preview.style.display = 'block';
+    });
+
+    canvas.addEventListener('mousedown', startDraw);
+    canvas.addEventListener('mousemove', draw);
+    canvas.addEventListener('mouseup', stopDraw);
+    canvas.addEventListener('mouseleave', stopDraw);
+
+    canvas.addEventListener('touchstart', startDraw, { passive: false });
+    canvas.addEventListener('touchmove', draw, { passive: false });
+    canvas.addEventListener('touchend', stopDraw);
+
+    window.addEventListener('resize', resizeCanvas);
+
+    resizeCanvas();
+  </script>
+</body>
+</html>
