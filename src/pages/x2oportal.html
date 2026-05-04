@@ -315,16 +315,12 @@
       <div class="form-block" id="block-select">
         <div class="hint" id="building-hint">De ruimtes worden geladen na je landkeuze.</div>
 
-        <div style="margin-top:.85rem;">
-          <label id="label-filter-space" for="filter-space">Filter ruimtes</label>
-          <input
-            type="text"
-            id="filter-space"
-            placeholder="Typ om te filteren op ruimte, locatie, code, verdieping…"
-            autocomplete="off"
-            disabled
-          />
-        </div>
+		<div style="margin-top:.85rem;">
+		  <label id="label-building" for="select-building">Kies gebouw</label>
+		  <select id="select-building" disabled>
+			<option value="">-- kies eerst een land --</option>
+		  </select>
+		</div>
 
         <div style="margin-top:.85rem;">
           <label id="label-space" for="select-space">Kies ruimte</label>
@@ -383,14 +379,17 @@
     const countryRow = document.getElementById('country-row');
     const countryButtons = Array.from(document.querySelectorAll('.country-btn'));
     const selectSpace = document.getElementById('select-space');
-    const filterSpace = document.getElementById('filter-space');
     const statusEl = document.getElementById('status');
     const btnGo = document.getElementById('btn-go');
     const btnReset = document.getElementById('btn-reset');
+	const selectBuilding = document.getElementById('select-building');
 
     /* ============================================================
        STATE
     ============================================================ */
+	let selectedBuildingKey = '';
+	let allBuildings = [];
+	let spacesForSelectedBuilding = [];
     let selectedCountryId = '';
     let allSpaces = [];
 
@@ -430,6 +429,8 @@
     function applyLanguage() {
       const isFr = lang === 'fr';
       document.documentElement.lang = isFr ? 'fr' : 'nl';
+	  
+	  document.getElementById('label-building').textContent = isFr ? 'Choisissez un magasin' : 'Kies een showroom';
 
       document.getElementById('title-text').textContent = isFr
         ? 'Où voulez-vous créer un signalement ?'
@@ -443,11 +444,7 @@
       document.getElementById('building-hint').textContent = isFr
         ? 'Les espaces sont chargés après le choix du pays.'
         : 'De ruimtes worden geladen na je landkeuze.';
-      document.getElementById('label-filter-space').textContent = isFr ? 'Filtrer les espaces' : 'Filter ruimtes';
       document.getElementById('label-space').textContent = isFr ? 'Choisissez un espace' : 'Kies ruimte';
-      filterSpace.placeholder = isFr
-        ? 'Tapez pour filtrer par espace, site, code, étage…'
-        : 'Typ om te filteren op ruimte, locatie, code, verdieping…';
       btnReset.textContent = isFr ? '⬅️ Retour' : '⬅️ Terug';
       btnGo.textContent = isFr ? '➡️ Aller au portail de ticket' : '➡️ Ga naar meldingsportaal';
 
@@ -497,47 +494,79 @@
       return Array.isArray(data.Items) ? data.Items : (Array.isArray(data.items) ? data.items : []);
     }
 
-    function prepareSpaceDropdown() {
-      const isFr = lang === 'fr';
-      filterSpace.disabled = false;
-      selectSpace.disabled = false;
-      renderSpaceOptions();
-      setStatus(isFr
-        ? `✅ ${allSpaces.length} espace(s) chargé(s).`
-        : `✅ ${allSpaces.length} ruimte(s) geladen.`, false);
-    }
+	function prepareSpaceDropdown() {
+	  const isFr = lang === 'fr';
+
+	  const map = new Map();
+
+	  allSpaces.forEach(sp => {
+		const building = valueOf(sp, 'BuildingDescription', 'ComplexBuildingDescription') || 'Onbekend gebouw';
+		if (!map.has(building)) map.set(building, []);
+		map.get(building).push(sp);
+	  });
+
+	  allBuildings = Array.from(map.entries())
+		.map(([name, spaces]) => ({ name, spaces }))
+		.sort((a, b) => a.name.localeCompare(b.name, lang === 'fr' ? 'fr' : 'nl', {
+		  numeric: true,
+		  sensitivity: 'base'
+		}));
+
+	  selectBuilding.disabled = false;
+	  selectBuilding.innerHTML = `<option value="">${isFr ? '-- choisissez un bâtiment --' : '-- kies een gebouw --'}</option>`;
+
+	  allBuildings.forEach((b, index) => {
+		selectBuilding.insertAdjacentHTML(
+		  'beforeend',
+		  `<option value="${index}">${escHtml(b.name)}</option>`
+		);
+	  });
+
+	  selectSpace.disabled = true;
+	  selectSpace.innerHTML = `<option value="">${isFr ? '-- choisissez d’abord un bâtiment --' : '-- kies eerst een gebouw --'}</option>`;
+
+	  setStatus(isFr
+		? `✅ ${allBuildings.length} bâtiment(s) trouvé(s).`
+		: `✅ ${allBuildings.length} gebouw(en) gevonden.`, false);
+
+	  if (allBuildings.length === 1) {
+		selectBuilding.value = '0';
+		selectBuilding.dispatchEvent(new Event('change'));
+	  }
+	}
+	
+	function selectBuildingSpaces() {
+	  const isFr = lang === 'fr';
+	  selectedBuildingKey = selectBuilding.value;
+
+	  if (selectedBuildingKey === '') {
+		spacesForSelectedBuilding = [];
+		selectSpace.disabled = true;
+		selectSpace.innerHTML = `<option value="">${isFr ? '-- choisissez d’abord un bâtiment --' : '-- kies eerst een gebouw --'}</option>`;
+		return;
+	  }
+
+	  const building = allBuildings[Number(selectedBuildingKey)];
+	  spacesForSelectedBuilding = building?.spaces || [];
+
+	  selectSpace.disabled = false;
+
+	  renderSpaceOptions();
+
+	  if (spacesForSelectedBuilding.length === 1) {
+		selectSpace.value = valueOf(spacesForSelectedBuilding[0], 'Id');
+	  }
+	}	
 
 	function renderSpaceOptions() {
 	  const isFr = lang === 'fr';
-	  const q = String(filterSpace.value || '').toLowerCase().trim();
-
-	  const filtered = allSpaces.filter(sp => {
-		if (!q) return true;
-
-		const haystack = [
-		  valueOf(sp, 'Id'),
-		  valueOf(sp, 'RoomNumber'),
-		  valueOf(sp, 'Description')
-		].join(' ').toLowerCase();
-
-		return haystack.includes(q);
-	  });
+	  const filtered = [...spacesForSelectedBuilding];
 
 	  filtered.sort((a, b) => {
 		const descA = valueOf(a, 'Description', 'RoomNumber', 'Id');
 		const descB = valueOf(b, 'Description', 'RoomNumber', 'Id');
 
-		const cmpDesc = descA.localeCompare(descB, lang === 'fr' ? 'fr' : 'nl', {
-		  numeric: true,
-		  sensitivity: 'base'
-		});
-
-		if (cmpDesc !== 0) return cmpDesc;
-
-		const roomA = valueOf(a, 'RoomNumber', 'Id');
-		const roomB = valueOf(b, 'RoomNumber', 'Id');
-
-		return roomA.localeCompare(roomB, lang === 'fr' ? 'fr' : 'nl', {
+		return descA.localeCompare(descB, lang === 'fr' ? 'fr' : 'nl', {
 		  numeric: true,
 		  sensitivity: 'base'
 		});
@@ -546,7 +575,7 @@
 	  selectSpace.innerHTML = `<option value="">${isFr ? '-- choisissez un espace --' : '-- kies een ruimte --'}</option>`;
 
 	  if (!filtered.length) {
-		setStatus(isFr ? 'Aucun espace trouvé pour ce filtre.' : 'Geen ruimtes gevonden voor deze filter.', true);
+		setStatus(isFr ? 'Aucun espace trouvé.' : 'Geen ruimtes gevonden.', true);
 		return;
 	  }
 
@@ -577,8 +606,12 @@
       countryButtons.forEach(btn => btn.classList.toggle('active', btn.dataset.country === countryId));
 
       allSpaces = [];
-      filterSpace.value = '';
-      filterSpace.disabled = true;
+	  selectedBuildingKey = '';
+		allBuildings = [];
+		spacesForSelectedBuilding = [];
+
+		selectBuilding.disabled = true;
+		selectBuilding.innerHTML = `<option value="">${isFr ? '-- chargement des bâtiments --' : '-- gebouwen worden geladen --'}</option>`;
       selectSpace.disabled = true;
       selectSpace.innerHTML = `<option value="">${isFr ? '-- chargement des espaces --' : '-- ruimtes worden geladen --'}</option>`;
 
@@ -586,6 +619,8 @@
       allSpaces = items;
 
       if (!items.length) {
+	    selectBuilding.disabled = true;
+        selectBuilding.innerHTML = `<option value="">${isFr ? '-- aucun bâtiment disponible --' : '-- geen gebouwen beschikbaar --'}</option>`;
         selectSpace.innerHTML = `<option value="">${isFr ? '-- aucun espace disponible --' : '-- geen ruimtes beschikbaar --'}</option>`;
         setStatus(isFr ? 'Aucun espace trouvé pour ce pays.' : 'Geen ruimtes gevonden voor dit land.', true);
         return;
@@ -633,21 +668,26 @@
       window.location.href = url.toString();
     }
 
-    function resetPortal() {
-      const isFr = lang === 'fr';
+	function resetPortal() {
+	  const isFr = lang === 'fr';
 
-      selectedCountryId = '';
-      allSpaces = [];
+	  selectedCountryId = '';
+	  selectedBuildingKey = '';
+	  allSpaces = [];
+	  allBuildings = [];
+	  spacesForSelectedBuilding = [];
 
-      countryButtons.forEach(btn => btn.classList.remove('active'));
+	  countryButtons.forEach(btn => btn.classList.remove('active'));
 
-      filterSpace.value = '';
-      filterSpace.disabled = true;
-      selectSpace.disabled = true;
 
-      selectSpace.innerHTML = `<option value="">${isFr ? '-- choisissez d’abord un pays --' : '-- kies eerst een land --'}</option>`;
-      setStatus('', false);
-    }
+	  selectBuilding.disabled = true;
+	  selectBuilding.innerHTML = `<option value="">${isFr ? '-- choisissez d’abord un pays --' : '-- kies eerst een land --'}</option>`;
+
+	  selectSpace.disabled = true;
+	  selectSpace.innerHTML = `<option value="">${isFr ? '-- choisissez d’abord un bâtiment --' : '-- kies eerst een gebouw --'}</option>`;
+
+	  setStatus('', false);
+	}
 
     /* ============================================================
        EVENTS
@@ -672,9 +712,10 @@
       selectCountry(btn.dataset.country);
     });
 
-    filterSpace.addEventListener('input', renderSpaceOptions);
     btnGo.addEventListener('click', goToPortal);
     btnReset.addEventListener('click', resetPortal);
+	
+	selectBuilding.addEventListener('change', selectBuildingSpaces);
 
     /* ============================================================
        INIT
