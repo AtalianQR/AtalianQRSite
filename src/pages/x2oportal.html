@@ -1,0 +1,700 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>X2O Ruimteportaal</title>
+
+  <link rel="icon" href="/AtalianFavicon.png" />
+
+  <style>
+    html, body {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      font-family: 'Segoe UI', Arial, sans-serif;
+      background: #f4f6fa;
+      min-height: 100vh;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      background-image: url('/x2oportal.png');
+      background-size: cover;
+      background-repeat: no-repeat;
+      background-position: center;
+      background-attachment: fixed;
+      color: #111827;
+    }
+
+    .test-banner {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      background-color: #28a745;
+      color: white;
+      text-align: center;
+      padding: 5px 0;
+      font-weight: bold;
+      z-index: 1000;
+      font-size: 14px;
+      text-transform: uppercase;
+      opacity: 0.92;
+    }
+
+    body.is-test { padding-top: 30px; }
+
+    header {
+      padding: .75rem 1rem 0;
+    }
+
+    .lang-switch {
+      text-align: right;
+      max-width: 760px;
+      margin: 0 auto .5rem;
+      text-shadow: 0 1px 8px rgba(255,255,255,.75);
+    }
+
+    .lang-switch a {
+      margin: 0 .25rem;
+      text-decoration: none;
+      font-size: 1.05rem;
+      color: #111827;
+      font-weight: 700;
+    }
+
+    .header-flex {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      max-width: 760px;
+      margin: 0 auto;
+    }
+
+    img.logo {
+      max-height: 58px;
+      background: rgba(255,255,255,0.72);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      padding: .12rem;
+      border-radius: 14px;
+      box-shadow: 0 8px 28px rgba(17,24,39,.18);
+    }
+
+    main {
+      padding: 0 1rem 2rem;
+    }
+
+    .page-card {
+      max-width: 760px;
+      margin: 1rem auto 2rem;
+      padding: 1.35rem 1.55rem 1.55rem;
+
+      background: rgba(255, 255, 255, 0.58);
+      backdrop-filter: blur(16px) saturate(135%);
+      -webkit-backdrop-filter: blur(16px) saturate(135%);
+
+      border: 1px solid rgba(255, 255, 255, 0.50);
+      border-top: 1px solid rgba(255, 255, 255, 0.72);
+      border-radius: 24px;
+
+      box-shadow:
+        0 18px 45px rgba(17, 24, 39, 0.24),
+        0 2px 10px rgba(255, 255, 255, 0.25) inset;
+    }
+
+    .page-card h1 {
+      margin: 0 0 .45rem;
+      font-size: 1.55rem;
+      line-height: 1.2;
+      color: #050505;
+      text-shadow: 0 1px 0 rgba(255,255,255,.45);
+    }
+
+    .page-card p {
+      margin: 0 0 1rem;
+      color: #374151;
+      font-size: .96rem;
+      line-height: 1.45;
+    }
+
+    .step-title {
+      display: block;
+      font-weight: 800;
+      margin: 1rem 0 .4rem;
+      color: #111827;
+    }
+
+    .country-row {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: .75rem;
+      margin: .75rem 0 1rem;
+    }
+
+    .country-btn {
+      border: 1px solid rgba(238,126,0,.82);
+      background: rgba(255,255,255,.58);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+      border-radius: 16px;
+      padding: .85rem .5rem;
+      cursor: pointer;
+      text-align: center;
+      font-weight: 800;
+      font-size: 1rem;
+      box-shadow: 0 8px 18px rgba(17,24,39,.10);
+      transition: background .14s ease, transform .12s ease, box-shadow .12s ease, border-color .12s ease;
+    }
+
+    .country-btn:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 12px 24px rgba(17,24,39,.14);
+    }
+
+    .country-btn small {
+      display: block;
+      margin-top: .18rem;
+      color: #4b5563;
+      font-weight: 700;
+      font-size: .78rem;
+    }
+
+    .country-btn.active {
+      background: rgba(238,126,0,.92);
+      color: #fff;
+      border-color: rgba(238,126,0,.98);
+      box-shadow: 0 12px 26px rgba(238,126,0,.36);
+      transform: translateY(-1px);
+    }
+
+    .country-btn.active small { color: rgba(255,255,255,.94); }
+
+    .form-block {
+      margin-top: 1rem;
+      padding-top: 1rem;
+      border-top: 1px solid rgba(17, 24, 39, 0.10);
+    }
+
+    label {
+      display: block;
+      font-weight: 800;
+      margin-bottom: .28rem;
+      color: #111827;
+    }
+
+    select, input[type="text"] {
+      width: 100%;
+      padding: .58rem .72rem;
+      border-radius: 13px;
+      border: 1px solid rgba(17, 24, 39, 0.16);
+      font-size: .96rem;
+      background: rgba(255,255,255,0.68);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+      box-shadow: inset 0 1px 2px rgba(0,0,0,.04), 0 4px 12px rgba(17,24,39,.05);
+      color: #111827;
+    }
+
+    select:focus, input[type="text"]:focus {
+      outline: none;
+      border-color: rgba(238,126,0,.88);
+      box-shadow: 0 0 0 3px rgba(238,126,0,.18), inset 0 1px 2px rgba(0,0,0,.04);
+    }
+
+    select:disabled, input:disabled {
+      opacity: .58;
+      cursor: not-allowed;
+      background: rgba(243,244,246,.70);
+    }
+
+    .hint {
+      margin-top: .35rem;
+      font-size: .86rem;
+      color: #4b5563;
+    }
+
+    .status {
+      margin-top: .65rem;
+      font-size: .91rem;
+      color: #4b5563;
+      min-height: 1.25rem;
+    }
+
+    .status.error { color: #b91c1c; }
+
+    .actions {
+      margin-top: 1.25rem;
+      display: flex;
+      justify-content: flex-end;
+      gap: .75rem;
+      flex-wrap: wrap;
+    }
+
+    .btn {
+      border-radius: 999px;
+      padding: .68rem 1.4rem;
+      border: 1px solid rgba(255,255,255,.35);
+      font-weight: 800;
+      cursor: pointer;
+      font-size: .95rem;
+      transition: transform .12s ease, box-shadow .12s ease, opacity .12s ease;
+    }
+
+    .btn:hover {
+      transform: translateY(-1px);
+    }
+
+    .btn-primary {
+      background: rgba(238,126,0,.94);
+      color: #fff;
+      box-shadow: 0 10px 22px rgba(238,126,0,.34);
+    }
+
+    .btn-primary:active { background: #d86e00; }
+
+    .btn-secondary {
+      background: rgba(255,255,255,.54);
+      color: #111827;
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+      box-shadow: 0 8px 18px rgba(17,24,39,.10);
+    }
+
+    @media (max-width: 560px) {
+      .page-card {
+        max-width: 96%;
+        padding: 1.05rem 1rem 1.2rem;
+        background: rgba(255,255,255,.66);
+      }
+
+      .country-row {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <div id="test-indicator" style="display:none" class="test-banner">
+    ⚠️ TEST OMGEVING ACTIEF
+  </div>
+
+  <header>
+    <div class="lang-switch">
+      <a href="#" id="switch-nl">🇳🇱 NL</a> |
+      <a href="#" id="switch-fr">🇫🇷 FR</a>
+    </div>
+    <div class="header-flex">
+      <img src="/AtalianLogo.png" alt="Atalian Logo" class="logo" />
+    </div>
+  </header>
+
+  <main>
+    <section class="page-card">
+      <h1 id="title-text">Waar wil je een melding aanmaken?</h1>
+      <p id="intro-text">
+        Kies eerst het land. Daarna tonen we meteen de X2O-ruimtes waarvoor je een melding kan aanmaken.
+      </p>
+
+      <span class="step-title" id="label-country">Kies land</span>
+      <div class="country-row" id="country-row">
+        <button class="country-btn" type="button" data-country="FR">
+          🇫🇷 FR<small data-country-label="FR">France</small>
+        </button>
+        <button class="country-btn" type="button" data-country="NL">
+          🇳🇱 NL<small data-country-label="NL">Nederland</small>
+        </button>
+        <button class="country-btn" type="button" data-country="BE">
+          🇧🇪 BE<small data-country-label="BE">België</small>
+        </button>
+      </div>
+
+      <div class="form-block" id="block-select">
+        <div class="hint" id="building-hint">De ruimtes worden geladen na je landkeuze.</div>
+
+        <div style="margin-top:.85rem;">
+          <label id="label-filter-space" for="filter-space">Filter ruimtes</label>
+          <input
+            type="text"
+            id="filter-space"
+            placeholder="Typ om te filteren op ruimte, locatie, code, verdieping…"
+            autocomplete="off"
+            disabled
+          />
+        </div>
+
+        <div style="margin-top:.85rem;">
+          <label id="label-space" for="select-space">Kies ruimte</label>
+          <select id="select-space" disabled>
+            <option value="">-- kies eerst een land --</option>
+          </select>
+        </div>
+
+        <div id="status" class="status"></div>
+
+        <div class="actions">
+          <button type="button" class="btn btn-secondary" id="btn-reset">⬅️ Terug</button>
+          <button type="button" class="btn btn-primary" id="btn-go">➡️ Ga naar meldingsportaal</button>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    console.log('X2O direct space portal loaded ✅');
+
+    /* ============================================================
+       CONFIG
+    ============================================================ */
+    const CUSTOMER_DEPARTMENT_ID = '000793';
+    const LIST_ENDPOINT = '/.netlify/functions/complexinfo';
+
+    /* ============================================================
+       TAAL EN OMGEVING
+    ============================================================ */
+    const qs = new URLSearchParams(window.location.search);
+    let lang = qs.get('lang') || ((navigator.language || '').startsWith('fr') ? 'fr' : 'nl');
+    const host = location.host || '';
+    const isTestEnv = qs.has('test') || qs.get('env') === 'test' || /test|staging/i.test(host);
+    const envPrefix = isTestEnv ? 'test' : 'prod';
+    const countryLabels = {
+      nl: {
+        FR: 'Frankrijk',
+        NL: 'Nederland',
+        BE: 'België'
+      },
+      fr: {
+        FR: 'France',
+        NL: 'Pays-Bas',
+        BE: 'Belgique'
+      }
+    };
+
+    document.querySelector('[data-country-label="FR"]').textContent = countryLabels[lang].FR;
+    document.querySelector('[data-country-label="NL"]').textContent = countryLabels[lang].NL;
+    document.querySelector('[data-country-label="BE"]').textContent = countryLabels[lang].BE;
+
+    /* ============================================================
+       ELEMENTS
+    ============================================================ */
+    const countryRow = document.getElementById('country-row');
+    const countryButtons = Array.from(document.querySelectorAll('.country-btn'));
+    const selectSpace = document.getElementById('select-space');
+    const filterSpace = document.getElementById('filter-space');
+    const statusEl = document.getElementById('status');
+    const btnGo = document.getElementById('btn-go');
+    const btnReset = document.getElementById('btn-reset');
+
+    /* ============================================================
+       STATE
+    ============================================================ */
+    let selectedCountryId = '';
+    let allSpaces = [];
+
+    function initEnvBanner() {
+      if (isTestEnv) {
+        document.getElementById('test-indicator').style.display = 'block';
+        document.body.classList.add('is-test');
+      }
+    }
+
+    function setStatus(msg, isError = false) {
+      statusEl.textContent = msg || '';
+      statusEl.classList.toggle('error', !!isError);
+    }
+
+    function escHtml(s) {
+      return String(s ?? '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
+    }
+
+    function ellipsize(s, max = 70) {
+      s = String(s || '').trim();
+      return s.length > max ? s.slice(0, max - 1) + '…' : s;
+    }
+
+    function valueOf(item, ...keys) {
+      for (const key of keys) {
+        const value = item?.[key];
+        if (value !== undefined && value !== null && String(value).trim() !== '') return String(value).trim();
+      }
+      return '';
+    }
+
+    function applyLanguage() {
+      const isFr = lang === 'fr';
+      document.documentElement.lang = isFr ? 'fr' : 'nl';
+
+      document.getElementById('title-text').textContent = isFr
+        ? 'Où voulez-vous créer un signalement ?'
+        : 'Waar wil je een melding aanmaken?';
+
+      document.getElementById('intro-text').textContent = isFr
+        ? 'Choisissez d’abord le pays. Ensuite, nous affichons directement les magasins X²O pour lesquels vous pouvez créer un signalement.'
+        : 'Kies eerst het land. Daarna tonen we meteen de X²O-showrooms waarvoor je een melding kan aanmaken.';
+
+      document.getElementById('label-country').textContent = isFr ? 'Choisissez le pays' : 'Kies land';
+      document.getElementById('building-hint').textContent = isFr
+        ? 'Les espaces sont chargés après le choix du pays.'
+        : 'De ruimtes worden geladen na je landkeuze.';
+      document.getElementById('label-filter-space').textContent = isFr ? 'Filtrer les espaces' : 'Filter ruimtes';
+      document.getElementById('label-space').textContent = isFr ? 'Choisissez un espace' : 'Kies ruimte';
+      filterSpace.placeholder = isFr
+        ? 'Tapez pour filtrer par espace, site, code, étage…'
+        : 'Typ om te filteren op ruimte, locatie, code, verdieping…';
+      btnReset.textContent = isFr ? '⬅️ Retour' : '⬅️ Terug';
+      btnGo.textContent = isFr ? '➡️ Aller au portail de ticket' : '➡️ Ga naar meldingsportaal';
+
+      if (!selectedCountryId) {
+        selectSpace.innerHTML = `<option value="">${isFr ? '-- choisissez d’abord un pays --' : '-- kies eerst een land --'}</option>`;
+      }
+    }
+
+    async function fetchSpacesByCountry(countryId) {
+      const isFr = lang === 'fr';
+      setStatus(isFr ? 'Chargement des espaces…' : 'Ruimtes worden geladen…', false);
+
+      const url = new URL(LIST_ENDPOINT, window.location.origin);
+      url.searchParams.set('action', 'LIST_SPACES_BY_COUNTRY');
+
+      url.searchParams.set('CountryId', countryId);
+      url.searchParams.set('countryId', countryId);
+      url.searchParams.set('DepartmentId', CUSTOMER_DEPARTMENT_ID);
+      url.searchParams.set('departmentId', CUSTOMER_DEPARTMENT_ID);
+      url.searchParams.set('env', envPrefix);
+
+      let resp, txt, data;
+
+      try {
+        resp = await fetch(url.toString(), { cache: 'no-store' });
+        txt = await resp.text();
+      } catch (e) {
+        console.error('Fetch error', e);
+        setStatus(isFr ? 'Erreur réseau.' : 'Netwerkfout.', true);
+        return [];
+      }
+
+      try {
+        data = JSON.parse(txt);
+      } catch (e) {
+        console.error('JSON parse error', e, txt);
+        setStatus(isFr ? 'Réponse invalide du serveur.' : 'Ongeldige response van de server.', true);
+        return [];
+      }
+
+      if (!resp.ok || data.error) {
+        console.error('Backend error', data);
+        setStatus(data.error || (isFr ? 'Erreur lors du chargement.' : 'Fout bij het laden.'), true);
+        return [];
+      }
+
+      return Array.isArray(data.Items) ? data.Items : (Array.isArray(data.items) ? data.items : []);
+    }
+
+    function prepareSpaceDropdown() {
+      const isFr = lang === 'fr';
+      filterSpace.disabled = false;
+      selectSpace.disabled = false;
+      renderSpaceOptions();
+      setStatus(isFr
+        ? `✅ ${allSpaces.length} espace(s) chargé(s).`
+        : `✅ ${allSpaces.length} ruimte(s) geladen.`, false);
+    }
+
+    function renderSpaceOptions() {
+      const isFr = lang === 'fr';
+      const q = String(filterSpace.value || '').toLowerCase().trim();
+
+      const filtered = allSpaces.filter(sp => {
+        if (!q) return true;
+
+        const haystack = [
+          valueOf(sp, 'Id'),
+          valueOf(sp, 'RoomNumber'),
+          valueOf(sp, 'Description'),
+          valueOf(sp, 'BuildingDescription'),
+          valueOf(sp, 'ProvinceId'),
+          valueOf(sp, 'ProvinceDescription'),
+          valueOf(sp, 'City')
+        ].join(' ').toLowerCase();
+
+        return haystack.includes(q);
+      });
+
+      filtered.sort((a, b) => {
+        const buildingA = valueOf(a, 'BuildingDescription', 'ComplexBuildingDescription', 'BuildingId');
+        const buildingB = valueOf(b, 'BuildingDescription', 'ComplexBuildingDescription', 'BuildingId');
+
+        const cmpBuilding = buildingA.localeCompare(buildingB, lang === 'fr' ? 'fr' : 'nl', {
+          numeric: true,
+          sensitivity: 'base'
+        });
+
+        if (cmpBuilding !== 0) return cmpBuilding;
+
+        const floorA = valueOf(a, 'BuildingFloorLevel');
+        const floorB = valueOf(b, 'BuildingFloorLevel');
+        const nA = parseFloat(floorA.replace(',', '.'));
+        const nB = parseFloat(floorB.replace(',', '.'));
+
+        if (Number.isFinite(nA) && Number.isFinite(nB) && nA !== nB) return nA - nB;
+
+        const keyA = valueOf(a, 'RoomNumber', 'Id');
+        const keyB = valueOf(b, 'RoomNumber', 'Id');
+
+        return keyA.localeCompare(keyB, lang === 'fr' ? 'fr' : 'nl', {
+          numeric: true,
+          sensitivity: 'base'
+        });
+      });
+
+      selectSpace.innerHTML = `<option value="">${isFr ? '-- choisissez un espace --' : '-- kies een ruimte --'}</option>`;
+
+      if (!filtered.length) {
+        setStatus(isFr ? 'Aucun espace trouvé pour ce filtre.' : 'Geen ruimtes gevonden voor deze filter.', true);
+        return;
+      }
+
+      filtered.forEach(sp => {
+        const id = valueOf(sp, 'Id');
+        const roomNumber = valueOf(sp, 'RoomNumber');
+        const desc = ellipsize(valueOf(sp, 'Description') || id, 55);
+        const building = valueOf(sp, 'BuildingDescription', 'ComplexBuildingDescription');
+
+        let label = building || desc || id;
+
+        if (roomNumber) {
+          label += ` (${roomNumber})`;
+        }
+
+        selectSpace.insertAdjacentHTML(
+          'beforeend',
+          `<option value="${escHtml(id)}">${escHtml(label)}</option>`
+        );
+      });
+
+      setStatus(isFr ? `✅ ${filtered.length} espace(s) trouvé(s).` : `✅ ${filtered.length} ruimte(s) gevonden.`, false);
+    }
+
+    async function selectCountry(countryId) {
+      const isFr = lang === 'fr';
+      selectedCountryId = countryId;
+
+      countryButtons.forEach(btn => btn.classList.toggle('active', btn.dataset.country === countryId));
+
+      allSpaces = [];
+      filterSpace.value = '';
+      filterSpace.disabled = true;
+      selectSpace.disabled = true;
+      selectSpace.innerHTML = `<option value="">${isFr ? '-- chargement des espaces --' : '-- ruimtes worden geladen --'}</option>`;
+
+      const items = await fetchSpacesByCountry(countryId);
+      allSpaces = items;
+
+      if (!items.length) {
+        selectSpace.innerHTML = `<option value="">${isFr ? '-- aucun espace disponible --' : '-- geen ruimtes beschikbaar --'}</option>`;
+        setStatus(isFr ? 'Aucun espace trouvé pour ce pays.' : 'Geen ruimtes gevonden voor dit land.', true);
+        return;
+      }
+
+      prepareSpaceDropdown();
+    }
+
+    function buildCodeForPortal(type, id) {
+      const nummer = Number(id);
+      if (!Number.isFinite(nummer)) return String(id);
+
+      const orgId = String(Math.trunc(nummer)).padStart(6, '0');
+      const mult3 = Math.trunc(nummer * 3);
+      const last6 = String(mult3).padStart(6, '0');
+
+      let resultaat = '';
+      for (let i = 0; i < 6; i++) resultaat += orgId[i] + last6[i];
+
+      // Space: eindcijfer 0-8. Equipment blijft 9 in je bestaande logica.
+      resultaat += String(Math.floor(Math.random() * 9));
+      return resultaat;
+    }
+
+    function goToPortal() {
+      const isFr = lang === 'fr';
+
+      if (!selectedCountryId) {
+        alert(isFr ? 'Choisissez d’abord un pays.' : 'Kies eerst een land.');
+        return;
+      }
+
+      const spaceId = selectSpace.value;
+      if (!spaceId) {
+        alert(isFr ? 'Choisissez un espace.' : 'Kies een ruimte.');
+        return;
+      }
+
+      const code = buildCodeForPortal('space', spaceId);
+      const url = new URL('/portal.html', window.location.origin);
+      url.searchParams.set('code', code);
+      url.searchParams.set('lang', lang);
+      url.searchParams.set('env', envPrefix);
+      url.searchParams.set('src', window.location.pathname + window.location.search);
+      window.location.href = url.toString();
+    }
+
+    function resetPortal() {
+      const isFr = lang === 'fr';
+
+      selectedCountryId = '';
+      allSpaces = [];
+
+      countryButtons.forEach(btn => btn.classList.remove('active'));
+
+      filterSpace.value = '';
+      filterSpace.disabled = true;
+      selectSpace.disabled = true;
+
+      selectSpace.innerHTML = `<option value="">${isFr ? '-- choisissez d’abord un pays --' : '-- kies eerst een land --'}</option>`;
+      setStatus('', false);
+    }
+
+    /* ============================================================
+       EVENTS
+    ============================================================ */
+    document.getElementById('switch-nl').onclick = (e) => {
+      e.preventDefault();
+      const u = new URL(window.location.href);
+      u.searchParams.set('lang', 'nl');
+      window.location.href = u.toString();
+    };
+
+    document.getElementById('switch-fr').onclick = (e) => {
+      e.preventDefault();
+      const u = new URL(window.location.href);
+      u.searchParams.set('lang', 'fr');
+      window.location.href = u.toString();
+    };
+
+    countryRow.addEventListener('click', (e) => {
+      const btn = e.target.closest('.country-btn');
+      if (!btn) return;
+      selectCountry(btn.dataset.country);
+    });
+
+    filterSpace.addEventListener('input', renderSpaceOptions);
+    btnGo.addEventListener('click', goToPortal);
+    btnReset.addEventListener('click', resetPortal);
+
+    /* ============================================================
+       INIT
+    ============================================================ */
+    (function init() {
+      initEnvBanner();
+      applyLanguage();
+    })();
+  </script>
+</body>
+</html>
