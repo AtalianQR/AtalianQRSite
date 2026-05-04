@@ -322,12 +322,20 @@
 		  </select>
 		</div>
 
+		
+		
         <div style="margin-top:.85rem;">
           <label id="label-space" for="select-space">Kies ruimte</label>
           <select id="select-space" disabled>
             <option value="">-- kies eerst een land --</option>
           </select>
         </div>
+		
+		
+		<div id="qr-block" style="display:none;margin-top:1rem;text-align:center;">
+		  <div style="font-weight:800;margin-bottom:.4rem;">QR-code voor deze ruimte</div>
+		  <canvas id="space-qr"></canvas>
+		</div>		
 
         <div id="status" class="status"></div>
 
@@ -338,6 +346,8 @@
       </div>
     </section>
   </main>
+
+  <script src="https://cdn.jsdelivr.net/npm/qrcode/build/qrcode.min.js"></script>
 
   <script>
     console.log('X2O direct space portal loaded ✅');
@@ -383,6 +393,8 @@
     const btnGo = document.getElementById('btn-go');
     const btnReset = document.getElementById('btn-reset');
 	const selectBuilding = document.getElementById('select-building');
+	const qrBlock = document.getElementById('qr-block');
+	const qrCanvas = document.getElementById('space-qr');
 
     /* ============================================================
        STATE
@@ -392,6 +404,38 @@
 	let spacesForSelectedBuilding = [];
     let selectedCountryId = '';
     let allSpaces = [];
+
+	function updateSpaceQr() {
+	  const spaceId = selectSpace.value;
+
+	  if (!spaceId) {
+		qrBlock.style.display = 'none';
+		return;
+	  }
+
+	  const code = buildCodeForPortal('space', spaceId);
+	  const url = new URL('/portal.html', window.location.origin);
+	  url.searchParams.set('code', code);
+	  url.searchParams.set('lang', lang);
+	  url.searchParams.set('env', envPrefix);
+	  url.searchParams.set('src', window.location.pathname + window.location.search);
+
+	  const qrText = url.toString();
+
+	  qrBlock.style.display = 'block';
+
+	  if (!window.QRCode || !QRCode.toCanvas) {
+		console.error('QRCode library niet geladen');
+		return;
+	  }
+
+	  QRCode.toCanvas(qrCanvas, qrText, {
+		width: 220,
+		margin: 2
+	  }, function (error) {
+		if (error) console.error('QR render fout:', error);
+	  });
+	}
 
     function initEnvBanner() {
       if (isTestEnv) {
@@ -540,6 +584,7 @@
 	  selectedBuildingKey = selectBuilding.value;
 
 	  if (selectedBuildingKey === '') {
+	    qrBlock.style.display = 'none';
 		spacesForSelectedBuilding = [];
 		selectSpace.disabled = true;
 		selectSpace.innerHTML = `<option value="">${isFr ? '-- choisissez d’abord un bâtiment --' : '-- kies eerst een gebouw --'}</option>`;
@@ -555,6 +600,7 @@
 
 	  if (spacesForSelectedBuilding.length === 1) {
 		selectSpace.value = valueOf(spacesForSelectedBuilding[0], 'Id');
+        updateSpaceQr();
 	  }
 	}	
 
@@ -602,6 +648,8 @@
     async function selectCountry(countryId) {
       const isFr = lang === 'fr';
       selectedCountryId = countryId;
+	  
+	  qrBlock.style.display = 'none';
 
       countryButtons.forEach(btn => btn.classList.toggle('active', btn.dataset.country === countryId));
 
@@ -687,6 +735,7 @@
 	  selectSpace.innerHTML = `<option value="">${isFr ? '-- choisissez d’abord un bâtiment --' : '-- kies eerst een gebouw --'}</option>`;
 
 	  setStatus('', false);
+	  qrBlock.style.display = 'none';
 	}
 
     /* ============================================================
@@ -716,6 +765,7 @@
     btnReset.addEventListener('click', resetPortal);
 	
 	selectBuilding.addEventListener('change', selectBuildingSpaces);
+	selectSpace.addEventListener('change', updateSpaceQr);
 
     /* ============================================================
        INIT
