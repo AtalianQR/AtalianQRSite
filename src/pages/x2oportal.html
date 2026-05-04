@@ -507,80 +507,68 @@
         : `✅ ${allSpaces.length} ruimte(s) geladen.`, false);
     }
 
-    function renderSpaceOptions() {
-      const isFr = lang === 'fr';
-      const q = String(filterSpace.value || '').toLowerCase().trim();
+	function renderSpaceOptions() {
+	  const isFr = lang === 'fr';
+	  const q = String(filterSpace.value || '').toLowerCase().trim();
 
-      const filtered = allSpaces.filter(sp => {
-        if (!q) return true;
+	  const filtered = allSpaces.filter(sp => {
+		if (!q) return true;
 
-        const haystack = [
-          valueOf(sp, 'Id'),
-          valueOf(sp, 'RoomNumber'),
-          valueOf(sp, 'Description'),
-          valueOf(sp, 'BuildingDescription'),
-          valueOf(sp, 'ProvinceId'),
-          valueOf(sp, 'ProvinceDescription'),
-          valueOf(sp, 'City')
-        ].join(' ').toLowerCase();
+		const haystack = [
+		  valueOf(sp, 'Id'),
+		  valueOf(sp, 'RoomNumber'),
+		  valueOf(sp, 'Description')
+		].join(' ').toLowerCase();
 
-        return haystack.includes(q);
-      });
+		return haystack.includes(q);
+	  });
 
-      filtered.sort((a, b) => {
-        const buildingA = valueOf(a, 'BuildingDescription', 'ComplexBuildingDescription', 'BuildingId');
-        const buildingB = valueOf(b, 'BuildingDescription', 'ComplexBuildingDescription', 'BuildingId');
+	  filtered.sort((a, b) => {
+		const descA = valueOf(a, 'Description', 'RoomNumber', 'Id');
+		const descB = valueOf(b, 'Description', 'RoomNumber', 'Id');
 
-        const cmpBuilding = buildingA.localeCompare(buildingB, lang === 'fr' ? 'fr' : 'nl', {
-          numeric: true,
-          sensitivity: 'base'
-        });
+		const cmpDesc = descA.localeCompare(descB, lang === 'fr' ? 'fr' : 'nl', {
+		  numeric: true,
+		  sensitivity: 'base'
+		});
 
-        if (cmpBuilding !== 0) return cmpBuilding;
+		if (cmpDesc !== 0) return cmpDesc;
 
-        const floorA = valueOf(a, 'BuildingFloorLevel');
-        const floorB = valueOf(b, 'BuildingFloorLevel');
-        const nA = parseFloat(floorA.replace(',', '.'));
-        const nB = parseFloat(floorB.replace(',', '.'));
+		const roomA = valueOf(a, 'RoomNumber', 'Id');
+		const roomB = valueOf(b, 'RoomNumber', 'Id');
 
-        if (Number.isFinite(nA) && Number.isFinite(nB) && nA !== nB) return nA - nB;
+		return roomA.localeCompare(roomB, lang === 'fr' ? 'fr' : 'nl', {
+		  numeric: true,
+		  sensitivity: 'base'
+		});
+	  });
 
-        const keyA = valueOf(a, 'RoomNumber', 'Id');
-        const keyB = valueOf(b, 'RoomNumber', 'Id');
+	  selectSpace.innerHTML = `<option value="">${isFr ? '-- choisissez un espace --' : '-- kies een ruimte --'}</option>`;
 
-        return keyA.localeCompare(keyB, lang === 'fr' ? 'fr' : 'nl', {
-          numeric: true,
-          sensitivity: 'base'
-        });
-      });
+	  if (!filtered.length) {
+		setStatus(isFr ? 'Aucun espace trouvé pour ce filtre.' : 'Geen ruimtes gevonden voor deze filter.', true);
+		return;
+	  }
 
-      selectSpace.innerHTML = `<option value="">${isFr ? '-- choisissez un espace --' : '-- kies een ruimte --'}</option>`;
+	  filtered.forEach(sp => {
+		const id = valueOf(sp, 'Id');
+		const roomNumber = valueOf(sp, 'RoomNumber');
+		const desc = ellipsize(valueOf(sp, 'Description') || roomNumber || id, 55);
 
-      if (!filtered.length) {
-        setStatus(isFr ? 'Aucun espace trouvé pour ce filtre.' : 'Geen ruimtes gevonden voor deze filter.', true);
-        return;
-      }
+		let label = desc;
 
-      filtered.forEach(sp => {
-        const id = valueOf(sp, 'Id');
-        const roomNumber = valueOf(sp, 'RoomNumber');
-        const desc = ellipsize(valueOf(sp, 'Description') || id, 55);
-        const building = valueOf(sp, 'BuildingDescription', 'ComplexBuildingDescription');
+		if (roomNumber && roomNumber !== desc) {
+		  label += ` (${roomNumber})`;
+		}
 
-        let label = building || desc || id;
+		selectSpace.insertAdjacentHTML(
+		  'beforeend',
+		  `<option value="${escHtml(id)}">${escHtml(label)}</option>`
+		);
+	  });
 
-        if (roomNumber) {
-          label += ` (${roomNumber})`;
-        }
-
-        selectSpace.insertAdjacentHTML(
-          'beforeend',
-          `<option value="${escHtml(id)}">${escHtml(label)}</option>`
-        );
-      });
-
-      setStatus(isFr ? `✅ ${filtered.length} espace(s) trouvé(s).` : `✅ ${filtered.length} ruimte(s) gevonden.`, false);
-    }
+	  setStatus(isFr ? `✅ ${filtered.length} espace(s) trouvé(s).` : `✅ ${filtered.length} ruimte(s) gevonden.`, false);
+	}
 
     async function selectCountry(countryId) {
       const isFr = lang === 'fr';
