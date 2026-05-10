@@ -21,6 +21,175 @@
       text-transform:uppercase;opacity:.9
     }
     body.is-test{ padding-top:30px; } /* ruimte voor de banner */
+	
+	
+	.product-inline-box {
+	  max-width: 100%;
+	}
+
+	.product-inline-title {
+	  margin-bottom: .55rem;
+	}
+
+	.product-inline-row {
+	  display: grid;
+	  grid-template-columns: 1fr 1fr auto;
+	  gap: .5rem;
+	  align-items: end;
+	}
+
+	.qty-readonly,
+	.qty-edit {
+	  background: rgba(255,255,255,.75);
+	  border-radius: 8px;
+	  padding: .45rem .55rem;
+	}
+
+	.qty-readonly span,
+	.qty-edit span {
+	  display: block;
+	  font-size: .78rem;
+	  color: #6b7280;
+	  margin-bottom: .15rem;
+	}
+
+	.qty-readonly b {
+	  display: block;
+	  font-size: 1rem;
+	  color: #111827;
+	}
+
+	.qty-edit input {
+	  width: 100%;
+	  border: 1px solid #d1d5db;
+	  border-radius: 6px;
+	  padding: .35rem .45rem;
+	  font-size: 1rem;
+	  font-weight: 700;
+	  box-sizing: border-box;
+	}
+
+	.qty-ok-btn {
+	  border: none;
+	  border-radius: 8px;
+	  padding: .55rem .75rem;
+	  background: #6b7280;
+	  color: #fff;
+	  font-weight: 700;
+	  cursor: pointer;
+	  white-space: nowrap;
+	}
+
+	.qty-ok-btn:active {
+	  background: #4b5563;
+	}
+
+	@media (max-width: 520px) {
+	  .product-inline-row {
+		grid-template-columns: 1fr 1fr;
+	  }
+
+	  .qty-ok-btn {
+		grid-column: 1 / -1;
+	  }
+	}	
+	
+	.signature-wrapper {
+	  width: 100%;
+	  max-width: 100%;
+	  margin-left: 0;
+	  border: 2px solid #EE7E00;
+	  border-radius: 10px;
+	  padding: 10px;
+	  background: #fff;
+	  box-sizing: border-box;
+	}
+
+	.signature-canvas {
+	  width: 100%;
+	  height: 220px;
+	  border: 1px solid #ccc;
+	  border-radius: 6px;
+	  touch-action: none;
+	  background: #fff;
+	  display: block;
+	  box-sizing: border-box;
+	}
+
+	.signature-actions {
+	  display: flex;
+	  gap: 8px;
+	  margin-top: 8px;
+	}
+
+	.signature-actions button {
+	  padding: 6px 12px;
+	}
+
+	/* Enkel op gsm iets breder trekken */
+	@media (max-width: 640px) {
+	  .signature-wrapper {
+		width: calc(100vw - 72px);
+		max-width: none;
+		margin-left: -28px;
+	  }
+
+	  .signature-canvas {
+		height: 240px;
+	  }
+
+	  .signature-actions button {
+		flex: 1;
+		padding: 8px 10px;
+	  }
+	}
+	.acceptance-question-box {
+	  background: #fffbeb;
+	  border-left: 4px solid #f59e0b;
+	  border-radius: 10px;
+	  padding: .7em 1em;
+	  margin: .7em 0;
+	  color: #374151;
+	}
+
+	.acceptance-question-box b {
+	  color: #111827;
+	}
+
+	.acceptance-section-box {
+	  background: #fff7ed;
+	  border-left: 4px solid #EE7E00;
+	  border-radius: 10px;
+	  padding: .75em 1em;
+	  margin: .8em 0;
+	}
+
+	.acceptance-check-box {
+	  background: #ffffff;
+	  border: 1px solid #fed7aa;
+	  border-left: 4px solid #EE7E00;
+	  border-radius: 10px;
+	  padding: .75em 1em;
+	  margin: .7em 0;
+	}
+
+	.acceptance-check-box b,
+	.acceptance-section-box b {
+	  color: #374151;
+	}
+	
+	.acceptance-summary-box {
+	  background:#e0f2fe;
+	  border-radius:10px;
+	  padding:.75em 1em;
+	  margin:.8em 0;
+	  border-left:4px solid #3b82f6;
+	  color:#374151;
+	}
+
+	.acceptance-summary-box b {
+	  color:#111827;
+	}	
 
     .header-flex{display:flex;flex-direction:column;align-items:center;max-width:600px;width:100%;margin:0 auto;padding:.5rem 0;gap:.5rem}
     img.logo{max-height:60px;height:auto;width:auto;display:block;margin:0 auto;background:rgba(255,255,255,.85);padding:.1rem;border-radius:12px}
@@ -34,7 +203,13 @@
     .botui-button:active{background:#d86e00}
 
     .meldingen-lijst{background:#f5f8fc;border-radius:10px;padding:.7em 1em;margin:.7em 0;border-left:4px solid #EE7E00}
-    .job-description-box{background:#e0f2fe;border-radius:10px;padding:.7em 1em;margin:.7em 0;border-left:4px solid #3b82f6}
+    .job-description-box {
+	  background:#ffffff;
+	  border-radius:10px;
+	  padding:.7em 1em;
+	  margin:.7em 0;
+	  border-left:4px solid #EE7E00;
+	}
 
     @keyframes fadeIn{to{opacity:1}}
 
@@ -58,7 +233,7 @@
       .botui-container{padding:.75rem;max-width:95%}
       .botui-actions-text-input{max-width:100% !important}
     }
-
+	
     /* Documentenpaneel */
     .doc-backdrop{position:fixed;inset:0;background:rgba(0,0,0,.25);backdrop-filter:saturate(140%) blur(1px);z-index:990;opacity:0;transition:opacity .18s ease}
     .doc-backdrop[hidden]{display:none}
@@ -467,8 +642,52 @@ async function requireGpsIfPortalSelf({ botui, Telemetry, isFr, cameFromPortalSe
 	  $preview.innerHTML = html;
 	}
   
-
   
+	function hasAcceptanceStatement(job) {
+	  return String(job.AcceptanceStatement || '').trim() !== '';
+	}
+
+	function hasCustomerAccepted(job) {
+	  const ps = getProgressStatusId(job);
+
+	  return (
+		ps === '1030' ||
+		String(job.Accepted || '').trim() === '1' ||
+		String(job.SignatureFile || '').trim() !== ''
+	  );
+	}
+
+	function needsCustomerAcceptanceOnly(job) {
+	  const ps = getProgressStatusId(job);
+
+	  const result =
+		ps === '1016' &&
+		hasAcceptanceStatement(job) &&
+		!hasCustomerAccepted(job);
+
+	  console.log('[ACCEPTANCE ROUTING]', {
+		ps,
+		hasAcceptanceStatement: hasAcceptanceStatement(job),
+		hasCustomerAccepted: hasCustomerAccepted(job),
+		AcceptanceStatement: job.AcceptanceStatement,
+		AcceptanceRemarkText: job.AcceptanceRemarkText,
+		Accepted: job.Accepted,
+		SignatureFile: job.SignatureFile,
+		result
+	  });
+
+	  return result;
+	}
+
+	function needsAcceptancePreparation(job) {
+	  const ps = getProgressStatusId(job);
+
+	  return (
+		ps === '1016' &&
+		String(job.CustomerNeedsAcceptance || '').toLowerCase() === 'true' &&
+		String(job.AcceptanceStatement || '').trim() === ''
+	  );
+	}  
 
   /* ==================== 5. Login ==================== */
 	function getVendorSessionEmail({ maxAgeMin = 120 } = {}) {
@@ -732,7 +951,7 @@ async function requireGpsIfPortalSelf({ botui, Telemetry, isFr, cameFromPortalSe
     const choice = await botui.action.button({
       action: [
         { text: isFr ? '🌐 Traduire en français' : '🌐 Vertalen naar Nederlands', value: 'yes' },
-        { text: isFr ? 'Sans traduction' : 'Zonder vertaling', value: 'no' }
+        { text: isFr ? 'OK' : 'OK', value: 'no' }
       ]
     });
 
@@ -820,12 +1039,59 @@ async function requireGpsIfPortalSelf({ botui, Telemetry, isFr, cameFromPortalSe
   }
 
   /* ==================== 8. Update wrapper ==================== */
-  async function submitUpdate(payload, successMsg){
-    const url = `${endpointUpdate}?action=${encodeURIComponent(payload.action)}&jobId=${encodeURIComponent(payload.jobId)}${envQ}`;
-    const r=await fetch(url,{ method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(payload)});
-    if(!r.ok) throw new Error(await r.text());
-    await botui.message.add({ content: successMsg });
-  }
+	async function submitUpdate(payload, successMsg) {
+	  const url = `${endpointUpdate}?action=${encodeURIComponent(payload.action)}&jobId=${encodeURIComponent(payload.jobId)}${envQ}`;
+
+	  const r = await fetch(url, {
+		method: 'POST',
+		headers: { 'Content-Type': 'application/json' },
+		body: JSON.stringify(payload)
+	  });
+
+	  if (!r.ok) throw new Error(await r.text());
+
+	  const data = await r.json().catch(() => null);
+
+	  if (successMsg) {
+		await botui.message.add({ content: successMsg });
+	  }
+
+	  return data;
+	}
+	
+	async function fetchAcceptanceProducts(job) {
+	  const res = await submitUpdate({
+		action: 'GET_ACCEPTANCE_PRODUCTS',
+		jobId: job.Id,
+		email: sessionEmail
+	  }, null);
+
+	  return Array.isArray(res?.Products) ? res.Products : [];
+	}
+
+	function formatAcceptanceProductLine(product) {
+	  const articleId = String(product.ArticleId || '').trim();
+	  const articleDescription = String(product.ArticleDescription || '').trim();
+	  const lineDescription = String(product.LineDescription || '').trim();
+
+	  const purchaseQty = String(product.PurchaseQuantity || '').trim();
+
+	  const fallbackQty =
+		String(product.DeliveredQuantity || '').trim() ||
+		String(product.InvoiceQuantity || '').trim() ||
+		String(product.PickedQuantity || '').trim();
+
+	  const qty = purchaseQty || fallbackQty;
+	  const description = articleDescription || lineDescription || '';
+
+	  return [
+		articleId,
+		description,
+		qty
+		  ? `${isFr ? 'quantité prévue' : 'voorzien aantal'}: ${qty} ${isFr ? 'pc.' : 'st.'}`
+		  : ''
+	  ].filter(Boolean).join(' - ');
+	}
 
   /* ==================== 9. Documentenlijst ==================== */
   async function loadAndRenderDocuments(jobId){
@@ -1100,15 +1366,18 @@ async function askSignaturePad() {
     await botui.message.add({
       type: 'html',
       content: `
-        <div style="border:2px solid #EE7E00;border-radius:8px;padding:10px;background:#fff;width:100%;box-sizing:border-box">
-          <canvas id="${id}"
-            style="width:100%;height:180px;border:1px solid #ccc;border-radius:6px;touch-action:none;background:#fff;display:block;box-sizing:border-box"></canvas>
-          <div style="margin-top:8px">
-            <button type="button" id="${id}-clear">Wissen</button>
-            <button type="button" id="${id}-ok">Bevestigen</button>
-          </div>
-        </div>
-      `
+		  <div class="signature-wrapper">
+			<canvas id="${id}" class="signature-canvas"></canvas>
+			<div class="signature-actions">
+			  <button type="button" id="${id}-clear">
+				${isFr ? 'Effacer' : 'Wissen'}
+			  </button>
+			  <button type="button" id="${id}-ok">
+				${isFr ? 'Confirmer' : 'Bevestigen'}
+			  </button>
+			</div>
+		  </div>
+		`
     });
 
     const canvas = document.getElementById(id);
@@ -1162,159 +1431,930 @@ async function askSignaturePad() {
     canvas.addEventListener('touchmove', move, { passive: false });
     canvas.addEventListener('touchend', end);
 
-    document.getElementById(`${id}-clear`).onclick = () => {
-      ctx.clearRect(0, 0, rect.width, rect.height);
-      hasDrawn = false;
-    };
+	const clearBtn = document.getElementById(`${id}-clear`);
+	const okBtn = document.getElementById(`${id}-ok`);
 
-    document.getElementById(`${id}-ok`).onclick = async () => {
-      if (!hasDrawn) {
-        await botui.message.add({
-          content: isFr ? '⚠️ Signature obligatoire.' : '⚠️ Handtekening is verplicht.'
-        });
-        return;
-      }
+	let signatureConfirmed = false;
 
-      resolve(canvas.toDataURL('image/png').replace(/^data:image\/png;base64,/, ''));
-    };
+	clearBtn.onclick = () => {
+	  if (signatureConfirmed) return;
+
+	  ctx.clearRect(0, 0, rect.width, rect.height);
+	  hasDrawn = false;
+	};
+
+	okBtn.onclick = async () => {
+	  if (signatureConfirmed) return;
+
+	  if (!hasDrawn) {
+		await botui.message.add({
+		  content: isFr ? '⚠️ Signature obligatoire.' : '⚠️ Handtekening is verplicht.'
+		});
+		return;
+	  }
+
+	  signatureConfirmed = true;
+
+	  clearBtn.disabled = true;
+	  okBtn.disabled = true;
+	  okBtn.textContent = isFr ? 'Confirmé' : 'Bevestigd';
+
+	  clearBtn.style.opacity = '.45';
+	  okBtn.style.opacity = '.45';
+	  clearBtn.style.cursor = 'not-allowed';
+	  okBtn.style.cursor = 'not-allowed';
+
+	  canvas.style.pointerEvents = 'none';
+	  canvas.style.opacity = '.85';
+
+	  resolve(canvas.toDataURL('image/png').replace(/^data:image\/png;base64,/, ''));
+	};
   });
 }
-  
-async function runAcceptanceSignature(job) {
-  const feedbackText = String(
-    job.EdtJobFeedbackText ||
-    job.FeedbackText ||
-    ''
-  ).trim();
 
-  if (feedbackText) {
+async function askDeliveredQtyInline({ label, defaultQty }) {
+  return new Promise(async (resolve) => {
+    const id = `qty-${Date.now()}-${Math.floor(Math.random() * 10000)}`;
+
     await botui.message.add({
       type: 'html',
       content: `
-        <div class="job-description-box">
-          <b>${isFr ? 'Travaux exécutés' : 'Uitgevoerde werkzaamheden'}</b><br>
-          ${feedbackText}
+        <div class="job-description-box product-inline-box">
+          <div class="product-inline-title">
+            <b>${label || (isFr ? 'Article' : 'Artikel')}</b>
+          </div>
+
+          <div class="product-inline-row">
+            <div class="qty-readonly">
+              <span>${isFr ? 'Demandé' : 'Gevraagd'}</span>
+              <b>${defaultQty} ${isFr ? 'pc.' : 'st.'}</b>
+            </div>
+
+            <div class="qty-edit">
+              <span>${isFr ? 'Livré' : 'Geleverd'}</span>
+              <input id="${id}" type="text" value="${defaultQty}" inputmode="decimal" />
+            </div>
+
+            <button type="button" id="${id}-ok" class="qty-ok-btn">
+              ✅ ${isFr ? 'OK' : 'OK'}
+            </button>
+          </div>
         </div>
       `
     });
-  }
 
-  await botui.message.add({
-    content: isFr
-      ? 'Nom du signataire :'
-      : 'Naam van de ondertekenaar:'
-  });
+    const input = document.getElementById(id);
+    const button = document.getElementById(`${id}-ok`);
 
-  const nameAnswer = await botui.action.text({
-    action: {
-      placeholder: isFr ? 'Nom et prénom' : 'Naam en voornaam',
-      maxLength: 100
-    }
-  });
+    setTimeout(() => {
+      input?.focus();
+      input?.select();
+    }, 100);
 
-  const signerName = String(nameAnswer?.value || '').trim();
+    button.onclick = () => {
+      resolve(String(input?.value || '').trim());
+    };
 
-  if (!signerName) {
-    await botui.message.add({
-      content: isFr
-        ? '⚠️ Le nom du signataire est obligatoire.'
-        : '⚠️ Naam van de ondertekenaar is verplicht.'
-    });
-    return false;
-  }
-
-  const wantsRemark = await botui.action.button({
-    action: [
-      { text: isFr ? 'Ajouter une remarque' : 'Opmerking toevoegen', value: 'yes' },
-      { text: isFr ? 'Sans remarque' : 'Geen opmerking', value: 'no' }
-    ]
-  });
-
-  let remark = '';
-
-  if (wantsRemark.value === 'yes') {
-    await botui.message.add({
-      content: isFr
-        ? 'Remarque du client pour acceptation :'
-        : 'Opmerking van de klant voor acceptatie:'
-    });
-
-    const remarkAnswer = await botui.action.text({
-      action: {
-        placeholder: isFr ? 'Remarque…' : 'Opmerking…',
-        maxLength: 500
+    input.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        resolve(String(input?.value || '').trim());
       }
     });
+  });
+}
+  
+	async function runAcceptanceSignature(job) {
 
-    remark = String(remarkAnswer?.value || '').trim();
-  }
+	  // BLOK 1 — Prestatieverklaring
+	  await botui.message.add({
+		type: 'html',
+		content: `
+		  <div class="acceptance-section-box">
+			<b>${isFr ? 'Déclaration de prestation' : 'Prestatieverklaring'}</b><br>
+			${
+			  isFr
+				? 'Complétez d’abord les informations liées aux prestations effectuées.'
+				: 'Vul eerst de gegevens in over de uitgevoerde prestatie.'
+			}
+		  </div>
+		`
+	  });
+
+	  let performedHours = '';
+
+	  while (true) {
+		await botui.message.add({
+		  type: 'html',
+		  content: `
+			<div class="acceptance-check-box">
+			  <b>${isFr ? 'Heures prestées' : 'Gepresteerde uren'}</b><br>
+			  ${
+				isFr
+				  ? 'Combien d’heures ont été réellement prestées pour cette tâche ?'
+				  : 'Hoeveel uren werden effectief gepresteerd voor deze taak?'
+			  }
+			</div>
+		  `
+		});
+
+		const hoursAnswer = await botui.action.text({
+		  action: {
+			placeholder: isFr ? 'Heures réellement prestées' : 'Effectief gepresteerde uren',
+			maxLength: 20
+		  }
+		});
+
+		const rawHours = String(hoursAnswer?.value || '').trim();
+
+		if (!rawHours) {
+		  await botui.message.add({
+			content: isFr
+			  ? '⚠️ Le nombre d’heures prestées est obligatoire. Introduisez 0 si aucune heure n’a été prestée.'
+			  : '⚠️ Het aantal gepresteerde uren is verplicht. Geef 0 in als er geen uren werden gepresteerd.'
+		  });
+		  continue;
+		}
+
+		const normalizedHours = rawHours.replace(',', '.');
+
+		if (!/^\d+(\.\d{1,2})?$/.test(normalizedHours) || Number(normalizedHours) < 0) {
+		  await botui.message.add({
+			content: isFr
+			  ? '⚠️ Le nombre d’heures doit être valable. Saisissez 0 si aucune heure n’a été prestée.'
+			  : '⚠️ Het aantal uren moet geldig zijn. Vul 0 in als er geen uren werden gepresteerd.'
+		  });
+		  continue;
+		}
+
+		performedHours = normalizedHours.replace('.', ',');
+
+		await botui.message.add({
+		  type: 'html',
+		  content: `
+			<div class="acceptance-check-box">
+			  <b>${isFr ? 'Contrôle prestation' : 'Controle prestatie'}</b><br>
+			  ${isFr ? 'Heures réellement prestées' : 'Effectief gepresteerde uren'}:
+			  <b>${performedHours}</b>
+			</div>
+		  `
+		});
+
+		const confirmHours = await botui.action.button({
+		  action: [
+			{
+			  text: isFr ? '✅ Confirmer les heures' : '✅ Uren bevestigen',
+			  value: 'yes'
+			},
+			{
+			  text: isFr ? '✏️ Corriger' : '✏️ Corrigeren',
+			  value: 'no'
+			}
+		  ]
+		});
+
+		if (confirmHours.value === 'yes') {
+		  break;
+		}
+	  }
+
+	  // Pas na bevestiging de uren als kost boeken in Ultimo
+	  if (Number(performedHours.replace(',', '.')) > 0) {
+		await submitUpdate({
+		  action: 'ADD_ACCEPTANCE_HOURS',
+		  jobId: job.Id,
+		  email: sessionEmail,
+		  PerformedHours: performedHours
+		}, isFr ? '✅ Heures ajoutées aux coûts.' : '✅ Uren toegevoegd aan de kosten.');
+	  } else {
+		await botui.message.add({
+		  content: isFr
+			? '✅ Aucune heure à ajouter aux coûts.'
+			: '✅ Geen uren toe te voegen aan de kosten.'
+		});
+	  }
+
+	  // Producten ophalen uit PurchaseRequestLine
+	  const acceptanceProducts = await fetchAcceptanceProducts(job);
+
+	  let deliveredProductsText = '';
+
+	  if (acceptanceProducts.length) {
+		await botui.message.add({
+		  type: 'html',
+		  content: `
+			<div class="acceptance-section-box">
+			  <b>${isFr ? 'Produits livrés' : 'Geleverde producten'}</b><br>
+			  ${
+				isFr
+				  ? 'Indiquez par article la quantité effectivement livrée.'
+				  : 'Geef per artikel aan hoeveel er effectief geleverd werd.'
+			  }
+			</div>
+		  `
+		});
+
+		const deliveredProductLines = [];
+
+		for (const product of acceptanceProducts) {
+		  const articleId = String(product.ArticleId || '').trim();
+
+		  const articleDescription = String(
+			product.ArticleDescription ||
+			product.LineDescription ||
+			''
+		  ).trim();
+
+		  const requestedQty = String(
+			product.PurchaseQuantity ||
+			product.DeliveredQuantity ||
+			product.InvoiceQuantity ||
+			product.PickedQuantity ||
+			''
+		  ).trim();
+
+		  const defaultQty = requestedQty || '0';
+
+		  const label = [
+			articleId,
+			articleDescription
+		  ].filter(Boolean).join(' - ');
+
+		  let deliveredQty = '';
+
+		  while (true) {
+			const rawQty = await askDeliveredQtyInline({
+			  label,
+			  defaultQty
+			});
+
+			if (!rawQty) {
+			  await botui.message.add({
+				content: isFr
+				  ? '⚠️ La quantité est obligatoire. Introduisez 0 si rien n’a été livré.'
+				  : '⚠️ Het aantal is verplicht. Geef 0 in als er niets geleverd werd.'
+			  });
+			  continue;
+			}
+
+			const cleanedQty = String(rawQty)
+			  .trim()
+			  .replace(/\s+/g, '')
+			  .replace(/[^0-9.,]/g, '');
+
+			if (!cleanedQty) {
+			  await botui.message.add({
+				content: isFr
+				  ? '⚠️ Introduisez une quantité valable, par exemple 0, 1 ou 2,5.'
+				  : '⚠️ Geef een geldig aantal in, bijvoorbeeld 0, 1 of 2,5.'
+			  });
+			  continue;
+			}
+
+			const qtyForCheck = cleanedQty.replace(',', '.');
+
+			if (!/^\d+(\.\d{1,3})?$/.test(qtyForCheck) || Number(qtyForCheck) < 0) {
+			  await botui.message.add({
+				content: isFr
+				  ? '⚠️ Introduisez une quantité valable, par exemple 0, 1 ou 2,5.'
+				  : '⚠️ Geef een geldig aantal in, bijvoorbeeld 0, 1 of 2,5.'
+			  });
+			  continue;
+			}
+
+			let qtyForUltimo = cleanedQty.replace('.', ',');
+			qtyForUltimo = qtyForUltimo.replace(/,0+$/, '');
+
+			if (qtyForUltimo === '') {
+			  qtyForUltimo = '0';
+			}
+
+			deliveredQty = qtyForUltimo;
+
+			await botui.message.add({
+			  type: 'html',
+			  content: `
+				<div class="acceptance-check-box">
+				  <b>${isFr ? 'Contrôle produit' : 'Controle product'}</b><br>
+				  ${label || (isFr ? 'Article' : 'Artikel')}<br>
+				  ${isFr ? 'Quantité livrée' : 'Geleverd aantal'}:
+				  <b>${deliveredQty} ${isFr ? 'pc.' : 'st.'}</b>
+				</div>
+			  `
+			});
+
+			const confirmQty = await botui.action.button({
+			  action: [
+				{
+				  text: isFr ? '✅ Confirmer' : '✅ Bevestigen',
+				  value: 'yes'
+				},
+				{
+				  text: isFr ? '✏️ Corriger' : '✏️ Corrigeren',
+				  value: 'no'
+				}
+			  ]
+			});
+
+			if (confirmQty.value === 'yes') {
+			  break;
+			}
+		  }
+
+		  if (Number(deliveredQty.replace(',', '.')) > 0) {
+			await submitUpdate({
+			  action: 'ADD_ACCEPTANCE_PRODUCT',
+			  jobId: job.Id,
+			  email: sessionEmail,
+			  ProductLineId: String(product.Id || '').trim(),
+			  ArticleId: articleId,
+			  ProductDescription: label,
+			  DeliveredQuantity: deliveredQty
+			}, isFr ? '✅ Produit ajouté aux coûts.' : '✅ Product toegevoegd aan de kosten.');
+
+			deliveredProductLines.push(
+			  `• ${label} - ${deliveredQty} ${isFr ? 'pc.' : 'st.'}`
+			);
+		  } else {
+			deliveredProductLines.push(
+			  `• ${label} - ${isFr ? 'non livré' : 'niet geleverd'}`
+			);
+		  }
+		}
+
+		deliveredProductsText = deliveredProductLines.join('<br>');
+	  }
+
+	  // Bijkomende note is optioneel.
+	  // Belangrijk: deze note mag nooit bepalen of AcceptanceStatement wordt opgeslagen.
+	  let acceptanceExtraNote = '';
+
+	  await botui.message.add({
+		type: 'html',
+		content: `
+		  <div class="acceptance-section-box">
+			<b>${isFr ? 'Note complémentaire' : 'Bijkomende note'}</b><br>
+			${
+			  isFr
+				? 'Ajoutez éventuellement une note liée à la prestation.'
+				: 'Voeg eventueel nog een note toe bij de prestatie.'
+			}
+		  </div>
+		`
+	  });
+
+	  const wantsExtraNote = await botui.action.button({
+		action: [
+		  {
+			text: isFr ? '✏️ Ajouter une note' : '✏️ Note toevoegen',
+			value: 'yes'
+		  },
+		  {
+			text: isFr ? 'Sans note' : 'Geen note',
+			value: 'no'
+		  }
+		]
+	  });
+
+	  if (wantsExtraNote.value === 'yes') {
+		await botui.message.add({
+		  type: 'html',
+		  content: `
+			<div class="acceptance-check-box">
+			  <b>Note</b><br>
+			  ${
+				isFr
+				  ? 'Indiquez la note à ajouter à la prestation.'
+				  : 'Geef de note die aan de prestatie moet worden toegevoegd.'
+			  }
+			</div>
+		  `
+		});
+
+		const noteAnswer = await botui.action.text({
+		  action: {
+			placeholder: isFr ? 'Note…' : 'Note…',
+			maxLength: 500
+		  }
+		});
+
+		acceptanceExtraNote = String(noteAnswer?.value || '').trim();
+
+		if (acceptanceExtraNote) {
+		  await submitUpdate({
+			action: 'ADD_ACCEPTANCE_REMARK',
+			jobId: job.Id,
+			email: sessionEmail,
+			AcceptanceRemarkText: acceptanceExtraNote
+		  }, isFr ? '✅ Note ajoutée aux coûts.' : '✅ Note toegevoegd aan de kosten.');
+		}
+	  }
+
+	  // Finale prestatieverklaring opbouwen.
+	  // Deze moet ALTIJD bestaan, ook als er geen note is.
+	  const acceptanceStatementLines = [];
+
+	  acceptanceStatementLines.push(
+		`<b>${isFr ? 'Heures prestées' : 'Gepresteerde uren'}:</b> ${performedHours}`
+	  );
+
+	  if (deliveredProductsText) {
+		acceptanceStatementLines.push(
+		  `<b>${isFr ? 'Produits livrés' : 'Geleverde producten'}:</b><br>${deliveredProductsText}`
+		);
+	  } else {
+		acceptanceStatementLines.push(
+		  `<b>${isFr ? 'Produits livrés' : 'Geleverde producten'}:</b><br>${isFr ? 'Aucun produit lié à cette prestation.' : 'Geen producten gekoppeld aan deze prestatie.'}`
+		);
+	  }
+
+	  if (acceptanceExtraNote) {
+		acceptanceStatementLines.push(
+		  `<b>Note:</b><br>${acceptanceExtraNote}`
+		);
+	  }
+
+	  const acceptanceStatement = acceptanceStatementLines.join('<br>');
+
+	  if (!acceptanceStatement || !acceptanceStatement.trim()) {
+		throw new Error('AcceptanceStatement is leeg. Opslaan naar Ultimo werd geblokkeerd.');
+	  }
+
+	  console.log('[ACCEPTANCE] SAVE_ACCEPTANCE_STATEMENT payload', {
+		jobId: job.Id,
+		acceptanceStatement
+	  });
+
+	  // Finale prestatieverklaring ALTIJD bewaren in Ultimo
+	  await submitUpdate({
+		action: 'SAVE_ACCEPTANCE_STATEMENT',
+		jobId: job.Id,
+		email: sessionEmail,
+		AcceptanceStatement: acceptanceStatement
+	  }, isFr ? '✅ Déclaration de prestation enregistrée.' : '✅ Prestatieverklaring bewaard.');
+
+	// BLOK 2 — Overgang naar klantacceptatie
+	await botui.message.add({
+	  type: 'html',
+	  content: `
+		<div class="acceptance-section-box">
+		  <b>${isFr ? 'Passage à l’acceptation client' : 'Overgang naar klantacceptatie'}</b><br>
+		  ${
+			isFr
+			  ? 'La déclaration de prestation est maintenant enregistrée. Passez à présent chez la personne qui réceptionne les travaux afin qu’elle puisse contrôler le résumé, ajouter éventuellement une remarque et signer l’acceptation.'
+			  : 'De prestatieverklaring is nu bewaard. Ga nu naar de persoon die de werken ontvangt, zodat die de samenvatting kan controleren, eventueel een opmerking kan toevoegen en de acceptatie kan ondertekenen.'
+		  }
+		</div>
+	  `
+	});
+
+	await botui.action.button({
+	  action: [
+		{
+		  text: isFr ? '✅ Continuer avec le client' : '✅ Verdergaan met de klant',
+		  value: 'yes'
+		}
+	  ]
+	});
+
+	// BLOK 3 — Acceptatieverklaring
+	await botui.message.add({
+	  type: 'html',
+	  content: `
+		<div class="acceptance-section-box">
+		  <b>${isFr ? 'Déclaration d’acceptation' : 'Acceptatieverklaring'}</b><br>
+		  ${
+			isFr
+			  ? 'La personne qui réceptionne les travaux contrôle maintenant le résumé de la prestation, ajoute éventuellement une remarque, puis confirme par son nom et sa signature.'
+			  : 'De persoon die de werken ontvangt, controleert nu de samenvatting van de prestatie, voegt eventueel een opmerking toe en bevestigt daarna met naam en handtekening.'
+		  }
+		</div>
+	  `
+	});
+
+	// Samenvatting eerst tonen aan de klant
+	await botui.message.add({
+	  type: 'html',
+	  content: `
+		<div class="acceptance-summary-box">
+		  <b>${isFr ? 'Résumé de la prestation' : 'Samenvatting prestatie'}</b><br>
+		  ${acceptanceStatement}
+		</div>
+	  `
+	});
+
+	// Expliciete controle door de klant
+	await botui.message.add({
+	  content: isFr
+		? 'Veuillez contrôler le résumé ci-dessus. Avez-vous une remarque à ajouter avant signature ?'
+		: 'Gelieve de samenvatting hierboven te controleren. Heeft u nog een opmerking vóór ondertekening?'
+	});
+
+	const wantsRemark = await botui.action.button({
+	  action: [
+		{
+		  text: isFr ? '✏️ Ajouter une remarque' : '✏️ Opmerking toevoegen',
+		  value: 'yes'
+		},
+		{
+		  text: isFr ? '✅ Pas de remarque' : '✅ Geen opmerking',
+		  value: 'no'
+		}
+	  ]
+	});
+
+	let remark = '';
+
+	if (wantsRemark.value === 'yes') {
+	  await botui.message.add({
+		content: isFr
+		  ? 'Remarque du client pour acceptation :'
+		  : 'Opmerking van de klant voor acceptatie:'
+	  });
+
+	  const remarkAnswer = await botui.action.text({
+		action: {
+		  placeholder: isFr ? 'Remarque…' : 'Opmerking…',
+		  maxLength: 500
+		}
+	  });
+
+	  remark = String(remarkAnswer?.value || '').trim();
+	}
+
+	// Overdracht naar klant voor identificatie en handtekening
+	await botui.message.add({
+	  type: 'html',
+	  content: `
+		<div class="acceptance-section-box">
+		  <b>${isFr ? 'Action client requise' : 'Actie door klant vereist'}</b><br>
+		  ${
+			isFr
+			  ? 'Le collaborateur Atalian peut maintenant présenter cet écran au client. La suite doit être complétée par le client lui-même.'
+			  : 'De Atalian medewerker kan dit scherm nu aan de klant tonen. Het vervolg wordt door de klant zelf ingevuld.'
+		  }
+		</div>
+	  `
+	});
+
+	// Naam door de klant zelf
+	await botui.message.add({
+	  type: 'html',
+	  content: `
+		<div class="acceptance-section-box">
+		  <b>${isFr ? 'Identification du client' : 'Identificatie klant'}</b><br>
+		  ${
+			isFr
+			  ? 'Cher client, veuillez indiquer votre nom afin de confirmer la réception des travaux.'
+			  : 'Beste klant, vul uw naam in om de ontvangst van de werken te bevestigen.'
+		  }
+		</div>
+	  `
+	});
+
+	const nameAnswer = await botui.action.text({
+	  action: {
+		placeholder: isFr ? 'Votre nom et prénom' : 'Uw naam en voornaam',
+		maxLength: 100
+	  }
+	});
+
+	const signerName = String(nameAnswer?.value || '').trim();
+
+	if (!signerName) {
+	  await botui.message.add({
+		type: 'html',
+		content: `
+		  <div class="acceptance-check-box">
+			⚠️ ${
+			  isFr
+				? 'Votre nom est obligatoire pour valider l’acceptation.'
+				: 'Uw naam is verplicht om de acceptatie te bevestigen.'
+			}
+		  </div>
+		`
+	  });
+	  return false;
+	}
+
+	// Controleblok naam klant
+	await botui.message.add({
+	  type: 'html',
+	  content: `
+		<div class="acceptance-check-box">
+		  <b>${isFr ? 'Contrôle identité client' : 'Controle identiteit klant'}</b><br>
+		  ${isFr ? 'Nom du client' : 'Naam klant'}:
+		  <b>${signerName}</b>
+		</div>
+	  `
+	});
 
 	const acceptanceRemarkText = [
-	  `${isFr ? 'Signé par' : 'Ondertekend door'}: ${signerName}`,
-	  remark ? `${isFr ? 'Remarque' : 'Opmerking'}: ${remark}` : ''
+	  remark ? `${isFr ? 'Remarque client' : 'Opmerking klant'}: ${remark}` : '',
+	  `${isFr ? 'Signé par le client' : 'Ondertekend door klant'}: ${signerName}`
 	].filter(Boolean).join('<br>');
 
-  await botui.message.add({
-    content: isFr
-      ? 'Veuillez faire signer le client ci-dessous.'
-      : 'Laat de klant hieronder tekenen.'
-  });
+	// Handtekening door de klant zelf
+	await botui.message.add({
+	  type: 'html',
+	  content: `
+		<div class="acceptance-section-box">
+		  <b>${isFr ? 'Signature client' : 'Handtekening klant'}</b><br>
+		  ${
+			isFr
+			  ? 'Cher client, veuillez signer ci-dessous pour confirmer que vous avez réceptionné les travaux.'
+			  : 'Beste klant, gelieve hieronder te tekenen om te bevestigen dat u de werken hebt ontvangen.'
+		  }
+		</div>
+	  `
+	});
 
-  const signatureBase64 = await askSignaturePad();
+	const signatureBase64 = await askSignaturePad();
 
-  await submitUpdate({
-    action: 'ACCEPTED',
-    jobId: job.Id,
-    email: sessionEmail,
-    SignatureBase64: signatureBase64,
-    AcceptanceRemarkText: acceptanceRemarkText
-  }, isFr ? '✅ Acceptation enregistrée.' : '✅ Acceptatie vastgelegd.');
+	await submitUpdate({
+	  action: 'ACCEPTED',
+	  jobId: job.Id,
+	  email: sessionEmail,
+	  SignatureBase64: signatureBase64,
+	  AcceptanceRemarkText: acceptanceRemarkText
+	}, isFr
+	  ? '✅ Merci. Les travaux sont réceptionnés. L’intervention peut être clôturée.'
+	  : '✅ Bedankt. De werken zijn ontvangen. De melding mag afgesloten worden.'
+	);
 
-  closeDocPanel();
+	closeDocPanel();
 
-  if (cameFromPortalSelf) {
-    await botui.message.add({
-      content: isFr
-        ? 'Retour au portail…'
-        : 'Terug naar portal…'
-    });
+	if (cameFromPortalSelf) {
+	  await botui.message.add({
+		content: isFr
+		  ? 'Retour au portail…'
+		  : 'Terug naar portal…'
+	  });
 
-    return goBackAfterVendor();
-  }
+	  return goBackAfterVendor();
+	}
 
-  return true;
-}
+	return true;}
 
+ 
+	function getExistingAcceptanceText(job) {
+	  return String(
+		job.AcceptanceStatement ||
+		job.AcceptanceText ||
+		job.AcceptanceRemarkText ||
+		job.AcceptanceRemarks ||
+		job.EdtAcceptanceStatement ||
+		job.EdtAcceptanceRemarkText ||
+		''
+	  ).trim();
+	}
+
+	async function showExistingAcceptanceIfAny(job) {
+	  const existingAcceptanceText = getExistingAcceptanceText(job);
+
+	  if (!existingAcceptanceText) return;
+
+	  await botui.message.add({
+		type: 'html',
+		content: `
+		  <div class="acceptance-summary-box">
+			<b>${isFr ? 'Déclaration déjà enregistrée' : 'Reeds geregistreerde verklaring'}</b><br>
+			${existingAcceptanceText.replace(/\n/g, '<br>')}
+		  </div>
+		`
+	  });
+	} 
+	 
+	 async function runCustomerAcceptanceOnly(job) {
+
+
+	  await botui.message.add({
+		type: 'html',
+		content: `
+		  <div class="acceptance-section-box">
+			<b>${isFr ? 'Déclaration d’acceptation' : 'Acceptatieverklaring'}</b><br>
+			${
+			  isFr
+				? 'Le client contrôle maintenant la déclaration de prestation déjà préparée, ajoute éventuellement une remarque, puis confirme par son nom et sa signature.'
+				: 'De klant controleert nu de reeds voorbereide prestatieverklaring, voegt eventueel een opmerking toe en bevestigt daarna met naam en handtekening.'
+			}
+		  </div>
+		`
+	  });
+
+	  await botui.message.add({
+		content: isFr
+		  ? 'Veuillez contrôler la déclaration ci-dessus. Avez-vous une remarque à ajouter avant signature ?'
+		  : 'Gelieve de verklaring hierboven te controleren. Heeft u nog een opmerking vóór ondertekening?'
+	  });
+
+	  const wantsRemark = await botui.action.button({
+		action: [
+		  {
+			text: isFr ? '✏️ Ajouter une remarque' : '✏️ Opmerking toevoegen',
+			value: 'yes'
+		  },
+		  {
+			text: isFr ? '✅ Pas de remarque' : '✅ Geen opmerking',
+			value: 'no'
+		  }
+		]
+	  });
+
+	  let remark = '';
+
+	  if (wantsRemark.value === 'yes') {
+		await botui.message.add({
+		  content: isFr
+			? 'Remarque du client pour acceptation :'
+			: 'Opmerking van de klant voor acceptatie:'
+		});
+
+		const remarkAnswer = await botui.action.text({
+		  action: {
+			placeholder: isFr ? 'Remarque…' : 'Opmerking…',
+			maxLength: 500
+		  }
+		});
+
+		remark = String(remarkAnswer?.value || '').trim();
+	  }
+
+	  await botui.message.add({
+		type: 'html',
+		content: `
+		  <div class="acceptance-section-box">
+			<b>${isFr ? 'Identification client' : 'Identificatie klant'}</b><br>
+			${
+			  isFr
+				? 'Cher client, veuillez indiquer votre nom afin de confirmer la réception des travaux.'
+				: 'Beste klant, vul uw naam in om de ontvangst van de werken te bevestigen.'
+			}
+		  </div>
+		`
+	  });
+
+	  const nameAnswer = await botui.action.text({
+		action: {
+		  placeholder: isFr ? 'Votre nom et prénom' : 'Uw naam en voornaam',
+		  maxLength: 100
+		}
+	  });
+
+	  const signerName = String(nameAnswer?.value || '').trim();
+
+	  if (!signerName) {
+		await botui.message.add({
+		  type: 'html',
+		  content: `
+			<div class="acceptance-check-box">
+			  ⚠️ ${
+				isFr
+				  ? 'Votre nom est obligatoire pour valider l’acceptation.'
+				  : 'Uw naam is verplicht om de acceptatie te bevestigen.'
+			  }
+			</div>
+		  `
+		});
+		return false;
+	  }
+
+	  const acceptanceRemarkText = [
+		remark ? `${isFr ? 'Remarque client' : 'Opmerking klant'}: ${remark}` : '',
+		`${isFr ? 'Signé par le client' : 'Ondertekend door klant'}: ${signerName}`
+	  ].filter(Boolean).join('<br>');
+
+	  await botui.message.add({
+		type: 'html',
+		content: `
+		  <div class="acceptance-section-box">
+			<b>${isFr ? 'Signature client' : 'Handtekening klant'}</b><br>
+			${
+			  isFr
+				? 'Cher client, veuillez signer ci-dessous pour confirmer que vous avez réceptionné les travaux.'
+				: 'Beste klant, gelieve hieronder te tekenen om te bevestigen dat u de werken hebt ontvangen.'
+			}
+		  </div>
+		`
+	  });
+
+	  const signatureBase64 = await askSignaturePad();
+
+	  await submitUpdate({
+		action: 'ACCEPTED',
+		jobId: job.Id,
+		email: sessionEmail,
+		SignatureBase64: signatureBase64,
+		AcceptanceRemarkText: acceptanceRemarkText
+	  }, isFr
+		  ? '✅ Merci. La réception des travaux est confirmée. Cette intervention peut maintenant être clôturée.'
+		  : '✅ Bedankt. De ontvangst van de werken is bevestigd. Deze melding mag nu afgesloten worden.'
+	  );
+
+	  closeDocPanel();
+
+	  if (cameFromPortalSelf) {
+		await botui.message.add({
+		  content: isFr
+			? 'Retour au portail…'
+			: 'Terug naar portal…'
+		});
+
+		return goBackAfterVendor();
+	  }
+
+	  return true;
+	}
  
 
 	async function menu(job, opts = {}) {
 	  const ps = getProgressStatusId(job);
 
-	  const needsAcceptance =
-		job.CustomerNeedsAcceptance === true ||
-		String(job.CustomerNeedsAcceptance || '').toLowerCase() === 'true';
+	const needsAcceptance =
+	  job.CustomerNeedsAcceptance === true ||
+	  String(job.CustomerNeedsAcceptance || '').toLowerCase() === 'true';
 
-	  const showAcceptanceButton = ps === '1016' && needsAcceptance;
+	const isExecuted = ps === '1016';
+	const showAcceptanceButton = isExecuted && needsAcceptance;
 
-	  const doneText = showAcceptanceButton
-		? (isFr ? '✅ À accepter' : '✅ Ter acceptatie')
-		: (isFr ? '✅ Terminer la tâche' : '✅ Taak uitgevoerd');
+	// 1016 zonder klantacceptatie = uitgevoerd en klaar.
+	if (isExecuted && !needsAcceptance) {
+	  await showExistingAcceptanceIfAny(job);
 
-	  if (!opts.silent) {
-		await botui.message.add({
-		  content: isFr
-			? `Que voulez-vous faire pour la tâche ${job.Id}?`
-			: `Wat wil je doen voor taak ${job.Id}?`
-		});
-	  }
-
-	  const ans = await botui.action.button({
-		action: [
-		  { text: isFr ? '➕ Ajouter un commentaire' : '➕ Info toevoegen', value: 'info' },
-		  { text: doneText, value: 'done' },
-		  { text: isFr ? '🛑 Quitter la session' : '🛑 Sessie verlaten', value: 'exit', cssClass: 'secondary-button' }
-		]
+	  await botui.message.add({
+		content: isFr
+		  ? '✅ Cette tâche est déjà exécutée. Aucune action supplémentaire n’est possible.'
+		  : '✅ Deze taak is al uitgevoerd. Er is geen verdere actie meer mogelijk.'
 	  });
+
+	  closeDocPanel();
+
+	  if (cameFromPortalSelf) return goBackAfterVendor();
+	  return;
+	}
+
+	// Duiding wanneer de job al op 1016 staat, maar de acceptatievoorbereiding nog niet gebeurd is
+	if (!opts.silent && needsAcceptancePreparation(job)) {
+	  await botui.message.add({
+		type: 'html',
+		content: `
+		  <div class="acceptance-section-box">
+			<b>${isFr ? 'Préparation de l’acceptation' : 'Acceptatie voorbereiden'}</b><br>
+			${
+			  isFr
+				? 'Cette intervention est prête à être préparée pour l’acceptation client. Complétez d’abord les heures prestées, les produits livrés et éventuellement une note. Ensuite, le résumé pourra être présenté au client pour acceptation.'
+				: 'Deze melding is klaar om voor klantacceptatie voorbereid te worden. Vul eerst de gepresteerde uren, de geleverde producten en eventueel een note in. Daarna kan de samenvatting aan de klant worden voorgelegd.'
+			}
+		  </div>
+		`
+	  });
+	}
+
+	const doneText = showAcceptanceButton
+	  ? (isFr ? '✅ Préparer l’acceptation' : '✅ Acceptatie voorbereiden')
+	  : (isFr ? '✅ Terminer la tâche' : '✅ Taak uitgevoerd');
+
+	if (!opts.silent && !showAcceptanceButton) {
+	  await botui.message.add({
+		content: isFr
+		  ? `Que voulez-vous faire pour la tâche ${job.Id}?`
+		  : `Wat wil je doen voor taak ${job.Id}?`
+	  });
+	}
+
+	let menuActions = [];
+
+	if (showAcceptanceButton) {
+	  await botui.message.add({
+		type: 'html',
+		content: `
+		  <div class="meldingen-lijst">
+			<b>${isFr ? 'Préparation de l’acceptation' : 'Voorbereiding acceptatie'}</b><br>
+			${
+			  isFr
+				? 'La tâche est exécutée. Complétez d’abord les prestations à déclarer.'
+				: 'De taak is uitgevoerd. Vul eerst de te verklaren prestaties in.'
+			}
+		  </div>
+		`
+	  });
+
+	  menuActions = [
+		{ text: doneText, value: 'done' },
+		{ text: isFr ? '🛑 Quitter la session' : '🛑 Sessie verlaten', value: 'exit', cssClass: 'secondary-button' }
+	  ];
+
+	} else {
+	  menuActions = [
+		{ text: isFr ? '➕ Ajouter un commentaire' : '➕ Info toevoegen', value: 'info' },
+		{ text: doneText, value: 'done' },
+		{ text: isFr ? '🛑 Quitter la session' : '🛑 Sessie verlaten', value: 'exit', cssClass: 'secondary-button' }
+	  ];
+	}
+
+	const ans = await botui.action.button({
+	  action: menuActions
+	});
 
 	  if (ans.value === 'info') {
 		const ok = await runCommentWithOptionalPhoto(job, { action: 'ADD_INFO' });
@@ -1504,9 +2544,82 @@ function guessMimeByName(name){
 
 		await showJobTextsThenAskTranslate(job);
 
-		if(!isJobOpen(job)){
-		  await botui.message.add({ content:isFr?'Cette tâche est déjà clôturée. Aucune action possible.':'Deze taak is al afgesloten. Geen acties meer mogelijk.' });
-		  Telemetry.send('job_closed', { status: job.Status });
+		if (!isJobOpen(job)) {
+		  const hasExistingAcceptance =
+			String(
+			  job.AcceptanceStatement ||
+			  job.AcceptanceRemarkText ||
+			  ''
+			).trim() !== '';
+
+		  if (hasExistingAcceptance) {
+			await botui.message.add({
+			  type: 'html',
+			  content: `
+				<div class="acceptance-section-box">
+				  <b>${isFr ? 'Déjà accepté' : 'Reeds geaccepteerd'}</b><br>
+				  ${
+					isFr
+					  ? 'Cette intervention a déjà été acceptée par le client. La déclaration enregistrée est affichée ci-dessous à titre d’information.'
+					  : 'Deze melding werd reeds door de klant geaccepteerd. De geregistreerde verklaring wordt hieronder ter informatie weergegeven.'
+				  }
+				</div>
+			  `
+			});
+		  }
+
+		  await showExistingAcceptanceIfAny(job);
+
+		  await botui.message.add({
+			content: isFr
+			  ? '✅ Cette tâche est déjà clôturée. Aucune action supplémentaire n’est possible.'
+			  : '✅ Deze taak is al afgesloten. Er is geen verdere actie meer mogelijk.'
+		  });
+
+		  Telemetry.send('job_closed', { status: getProgressStatusId(job) });
+		  return;
+		}
+
+		if (needsCustomerAcceptanceOnly(job)) {
+		  await botui.message.add({
+			type: 'html',
+			content: `
+			  <div class="acceptance-section-box">
+				<b>${isFr ? 'Acceptation client requise' : 'Klantacceptatie vereist'}</b><br>
+				${
+				  isFr
+					? 'La déclaration de prestation est déjà préparée. Présentez maintenant le résumé au client pour contrôle et acceptation.'
+					: 'De prestatieverklaring is al voorbereid. Toon nu de samenvatting aan de klant voor controle en acceptatie.'
+				}
+			  </div>
+			`
+		  });
+
+		  await showExistingAcceptanceIfAny(job);
+
+		  await botui.message.add({
+			type: 'html',
+			content: `
+			  <div class="acceptance-check-box">
+				${
+				  isFr
+					? 'Passez maintenant vers le client. Il pourra ensuite ajouter une remarque, indiquer son nom et signer.'
+					: 'Ga nu naar de klant. Daarna kan de klant eventueel een opmerking toevoegen, zijn naam invullen en ondertekenen.'
+				}
+			  </div>
+			`
+		  });
+
+		  await botui.action.button({
+			action: [
+			  {
+				text: isFr ? '✅ Continuer avec le client' : '✅ Verdergaan met de klant',
+				value: 'ok'
+			  }
+			]
+		  });
+
+		  await runCustomerAcceptanceOnly(job);
 		  return;
 		}
 

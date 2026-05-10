@@ -621,32 +621,227 @@ if (action === "ACCEPTED") {
 	  const out = getOutputObject(r.json);
 	  return respond(200, { ok: true, jobId, action: "JOB_PROGRESSSTATUS_NOI", result: out });
 	}
+	
+	// doorgeven acceptatie extra uren schoonmaak
+ 
+	if (action === "ADD_ACCEPTANCE_HOURS") {
+	  const performedHours = String(
+		body.PerformedHours ||
+		body.performedHours ||
+		""
+	  ).trim();
 
+	  if (!performedHours) {
+		return respond(400, { error: "PerformedHours ontbreekt." });
+	  }
+
+	  const ultPayload = {
+		JobId: String(jobId),
+		Action: "ADD_ACCEPTANCE_HOURS",
+		Email: email,
+		PerformedHours: performedHours,
+		StatusText: buildStatusTextStamp({ email, channel, gps })
+	  };
+
+	  console.log("[jobsvendor] WF PAYLOAD (ADD_ACCEPTANCE_HOURS) =>", JSON.stringify(ultPayload));
+
+	  const r = await callUltimo(cfg, ultPayload);
+	  const out = getOutputObject(r.json);
+
+	  return respond(200, {
+		ok: true,
+		jobId,
+		action: "ADD_ACCEPTANCE_HOURS",
+		result: out
+	  });
+	}
+
+  // Info ter acceptatie
+
+	if (action === "SAVE_ACCEPTANCE_STATEMENT") {
+	  const acceptanceStatement = String(
+		body.AcceptanceStatement ||
+		body.acceptanceStatement ||
+		""
+	  ).trim();
+
+	  if (!acceptanceStatement) {
+		return respond(400, { error: "AcceptanceStatement ontbreekt." });
+	  }
+
+	  const ultPayload = {
+		JobId: String(jobId),
+		Action: "SAVE_ACCEPTANCE_STATEMENT",
+		Email: email,
+		AcceptanceStatement: acceptanceStatement,
+		StatusText: buildStatusTextStamp({ email, channel, gps })
+	  };
+
+	  console.log("[jobsvendor] WF PAYLOAD (SAVE_ACCEPTANCE_STATEMENT) =>", JSON.stringify({
+		...ultPayload,
+		AcceptanceStatement: acceptanceStatement ? "[set]" : ""
+	  }));
+
+	  const r = await callUltimo(cfg, ultPayload);
+	  const out = getOutputObject(r.json);
+
+	  return respond(200, {
+		ok: true,
+		jobId,
+		action: "SAVE_ACCEPTANCE_STATEMENT",
+		result: out
+	  });
+	}
 
 
   // ✅ Nieuw: ACTIVATE_VENDORJOB ook ondersteunen + StatusText meesturen
-	  if (action === "ADD_INFO" || action === "CLOSE" || action === "ACTIVATE_VENDORJOB") {
+	if (action === "GET_ACCEPTANCE_PRODUCTS") {
+	  const ultPayload = {
+		JobId: String(jobId),
+		Action: "GET_ACCEPTANCE_PRODUCTS",
+		Email: email,
+		StatusText: buildStatusTextStamp({ email, channel, gps })
+	  };
+
+	  console.log("[jobsvendor] WF PAYLOAD (GET_ACCEPTANCE_PRODUCTS) =>", JSON.stringify(ultPayload));
+
+	  const r = await callUltimo(cfg, ultPayload);
+	  const out = getOutputObject(r.json);
+
+	  return respond(200, {
+		ok: true,
+		jobId,
+		action: "GET_ACCEPTANCE_PRODUCTS",
+		Products: Array.isArray(out?.Products) ? out.Products : [],
+		result: out
+	  });
+	}
+	
+	if (action === "ADD_ACCEPTANCE_PRODUCT") {
+	  const productLineId = String(
+		body.ProductLineId ||
+		body.productLineId ||
+		body.PurchaseRequestLineId ||
+		body.purchaseRequestLineId ||
+		""
+	  ).trim();
+
+	  const articleId = String(
+		body.ArticleId ||
+		body.articleId ||
+		""
+	  ).trim();
+
+	  const productDescription = String(
+		body.ProductDescription ||
+		body.productDescription ||
+		""
+	  ).trim();
+
+	  const deliveredQuantity = String(
+		body.DeliveredQuantity ||
+		body.deliveredQuantity ||
+		""
+	  ).trim();
+
+	  if (!productLineId) {
+		return respond(400, { error: "ProductLineId ontbreekt." });
+	  }
+
+	  if (!deliveredQuantity) {
+		return respond(400, { error: "DeliveredQuantity ontbreekt." });
+	  }
+
+	  const ultPayload = {
+		JobId: String(jobId),
+		Action: "ADD_ACCEPTANCE_PRODUCT",
+		Email: email,
+		ProductLineId: productLineId,
+		ArticleId: articleId,
+		ProductDescription: productDescription,
+		DeliveredQuantity: deliveredQuantity,
+		StatusText: buildStatusTextStamp({ email, channel, gps })
+	  };
+
+	  console.log("[jobsvendor] WF PAYLOAD (ADD_ACCEPTANCE_PRODUCT) =>", JSON.stringify(ultPayload));
+
+	  const r = await callUltimo(cfg, ultPayload);
+	  const out = getOutputObject(r.json);
+
+	  return respond(200, {
+		ok: true,
+		jobId,
+		action: "ADD_ACCEPTANCE_PRODUCT",
+		result: out
+	  });
+	}	
+	
+		if (action === "ADD_ACCEPTANCE_REMARK") {
+		  const acceptanceRemarkText = String(
+			body.AcceptanceRemarkText ||
+			body.acceptanceRemarkText ||
+			body.Text ||
+			body.text ||
+			""
+		  ).trim();
+
+		  if (!acceptanceRemarkText) {
+			return respond(400, { error: "AcceptanceRemarkText ontbreekt." });
+		  }
+
+		  const ultPayload = {
+			JobId: String(jobId),
+			Action: "ADD_ACCEPTANCE_REMARK",
+			Email: email,
+			AcceptanceRemarkText: acceptanceRemarkText,
+			StatusText: buildStatusTextStamp({ email, channel, gps })
+		  };
+
+		  console.log("[jobsvendor] WF PAYLOAD (ADD_ACCEPTANCE_REMARK) =>", JSON.stringify({
+			...ultPayload,
+			AcceptanceRemarkText: acceptanceRemarkText ? "[set]" : ""
+		  }));
+
+		  const r = await callUltimo(cfg, ultPayload);
+		  const out = getOutputObject(r.json);
+
+		  return respond(200, {
+			ok: true,
+			jobId,
+			action: "ADD_ACCEPTANCE_REMARK",
+			result: out
+		  });
+		}	
+	
+
+	if (action === "ADD_INFO" || action === "CLOSE" || action === "ACTIVATE_VENDORJOB") {
 	  const text = String(body.text || "");
 
-	  // ✅ text enkel verplicht voor ADD_INFO en CLOSE (niet voor ACTIVATE_VENDORJOB)
+	  // text enkel verplicht voor ADD_INFO en CLOSE, niet voor ACTIVATE_VENDORJOB
 	  if (!text && (action === "ADD_INFO" || action === "CLOSE")) {
 		return respond(400, { error: "text ontbreekt" });
 	  }
 
-    const ultPayload = {
-      JobId: String(jobId),
-      Action: action,
-      Email: email,
-      Text: text,
-      StatusText: buildStatusTextStamp({ email, channel, gps }) // ✅ dit was de missing link
-    };
+	  const ultPayload = {
+		JobId: String(jobId),
+		Action: action,
+		Email: email,
+		Text: text,
+		StatusText: buildStatusTextStamp({ email, channel, gps })
+	  };
 
-    console.log("[jobsvendor] WF PAYLOAD =>", JSON.stringify(ultPayload));
+	  console.log("[jobsvendor] WF PAYLOAD =>", JSON.stringify(ultPayload));
 
-    const r = await callUltimo(cfg, ultPayload);
-    const out = getOutputObject(r.json);
-    return respond(200, { ok: true, jobId, action, result: out });
-  }
+	  const r = await callUltimo(cfg, ultPayload);
+	  const out = getOutputObject(r.json);
+
+	  return respond(200, {
+		ok: true,
+		jobId,
+		action,
+		result: out
+	  });
+	}
 
   return respond(400, { error: `Onbekende action: ${action}` });
 }
