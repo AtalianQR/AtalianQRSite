@@ -1,5 +1,5 @@
 ---
-layout: ../../layouts/Layout.astro
+layout: ../../layouts/ManualLayout.astro
 title: Handleiding Ultimo – Covestro
 ---
 
