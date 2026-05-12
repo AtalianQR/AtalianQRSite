@@ -32,9 +32,27 @@ const { title } = Astro.props;
                         <img src="/images/covestro.jpg" alt="Covestro" class="h-10" />
                     </a>
                 </nav>
-                <main class="grow manual-content">
-                    <slot />
-                </main>
+                <div class="flex gap-12 grow">
+                    <aside class="hidden lg:block w-56 shrink-0">
+                        <nav class="sticky top-8 text-sm space-y-1">
+                            <p class="font-semibold mb-3 text-white/60 uppercase tracking-wide text-xs">Inhoud</p>
+                            <a href="#het-dashboard" class="block py-1 text-white/70 hover:text-white no-underline">Het dashboard</a>
+                            <a href="#melding-aanmaken" class="block py-1 text-white/70 hover:text-white no-underline">Melding aanmaken</a>
+                            <a href="#service" class="block py-1 pl-3 text-white/50 hover:text-white no-underline">Service</a>
+                            <a href="#storing" class="block py-1 pl-3 text-white/50 hover:text-white no-underline">Storing</a>
+                            <a href="#klacht" class="block py-1 pl-3 text-white/50 hover:text-white no-underline">Klacht</a>
+                            <a href="#het-meldingsformulier-invullen" class="block py-1 pl-3 text-white/50 hover:text-white no-underline">Formulier invullen</a>
+                            <a href="#niet-verzonden-meldingen" class="block py-1 text-white/70 hover:text-white no-underline">Niet-verzonden meldingen</a>
+                            <a href="#documenten-en-producten" class="block py-1 text-white/70 hover:text-white no-underline">Documenten en producten</a>
+                            <a href="#documenten" class="block py-1 pl-3 text-white/50 hover:text-white no-underline">Documenten</a>
+                            <a href="#producten" class="block py-1 pl-3 text-white/50 hover:text-white no-underline">Producten</a>
+                            <a href="#werkorder-opvolgen" class="block py-1 text-white/70 hover:text-white no-underline">Werkorder opvolgen</a>
+                        </nav>
+                    </aside>
+                    <main class="grow manual-content min-w-0">
+                        <slot />
+                    </main>
+                </div>
                 <footer class="py-8 mt-12 text-sm text-white/40">
                     &copy; Atalian
                 </footer>
