@@ -142,6 +142,30 @@ Klik op **Verzenden** om de melding door te sturen naar de betreffende dienst.
 
 ---
 
+## Niet-verzonden meldingen
+
+Als een melding om een of andere reden niet verzonden werd, kan je die later verder afwerken of verwijderen.
+
+### Melding openen
+
+Klik op de **rode teller** in de tegel **Nog niet verzonden jobs** op het dashboard. Je ziet een overzicht van alle meldingen die nog niet verzonden zijn.
+
+![Overzicht niet-verzonden meldingen](/images/melding-niet-verzonden.png)
+
+Klik op het **bliksemicoontje** naast de melding om ze te openen en verder af te werken.
+
+![Melding selecteren](/images/melding-niet-verzonden-select.png)
+
+Je komt terug op het meldingsformulier terecht waar je de melding kan aanvullen en alsnog verzenden.
+
+### Melding verwijderen
+
+Wil je een melding definitief verwijderen, vink dan het vakje aan in de **rode balk** bovenaan de melding.
+
+![Melding verwijderen](/images/melding-niet-verzonden-delete.png)
+
+---
+
 ## Werkorder opvolgen
 
 *(wordt aangevuld)*
