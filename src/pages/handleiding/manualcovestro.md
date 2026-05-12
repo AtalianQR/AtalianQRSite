@@ -18,6 +18,9 @@ Deze handleiding legt uit hoe je Ultimo gebruikt voor het melden en opvolgen van
   - [Klacht](#klacht)
   - [Het meldingsformulier invullen](#het-meldingsformulier-invullen)
 - [Niet-verzonden meldingen](#niet-verzonden-meldingen)
+- [Documenten en producten](#documenten-en-producten)
+  - [Documenten](#documenten)
+  - [Producten](#producten)
 - [Werkorder opvolgen](#werkorder-opvolgen)
 
 ---
@@ -176,6 +179,42 @@ Je komt terug op het meldingsformulier terecht waar je de melding kan aanvullen 
 Wil je een melding definitief verwijderen, vink dan het vakje aan in de **rode balk** bovenaan de melding.
 
 ![Melding verwijderen](/images/melding-niet-verzonden-delete.png)
+
+---
+
+## Documenten en producten
+
+Klik op de tegel **Documenten en producten** op het dashboard. Je krijgt een menu met twee onderdelen:
+
+![Document menu](/images/document-menu.png)
+
+---
+
+### Documenten
+
+Hier zie je een lijst van alle documenten gekoppeld aan meldingen. Bovenaan kan je filteren op specifieke meldingen. Helemaal bovenaan kan je kiezen welk type document je wil raadplegen:
+
+- **Grondplan** – de plattegrond van de site
+- **Schoonmaakprogramma** – het overzicht van de geplande schoonmaakactiviteiten
+
+---
+
+### Producten
+
+Hier vind je een overzicht van alle gebruikte producten op de site.
+
+Dubbelklik eerst op het **complex Covestro** om in te zoomen.
+
+![Artikelen per complex](/images/Artikelen-complex.png)
+
+Je krijgt vervolgens de volledige lijst van producten te zien.
+
+![Artikelenlijst](/images/Artikelen-lijst.png)
+
+Per product kan je twee fiches openen:
+
+- **Productfiche** – algemene informatie over het product
+- **MSDS-fiche** – veiligheidsblad met informatie over gebruik, opslag en gevaren
 
 ---
 
