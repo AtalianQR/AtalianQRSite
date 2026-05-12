@@ -10,7 +10,7 @@
     "dev": "netlify dev -p 4321",
     "start": "astro dev",
     "astro:dev": "astro dev",
-    "build": "astro build",
+    "build": "astro build && npx pagefind --site dist",
     "preview": "astro preview",
     "deploy:staging": "astro build && netlify deploy --dir=dist",
     "deploy:prod": "astro build && netlify deploy --dir=dist --prod",
