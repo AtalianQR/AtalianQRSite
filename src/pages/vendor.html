@@ -1311,9 +1311,6 @@ async function requireGpsIfPortalSelf({ botui, Telemetry, isFr, cameFromPortalSe
       }
     }
 
-    // 👇 HIER: GPS doorgeven in voortgang/status als het van portalself komt
-    const gpsStamp = await buildPortalSelfGpsStamp();
-
 	// ✅ GPS verplicht wanneer PortalSelf (met localhost-bypass)
 	const geo = await requireGpsIfPortalSelf({ botui, Telemetry, isFr, cameFromPortalSelf });
 
@@ -1874,6 +1871,12 @@ async function askDeliveredQtyInline({ label, defaultQty }) {
 		);
 	  }
 
+	  if (sessionEmail) {
+		acceptanceStatementLines.push(
+		  `<b>${isFr ? 'Collaborateur Atalian' : 'Atalian medewerker'}:</b> ${sessionEmail}`
+		);
+	  }
+
 	  const acceptanceStatement = acceptanceStatementLines.join('<br>');
 
 	  if (!acceptanceStatement || !acceptanceStatement.trim()) {
@@ -2012,29 +2015,33 @@ async function askDeliveredQtyInline({ label, defaultQty }) {
 	  `
 	});
 
-	const nameAnswer = await botui.action.text({
-	  action: {
-		placeholder: isFr ? 'Votre nom et prénom' : 'Uw naam en voornaam',
-		maxLength: 100
-	  }
-	});
-
-	const signerName = String(nameAnswer?.value || '').trim();
-
-	if (!signerName) {
-	  await botui.message.add({
-		type: 'html',
-		content: `
-		  <div class="acceptance-check-box">
-			⚠️ ${
-			  isFr
-				? 'Votre nom est obligatoire pour valider l’acceptation.'
-				: 'Uw naam is verplicht om de acceptatie te bevestigen.'
-			}
-		  </div>
-		`
+	let signerName = "";
+	while (true) {
+	  const nameAnswer = await botui.action.text({
+		action: {
+		  placeholder: isFr ? "Votre nom et prénom" : "Uw naam en voornaam",
+		  maxLength: 100
+		}
 	  });
-	  return false;
+
+	  signerName = String(nameAnswer?.value || "").trim();
+
+	  if (!signerName) {
+		await botui.message.add({
+		  type: 'html',
+		  content: `
+			<div class="acceptance-check-box">
+			  ⚠️ ${
+				isFr
+				  ? "Votre nom est obligatoire pour valider l’acceptation."
+				  : "Uw naam is verplicht om de acceptatie te bevestigen."
+			  }
+			</div>
+		  `
+		});
+		continue;
+	  }
+	  break;
 	}
 
 	// Controleblok naam klant
@@ -2194,29 +2201,33 @@ async function askDeliveredQtyInline({ label, defaultQty }) {
 		`
 	  });
 
-	  const nameAnswer = await botui.action.text({
-		action: {
-		  placeholder: isFr ? 'Votre nom et prénom' : 'Uw naam en voornaam',
-		  maxLength: 100
-		}
-	  });
-
-	  const signerName = String(nameAnswer?.value || '').trim();
-
-	  if (!signerName) {
-		await botui.message.add({
-		  type: 'html',
-		  content: `
-			<div class="acceptance-check-box">
-			  ⚠️ ${
-				isFr
-				  ? 'Votre nom est obligatoire pour valider l’acceptation.'
-				  : 'Uw naam is verplicht om de acceptatie te bevestigen.'
-			  }
-			</div>
-		  `
+	  let signerName = "";
+	  while (true) {
+		const nameAnswer = await botui.action.text({
+		  action: {
+			placeholder: isFr ? "Votre nom et prénom" : "Uw naam en voornaam",
+			maxLength: 100
+		  }
 		});
-		return false;
+
+		signerName = String(nameAnswer?.value || "").trim();
+
+		if (!signerName) {
+		  await botui.message.add({
+			type: "html",
+			content: `
+			  <div class="acceptance-check-box">
+				⚠️ ${
+				  isFr
+					? "Votre nom est obligatoire pour valider l’acceptation."
+					: "Uw naam is verplicht om de acceptatie te bevestigen."
+				}
+			  </div>
+			`
+		  });
+		  continue;
+		}
+		break;
 	  }
 
 	  const acceptanceRemarkText = [
@@ -2329,11 +2340,11 @@ async function askDeliveredQtyInline({ label, defaultQty }) {
 		type: 'html',
 		content: `
 		  <div class="meldingen-lijst">
-			<b>${isFr ? 'Préparation de l’acceptation' : 'Voorbereiding acceptatie'}</b><br>
+			<b>${isFr ? "Préparation de l’acceptation" : "Voorbereiding acceptatie"}</b><br>
 			${
 			  isFr
-				? 'La tâche est exécutée. Complétez d’abord les prestations à déclarer.'
-				: 'De taak is uitgevoerd. Vul eerst de te verklaren prestaties in.'
+				? "La tâche est exécutée. Complétez d’abord les prestations à déclarer."
+				: "De taak is uitgevoerd. Vul eerst de te verklaren prestaties in."
 			}
 		  </div>
 		`
@@ -2635,7 +2646,7 @@ function guessMimeByName(name){
 		if(errorDetail.includes('HTTP')) {
 		  userMessage = isFr
 			? `❌ Erreur de connexion: Le chargement a échoué (Détail: ${errorDetail}).`
-			: `❌ Verbindingsfout: Laden is onderbroken (Détail: ${errorDetail}).`;
+			: `❌ Verbindingsfout: Laden is onderbroken (Detail: ${errorDetail}).`;
 		}
 
 		await botui.message.add({ content:userMessage, type:'html', cssClass:'error-message' });
