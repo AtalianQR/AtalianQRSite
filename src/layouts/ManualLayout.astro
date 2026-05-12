@@ -19,6 +19,15 @@ const { title } = Astro.props;
         <link rel="preload" as="font" type="font/woff2" href={interWoff2} crossorigin />
         <link href="/pagefind/pagefind-ui.css" rel="stylesheet" />
         <script src="/pagefind/pagefind-ui.js" is:inline></script>
+        <style>
+            #search {
+                --pagefind-ui-text: rgba(255,255,255,0.85);
+                --pagefind-ui-background: rgba(255,255,255,0.08);
+                --pagefind-ui-border: rgba(255,255,255,0.2);
+                --pagefind-ui-tag: rgba(255,255,255,0.15);
+                --pagefind-ui-primary: rgba(255,255,255,0.9);
+            }
+        </style>
     </head>
     <body class="antialiased text-white bg-complementary">
         <div class="flex flex-col min-h-screen bg-noise">
