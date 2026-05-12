@@ -21,14 +21,12 @@ const { title } = Astro.props;
     <body class="antialiased text-white bg-complementary">
         <div class="flex flex-col min-h-screen px-6 bg-noise sm:px-12">
             <div class="flex flex-col w-full max-w-7xl mx-auto grow">
-                <nav class="flex items-center pt-6 pb-8 sm:pt-12 sm:pb-12">
-                    <a href="https://atalian.be" target="_blank" rel="noopener">
-                        <img src="/AtalianLogo.png" alt="Atalian" class="h-16" />
-                    </a>
-                </nav>
                 <div class="flex gap-12 grow">
                     <aside class="hidden lg:block w-32 shrink-0">
                         <nav class="sticky top-8 text-sm space-y-1">
+                            <a href="https://atalian.be" target="_blank" rel="noopener">
+                                <img src="/AtalianLogo.png" alt="Atalian" class="w-32 mb-6" />
+                            </a>
                             <p class="font-semibold mb-3 text-white/60 uppercase tracking-wide text-xs">Inhoud</p>
                             <a href="#het-dashboard" class="block py-1 text-white/70 hover:text-white no-underline">Het dashboard</a>
                             <a href="#melding-aanmaken" class="block py-1 text-white/70 hover:text-white no-underline">Melding aanmaken</a>
