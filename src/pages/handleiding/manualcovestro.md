@@ -50,7 +50,51 @@ Toont de planning van alle bezoeken, zowel reeds uitgevoerde als toekomstige bez
 
 ## Melding aanmaken
 
-*(wordt aangevuld)*
+Klik op de tegel **Nieuwe Melding** op het dashboard. Je krijgt een keuzemenu met drie types:
+
+![Keuzemenu nieuwe melding](/images/melding-menu.png)
+
+| Type | Wanneer gebruiken |
+|---|---|
+| **Service** | Je vraagt een dienst aan, bv. extra schoonmaak |
+| **Storing** | Er is een defect of technisch probleem |
+| **Klacht** | Je wil een klacht indienen over een geleverde dienst |
+
+De knop **Start dashboard** brengt je terug naar het hoofdscherm zonder een melding aan te maken.
+
+---
+
+### Service
+
+Kies **Service** als je een bijkomende dienst wil aanvragen.
+
+![Submenu Service](/images/melding-service.png)
+
+- **Vraag Cleaning** – voor schoonmaak, glaswas, sanitair en matten
+- **Andere services** – voor handy man, groenonderhoud, ongediertebestrijding en andere diensten
+
+---
+
+### Storing
+
+Kies **Storing** als er een technisch defect is.
+
+![Submenu Storing](/images/melding-storing.png)
+
+- **Storing dispenser/automaat** – voor problemen met een dispenser of automaat (bv. koffietoestel, zeeppomp)
+- **Storing Installatie** – voor problemen met een gekende installatie
+- **Storing andere** – voor andere technische meldingen die niet in bovenstaande categorieën passen
+
+---
+
+### Klacht
+
+Kies **Klacht** als je niet tevreden bent over een geleverde dienst.
+
+![Submenu Klacht](/images/melding-klacht.png)
+
+- **Klacht Cleaning** – klacht over schoonmaak, glaswas, sanitair of matten
+- **Klacht Andere services** – klacht over handy man, groenonderhoud, ongediertebestrijding of andere diensten
 
 ---
 
