@@ -9,6 +9,19 @@ Deze handleiding legt uit hoe je Ultimo gebruikt voor het melden en opvolgen van
 
 ---
 
+## Inhoudsopgave
+
+- [Het dashboard](#het-dashboard)
+- [Melding aanmaken](#melding-aanmaken)
+  - [Service](#service)
+  - [Storing](#storing)
+  - [Klacht](#klacht)
+  - [Het meldingsformulier invullen](#het-meldingsformulier-invullen)
+- [Niet-verzonden meldingen](#niet-verzonden-meldingen)
+- [Werkorder opvolgen](#werkorder-opvolgen)
+
+---
+
 ## Het dashboard
 
 Na het inloggen kom je op het startdashboard terecht. Dit scherm geeft een overzicht van alle belangrijke informatie in één oogopslag.
