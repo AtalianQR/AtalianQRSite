@@ -22,6 +22,14 @@
         @apply text-2xl font-bold sm:text-3xl;
     }
 
+    h3 {
+        @apply text-xl font-bold sm:text-2xl;
+    }
+
+    h4 {
+        @apply text-lg font-semibold;
+    }
+
     a:not(.btn) {
         @apply underline transition hover:opacity-80;
     }
@@ -52,6 +60,48 @@
 
         > :last-child {
             @apply mb-0;
+        }
+    }
+
+    .manual-content {
+        > * {
+            @apply my-4;
+        }
+
+        :where(h1, h2, h3, h4) {
+            @apply mt-10 mb-4;
+        }
+
+        > :first-child {
+            @apply mt-0;
+        }
+
+        ul {
+            @apply list-disc pl-6 space-y-1;
+        }
+
+        ol {
+            @apply list-decimal pl-6 space-y-1;
+        }
+
+        img {
+            @apply rounded-lg my-6 max-w-full;
+        }
+
+        hr {
+            @apply my-10 border-white/20;
+        }
+
+        table {
+            @apply w-full border-collapse my-6;
+        }
+
+        th {
+            @apply border border-white/20 px-3 py-2 text-left font-semibold bg-white/10;
+        }
+
+        td {
+            @apply border border-white/20 px-3 py-2;
         }
     }
 
