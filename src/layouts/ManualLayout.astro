@@ -21,19 +21,13 @@ const { title } = Astro.props;
     <body class="antialiased text-white bg-complementary">
         <div class="flex flex-col min-h-screen px-6 bg-noise sm:px-12">
             <div class="flex flex-col w-full max-w-5xl mx-auto grow">
-                <nav class="flex items-center gap-8 pt-6 pb-8 sm:pt-12 sm:pb-12">
+                <nav class="flex items-center pt-6 pb-8 sm:pt-12 sm:pb-12">
                     <a href="https://atalian.be" target="_blank" rel="noopener">
                         <img src="/AtalianLogo.png" alt="Atalian" class="h-16" />
                     </a>
-                    <a href="https://ultimo.com" target="_blank" rel="noopener">
-                        <img src="/images/ultimologo.png" alt="Ultimo" class="h-10" />
-                    </a>
-                    <a href="https://covestro.be" target="_blank" rel="noopener">
-                        <img src="/images/covestro.jpg" alt="Covestro" class="h-10" />
-                    </a>
                 </nav>
                 <div class="flex gap-12 grow">
-                    <aside class="hidden lg:block w-56 shrink-0">
+                    <aside class="hidden lg:block w-40 shrink-0">
                         <nav class="sticky top-8 text-sm space-y-1">
                             <p class="font-semibold mb-3 text-white/60 uppercase tracking-wide text-xs">Inhoud</p>
                             <a href="#het-dashboard" class="block py-1 text-white/70 hover:text-white no-underline">Het dashboard</a>
@@ -52,6 +46,16 @@ const { title } = Astro.props;
                     <main class="grow manual-content min-w-0">
                         <slot />
                     </main>
+                    <aside class="hidden xl:flex w-36 shrink-0">
+                        <div class="sticky top-8 flex flex-col items-center gap-6">
+                            <a href="https://ultimo.com" target="_blank" rel="noopener">
+                                <img src="/images/ultimologo.png" alt="Ultimo" class="h-12" />
+                            </a>
+                            <a href="https://covestro.be" target="_blank" rel="noopener">
+                                <img src="/images/covestro.jpg" alt="Covestro" class="h-12" />
+                            </a>
+                        </div>
+                    </aside>
                 </div>
                 <footer class="py-8 mt-12 text-sm text-white/40">
                     &copy; Atalian
