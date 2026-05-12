@@ -98,6 +98,50 @@ Kies **Klacht** als je niet tevreden bent over een geleverde dienst.
 
 ---
 
+### Het meldingsformulier invullen
+
+Ongeacht het gekozen type (service, storing of klacht) kom je steeds op hetzelfde meldingsformulier terecht.
+
+![Meldingsformulier](/images/melding-default.png)
+
+Volg deze stappen:
+
+#### 1. Kies de ruimte
+
+Ga **meteen naar het veld Ruimte** — sla het gebouw over. Eenmaal de ruimte gekozen is, wordt die automatisch ingevuld.
+
+Druk op het **vergrootglas** naast het veld Ruimte. Je krijgt een lijst te zien met alle ruimtes.
+
+![Bouwdeel selecteren](/images/melding-bouwdeel.png)
+
+Scrol naar rechts om de kolom **Bouwdeel** te zien. Boven elke kolom kan je filteren om de lijst te verfijnen. Klik op de gewenste ruimte om ze te selecteren.
+
+#### 2. Vul de omschrijving in
+
+Geef een korte, duidelijke beschrijving van de vraag, het probleem of de klacht.
+
+#### 3. Kies de activiteit
+
+Selecteer de activiteit die het best overeenkomt met de melding.
+
+#### 4. Vul de toelichting in
+
+Geef indien nodig extra uitleg of context.
+
+#### 5. Stel de prioriteit in *(optioneel)*
+
+Kies een prioriteit als de melding dringend is.
+
+#### 6. Voeg documenten toe *(optioneel)*
+
+Je kan foto's of pdf's bijvoegen als extra informatie voor de technieker of het schoonmaakteam.
+
+#### 7. Verzend de melding
+
+Klik op **Verzenden** om de melding door te sturen naar de betreffende dienst.
+
+---
+
 ## Werkorder opvolgen
 
 *(wordt aangevuld)*
