@@ -7,6 +7,11 @@ title: Handleiding Ultimo – Covestro
 
 Deze handleiding legt uit hoe je Ultimo gebruikt voor het melden en opvolgen van taken op de site van Covestro.
 
+> **Woordenschat**
+> - **Melding** – wat je zelf aanmaakt en invult in Ultimo
+> - **Ticket** – wat een melding wordt nadat je ze verstuurd hebt; Atalian verwerkt het ticket verder
+> - **Job** – de term die Ultimo zelf gebruikt in het overzicht en de tellers
+
 ---
 
 ## Het dashboard
@@ -21,21 +26,38 @@ De tegels op het dashboard zijn van links naar rechts en van boven naar beneden:
 Via deze knop open je het formulier om een nieuwe melding aan te maken. Zie [Melding aanmaken](#melding-aanmaken) voor de verdere stappen.
 
 ### Nog niet verzonden jobs
-Toont jobs die nog niet klaar zijn om te verzenden naar de klant. Dit zijn tickets die nog in behandeling zijn en dus nog niet als afgerond worden beschouwd.
+Toont meldingen die nog niet klaar zijn om te verzenden naar de klant. Dit zijn meldingen die nog niet afgewerkt zijn en dus nog niet als afgerond worden beschouwd. Zie [Niet-verzonden meldingen](#niet-verzonden-meldingen) voor meer informatie over hoe je deze meldingen kan openen, aanvullen of verwijderen.
 
 ### Documenten en producten
 Geeft een overzicht van:
 - **Documenten** – relevante documenten gekoppeld aan de site of installaties
 - **Producten** – gebruikte materialen en producten
 
+Zie [Documenten en producten](#documenten-en-producten) voor de gedetailleerde uitleg.
+
 ### Tellers
 Een snelle samenvatting van de lopende situatie:
-- **Openstaande periodiek** – wederkerende tickets die nog openstaan
+- **Openstaande periodiek** – wederkerende meldingen die nog openstaan
 - **Openstaande meldingen** – nieuwe meldingen die nog verwerkt moeten worden
 - **Te behandelen bezoeken** – geplande bezoeken waarbij een technieker aanwezig zal zijn
 
+Klik op een getal om de bijhorende lijst van jobs te openen.
+
+![Lijst van jobs via teller](/images/teller-jobs.png)
+
+Klik vooraan op een job in de lijst om de melding te openen en op te volgen.
+
 ### Overzicht jobs
-Een volledig overzicht van alle jobs, ongeacht hun status.
+
+Geeft een volledig overzicht van alle aangemaakte jobs. Per job vind je alle nodige informatie terug zoals status, melddatum en meer.
+
+![Overzicht jobs](/images/overzicht_jobs.png)
+
+Bovenaan elke kolom kan je filteren om de lijst te verfijnen.
+
+Via de **drie puntjes** rechts in de lijst kan je de gefilterde lijst exporteren.
+
+![Jobs exporteren](/images/overzicht_jobs-export.png)
 
 ### Aantal correctief vs preventief (trend)
 Een grafiek die het aantal meldingen over de laatste 12 maanden weergeeft, opgesplitst in:
@@ -44,7 +66,7 @@ Een grafiek die het aantal meldingen over de laatste 12 maanden weergeeft, opges
 - **Overig** – overige meldingen
 
 ### On-site planning
-Toont de planning van alle bezoeken, zowel reeds uitgevoerde als toekomstige bezoeken.
+Toont de planning van alle bezoeken op de site, zowel reeds uitgevoerde als toekomstige. Klik op een bezoek om de details te bekijken, zoals de datum, de betrokken technieker en de gekoppelde werkorders.
 
 ---
 
@@ -204,4 +226,49 @@ Per product kan je twee fiches openen:
 
 ## Werkorder opvolgen
 
-*(wordt aangevuld)*
+Open een ticket via de [Tellers](#tellers) of het [Overzicht jobs](#overzicht-jobs) om de werkorder te bekijken. Je ziet meerdere tabbladen met informatie over het ticket.
+
+![Werkorder opvolgen](/images/werkorder_opvolgen.png)
+
+---
+
+### Hoofdtabblad
+
+Het hoofdtabblad geeft een volledig overzicht van de job:
+
+- **Zone 1 – Joboverzicht**: de algemene gegevens van de melding. Rechtsboven zie je de huidige **status** van de job.
+- **Zone 2 – Bijlagen**: een overzicht van alle bijlagen die al toegevoegd werden (foto's, pdf's...). Je kan hier ook een nieuwe bijlage toevoegen.
+- **Zone 3 – Werkbon**: klik op de knop **Werkbon** om een PDF-afdruk van de melding te genereren.
+- **Zone 4 – Techniekers**: toont welke techniekers voorzien zijn voor deze job. Deze bezoeken verschijnen ook in de **On-site planning** op het dashboard.
+
+---
+
+### Tabblad Acceptatie
+
+In dit tabblad kan je de melding opvolgen na uitvoering:
+
+- Als het ticket uitgevoerd is en klaar voor acceptatie, kan een **Atalian medewerker** het hier accepteren.
+- Je kan ook raadplegen door wie en wanneer een ticket eerder geaccepteerd werd.
+
+![Acceptatie overzicht](/images/werkorder_opvolgen_acceptatie.png)
+
+#### Digitale acceptatie via de mobiele app
+
+De acceptatie gebeurt digitaal via de **mobiele applicatie van Atalian**. Een Atalian medewerker biedt de klant een verklaring van acceptatie aan op het toestel.
+
+![Acceptatie mobiel](/images/acceptatiemobiel.png)
+
+De klant kan:
+- een **opmerking** toevoegen
+- zijn **naam** opgeven
+- digitaal **ondertekenen**
+
+![Acceptatie mobiel – ondertekening](/images/acceptatiemobiel_vervolg.png)
+
+Eenmaal ondertekend is de melding gevalideerd en kan deze **gefactureerd** worden.
+
+---
+
+### Tabblad Inspectie
+
+Dit tabblad toont de inspecties die uitgevoerd werden in het kader van deze job. Dit is alleen van toepassing wanneer er voorafgaandelijk een **inspectielijst** opgesteld werd.
