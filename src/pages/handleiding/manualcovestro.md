@@ -222,9 +222,9 @@ Open een ticket via de [Tellers](#tellers) of het [Overzicht jobs](#overzicht-jo
 
 ---
 
-### Hoofdtabblad
+### Invoer
 
-Het hoofdtabblad geeft een volledig overzicht van de job:
+Het tabblad Invoer geeft een volledig overzicht van de job:
 
 - **Zone 1 – Joboverzicht**: de algemene gegevens van de melding. Rechtsboven zie je de huidige **status** van de job.
 - **Zone 2 – Bijlagen**: een overzicht van alle bijlagen die al toegevoegd werden (foto's, pdf's...). Je kan hier ook een nieuwe bijlage toevoegen.
