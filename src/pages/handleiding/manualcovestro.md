@@ -3,16 +3,6 @@ layout: ../../layouts/ManualLayout.astro
 title: Handleiding Ultimo – Covestro
 ---
 
-# Handleiding Ultimo – Covestro
-
-Deze handleiding legt uit hoe je Ultimo gebruikt voor het melden en opvolgen van taken op de site van Covestro.
-
-> **Woordenschat**
-> - **Melding** – wat je zelf aanmaakt en invult in Ultimo
-> - **Ticket** – wat een melding wordt nadat je ze verstuurd hebt; Atalian verwerkt het ticket verder
-> - **Job** – de term die Ultimo zelf gebruikt in het overzicht en de tellers
-
----
 
 ## Het dashboard
 
