@@ -3,10 +3,12 @@ import '../../src/styles/globals.css';
 import '@fontsource-variable/inter/wght.css';
 import interWoff2 from '@fontsource-variable/inter/files/inter-latin-wght-normal.woff2?url';
 interface Props {
-    title: string;
+    frontmatter?: { title?: string };
+    title?: string;
 }
 
-const { title } = Astro.props;
+const { frontmatter, title: directTitle } = Astro.props;
+const title = frontmatter?.title || directTitle || 'Handleiding Ultimo – Covestro';
 ---
 
 <!doctype html>
