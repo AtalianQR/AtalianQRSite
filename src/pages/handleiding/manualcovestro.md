@@ -20,7 +20,7 @@ De handleiding is specifiek opgesteld voor de **Covestro**-site en weerspiegelt 
 
 Na het inloggen kom je op het startdashboard terecht. Dit scherm geeft een overzicht van alle belangrijke informatie in één oogopslag.
 
-![Start dashboard Ultimo](/images/Handleiding/dashboard.png)
+![Start dashboard Ultimo](/images/Handleiding/Covestro/dashboard.png)
 
 De tegels op het dashboard zijn van links naar rechts en van boven naar beneden:
 
@@ -45,7 +45,7 @@ Een snelle samenvatting van de lopende situatie:
 
 Klik op een getal om de bijhorende lijst van jobs te openen.
 
-![Lijst van jobs via teller](/images/Handleiding/teller-jobs.png)
+![Lijst van jobs via teller](/images/Handleiding/Covestro/teller-jobs.png)
 
 Klik vooraan op een job in de lijst om de melding te openen en op te volgen.
 
@@ -53,13 +53,13 @@ Klik vooraan op een job in de lijst om de melding te openen en op te volgen.
 
 Geeft een volledig overzicht van alle aangemaakte jobs. Per job vind je alle nodige informatie terug zoals status, melddatum en meer.
 
-![Overzicht jobs](/images/Handleiding/overzicht_jobs.png)
+![Overzicht jobs](/images/Handleiding/Covestro/overzicht_jobs.png)
 
 Bovenaan elke kolom kan je filteren om de lijst te verfijnen.
 
 Via de **drie puntjes** rechts in de lijst kan je de gefilterde lijst exporteren.
 
-![Jobs exporteren](/images/Handleiding/overzicht_jobs-export.png)
+![Jobs exporteren](/images/Handleiding/Covestro/overzicht_jobs-export.png)
 
 ### Aantal correctief vs preventief (trend)
 Een grafiek die het aantal meldingen over de laatste 12 maanden weergeeft, opgesplitst in:
@@ -76,7 +76,7 @@ Toont de planning van alle bezoeken op de site, zowel reeds uitgevoerde als toek
 
 Klik op de tegel **Nieuwe Melding** op het dashboard. Je krijgt een keuzemenu met drie types:
 
-![Keuzemenu nieuwe melding](/images/Handleiding/melding-menu.png)
+![Keuzemenu nieuwe melding](/images/Handleiding/Covestro/melding-menu.png)
 
 | Type | Wanneer gebruiken |
 |---|---|
@@ -92,7 +92,7 @@ De knop **Start dashboard** brengt je terug naar het hoofdscherm zonder een meld
 
 Kies **Service** als je een bijkomende dienst wil aanvragen.
 
-![Submenu Service](/images/Handleiding/melding-service.png)
+![Submenu Service](/images/Handleiding/Covestro/melding-service.png)
 
 - **Vraag Cleaning** – voor schoonmaak, glaswas, sanitair en matten
 - **Andere services** – voor handy man, groenonderhoud, ongediertebestrijding en andere diensten
@@ -103,7 +103,7 @@ Kies **Service** als je een bijkomende dienst wil aanvragen.
 
 Kies **Storing** als er een technisch defect is.
 
-![Submenu Storing](/images/Handleiding/melding-storing.png)
+![Submenu Storing](/images/Handleiding/Covestro/melding-storing.png)
 
 - **Storing dispenser/automaat** – voor problemen met een dispenser of automaat (bv. koffietoestel, zeeppomp)
 - **Storing Installatie** – voor problemen met een gekende installatie
@@ -115,7 +115,7 @@ Kies **Storing** als er een technisch defect is.
 
 Kies **Klacht** als je niet tevreden bent over een geleverde dienst.
 
-![Submenu Klacht](/images/Handleiding/melding-klacht.png)
+![Submenu Klacht](/images/Handleiding/Covestro/melding-klacht.png)
 
 - **Klacht Cleaning** – klacht over schoonmaak, glaswas, sanitair of matten
 - **Klacht Andere services** – klacht over handy man, groenonderhoud, ongediertebestrijding of andere diensten
@@ -126,7 +126,7 @@ Kies **Klacht** als je niet tevreden bent over een geleverde dienst.
 
 Ongeacht het gekozen type (service, storing of klacht) kom je steeds op hetzelfde meldingsformulier terecht.
 
-![Meldingsformulier](/images/Handleiding/melding-default.png)
+![Meldingsformulier](/images/Handleiding/Covestro/melding-default.png)
 
 Volg deze stappen:
 
@@ -136,7 +136,7 @@ Ga **meteen naar het veld Ruimte** — sla het gebouw over. Eenmaal de ruimte ge
 
 Druk op het **vergrootglas** naast het veld Ruimte. Je krijgt een lijst te zien met alle ruimtes.
 
-![Bouwdeel selecteren](/images/Handleiding/melding-bouwdeel.png)
+![Bouwdeel selecteren](/images/Handleiding/Covestro/melding-bouwdeel.png)
 
 Scrol naar rechts om de kolom **Bouwdeel** te zien. Boven elke kolom kan je filteren om de lijst te verfijnen. Klik op de gewenste ruimte om ze te selecteren.
 
@@ -174,11 +174,11 @@ Als een melding om een of andere reden niet verzonden werd, kan je die later ver
 
 Klik op de **rode teller** in de tegel **Nog niet verzonden jobs** op het dashboard. Je ziet een overzicht van alle meldingen die nog niet verzonden zijn.
 
-![Overzicht niet-verzonden meldingen](/images/Handleiding/melding-niet-verzonden.png)
+![Overzicht niet-verzonden meldingen](/images/Handleiding/Covestro/melding-niet-verzonden.png)
 
 Klik op het **bliksemicoontje** naast de melding om ze te openen en verder af te werken.
 
-![Melding selecteren](/images/Handleiding/melding-niet-verzonden-select.png)
+![Melding selecteren](/images/Handleiding/Covestro/melding-niet-verzonden-select.png)
 
 Je komt terug op het meldingsformulier terecht waar je de melding kan aanvullen en alsnog verzenden.
 
@@ -186,7 +186,7 @@ Je komt terug op het meldingsformulier terecht waar je de melding kan aanvullen 
 
 Wil je een melding definitief verwijderen, vink dan het vakje aan in de **rode balk** bovenaan de melding.
 
-![Melding verwijderen](/images/Handleiding/melding-niet-verzonden-delete.png)
+![Melding verwijderen](/images/Handleiding/Covestro/melding-niet-verzonden-delete.png)
 
 ---
 
@@ -194,7 +194,7 @@ Wil je een melding definitief verwijderen, vink dan het vakje aan in de **rode b
 
 Klik op de tegel **Documenten en producten** op het dashboard. Je krijgt een menu met twee onderdelen:
 
-![Document menu](/images/Handleiding/document-menu.png)
+![Document menu](/images/Handleiding/Covestro/document-menu.png)
 
 ---
 
@@ -213,11 +213,11 @@ Hier vind je een overzicht van alle gebruikte producten op de site.
 
 Dubbelklik eerst op het **complex Covestro** om in te zoomen.
 
-![Artikelen per complex](/images/Handleiding/Artikelen-complex.png)
+![Artikelen per complex](/images/Handleiding/Covestro/Artikelen-complex.png)
 
 Je krijgt vervolgens de volledige lijst van producten te zien.
 
-![Artikelenlijst](/images/Handleiding/Artikelen-lijst.png)
+![Artikelenlijst](/images/Handleiding/Covestro/Artikelen-lijst.png)
 
 Per product kan je twee fiches openen:
 
@@ -230,7 +230,7 @@ Per product kan je twee fiches openen:
 
 Open een ticket via de [Tellers](#tellers) of het [Overzicht jobs](#overzicht-jobs) om de werkorder te bekijken. Je ziet meerdere tabbladen met informatie over het ticket.
 
-![Werkorder opvolgen](/images/Handleiding/werkorder_opvolgen.png)
+![Werkorder opvolgen](/images/Handleiding/Covestro/werkorder_opvolgen.png)
 
 ---
 
@@ -252,20 +252,20 @@ In dit tabblad kan je de melding opvolgen na uitvoering:
 - Als het ticket uitgevoerd is en klaar voor acceptatie, kan een **Atalian medewerker** het hier accepteren.
 - Je kan ook raadplegen door wie en wanneer een ticket eerder geaccepteerd werd.
 
-![Acceptatie overzicht](/images/Handleiding/werkorder_opvolgen_acceptatie.png)
+![Acceptatie overzicht](/images/Handleiding/Covestro/werkorder_opvolgen_acceptatie.png)
 
 #### Digitale acceptatie via de mobiele app
 
 De acceptatie gebeurt digitaal via de **mobiele applicatie van Atalian**. Een Atalian medewerker biedt de klant een verklaring van acceptatie aan op het toestel.
 
-![Acceptatie mobiel](/images/Handleiding/acceptatiemobiel.png)
+![Acceptatie mobiel](/images/Handleiding/Covestro/acceptatiemobiel.png)
 
 De klant kan:
 - een **opmerking** toevoegen
 - zijn **naam** opgeven
 - digitaal **ondertekenen**
 
-![Acceptatie mobiel – ondertekening](/images/Handleiding/acceptatiemobiel_vervolg.png)
+![Acceptatie mobiel – ondertekening](/images/Handleiding/Covestro/acceptatiemobiel_vervolg.png)
 
 Eenmaal ondertekend is de melding gevalideerd en kan deze **gefactureerd** worden.
 
