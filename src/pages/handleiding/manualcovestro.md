@@ -8,7 +8,7 @@ title: Handleiding Ultimo – Covestro
 Deze handleiding begeleidt je bij het gebruik van **Ultimo**, het facility management platform dat ATALIAN inzet voor de opvolging van meldingen, werkorders en onderhoudsopdrachten op jouw site.
 
 Via Ultimo kan je eenvoudig:
-- nieuwe meldingen aanmaken (service, storing of klacht)
+- nieuwe meldingen aanmaken: een bestelling (cleaning-artikelen, Boma-producten, ...), een defectmelding (dispenser, installatie, ...), een extra opdracht (cleaning nieuwe ruimte, spills, glaswas, pestmanagement, huur inloopmat of dameshygiënecontainer, ...) of een klacht
 - de status van lopende werkorders opvolgen
 - documenten en producten raadplegen die aan jouw site gekoppeld zijn
 
@@ -80,9 +80,9 @@ Klik op de tegel **Nieuwe Melding** op het dashboard. Je krijgt een keuzemenu me
 
 | Type | Wanneer gebruiken |
 |---|---|
-| **Service** | Je vraagt een dienst aan, bv. extra schoonmaak |
-| **Storing** | Er is een defect of technisch probleem |
-| **Klacht** | Je wil een klacht indienen over een geleverde dienst |
+| **Service** | Bestelling (cleaning-artikelen, Boma-producten, ...), extra opdracht (cleaning nieuwe ruimte, spills, uitzonderlijke vervuiling, glaswas, pestmanagement, huur inloopmat of dameshygiënecontainer, ...) |
+| **Storing** | Defect aan een dispenser, automaat of installatie |
+| **Klacht** | Niet tevreden over een geleverde dienst |
 
 De knop **Start dashboard** brengt je terug naar het hoofdscherm zonder een melding aan te maken.
 
@@ -247,6 +247,12 @@ Het tabblad Invoer geeft een volledig overzicht van de job:
 
 ### Tabblad Acceptatie
 
+Op het dashboard toont een teller hoeveel tickets momenteel wachten op acceptatie door de klant.
+
+![Acceptatieteller](/images/Handleiding/Covestro/aceptatieteller.png)
+
+Klik op de teller om de lijst van te accepteren tickets te openen.
+
 In dit tabblad kan je de melding opvolgen na uitvoering:
 
 - Als het ticket uitgevoerd is en klaar voor acceptatie, kan een **Atalian medewerker** het hier accepteren.
@@ -256,7 +262,7 @@ In dit tabblad kan je de melding opvolgen na uitvoering:
 
 #### Digitale acceptatie via de mobiele app
 
-De acceptatie gebeurt digitaal via de **mobiele applicatie van Atalian**. Een Atalian medewerker biedt de klant een verklaring van acceptatie aan op het toestel.
+De acceptatie kan ook digitaal gebeuren via de **mobiele applicatie van Atalian**. Een Atalian medewerker biedt de klant een verklaring van acceptatie aan op het toestel.
 
 ![Acceptatie mobiel](/images/Handleiding/Covestro/acceptatiemobiel.png)
 

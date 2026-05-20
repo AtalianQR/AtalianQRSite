@@ -218,3 +218,31 @@ Het tabblad Invoer geeft een volledig overzicht van de job:
 - **Zone 2 – Bijlagen**: een overzicht van alle bijlagen. Je kan hier ook een nieuwe bijlage toevoegen.
 - **Zone 3 – Werkbon**: klik op de knop **Werkbon** om een PDF-afdruk te genereren.
 - **Zone 4 – Techniekers**: toont welke techniekers voorzien zijn voor deze job.
+
+---
+
+### Tabblad Acceptatie
+
+Op het dashboard toont een teller hoeveel tickets momenteel wachten op acceptatie door de klant.
+
+![Acceptatieteller](/images/Handleiding/Algemeen/Nederlands/aceptatieteller.png)
+
+Klik op de teller om de lijst van te accepteren tickets te openen.
+
+- Als het ticket uitgevoerd is en klaar voor acceptatie, kan een **Atalian medewerker** het hier accepteren.
+- Je kan ook raadplegen door wie en wanneer een ticket eerder geaccepteerd werd.
+
+#### Digitale acceptatie via de mobiele app
+
+De acceptatie kan ook digitaal gebeuren via de **mobiele applicatie van Atalian**. Een Atalian medewerker biedt de klant een verklaring van acceptatie aan op het toestel.
+
+![Acceptatie mobiel](/images/Handleiding/Algemeen/Nederlands/acceptatiemobiel.png)
+
+De klant kan:
+- een **opmerking** toevoegen
+- zijn **naam** opgeven
+- digitaal **ondertekenen**
+
+![Acceptatie mobiel – ondertekening](/images/Handleiding/Algemeen/Nederlands/acceptatiemobiel_vervolg.png)
+
+Eenmaal ondertekend is de melding gevalideerd en kan deze **gefactureerd** worden.
