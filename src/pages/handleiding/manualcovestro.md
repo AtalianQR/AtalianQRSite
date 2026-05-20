@@ -10,6 +10,7 @@ Deze handleiding begeleidt je bij het gebruik van **Ultimo**, het facility manag
 Via Ultimo kan je eenvoudig:
 - nieuwe meldingen aanmaken: een bestelling (cleaning-artikelen, Boma-producten, ...), een defectmelding (dispenser, installatie, ...), een extra opdracht (cleaning nieuwe ruimte, spills, glaswas, pestmanagement, huur inloopmat of dameshygiënecontainer, ...) of een klacht
 - de status van lopende werkorders opvolgen
+- periodieke opdrachten opvolgen die door Atalian worden beheerd (bv. geplande reinigingen, onderhoudsbeurten, ...)
 - documenten en producten raadplegen die aan jouw site gekoppeld zijn
 
 De handleiding is specifiek opgesteld voor de **Covestro**-site en weerspiegelt de instellingen en workflows die voor dit contract geconfigureerd zijn.
@@ -39,7 +40,7 @@ Zie [Documenten en producten](#documenten-en-producten) voor de gedetailleerde u
 
 ### Tellers
 Een snelle samenvatting van de lopende situatie:
-- **Openstaande periodiek** – wederkerende meldingen die nog openstaan
+- **Openstaande periodiek** – periodieke opdrachten die door Atalian worden beheerd en automatisch terugkeren (bv. geplande reinigingen, onderhoudsbeurten). Klik op de teller om de lopende periodieke opdrachten te bekijken en op te volgen.
 - **Openstaande meldingen** – nieuwe meldingen die nog verwerkt moeten worden
 - **Te behandelen bezoeken** – geplande bezoeken waarbij een technieker aanwezig zal zijn
 

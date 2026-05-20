@@ -10,6 +10,7 @@ Deze handleiding begeleidt je bij het gebruik van **Ultimo**, het facility manag
 Via Ultimo kan je eenvoudig:
 - nieuwe meldingen aanmaken (service, storing of klacht)
 - de status van lopende werkorders opvolgen
+- periodieke opdrachten opvolgen die door Atalian worden beheerd (bv. geplande taken, onderhoudsbeurten, ...)
 - documenten en producten raadplegen die aan jouw site gekoppeld zijn
 
 ---
@@ -35,7 +36,7 @@ Geeft een overzicht van:
 
 ### Tellers
 Een snelle samenvatting van de lopende situatie:
-- **Openstaande periodiek** – wederkerende meldingen die nog openstaan
+- **Openstaande periodiek** – periodieke opdrachten die door Atalian worden beheerd en automatisch terugkeren (bv. geplande taken, onderhoudsbeurten). Klik op de teller om de lopende periodieke opdrachten te bekijken en op te volgen.
 - **Openstaande meldingen** – nieuwe meldingen die nog verwerkt moeten worden
 - **Te behandelen bezoeken** – geplande bezoeken waarbij een technieker aanwezig zal zijn
 

@@ -10,6 +10,7 @@ Ce manuel vous guide dans l'utilisation d'**Ultimo**, la plateforme de facility 
 Via Ultimo, vous pouvez facilement :
 - créer de nouveaux signalements (service, panne ou réclamation)
 - suivre l'état des bons de travail en cours
+- suivre les interventions périodiques gérées par Atalian (ex. tâches planifiées, entretiens récurrents, ...)
 - consulter les documents et produits liés à votre site
 
 ---
@@ -35,7 +36,7 @@ Donne un aperçu de :
 
 ### Compteurs
 Un résumé rapide de la situation en cours :
-- **Périodiques ouverts** – interventions récurrentes encore en cours
+- **Périodiques ouverts** – interventions périodiques gérées par Atalian qui reviennent automatiquement (ex. tâches planifiées, entretiens récurrents). Cliquez sur le compteur pour consulter et suivre les interventions périodiques en cours.
 - **Signalements ouverts** – nouveaux signalements à traiter
 - **Visites à traiter** – visites planifiées avec intervention d'un technicien
 
