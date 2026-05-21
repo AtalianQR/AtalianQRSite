@@ -147,7 +147,7 @@ Geef een korte, duidelijke beschrijving van de vraag, het probleem of de klacht.
 
 #### 3. Kies de activiteit
 
-Selecteer de activiteit die het best overeenkomt met de melding.
+Selecteer de activiteit die het best overeenkomt met de melding. Voor een materiaalbestelling (cleaning-artikelen, Boma-producten, ...) selecteer je de activiteit **Washroom**.
 
 #### 4. Vul de toelichting in
 
