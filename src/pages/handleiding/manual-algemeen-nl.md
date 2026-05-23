@@ -123,11 +123,9 @@ Ongeacht het gekozen type kom je steeds op hetzelfde meldingsformulier terecht.
 
 Volg deze stappen:
 
-#### 1. Kies de ruimte
+#### 1. Kies het gebouw en de ruimte
 
-Ga **meteen naar het veld Ruimte** — sla het gebouw over. Eenmaal de ruimte gekozen is, wordt het gebouw automatisch ingevuld.
-
-Druk op het **vergrootglas** naast het veld Ruimte. Je krijgt een lijst te zien met alle ruimtes.
+Vul eerst het **gebouw** in, daarna de **ruimte**. Druk op het **vergrootglas** naast het veld Ruimte om de lijst van beschikbare ruimtes te openen.
 
 ![Bouwdeel selecteren](/images/Handleiding/Algemeen/Nederlands/melding-bouwdeel.png)
 

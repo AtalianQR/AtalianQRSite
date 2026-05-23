@@ -5,11 +5,11 @@ title: Manuel Ultimo
 
 ## Introduction
 
-Ce manuel vous guide dans l'utilisation d'**Ultimo**, la plateforme de facility management qu'ATALIAN utilise pour le suivi des signalements, des bons de travail et des interventions de maintenance.
+Ce manuel vous guide dans l'utilisation d'**Ultimo**, la plateforme de facility management qu'ATALIAN utilise pour le suivi des signalements, des ordres de travail et des interventions de maintenance.
 
 Via Ultimo, vous pouvez facilement :
 - créer de nouveaux signalements (service, panne ou réclamation)
-- suivre l'état des bons de travail en cours
+- suivre l'état des OT (ordres de travail) en cours
 - suivre les interventions périodiques gérées par Atalian (ex. tâches planifiées, entretiens récurrents, ...)
 - consulter les documents et produits liés à votre site
 
@@ -23,11 +23,11 @@ Après connexion, vous arrivez sur le tableau de bord. Cet écran offre une vue 
 
 Les tuiles du tableau de bord sont organisées de gauche à droite et de haut en bas :
 
-### Nouveau signalement
-Ce bouton ouvre le formulaire de création d'un nouveau signalement. Voir [Créer un signalement](#créer-un-signalement) pour la suite des étapes.
+### Nouvelle tâche
+Ce bouton ouvre le formulaire de création d'une nouvelle tâche. Voir [Créer un signalement](#créer-un-signalement) pour la suite des étapes.
 
-### Jobs non envoyés
-Affiche les signalements qui n'ont pas encore été transmis. Ce sont des signalements inachevés qui ne sont pas encore considérés comme clôturés. Voir [Signalements non envoyés](#signalements-non-envoyés) pour plus d'informations.
+### Tâches non envoyées
+Affiche les tâches qui n'ont pas encore été transmises. Ce sont des tâches inachevées qui ne sont pas encore considérées comme clôturées. Voir [Signalements non envoyés](#signalements-non-envoyés) pour plus d'informations.
 
 ### Documents et produits
 Donne un aperçu de :
@@ -36,36 +36,37 @@ Donne un aperçu de :
 
 ### Compteurs
 Un résumé rapide de la situation en cours :
-- **Périodiques ouverts** – interventions périodiques gérées par Atalian qui reviennent automatiquement (ex. tâches planifiées, entretiens récurrents). Cliquez sur le compteur pour consulter et suivre les interventions périodiques en cours.
-- **Signalements ouverts** – nouveaux signalements à traiter
-- **Visites à traiter** – visites planifiées avec intervention d'un technicien
+- **Périodique en attente** – interventions périodiques gérées par Atalian qui reviennent automatiquement (ex. tâches planifiées, entretiens récurrents). Cliquez sur le compteur pour consulter et suivre les interventions périodiques en cours.
+- **Encore à accepter** – tâches exécutées qui attendent encore la validation du client
+- **Tâches en attente** – nouvelles tâches à traiter
+- **Visites programmées** – visites planifiées avec intervention d'un technicien
 
 Cliquez sur un chiffre pour ouvrir la liste correspondante.
 
-![Liste des jobs via compteur](/images/Handleiding/Algemeen/Frans/teller-jobs.png)
+![Liste des OT via compteur](/images/Handleiding/Algemeen/Frans/teller-jobs.png)
 
-### Vue d'ensemble des jobs
+### Aperçu des OT
 
-Donne un aperçu complet de tous les jobs créés, avec les informations essentielles telles que le statut et la date de signalement.
+Donne un aperçu complet de tous les OT créés, avec les informations essentielles telles que le statut et la date de signalement.
 
-![Vue d'ensemble des jobs](/images/Handleiding/Algemeen/Frans/overzicht_jobs.png)
+![Aperçu des OT](/images/Handleiding/Algemeen/Frans/overzicht_jobs.png)
 
 Vous pouvez filtrer en haut de chaque colonne pour affiner la liste. Via les **trois points** à droite, vous pouvez exporter la liste filtrée.
 
-### Nombre de correctifs vs préventifs (tendance)
+### Nombre correctif vs préventif (tendance)
 Un graphique affichant le nombre de signalements sur les 12 derniers mois, réparti en :
 - **Correctif** – réparations non planifiées suite à un problème
 - **Préventif** – entretiens planifiés
 - **Autre** – autres signalements
 
-### Planning on-site
+### Planification sur site
 Affiche le planning de toutes les visites sur le site, passées et à venir. Cliquez sur une visite pour en voir les détails.
 
 ---
 
 ## Créer un signalement
 
-Cliquez sur la tuile **Nouveau signalement** du tableau de bord. Un menu vous propose trois types :
+Cliquez sur la tuile **Nouvelle tâche** du tableau de bord. Un menu vous propose trois types :
 
 ![Menu nouveau signalement](/images/Handleiding/Algemeen/Frans/melding-menu.png)
 
@@ -119,11 +120,9 @@ Quel que soit le type choisi, vous arriverez toujours sur le même formulaire.
 
 Suivez ces étapes :
 
-#### 1. Choisissez l'espace
+#### 1. Choisissez le bâtiment et l'espace
 
-Rendez-vous **directement dans le champ Espace** — ne remplissez pas le bâtiment. Une fois l'espace sélectionné, le bâtiment est rempli automatiquement.
-
-Appuyez sur la **loupe** à côté du champ Espace pour afficher la liste des espaces disponibles.
+Remplissez d'abord le **bâtiment**, ensuite l'**espace**. Appuyez sur la **loupe** à côté du champ Espace pour afficher la liste des espaces disponibles.
 
 ![Sélection de l'espace](/images/Handleiding/Algemeen/Frans/melding-bouwdeel.png)
 
@@ -161,7 +160,7 @@ Si un signalement n'a pas été envoyé, vous pouvez le compléter ou le supprim
 
 ### Ouvrir un signalement
 
-Cliquez sur le **compteur rouge** dans la tuile **Jobs non envoyés** du tableau de bord.
+Cliquez sur le **compteur rouge** dans la tuile **Tâches non envoyées** du tableau de bord.
 
 ![Aperçu des signalements non envoyés](/images/Handleiding/Algemeen/Frans/melding-niet-verzonden.png)
 
@@ -201,17 +200,17 @@ Vous trouvez ici un aperçu de tous les produits utilisés sur le site. Par prod
 
 ---
 
-## Suivi d'un bon de travail
+## Suivi d'un OT
 
-Ouvrez un ticket via les [Compteurs](#compteurs) ou la [Vue d'ensemble des jobs](#vue-densemble-des-jobs). Vous verrez plusieurs onglets avec les informations sur le bon de travail.
+Ouvrez un OT via les [Compteurs](#compteurs) ou l'[Aperçu des OT](#aperçu-des-ot). Vous verrez plusieurs onglets avec les informations sur l'OT.
 
-![Suivi du bon de travail](/images/Handleiding/Algemeen/Frans/werkorder_opvolgen.png)
+![Suivi d'un OT](/images/Handleiding/Algemeen/Frans/werkorder_opvolgen.png)
 
 ### Onglet Saisie
 
-Cet onglet donne un aperçu complet du job :
+Cet onglet donne un aperçu complet de l'OT :
 
-- **Zone 1 – Aperçu du job** : les données générales du signalement. En haut à droite, vous voyez le **statut** actuel.
+- **Zone 1 – Aperçu de l'OT** : les données générales du signalement. En haut à droite, vous voyez le **statut** actuel.
 - **Zone 2 – Pièces jointes** : aperçu de toutes les pièces jointes. Vous pouvez également en ajouter une nouvelle.
 - **Zone 3 – Bon de travail** : cliquez sur le bouton **Bon de travail** pour générer un PDF.
-- **Zone 4 – Techniciens** : indique quels techniciens sont prévus pour ce job.
+- **Zone 4 – Techniciens** : indique quels techniciens sont prévus pour cet OT.
