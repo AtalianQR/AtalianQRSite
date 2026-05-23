@@ -1,6 +1,7 @@
 ---
 layout: ../../layouts/ManualLayoutAlgemeen.astro
 title: Manuel Ultimo
+lang: fr
 ---
 
 ## Introduction

@@ -3,16 +3,19 @@ import '../../src/styles/globals.css';
 import '@fontsource-variable/inter/wght.css';
 import interWoff2 from '@fontsource-variable/inter/files/inter-latin-wght-normal.woff2?url';
 interface Props {
-    frontmatter?: { title?: string };
+    frontmatter?: { title?: string; lang?: string };
     title?: string;
+    lang?: string;
 }
 
 const { frontmatter, title: directTitle } = Astro.props;
 const title = frontmatter?.title || directTitle || 'Handleiding Ultimo';
+const lang = frontmatter?.lang || 'nl';
+const isFr = lang === 'fr';
 ---
 
 <!doctype html>
-<html lang="nl">
+<html lang={lang}>
     <head>
         <meta charset="UTF-8" />
         <title>{title}</title>
@@ -40,9 +43,19 @@ const title = frontmatter?.title || directTitle || 'Handleiding Ultimo';
                     <div class="grow">
                         <p class="font-bold text-2xl leading-tight">{title}</p>
                         <p class="text-sm text-white/70 mt-1">
-                            <strong class="text-white">Melding</strong> = aangemaakt door gebruiker &nbsp;·&nbsp;
-                            <strong class="text-white">Ticket</strong> = na verzending &nbsp;·&nbsp;
-                            <strong class="text-white">Job</strong> = Ultimo-term in het systeem
+                            {isFr ? (
+                                <>
+                                    <strong class="text-white">Signalement</strong> = créé par l'utilisateur &nbsp;·&nbsp;
+                                    <strong class="text-white">Ticket</strong> = après envoi &nbsp;·&nbsp;
+                                    <strong class="text-white">OT</strong> = ordre de travail dans Ultimo
+                                </>
+                            ) : (
+                                <>
+                                    <strong class="text-white">Melding</strong> = aangemaakt door gebruiker &nbsp;·&nbsp;
+                                    <strong class="text-white">Ticket</strong> = na verzending &nbsp;·&nbsp;
+                                    <strong class="text-white">Job</strong> = Ultimo-term in het systeem
+                                </>
+                            )}
                         </p>
                     </div>
                     <div class="flex items-center gap-6 shrink-0">
@@ -63,19 +76,38 @@ const title = frontmatter?.title || directTitle || 'Handleiding Ultimo';
                                 <img src="/AtalianLogo.png" alt="Atalian" class="w-36 mb-6" />
                             </a>
                             <div id="search" class="mb-4"></div>
-                            <p class="font-semibold mb-3 text-white uppercase tracking-wide text-xs">Inhoud</p>
-                            <a href="#het-dashboard" class="block py-1 text-white no-underline hover:opacity-70">Het dashboard</a>
-                            <a href="#melding-aanmaken" class="block py-1 text-white no-underline hover:opacity-70">Melding aanmaken</a>
-                            <a href="#service" class="block py-1 pl-3 text-white/80 no-underline hover:text-white">Service</a>
-                            <a href="#storing" class="block py-1 pl-3 text-white/80 no-underline hover:text-white">Storing</a>
-                            <a href="#klacht" class="block py-1 pl-3 text-white/80 no-underline hover:text-white">Klacht</a>
-                            <a href="#het-meldingsformulier-invullen" class="block py-1 pl-3 text-white/80 no-underline hover:text-white">Formulier invullen</a>
-                            <a href="#niet-verzonden-meldingen" class="block py-1 text-white no-underline hover:opacity-70">Niet-verzonden meldingen</a>
-                            <a href="#documenten-en-producten" class="block py-1 text-white no-underline hover:opacity-70">Documenten en producten</a>
-                            <a href="#documenten" class="block py-1 pl-3 text-white/80 no-underline hover:text-white">Documenten</a>
-                            <a href="#producten" class="block py-1 pl-3 text-white/80 no-underline hover:text-white">Producten</a>
-                            <a href="#werkorder-opvolgen" class="block py-1 text-white no-underline hover:opacity-70">Werkorder opvolgen</a>
-                            <a href="#invoer" class="block py-1 pl-3 text-white/80 no-underline hover:text-white">Invoer</a>
+                            <p class="font-semibold mb-3 text-white uppercase tracking-wide text-xs">{isFr ? 'Contenu' : 'Inhoud'}</p>
+                            {isFr ? (
+                                <>
+                                    <a href="#le-tableau-de-bord" class="block py-1 text-white no-underline hover:opacity-70">Tableau de bord</a>
+                                    <a href="#créer-un-signalement" class="block py-1 text-white no-underline hover:opacity-70">Créer un signalement</a>
+                                    <a href="#service" class="block py-1 pl-3 text-white/80 no-underline hover:text-white">Service</a>
+                                    <a href="#panne" class="block py-1 pl-3 text-white/80 no-underline hover:text-white">Panne</a>
+                                    <a href="#réclamation" class="block py-1 pl-3 text-white/80 no-underline hover:text-white">Réclamation</a>
+                                    <a href="#compléter-le-formulaire-de-signalement" class="block py-1 pl-3 text-white/80 no-underline hover:text-white">Compléter le formulaire</a>
+                                    <a href="#signalements-non-envoyés" class="block py-1 text-white no-underline hover:opacity-70">Signalements non envoyés</a>
+                                    <a href="#documents-et-produits" class="block py-1 text-white no-underline hover:opacity-70">Documents et produits</a>
+                                    <a href="#documents" class="block py-1 pl-3 text-white/80 no-underline hover:text-white">Documents</a>
+                                    <a href="#produits" class="block py-1 pl-3 text-white/80 no-underline hover:text-white">Produits</a>
+                                    <a href="#suivi-dun-ot" class="block py-1 text-white no-underline hover:opacity-70">Suivi d'un OT</a>
+                                    <a href="#onglet-saisie" class="block py-1 pl-3 text-white/80 no-underline hover:text-white">Saisie</a>
+                                </>
+                            ) : (
+                                <>
+                                    <a href="#het-dashboard" class="block py-1 text-white no-underline hover:opacity-70">Het dashboard</a>
+                                    <a href="#melding-aanmaken" class="block py-1 text-white no-underline hover:opacity-70">Melding aanmaken</a>
+                                    <a href="#service" class="block py-1 pl-3 text-white/80 no-underline hover:text-white">Service</a>
+                                    <a href="#storing" class="block py-1 pl-3 text-white/80 no-underline hover:text-white">Storing</a>
+                                    <a href="#klacht" class="block py-1 pl-3 text-white/80 no-underline hover:text-white">Klacht</a>
+                                    <a href="#het-meldingsformulier-invullen" class="block py-1 pl-3 text-white/80 no-underline hover:text-white">Formulier invullen</a>
+                                    <a href="#niet-verzonden-meldingen" class="block py-1 text-white no-underline hover:opacity-70">Niet-verzonden meldingen</a>
+                                    <a href="#documenten-en-producten" class="block py-1 text-white no-underline hover:opacity-70">Documenten en producten</a>
+                                    <a href="#documenten" class="block py-1 pl-3 text-white/80 no-underline hover:text-white">Documenten</a>
+                                    <a href="#producten" class="block py-1 pl-3 text-white/80 no-underline hover:text-white">Producten</a>
+                                    <a href="#werkorder-opvolgen" class="block py-1 text-white no-underline hover:opacity-70">Werkorder opvolgen</a>
+                                    <a href="#invoer" class="block py-1 pl-3 text-white/80 no-underline hover:text-white">Invoer</a>
+                                </>
+                            )}
                         </nav>
                     </aside>
 
@@ -86,13 +118,14 @@ const title = frontmatter?.title || directTitle || 'Handleiding Ultimo';
 
                 </div>
                 <footer class="py-8 mt-12 text-sm text-white/40">
-                    &copy; Atalian – Handleiding Ultimo
+                    &copy; Atalian – {isFr ? 'Manuel Ultimo' : 'Handleiding Ultimo'}
                 </footer>
             </div>
         </div>
         <script is:inline>
             window.addEventListener('DOMContentLoaded', () => {
-                new PagefindUI({ element: '#search', showSubResults: true, translations: { placeholder: 'Zoeken...' } });
+                const isFr = document.documentElement.lang === 'fr' || window.location.pathname.includes('-fr');
+                new PagefindUI({ element: '#search', showSubResults: true, translations: { placeholder: isFr ? 'Rechercher...' : 'Zoeken...' } });
             });
         </script>
     </body>
