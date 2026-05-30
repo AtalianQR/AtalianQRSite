@@ -14,7 +14,7 @@ const cors = {
 export default async (req) => {
   const method = req.method?.toUpperCase() || 'GET';
   if (method === 'HEAD' || method === 'OPTIONS') return new Response(null, { status: 204, headers: cors });
-  if (method === 'GET') return new Response(JSON.stringify({ ok: true, hint: 'POST JSON telemetry to this endpoint', context: process.env.CONTEXT, hasBlobs: !!process.env.NETLIFY_BLOBS_CONTEXT }), { status: 200, headers: { ...cors, 'Content-Type': 'application/json' } });
+  if (method === 'GET') return new Response(JSON.stringify({ ok: true, hint: 'POST JSON telemetry to this endpoint' }), { status: 200, headers: { ...cors, 'Content-Type': 'application/json' } });
   if (method !== 'POST') return new Response(JSON.stringify({ error: 'Method Not Allowed' }), { status: 405, headers: cors });
 
   let data = {};
@@ -34,9 +34,7 @@ export default async (req) => {
     ip: req.headers.get('x-forwarded-for') || ''
   };
 
-  const isProd = process.env.CONTEXT === 'production';
-
-  if (isProd && DUAL_WRITE_TO_BLOBS) {
+  if (DUAL_WRITE_TO_BLOBS) {
     try {
       const store = getStore('formlog');
       const day  = now.toISOString().slice(0, 10);
@@ -46,8 +44,6 @@ export default async (req) => {
     } catch (err) {
       console.error('Blobs write error:', err);
     }
-  } else if (!isProd) {
-    console.log(`[TEST MODE] Logging uitgeschakeld voor code ${code}`);
   }
 
   return new Response(null, { status: 204, headers: cors });
