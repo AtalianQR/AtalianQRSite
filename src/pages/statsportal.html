@@ -100,7 +100,7 @@ main{flex:1;padding:20px 24px;display:flex;flex-direction:column;gap:20px}
 .kpi-acc .kpi-val{color:var(--acc)}
 
 /* ─── BODY GRID ───────────────────────────── */
-.body-grid{display:grid;grid-template-columns:1fr 340px;gap:16px;min-height:0}
+.body-grid{display:grid;grid-template-columns:1fr 340px;gap:16px;align-items:stretch}
 
 /* ─── SECTION HEADER ──────────────────────── */
 .sec-head{
@@ -156,7 +156,7 @@ main{flex:1;padding:20px 24px;display:flex;flex-direction:column;gap:20px}
 .badge.acc{color:var(--acc);background:var(--acc-dim);border-color:rgba(232,160,48,.3)}
 
 /* ─── FEED ────────────────────────────────── */
-.feed-panel{background:var(--s1);border:1px solid var(--b1);border-radius:10px;padding:16px;display:flex;flex-direction:column;max-height:600px}
+.feed-panel{background:var(--s1);border:1px solid var(--b1);border-radius:10px;padding:16px;display:flex;flex-direction:column;height:100%}
 .feed-list{overflow-y:auto;display:flex;flex-direction:column;gap:1px;flex:1}
 .feed-list::-webkit-scrollbar{width:4px}
 .feed-list::-webkit-scrollbar-track{background:transparent}
@@ -173,11 +173,8 @@ main{flex:1;padding:20px 24px;display:flex;flex-direction:column;gap:20px}
   font-size:11px;font-weight:600;letter-spacing:.06em;
   font-family:'JetBrains Mono',monospace;
 }
-.feed-type.url_load{color:var(--acc)}
-.feed-type.pagehide{color:var(--muted)}
-.feed-type.idle{color:var(--dim)}
-.feed-type.step{color:var(--test)}
-.feed-type.other{color:var(--muted)}
+.feed-type{color:var(--test)}
+.feed-type.url_load{font-weight:700}
 .feed-code{font-size:10px;color:var(--muted);font-family:'JetBrains Mono',monospace}
 .feed-badges{display:flex;gap:4px;flex-wrap:wrap;justify-content:flex-end}
 
@@ -364,9 +361,9 @@ label.chk input{accent-color:var(--acc);width:13px;height:13px;cursor:pointer}
     </div>
 
     <!-- FEED -->
-    <div style="display:flex;flex-direction:column">
+    <div style="display:flex;flex-direction:column;height:100%">
       <div class="sec-head">Recente activiteit <em id="feed-count"></em></div>
-      <div class="feed-panel">
+      <div class="feed-panel" style="flex:1">
         <input type="text" id="feedSearch" placeholder="url_load, poets_info_viewed…"
           style="width:100%;background:var(--bg);color:var(--text);border:1px solid var(--b1);border-radius:6px;
                  padding:6px 10px;font-size:12px;font-family:'JetBrains Mono',monospace;margin-bottom:8px;outline:none">
