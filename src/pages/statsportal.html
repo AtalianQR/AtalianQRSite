@@ -295,7 +295,8 @@ label.chk input{accent-color:var(--acc);width:13px;height:13px;cursor:pointer}
 
   <!-- CHART -->
   <div class="chart-panel">
-    <div class="sec-head">Scans per dag <em id="chart-range"></em></div>
+    <div class="sec-head" style="margin-bottom:8px">Scans per dag <em id="chart-range"></em> <span id="chart-crumb" style="margin-left:8px"></span></div>
+    <div id="chart-legend" style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px"></div>
     <div class="chart-wrap" id="chart-wrap"></div>
   </div>
 
@@ -456,7 +457,14 @@ function render(){
     if(ev.lang==='fr') loc.lang.fr++; else loc.lang.nl++;
   }
 
-  const locs = [...locMap.values()].sort((a,b)=>b.scans-a.scans);
+  // Filter locaties op geselecteerde klant
+  let locs = [...locMap.values()].sort((a,b)=>b.scans-a.scans);
+  if(selectedClient){
+    locs = locs.filter(loc=>{
+      const ev = [...loc.events].reverse().find(e=>e.clientName);
+      return (ev?.clientName||'Onbekend') === selectedClient;
+    });
+  }
   $('loc-count').textContent = locs.length;
 
   // Build day buckets for sparkline (last 14 days)
@@ -535,48 +543,103 @@ function render(){
   $('feed-list').innerHTML = feedHtml;
 }
 
+// ── chart state ──────────────────────────────────────────────
+let selectedClient = null;
+
 // ── chart ───────────────────────────────────────────────────
 function renderChart(events){
   const wrap = $('chart-wrap');
   if(!wrap) return;
-  const scans = events.filter(e=>e.type==='url_load'||e.type==='visit');
+
+  const COLORS = ['#e8a030','#34d399','#60a5fa','#f472b6','#a78bfa','#fb923c','#f87171','#4ade80'];
   const DAYS = 30;
   const today = todayKey();
   const days = [];
-  for(let i=DAYS-1;i>=0;i--){
-    const d=new Date(); d.setDate(d.getDate()-i);
-    days.push(fmt.dayKey(d.getTime()));
-  }
-  $('chart-range').textContent = DAYS+' dagen';
+  for(let i=DAYS-1;i>=0;i--){ const d=new Date(); d.setDate(d.getDate()-i); days.push(fmt.dayKey(d.getTime())); }
+
+  const scans = events.filter(e=>e.type==='url_load'||e.type==='visit');
+
+  // Groepeersleutel: per klant (niveau 1) of per ruimte (niveau 2)
+  const getKey = ev => selectedClient
+    ? (ev.code||ev.id||'?')
+    : (ev.clientName||'Onbekend');
+  const getName = (key, ev) => selectedClient
+    ? (ev?.locationName || key)
+    : key;
+
+  const allKeys = [...new Set(scans.map(getKey))];
+  const keyColor = Object.fromEntries(allKeys.map((k,i)=>[k, COLORS[i%COLORS.length]]));
+
+  // Buckets: dag → { key → count }
   const buckets = Object.fromEntries(days.map(d=>[d,{}]));
   for(const ev of scans){
-    const dk=fmt.dayKey(ev.ts);
+    if(selectedClient && (ev.clientName||'Onbekend') !== selectedClient) continue;
+    const dk = fmt.dayKey(ev.ts);
     if(!(dk in buckets)) continue;
-    const code=ev.code||ev.id||'?';
-    buckets[dk][code]=(buckets[dk][code]||0)+1;
+    const key = getKey(ev);
+    buckets[dk][key] = (buckets[dk][key]||0)+1;
   }
   const vals = days.map(d=>Object.values(buckets[d]).reduce((a,b)=>a+b,0));
   const maxV = Math.max(1,...vals);
 
-  const locColors=['#e8a030','#34d399','#60a5fa','#f472b6','#a78bfa','#fb923c'];
-  const allCodes=[...new Set(scans.map(e=>e.code||e.id||'?'))];
-  const codeColor={};
-  allCodes.forEach((c,i)=>codeColor[c]=locColors[i%locColors.length]);
+  // Broodkruimel
+  const crumb = $('chart-crumb');
+  if(crumb){
+    if(selectedClient){
+      crumb.innerHTML = `<span style="cursor:pointer;color:var(--acc);font-family:'JetBrains Mono',monospace;font-size:11px" id="btnBackChart">← Alle klanten</span> <span style="color:var(--muted);font-size:11px">/ ${selectedClient}</span>`;
+      const btn = document.getElementById('btnBackChart');
+      if(btn) btn.onclick = ()=>{ selectedClient=null; render(); };
+    } else {
+      crumb.innerHTML = '';
+    }
+  }
 
-  wrap.innerHTML = days.map((dk,i)=>{
-    const total=vals[i];
-    const h=total?Math.max(6,Math.round(total/maxV*80)):0;
-    const isToday=dk===today;
-    const dateStr=new Intl.DateTimeFormat('nl-BE',{day:'numeric',month:'short'}).format(new Date(dk+'T12:00:00'));
-    const bucketCodes=Object.entries(buckets[dk]);
-    const segments=bucketCodes.map(([code,cnt],j)=>{
-      const sh=Math.round(cnt/maxV*80);
-      return `<div style="height:${sh}px;width:100%;background:${codeColor[code]||'var(--acc)'};border-radius:${j===bucketCodes.length-1?'3px 3px 0 0':'0'}"></div>`;
+  // Legende
+  const legendEl = $('chart-legend');
+  if(legendEl){
+    legendEl.innerHTML = allKeys.map(key=>{
+      const ev = [...scans].reverse().find(e=>getKey(e)===key);
+      const name = getName(key, ev);
+      const clickable = !selectedClient;
+      return `<span data-key="${key}" style="display:inline-flex;align-items:center;gap:5px;font-size:11px;
+        color:${clickable?'var(--text)':'var(--muted)'};
+        font-family:'JetBrains Mono',monospace;
+        cursor:${clickable?'pointer':'default'};
+        padding:3px 6px;border-radius:4px;
+        border:1px solid ${clickable?'var(--b2)':'transparent'};
+        transition:all .2s" class="legend-item">
+        <span style="width:10px;height:10px;border-radius:2px;background:${keyColor[key]};flex-shrink:0"></span>
+        <span>${name}</span>
+      </span>`;
+    }).join('');
+
+    if(!selectedClient){
+      legendEl.querySelectorAll('.legend-item').forEach(el=>{
+        el.addEventListener('mouseenter',()=>el.style.borderColor='var(--acc)');
+        el.addEventListener('mouseleave',()=>el.style.borderColor='var(--b2)');
+        el.addEventListener('click',()=>{
+          selectedClient = el.dataset.key;
+          render();
+        });
+      });
+    }
+  }
+
+  // Bars
+  wrap.innerHTML = [...days].reverse().map(dk=>{
+    const total = vals[days.indexOf(dk)];
+    const h = total ? Math.max(4, Math.round(total/maxV*80)) : 0;
+    const isToday = dk===today;
+    const dateStr = new Intl.DateTimeFormat('nl-BE',{day:'numeric',month:'short'}).format(new Date(dk+'T12:00:00'));
+    const entries = Object.entries(buckets[dk]).sort((a,b)=>a[0].localeCompare(b[0]));
+    const segments = entries.map(([key,cnt],j)=>{
+      const sh = Math.max(2, Math.round(cnt/maxV*80));
+      return `<div style="height:${sh}px;width:100%;background:${keyColor[key]||'var(--acc)'};border-radius:${j===entries.length-1?'3px 3px 0 0':'0'}"></div>`;
     }).join('');
     return `<div class="chart-col">
       <div class="chart-tooltip">${total} scan${total!==1?'s':''}<br>${dateStr}</div>
-      <div class="chart-bar ${isToday?'today':total===0?'empty-day':''}" style="height:${h}px">
-        ${total>0&&bucketCodes.length>1?segments:''}
+      <div class="chart-bar ${isToday?'today':total===0?'empty-day':''}" style="height:${h}px;overflow:hidden;display:flex;flex-direction:column-reverse">
+        ${total>0?segments:''}
       </div>
       <div class="chart-day ${isToday?'today':''}">${isToday?'▲':dk.slice(8)}</div>
     </div>`;
