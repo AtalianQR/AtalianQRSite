@@ -4,7 +4,8 @@
 // === ENV =========================================================
 const API_KEY       = process.env.ULTIMO_API_KEY;
 const BASE_URL_PROD = process.env.ULTIMO_API_BASEURL;
-const BASE_URL_TEST = process.env.ULTIMO_API_BASEURL_TEST || process.env.ULTIMO_API_BASEURL; // fallback
+const BASE_URL_TEST = process.env.ULTIMO_API_BASEURL_TEST || process.env.ULTIMO_API_BASEURL;
+const APP_QUERY     = process.env.APP_ELEMENT_QueryAtalianJobs;
 
 // === Response helper + CORS ======================================
 const json = (status, obj = {}) => ({
@@ -89,10 +90,29 @@ export async function handler(event) {
       data?.properties?.description ??
       ((lang === 'fr') ? 'Aucune description trouvée.' : 'Geen beschrijving gevonden.');
 
-    // NB: voor Equipments voorzien we enkel de beschrijving.
-    // (cleaningProgramFormatted is enkel zinvol bij Space; portal toont het optioneel.)
+    // Klantnaam via GET_EQUIPMENT_INFO workflow
+    let clientName = '', clientId = '';
+    if (APP_QUERY && equipmentId) {
+      try {
+        const wfRes = await fetch(`${base}/action/_rest_QueryAtalianJobs`, {
+          method: 'POST',
+          headers: { accept: 'application/json', 'Content-Type': 'application/json', ApiKey: API_KEY, ApplicationElementId: APP_QUERY },
+          body: JSON.stringify({ Action: 'GET_EQUIPMENT_INFO', EquipmentId: equipmentId })
+        });
+        if (wfRes.ok) {
+          const wfRaw = await wfRes.json().catch(() => ({}));
+          const objStr = wfRaw?.properties?.Output?.object ?? wfRaw?.object ?? null;
+          const obj = objStr ? JSON.parse(typeof objStr === 'string' ? objStr : JSON.stringify(objStr)) : {};
+          clientName = String(obj?.clientName ?? '').trim();
+          clientId   = String(obj?.clientId   ?? '').trim();
+        }
+      } catch (_) {}
+    }
+
     return json(200, {
       description: String(desc || '').trim(),
+      clientName,
+      clientId,
       env
     });
 

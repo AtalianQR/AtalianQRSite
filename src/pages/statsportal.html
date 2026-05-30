@@ -341,7 +341,7 @@ label.chk input{accent-color:var(--acc);width:13px;height:13px;cursor:pointer}
 
   <!-- UURDIAGRAM -->
   <div class="chart-panel">
-    <div class="sec-head" style="margin-bottom:8px">Scans per uur <em>24u verdeling</em></div>
+    <div class="sec-head" style="margin-bottom:8px">Scans per uur <em id="hour-day-label">vandaag</em> <span id="hour-back" style="display:none;cursor:pointer;font-size:10px;color:var(--acc);font-family:'JetBrains Mono',monospace;margin-left:8px">← vandaag</span></div>
     <div class="chart-wrap" id="hour-wrap" style="height:70px"></div>
     <div style="display:flex;justify-content:space-between;margin-top:4px;padding:0 2px">
       <span style="font-size:9px;color:var(--dim);font-family:'JetBrains Mono',monospace">00u</span>
@@ -435,6 +435,9 @@ function setStatus(txt, state){
 
 // ── state ────────────────────────────────────────────────
 let ALL_EVENTS = [];
+let codeToClient   = {};
+let codeToLocation = {};
+let selectedDay    = null; // voor uurdiagram: null = vandaag, anders 'YYYY-MM-DD'
 
 // ── fetch ────────────────────────────────────────────────
 async function fetchData(){
@@ -508,6 +511,15 @@ function render(){
   $('k-env-sub').textContent = `${prodCount} prod · ${testCount} test`;
 
   // ── Locations
+  // Bouw lookup-tabellen voor alle functies
+  codeToClient = {};
+  codeToLocation = {};
+  for(const ev of ALL_EVENTS){
+    const c = ev.code||ev.id||'';
+    if(c && ev.clientName)   codeToClient[c]   = ev.clientName;
+    if(c && ev.locationName) codeToLocation[c] = ev.locationName;
+  }
+
   renderChart(events);
   renderHourChart(events);
 
@@ -643,13 +655,7 @@ function renderChart(events){
   const scans = events.filter(e=>e.type==='url_load'||e.type==='visit');
 
   // Lookup: code → clientName (vanuit álle events, niet alleen url_load)
-  const codeToClient = {};
-  const codeToLocation = {};
-  for (const ev of events) {
-    const c = ev.code||ev.id||'';
-    if (c && ev.clientName)   codeToClient[c]   = ev.clientName;
-    if (c && ev.locationName) codeToLocation[c] = ev.locationName;
-  }
+  // codeToClient/codeToLocation worden bijgewerkt in render() voor globale toegang
 
   // Groepeersleutel: per klant (niveau 1) of per ruimte (niveau 2)
   const getKey = ev => selectedClient
@@ -722,42 +728,67 @@ function renderChart(events){
     const total = vals[days.indexOf(dk)];
     const h = total ? Math.max(4, Math.round(total/maxV*80)) : 0;
     const isToday = dk===today;
+    const isSelected = dk===selectedDay;
     const dateStr = new Intl.DateTimeFormat('nl-BE',{day:'numeric',month:'short'}).format(new Date(dk+'T12:00:00'));
     const entries = Object.entries(buckets[dk]).sort((a,b)=>a[0].localeCompare(b[0]));
     const segments = entries.map(([key,cnt],j)=>{
       const sh = Math.max(2, Math.round(cnt/maxV*80));
       return `<div style="height:${sh}px;width:100%;background:${keyColor[key]||'var(--acc)'};border-radius:${j===entries.length-1?'3px 3px 0 0':'0'}"></div>`;
     }).join('');
-    return `<div class="chart-col">
+    return `<div class="chart-col" data-day="${dk}" style="cursor:${total>0?'pointer':'default'}" title="${dateStr}: klik voor uurverdeling">
       <div class="chart-tooltip">${total} scan${total!==1?'s':''}<br>${dateStr}</div>
-      <div class="chart-bar ${isToday?'today':total===0?'empty-day':''}" style="height:${h}px;overflow:hidden;display:flex;flex-direction:column-reverse">
+      <div class="chart-bar ${isToday?'today':isSelected?'today':total===0?'empty-day':''}" style="height:${h}px;overflow:hidden;display:flex;flex-direction:column-reverse;${isSelected?'box-shadow:0 0 0 2px var(--acc)':''}">
         ${total>0?segments:''}
       </div>
-      <div class="chart-day ${isToday?'today':''}">${isToday?'▲':dk.slice(8)}</div>
+      <div class="chart-day ${isToday?'today':isSelected?'today':''}">${isToday?'▲':dk.slice(8)}</div>
     </div>`;
   }).join('');
+
+  // Klik op dag → uurdiagram van die dag
+  wrap.querySelectorAll('.chart-col[data-day]').forEach(col=>{
+    col.addEventListener('click',()=>{
+      const dk = col.dataset.day;
+      selectedDay = (dk===todayKey()||dk===selectedDay) ? null : dk;
+      const hb = $('hour-back');
+      if(hb) hb.style.display = selectedDay ? 'inline' : 'none';
+      renderHourChart(ALL_EVENTS);
+      wrap.querySelectorAll('.chart-col').forEach(c=>{
+        const bar=c.querySelector('.chart-bar');
+        if(bar){ bar.style.boxShadow = c.dataset.day===selectedDay?'0 0 0 2px var(--acc)':''; }
+      });
+    });
+  });
+
+  const hb = $('hour-back');
+  if(hb){
+    hb.style.display = selectedDay ? 'inline' : 'none';
+    hb.onclick = ()=>{ selectedDay=null; hb.style.display='none'; renderHourChart(ALL_EVENTS); };
+  }
 }
 
 // ── uurdiagram ───────────────────────────────────────────
 function renderHourChart(events){
   const wrap = $('hour-wrap');
   if(!wrap) return;
-  const scans = events.filter(e=>e.type==='url_load'||e.type==='visit');
+  const day = selectedDay || todayKey();
+  const scans = events.filter(e=>(e.type==='url_load'||e.type==='visit') && fmt.dayKey(e.ts)===day);
   const hours = Array(24).fill(0);
-  for(const ev of scans){
-    const h = new Date(ev.ts).getHours();
-    hours[h]++;
-  }
+  for(const ev of scans) hours[new Date(ev.ts).getHours()]++;
   const maxV = Math.max(1,...hours);
   const nowH = new Date().getHours();
+  const isToday = day === todayKey();
+
+  // Label boven de grafiek
+  const lbl = $('hour-day-label');
+  if(lbl) lbl.textContent = isToday ? 'vandaag' : new Intl.DateTimeFormat('nl-BE',{day:'numeric',month:'short'}).format(new Date(day+'T12:00:00'));
 
   wrap.innerHTML = hours.map((cnt,h)=>{
     const height = cnt ? Math.max(4, Math.round(cnt/maxV*60)) : 0;
-    const isNow = h === nowH;
+    const isNow = isToday && h === nowH;
     const label = String(h).padStart(2,'0');
     return `<div class="chart-col" title="${label}u: ${cnt} scan${cnt!==1?'s':''}">
       <div class="chart-tooltip">${cnt} scan${cnt!==1?'s':''}<br>${label}:00</div>
-      <div class="chart-bar${isNow?' today':cnt===0?' empty-day':''}" style="height:${height}px;background:${isNow?'var(--acc)':'var(--acc)'}"></div>
+      <div class="chart-bar${isNow?' today':cnt===0?' empty-day':''}" style="height:${height}px"></div>
       <div class="chart-day${isNow?' today':''}" style="font-size:8px">${h%6===0?label:'·'}</div>
     </div>`;
   }).join('');
