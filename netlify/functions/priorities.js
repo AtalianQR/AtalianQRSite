@@ -4,6 +4,7 @@
 const API_KEY       = process.env.ULTIMO_API_KEY;
 const BASE_URL_PROD = process.env.ULTIMO_API_BASEURL;
 const BASE_URL_TEST = process.env.ULTIMO_API_BASEURL_TEST || process.env.ULTIMO_API_BASEURL;
+const APP_ELEMENT   = process.env.APP_ELEMENT_QueryAtalianJobs;
 
 const json = (status, obj = {}) => ({
   statusCode: status,
@@ -33,12 +34,25 @@ export async function handler(event) {
       return json(500, { error: 'Server misconfiguratie (env-variabelen ontbreken).' });
     }
 
-    const qs        = event.queryStringParameters || {};
-    const spaceId   = String(qs.spaceId   ?? '').trim();
-    const deptId    = String(qs.deptId    ?? '').trim();
 
-    if (!spaceId && !deptId) {
-      return json(400, { error: 'Geef spaceId of deptId mee als query-parameter.' });
+    let qs = event.queryStringParameters || {};
+    if (!qs.spaceId && !qs.deptId && event.rawQuery) {
+      const raw = new URLSearchParams(event.rawQuery);
+      qs = Object.fromEntries(raw.entries());
+    }
+
+    const rawSpaceId = String(qs.spaceId ?? qs.spaceid ?? '').trim();
+    // Strip single-letter prefix (S/E) die de portal toevoegt aan QR-codes
+    const spaceId = /^[A-Za-z](?=\d)/.test(rawSpaceId) ? rawSpaceId.slice(1) : rawSpaceId;
+    const deptId  = String(qs.deptId  ?? qs.deptid  ?? '').trim();
+    const svcId   = String(qs.svcId   ?? qs.svcid   ?? '').trim();
+
+
+    if (!spaceId && !deptId && !svcId) {
+      return json(400, {
+        error: 'Geef spaceId, deptId of svcId mee als query-parameter.',
+        debug: { qs, rawQuery: event.rawQuery }
+      });
     }
 
     const { base, env } = detectEnvironment(event);
@@ -46,33 +60,36 @@ export async function handler(event) {
     const payload = {
       Action: 'GET_PRIORITIES',
       ...(spaceId ? { SpaceId: spaceId } : {}),
-      ...(deptId  ? { DepartmentId: deptId } : {})
+      ...(deptId  ? { DepartmentId: deptId } : {}),
+      ...(svcId   ? { ServiceContractId: svcId } : {})
     };
 
     const url = `${base}/action/_rest_QueryAtalianJobs`;
     const res = await fetch(url, {
       method:  'POST',
       headers: {
-        'Content-Type': 'application/json',
-        'Accept':        'application/json',
-        'ApiKey':        API_KEY
+        'Content-Type':       'application/json',
+        'Accept':             'application/json',
+        'ApiKey':             API_KEY,
+        'ApplicationElementId': APP_ELEMENT
       },
       body: JSON.stringify(payload)
     });
 
     const txt = await res.text();
+
     let data;
     try {
-      data = JSON.parse(txt);
-      if (data && typeof data.object === 'string') {
-        data = JSON.parse(data.object);
-      }
+      const raw = JSON.parse(txt);
+      // Ultimo-structuur: { properties: { Output: { object: "..." } } }
+      const objectStr = raw?.properties?.Output?.object ?? raw?.object ?? txt;
+      data = typeof objectStr === 'string' ? JSON.parse(objectStr) : objectStr;
     } catch {
       return json(502, { error: 'Ongeldig JSON van Ultimo.', raw: txt.slice(0, 500), env });
     }
 
     if (!res.ok) {
-      return json(res.status, { error: data?.error || `HTTP ${res.status}`, env });
+      return json(res.status, { error: data?.error || `HTTP ${res.status}`, raw: txt.slice(0, 500), env });
     }
 
     return json(200, { priorities: data, env });

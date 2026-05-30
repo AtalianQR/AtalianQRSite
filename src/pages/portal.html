@@ -18,15 +18,17 @@
       padding:0;
       box-sizing:border-box;
       font-family:'Segoe UI',sans-serif;
-      background-color:#f4f6fa;
+      background-color:#24313F;
       overflow-y:auto
     }
     body{
       background-image:url('/building-cleaning.png');
       background-size:cover;
       background-repeat:no-repeat;
-      background-position:center
+      background-position:center;
+      background-attachment:fixed
     }
+    header, #botui-app{ position:relative; z-index:1 }
     *{box-sizing:border-box}
 
     /* NIEUWE STIJLEN VOOR TEST-INDICATOR */
@@ -94,9 +96,8 @@
       font-size:1rem;
       font-weight:500;
       white-space:normal;
-      box-shadow:0 2px 6px rgba(0,0,0,.05);
       border:2.5px solid #EE7E00;
-      box-shadow:0 2px 8px rgba(238,126,0,.06);
+      box-shadow:0 2px 8px rgba(238,126,0,.08);
       width:100%;
       max-width:600px;
       margin:0 auto;
@@ -138,21 +139,44 @@
       animation:fadeIn 3s ease forwards
     }
     .botui-container,.botui-message-content{
-      font-family:'Segoe UI',sans-serif
+      font-family:'Segoe UI',sans-serif;
+      color:#24313F
     }
-    .botui-button{
-      font-weight:600;
-      border:none;
-      box-shadow:0 2px 6px rgba(238,126,0,.04);
-      transition:background .12s
+
+    /* Knoppen: wit met oranje rand */
+    .botui-button,
+    .botui-actions-buttons-button {
+      font-weight:600 !important;
+      background:#fff !important;
+      color:#24313F !important;
+      border:2px solid #EE7E00 !important;
+      border-radius:20px !important;
+      box-shadow:0 6px 18px rgba(0,0,0,.22), 0 2px 6px rgba(238,126,0,.3) !important;
+      transition:background .12s !important;
     }
-    .botui-button:active{background:#d86e00}
+    .botui-button:hover,
+    .botui-actions-buttons-button:hover {
+      background:#FEF0DC !important;
+    }
+    .botui-button:active,
+    .botui-actions-buttons-button:active {
+      background:#EE7E00 !important;
+      color:#fff !important;
+    }
+
+    /* Bot-berichten: pastel blauw-grijs */
+    .botui-message-content {
+      background:#D6E4F0 !important;
+      color:#1a202c !important;
+    }
+
+    /* Rechter bubbles worden via JS gestyled */
     .meldingen-lijst{
-      background:#f5f8fc;
+      background:#F6F8FA;
       border-radius:10px;
       padding:.7em 1em;
       margin:.7em 0;
-      border-left:4px solid #EE7E00
+      border-left:4px solid #F28C00
     }
     @keyframes fadeIn{to{opacity:1}}
     @media(max-width:480px){
@@ -168,7 +192,20 @@
       }
       .botui-container{
         padding:.75rem;
-        max-width:95%
+        max-width:97%
+      }
+      /* Knoppen groter voor touch */
+      .botui-button,
+      .botui-actions-buttons-button {
+        min-height:44px !important;
+        padding:0.6rem 1.2rem !important;
+        font-size:1rem !important;
+        margin:.25rem .2rem !important;
+      }
+      /* Chatbubbels leesbaar op kleine schermen */
+      .botui-message-content {
+        font-size:1rem !important;
+        line-height:1.5 !important;
       }
     }
   </style>
@@ -210,6 +247,8 @@
   let botui; // globaal beschikbaar
   let selectedServiceWOId = null;      // Gekozen ServiceWO bij schoonmaak
   let selectedOtherServiceWO = null;   // Gekozen ServiceWO bij "Andere problemen"
+  let selectedPriorityId = null;       // Gekozen prioriteit
+  let callRequired = false;            // True als prioriteit < 4u → bel ons na indienen
   let isComplaint = false;  
 
   // FOTO-state (ENKEL deze gebruiken)
@@ -813,6 +852,37 @@ async function preloadContextAndShow() {
     // Altijd eerst BotUI initialiseren
     botui = new BotUI('botui-app');
 
+    // Style human message bubbles in Atalian-oranje via MutationObserver + fallback
+    const styleHumanBubbles = () => {
+      const app = document.getElementById('botui-app');
+      if (!app) return;
+      const cRect = app.getBoundingClientRect();
+      const midX = cRect.left + cRect.width / 2;
+      document.querySelectorAll('.botui-message-content').forEach(el => {
+        const rect = el.getBoundingClientRect();
+        if (rect.width === 0) return; // nog niet gerenderd
+        if (rect.left >= midX) {
+          /* Gebruikersantwoord: subtiele bevestiging — "al gedaan" */
+          el.style.setProperty('background', '#FFF3E0', 'important');
+          el.style.setProperty('color', '#9E5A00', 'important');
+          el.style.setProperty('border', '1px solid #F5C07A', 'important');
+          el.style.setProperty('border-radius', '18px 4px 18px 18px', 'important');
+          el.style.setProperty('box-shadow', 'none', 'important');
+          el.style.setProperty('font-style', 'italic', 'important');
+        } else {
+          el.style.removeProperty('background');
+          el.style.removeProperty('color');
+          el.style.removeProperty('border');
+          el.style.removeProperty('font-style');
+        }
+      });
+    };
+    new MutationObserver(styleHumanBubbles).observe(
+      document.getElementById('botui-app'),
+      { childList: true, subtree: true }
+    );
+    setInterval(styleHumanBubbles, 500);
+
     if (!code) {
       await botui.message.add({
         type:'html',
@@ -997,37 +1067,10 @@ async function preloadContextAndShow() {
 		return await askDescription(false, false);
 	  }
 
-	  return await askUrgency(isCleaning);
+	  if (isCleaning) return await askCleaningServiceWO(false);
+	  if (hasOtherActivities(cachedSvcWO)) return await askOtherServiceWO(false);
+	  return await askDescription(false, false);
 	}
-
-  function askUrgency(isCleaning){
-    Telemetry.send('step', { step:'ask_urgent', stepIndex:2, isCleaning });
-    return botui.message.add({
-      content: isFr ? 'Le problème est urgent ?' : 'Is het dringend?'
-    }).then(() =>
-      botui.action.button({
-        action:[
-          {text:isFr?'🚨 Oui':'🚨 Ja', value:'ja'},
-          {text:isFr?'⏱ Non':'⏱ Nee', value:'nee'}
-        ]
-      })
-    ).then(res => {
-      Telemetry.send('urgent_answer', {
-        urgent: res.value==='ja',
-        isCleaning
-      });
-
-      const isUrgent = res.value === 'ja';
-
-      if (isCleaning) {
-        return askCleaningServiceWO(isUrgent);
-      }
-      if (hasOtherActivities(cachedSvcWO)) {
-        return askOtherServiceWO(isUrgent);
-      }
-      return askDescription(isUrgent, false);
-    });
-  }
 
   async function askCleaningServiceWO(isUrgent) {
     Telemetry.send('step', {
@@ -1166,8 +1209,74 @@ async function preloadContextAndShow() {
 		isComplaint
 	  });
 
-	  return askEmail(isUrgent, isCleaning);
+	  return askPriority(isCleaning);
 	}
+
+  async function askPriority(isCleaning) {
+    if (isComplaint) return askEmail(false, isCleaning);
+
+    Telemetry.send('step', { step: 'ask_priority', isCleaning });
+
+    let priorities = [];
+    try {
+      const spaceParam = encodeURIComponent(id);
+      const resp = await fetch(`/.netlify/functions/priorities?spaceId=${spaceParam}&env=${prefix}`);
+      if (resp.ok) {
+        const data = await resp.json();
+        priorities = Array.isArray(data.priorities) ? data.priorities : [];
+      }
+    } catch (e) {
+      console.warn('priorities fetch failed:', e);
+    }
+
+    if (priorities.length === 0) {
+      return askEmail(false, isCleaning);
+    }
+
+    await botui.message.add({
+      content: isFr ? 'Quand souhaitez-vous l\'intervention ?' : 'Wanneer wenst u de interventie?'
+    });
+
+    const getPriorityIcon = (p) => {
+      const h = p.SchedStartTimeUnitType === 'H';
+      const d = p.SchedStartTimeUnitType === 'D';
+      const qty = p.SchedStartTimeQty || 0;
+      if (h && qty <= 4)  return '🚨';
+      if (h && qty <= 48) return '🔴';
+      if (d && qty <= 7)  return '🟠';
+      if (d && qty <= 28) return '🟡';
+      return '🟢';
+    };
+    const getPriorityLabel = (p) => {
+      if (!isFr) return p.Description;
+      const qty = p.SchedStartTimeQty;
+      const unit = p.SchedStartTimeUnitType;
+      if (!qty || !unit) return isFr ? 'À planifier' : p.Description;
+      if (unit === 'H') return `Dans les ${qty}h`;
+      if (unit === 'D') {
+        const weeks = qty / 7;
+        if (Number.isInteger(weeks) && weeks >= 1)
+          return `Dans ${weeks} semaine${weeks > 1 ? 's' : ''}`;
+        return `Dans ${qty} jours`;
+      }
+      return p.Description;
+    };
+    const actions = priorities.map(p => ({ text: `${getPriorityIcon(p)} ${getPriorityLabel(p)}`, value: p.Id }));
+    const res = await botui.action.button({ action: actions });
+
+    const selected = priorities.find(p => p.Id === res.value);
+
+    selectedPriorityId = res.value;
+
+    if (selected && selected.SchedStartTimeUnitType === 'H' && selected.SchedStartTimeQty <= 4) {
+      callRequired = true;
+      Telemetry.send('priority_call_required', { priorityId: res.value });
+    } else {
+      Telemetry.send('priority_selected', { priorityId: selectedPriorityId });
+    }
+
+    return askEmail(false, isCleaning);
+  }
 
   async function askEmail(isUrgent, isCleaning){
   
@@ -1226,7 +1335,8 @@ async function preloadContextAndShow() {
 	  env: prefix,
 	  Activity: activityCode,
 	  ServiceWOId: serviceWorkOrderId,
-	  KwisId
+	  KwisId,
+	  ...(selectedPriorityId ? { PriorityId: selectedPriorityId } : {})
 	};
 
     let jobId = null;
@@ -1361,12 +1471,12 @@ async function preloadContextAndShow() {
 		pickedFiles = [];
       }
 
-      if (isUrgent) {
+      if (callRequired) {
         await botui.message.add({
           type: 'html',
           content: isFr
-            ? `⚠️ <b>Problème urgent :</b> Appelez ${phoneLink}`
-            : `⚠️ <b>Dringend probleem:</b> Bel onmiddellijk ${phoneLink}`
+            ? `✅ Votre demande a été enregistrée${jobId ? ` (réf. <b>${jobId}</b>)` : ''}.<br>⚠️ <b>Urgence :</b> Appelez ${phoneLink}`
+            : `✅ Je melding is ingediend${jobId ? ` (ref. <b>${jobId}</b>)` : ''}.<br>⚠️ <b>Dringend probleem:</b> Bel onmiddellijk ${phoneLink}`
         });
         return;
       }
