@@ -354,6 +354,9 @@ label.chk input{accent-color:var(--acc);width:13px;height:13px;cursor:pointer}
     <div style="display:flex;flex-direction:column">
       <div class="sec-head">Recente activiteit <em id="feed-count"></em></div>
       <div class="feed-panel">
+        <input type="text" id="feedSearch" placeholder="url_load, poets_info_viewed…"
+          style="width:100%;background:var(--bg);color:var(--text);border:1px solid var(--b1);border-radius:6px;
+                 padding:6px 10px;font-size:12px;font-family:'JetBrains Mono',monospace;margin-bottom:8px;outline:none">
         <div class="feed-list" id="feed-list">
           <div class="empty"><big>⏳</big>Laden…</div>
         </div>
@@ -577,7 +580,11 @@ function render(){
   $('locs-list').innerHTML = locsHtml;
 
   // ── Feed (last 60 events)
-  const feedEvents = [...events].sort((a,b)=>(b.ts||0)-(a.ts||0)).slice(0,60);
+  const feedQ = ($('feedSearch')?.value || '').trim().toLowerCase();
+  const feedFiltered = feedQ
+    ? events.filter(e => (e.type||'').toLowerCase().includes(feedQ))
+    : events;
+  const feedEvents = [...feedFiltered].sort((a,b)=>(b.ts||0)-(a.ts||0)).slice(0,60);
   $('feed-count').textContent = Math.min(60,events.length);
 
   const feedHtml = feedEvents.length ? feedEvents.map(ev=>{
@@ -732,6 +739,7 @@ $('btnRefresh').onclick = fetchData;
 document.querySelectorAll('input[name="env"]').forEach(r=>r.addEventListener('change',render));
 ['fFrom','fTo'].forEach(id=>$(id).addEventListener('change',render));
 $('fEventType').addEventListener('input', render);
+$('feedSearch').addEventListener('input', render);
 
 // ── init ─────────────────────────────────────────────────
 fetchData();
