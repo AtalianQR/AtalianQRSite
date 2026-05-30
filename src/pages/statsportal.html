@@ -559,12 +559,21 @@ function renderChart(events){
 
   const scans = events.filter(e=>e.type==='url_load'||e.type==='visit');
 
+  // Lookup: code → clientName (vanuit álle events, niet alleen url_load)
+  const codeToClient = {};
+  const codeToLocation = {};
+  for (const ev of events) {
+    const c = ev.code||ev.id||'';
+    if (c && ev.clientName)   codeToClient[c]   = ev.clientName;
+    if (c && ev.locationName) codeToLocation[c] = ev.locationName;
+  }
+
   // Groepeersleutel: per klant (niveau 1) of per ruimte (niveau 2)
   const getKey = ev => selectedClient
     ? (ev.code||ev.id||'?')
-    : (ev.clientName||'Onbekend');
+    : (codeToClient[ev.code||ev.id||''] || ev.clientName || 'Onbekend');
   const getName = (key, ev) => selectedClient
-    ? (ev?.locationName || key)
+    ? (codeToLocation[key] || ev?.locationName || key)
     : key;
 
   const allKeys = [...new Set(scans.map(getKey))];
