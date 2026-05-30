@@ -3,7 +3,7 @@ export default async (request, context) => {
   if (request.method === 'OPTIONS') return new Response(null, { status: 204, headers: cors() });
 
   // 1) Probeer echte Blobs-store (Edge)
-  let store = context?.blobs?.getStore?.('atalian-logs');
+  let store = context?.blobs?.getStore?.('formlog');
 
   // 2) DEV fallback: eenvoudige in-memory store wanneer Blobs niet beschikbaar is
   if (!store) {
