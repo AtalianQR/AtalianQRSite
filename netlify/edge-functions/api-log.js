@@ -106,21 +106,31 @@ async function handlePost(request, context, store) {
 // ---------- GET ----------
 async function handleGet(request, store) {
   const u = new URL(request.url);
-  const limit  = clampInt(u.searchParams.get('limit'), 50, 50000, 5000);
-  const prefix = u.searchParams.get('prefix') || 'events/';
-  const page = await store.list({ prefix, cursor, limit: Math.min(1000, limit - items.length) });
+  const limit = clampInt(u.searchParams.get('limit'), 50, 50000, 2000);
 
-  let items = [], cursor = undefined;
+  // Verzamel alle keys (formlog store: geen prefix-filter nodig)
+  const allKeys = [];
+  let cursor;
   do {
-    const page = await store.list({ prefix, cursor, limit: Math.min(200, limit - items.length) });
-    for (const b of page?.blobs || []) {
-      if (items.length >= limit) break;
-      const rec = await store.get(b.key, { type: 'json' }).catch(() => null);
-      if (rec) items.push(rec);
-    }
+    const page = await store.list(cursor ? { cursor } : {});
+    for (const b of page?.blobs || []) allKeys.push(b.key);
     cursor = page?.cursor;
-  } while (cursor && items.length < limit);
+  } while (cursor);
 
-  items.sort((a,b)=> (b.server_ts||b.ts||0) - (a.server_ts||a.ts||0));
-  return json({ items, totals:{ total: items.length } });
+  // Sorteer op ts in de bestandsnaam (code/dag/ts-rand.json) — meest recent eerst
+  function tsFromKey(key) {
+    const f = key.split('/').pop() || '';
+    const n = parseInt(f.split('-')[0], 10);
+    return isNaN(n) ? 0 : n;
+  }
+  allKeys.sort((a, b) => tsFromKey(b) - tsFromKey(a));
+
+  // Haal de top-N records op
+  const topKeys = allKeys.slice(0, limit);
+  const items = (await Promise.all(
+    topKeys.map(k => store.get(k).then(v => v ? JSON.parse(v) : null).catch(() => null))
+  )).filter(Boolean);
+
+  items.sort((a, b) => (b.ts || 0) - (a.ts || 0));
+  return json({ items, total: allKeys.length });
 }
