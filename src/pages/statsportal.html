@@ -192,6 +192,29 @@ label.chk{display:flex;align-items:center;gap:5px;cursor:pointer;color:var(--tex
 label.chk input{accent-color:var(--acc);width:13px;height:13px;cursor:pointer}
 .filter-sep{width:1px;height:18px;background:var(--b1)}
 
+/* ─── CHART ───────────────────────────────── */
+.chart-panel{background:var(--s1);border:1px solid var(--b1);border-radius:10px;padding:16px 18px}
+.chart-wrap{position:relative;height:90px;display:flex;gap:3px;align-items:flex-end}
+.chart-col{display:flex;flex-direction:column;align-items:center;gap:3px;flex:1;min-width:0}
+.chart-bar{
+  width:100%;border-radius:3px 3px 0 0;background:var(--acc);
+  transition:opacity .2s;cursor:default;min-height:2px;
+  position:relative;
+}
+.chart-bar.today{background:var(--acc);box-shadow:0 0 8px var(--acc-glow)}
+.chart-bar.empty-day{background:var(--b1)}
+.chart-bar:hover{opacity:.8}
+.chart-day{font-size:9px;color:var(--dim);font-family:'JetBrains Mono',monospace;white-space:nowrap;overflow:hidden;text-align:center}
+.chart-day.today{color:var(--acc)}
+.chart-tooltip{
+  position:absolute;bottom:calc(100% + 6px);left:50%;transform:translateX(-50%);
+  background:var(--s2);border:1px solid var(--b2);border-radius:6px;
+  padding:4px 8px;font-size:11px;font-family:'JetBrains Mono',monospace;
+  color:var(--text);white-space:nowrap;pointer-events:none;
+  opacity:0;transition:opacity .15s;z-index:10;
+}
+.chart-col:hover .chart-tooltip{opacity:1}
+
 /* ─── EMPTY / LOADING ─────────────────────── */
 .empty{
   text-align:center;padding:48px 20px;color:var(--muted);
@@ -268,6 +291,12 @@ label.chk input{accent-color:var(--acc);width:13px;height:13px;cursor:pointer}
       <div class="kpi-val" id="k-env">—</div>
       <div class="kpi-sub" id="k-env-sub"></div>
     </div>
+  </div>
+
+  <!-- CHART -->
+  <div class="chart-panel">
+    <div class="sec-head">Scans per dag <em id="chart-range"></em></div>
+    <div class="chart-wrap" id="chart-wrap"></div>
   </div>
 
   <!-- BODY -->
@@ -414,6 +443,8 @@ function render(){
   $('k-env-sub').textContent = `${prodCount} prod · ${testCount} test`;
 
   // ── Locations
+  renderChart(events);
+
   const locMap = new Map();
   for(const ev of events){
     const code = ev.code||ev.id||'?';
@@ -454,10 +485,12 @@ function render(){
     const nlPct = 100-frPct;
 
     const locName = [...loc.events].reverse().find(e=>e.locationName)?.locationName || '';
+    const clientName = [...loc.events].reverse().find(e=>e.clientName)?.clientName || '';
     return `<div class="loc-card">
       <div>
         <div class="loc-code">${id6}<small>${loc.code}</small></div>
         ${locName ? `<div style="font-size:11px;color:var(--acc);margin-top:4px;font-weight:600">${locName}</div>` : ''}
+        ${clientName ? `<div style="font-size:10px;color:var(--muted);margin-top:2px;letter-spacing:.04em">${clientName}</div>` : ''}
       </div>
       <div class="loc-meta">
         <div class="loc-meta-top">
@@ -500,6 +533,54 @@ function render(){
   }).join('') : '<div class="empty"><big>📭</big>Geen events</div>';
 
   $('feed-list').innerHTML = feedHtml;
+}
+
+// ── chart ───────────────────────────────────────────────────
+function renderChart(events){
+  const wrap = $('chart-wrap');
+  if(!wrap) return;
+  const scans = events.filter(e=>e.type==='url_load'||e.type==='visit');
+  const DAYS = 30;
+  const today = todayKey();
+  const days = [];
+  for(let i=DAYS-1;i>=0;i--){
+    const d=new Date(); d.setDate(d.getDate()-i);
+    days.push(fmt.dayKey(d.getTime()));
+  }
+  $('chart-range').textContent = DAYS+' dagen';
+  const buckets = Object.fromEntries(days.map(d=>[d,{}]));
+  for(const ev of scans){
+    const dk=fmt.dayKey(ev.ts);
+    if(!(dk in buckets)) continue;
+    const code=ev.code||ev.id||'?';
+    buckets[dk][code]=(buckets[dk][code]||0)+1;
+  }
+  const vals = days.map(d=>Object.values(buckets[d]).reduce((a,b)=>a+b,0));
+  const maxV = Math.max(1,...vals);
+
+  const locColors=['#e8a030','#34d399','#60a5fa','#f472b6','#a78bfa','#fb923c'];
+  const allCodes=[...new Set(scans.map(e=>e.code||e.id||'?'))];
+  const codeColor={};
+  allCodes.forEach((c,i)=>codeColor[c]=locColors[i%locColors.length]);
+
+  wrap.innerHTML = days.map((dk,i)=>{
+    const total=vals[i];
+    const h=total?Math.max(6,Math.round(total/maxV*80)):0;
+    const isToday=dk===today;
+    const dateStr=new Intl.DateTimeFormat('nl-BE',{day:'numeric',month:'short'}).format(new Date(dk+'T12:00:00'));
+    const bucketCodes=Object.entries(buckets[dk]);
+    const segments=bucketCodes.map(([code,cnt],j)=>{
+      const sh=Math.round(cnt/maxV*80);
+      return `<div style="height:${sh}px;width:100%;background:${codeColor[code]||'var(--acc)'};border-radius:${j===bucketCodes.length-1?'3px 3px 0 0':'0'}"></div>`;
+    }).join('');
+    return `<div class="chart-col">
+      <div class="chart-tooltip">${total} scan${total!==1?'s':''}<br>${dateStr}</div>
+      <div class="chart-bar ${isToday?'today':total===0?'empty-day':''}" style="height:${h}px">
+        ${total>0&&bucketCodes.length>1?segments:''}
+      </div>
+      <div class="chart-day ${isToday?'today':''">${isToday?'▲':dk.slice(8)}</div>
+    </div>`;
+  }).join('');
 }
 
 // ── animated counter ─────────────────────────────────────

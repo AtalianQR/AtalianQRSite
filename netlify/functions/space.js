@@ -492,7 +492,7 @@ export async function handler(event) {
 
     const { base, env } = detectEnvironment(event);
 
-    const url = `${base}/object/Space('${spaceId}')`;
+    const url = `${base}/object/Space('${spaceId}')?$expand=_Building($expand=_ComplexBuilding($expand=_Department))`;
     const res = await fetch(url, {
       headers: {
         accept: 'application/json',
@@ -540,10 +540,21 @@ export async function handler(event) {
       ? formatCleaningProgram(String(cleaningProgram), lang)
       : '';
 
+    // Klant/department naam via Building → ComplexBuilding → Department
+    const dept =
+      data?._Building?._ComplexBuilding?._Department ??
+      data?.Building?._ComplexBuilding?._Department ??
+      data?._Building?.ComplexBuilding?._Department ??
+      null;
+    const clientName = String(
+      dept?.Description ?? dept?.description ?? dept?.Id ?? ''
+    ).trim();
+
     return json(200, {
       description: String(beschrijving || '').trim(),
       cleaningProgram: String(cleaningProgram || ''),
       cleaningProgramFormatted,
+      clientName,
       env
     });
   } catch (err) {

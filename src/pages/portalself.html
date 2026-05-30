@@ -571,7 +571,7 @@ const sourceUrl = safeSameOriginUrl(srcRaw);
     );
     const d = await r.json();
     if(!d.description) return;
-    Telemetry.setExtra({ locationName: d.description });
+    Telemetry.setExtra({ locationName: d.description, ...(d.clientName ? { clientName: d.clientName } : {}) });
     const el = document.getElementById('ruimte-info');
 
     el.innerHTML = `
