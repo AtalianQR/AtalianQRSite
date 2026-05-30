@@ -779,7 +779,7 @@ function animNum(id,target){
 }
 
 // ── events ───────────────────────────────────────────────
-$('btnRefresh').onclick = fetchData;
+$('btnRefresh').onclick = loadAndRefresh;
 document.querySelectorAll('input[name="env"]').forEach(r=>r.addEventListener('change',render));
 ['fFrom','fTo'].forEach(id=>$(id).addEventListener('change',render));
 $('fEventType').addEventListener('input', render);
@@ -797,19 +797,30 @@ function startRefreshTimer(){
     refreshTimer--;
     const m = Math.floor(refreshTimer/60);
     const s = String(refreshTimer%60).padStart(2,'0');
-    $('status-txt').textContent = `${ALL_EVENTS.length} events · refresh in ${m}:${s}`;
-    if(refreshTimer <= 0){ fetchData(); }
+    const dot = $('status-dot');
+    if(dot && dot.className === 'ok')
+      $('status-txt').textContent = `${ALL_EVENTS.length} events · ${new Date().toLocaleTimeString('nl-BE')} · ↻ ${m}:${s}`;
+    if(refreshTimer <= 0) loadAndRefresh();
   }, 1000);
 }
 
-const _origFetch = fetchData;
-async function fetchData(){
-  await _origFetch.apply(this, arguments);
+async function loadAndRefresh(){
+  setStatus('Laden…','loading');
+  try {
+    const r = await fetch(`${API}?limit=150`, {cache:'no-store'});
+    if(!r.ok) throw new Error('HTTP '+r.status);
+    const d = await r.json();
+    ALL_EVENTS = Array.isArray(d.items) ? d.items : [];
+    setStatus(`${ALL_EVENTS.length} events · ${new Date().toLocaleTimeString('nl-BE')}`, 'ok');
+    render();
+  } catch(e){
+    setStatus(`Fout: ${e.message}`, 'err');
+  }
   startRefreshTimer();
 }
 
 // ── init ─────────────────────────────────────────────────
-fetchData();
+loadAndRefresh();
 </script>
 </body>
 </html>
