@@ -150,7 +150,7 @@ main{flex:1;padding:20px 24px;display:flex;flex-direction:column;gap:20px}
 .badge.test{color:var(--test);background:var(--test-bg);border-color:rgba(96,165,250,.25)}
 .badge.unk{color:var(--unk);background:var(--unk-bg);border-color:rgba(167,139,250,.25)}
 .badge.eq{color:var(--eq);background:rgba(251,146,60,.10);border-color:rgba(251,146,60,.25)}
-.badge.sp{color:var(--sp);background:rgba(56,189,248,.10);border-color:rgba(56,189,248,.25)}
+.badge.sp{color:var(--prod);background:var(--prod-bg);border-color:rgba(52,211,153,.25)}
 .badge.nl{color:var(--text);background:var(--s2);border-color:var(--b1)}
 .badge.fr{color:#f472b6;background:rgba(244,114,182,.10);border-color:rgba(244,114,182,.25)}
 .badge.acc{color:var(--acc);background:var(--acc-dim);border-color:rgba(232,160,48,.3)}
@@ -414,10 +414,10 @@ function decode6(code){
 
 function getType(ev){
   if(ev.isEquipment===true||ev.isEquipment==='true') return 'equipment';
+  if(ev.isEquipment===false||ev.isEquipment==='false') return 'space';
   const s = String(ev.code||ev.id||'');
   if(s.slice(-1)==='9') return 'equipment';
-  if(s.slice(-1)==='0') return 'space';
-  return 'unknown';
+  return 'space';
 }
 
 function badge(cls,txt){ return `<span class="badge ${cls}">${txt}</span>`; }
