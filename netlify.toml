@@ -45,7 +45,7 @@
 # Proxy /api/log naar de Netlify Function (rewrite)
 [[redirects]]
   from = "/api/log"
-  to = "/.netlify/functions/proxy_logs"
+  to = "/.netlify/functions/read_logs"
   status = 200
 
 # Normaliseer pad /game -> /game.html

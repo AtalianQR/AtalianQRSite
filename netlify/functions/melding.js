@@ -162,6 +162,7 @@ export async function handler(event) {
 	const Email       = s(data.Email);
 	const ServiceWOId = s(data.ServiceWOId);
 	const KwisId      = s(data.KwisId);
+	const PriorityId  = s(data.PriorityId);
 	const ReportTextIn = typeof data.ReportText === 'string' ? data.ReportText : '';
 
   if (!id || !type || !JobDescr) {
@@ -195,6 +196,7 @@ export async function handler(event) {
 	if (Email) wfPayload.Email = Email;
 	if (ServiceWOId) wfPayload.ServiceWOId = ServiceWOId;
 	if (KwisId) wfPayload.KwisId = KwisId;
+	if (PriorityId) wfPayload.PriorityId = PriorityId;
 
   if (type === 'sp') wfPayload.SpaceId = `QR:${id}`;
   if (type === 'eq') wfPayload.EquipmentId = id;
