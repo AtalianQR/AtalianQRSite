@@ -339,6 +339,19 @@ label.chk input{accent-color:var(--acc);width:13px;height:13px;cursor:pointer}
     <div class="chart-wrap" id="chart-wrap"></div>
   </div>
 
+  <!-- UURDIAGRAM -->
+  <div class="chart-panel">
+    <div class="sec-head" style="margin-bottom:8px">Scans per uur <em>24u verdeling</em></div>
+    <div class="chart-wrap" id="hour-wrap" style="height:70px"></div>
+    <div style="display:flex;justify-content:space-between;margin-top:4px;padding:0 2px">
+      <span style="font-size:9px;color:var(--dim);font-family:'JetBrains Mono',monospace">00u</span>
+      <span style="font-size:9px;color:var(--dim);font-family:'JetBrains Mono',monospace">06u</span>
+      <span style="font-size:9px;color:var(--dim);font-family:'JetBrains Mono',monospace">12u</span>
+      <span style="font-size:9px;color:var(--dim);font-family:'JetBrains Mono',monospace">18u</span>
+      <span style="font-size:9px;color:var(--dim);font-family:'JetBrains Mono',monospace">23u</span>
+    </div>
+  </div>
+
   <!-- BODY -->
   <div class="body-grid">
 
@@ -496,6 +509,7 @@ function render(){
 
   // ── Locations
   renderChart(events);
+  renderHourChart(events);
 
   const locMap = new Map();
   for(const ev of events){
@@ -590,12 +604,17 @@ function render(){
   const feedHtml = feedEvents.length ? feedEvents.map(ev=>{
     const t = ev.type||'event';
     const tClass = ['url_load','pagehide','idle','step'].includes(t)?t:'other';
-    const id6 = decode6(ev.code||ev.id||'');
+    const code = ev.code||ev.id||'';
+    const client  = ev.clientName   || codeToClient[code]   || '';
+    const locName = ev.locationName  || codeToLocation[code] || decode6(code);
     return `<div class="feed-item">
       <div class="feed-time">${ev.ts?fmt.time(ev.ts):'—'}<br><span style="font-size:10px;color:var(--dim)">${ev.ts?fmt.date(ev.ts):''}</span></div>
       <div class="feed-info">
         <div class="feed-type ${tClass}">${t}</div>
-        <div class="feed-code">${id6}</div>
+        <div class="feed-code" style="line-height:1.3">
+          ${client?`<span style="color:var(--acc);font-size:10px">${client}</span><br>`:''}
+          <span>${locName}</span>
+        </div>
       </div>
       <div class="feed-badges">
         ${envBadge(readEnv(ev))}
@@ -719,6 +738,31 @@ function renderChart(events){
   }).join('');
 }
 
+// ── uurdiagram ───────────────────────────────────────────
+function renderHourChart(events){
+  const wrap = $('hour-wrap');
+  if(!wrap) return;
+  const scans = events.filter(e=>e.type==='url_load'||e.type==='visit');
+  const hours = Array(24).fill(0);
+  for(const ev of scans){
+    const h = new Date(ev.ts).getHours();
+    hours[h]++;
+  }
+  const maxV = Math.max(1,...hours);
+  const nowH = new Date().getHours();
+
+  wrap.innerHTML = hours.map((cnt,h)=>{
+    const height = cnt ? Math.max(4, Math.round(cnt/maxV*60)) : 0;
+    const isNow = h === nowH;
+    const label = String(h).padStart(2,'0');
+    return `<div class="chart-col" title="${label}u: ${cnt} scan${cnt!==1?'s':''}">
+      <div class="chart-tooltip">${cnt} scan${cnt!==1?'s':''}<br>${label}:00</div>
+      <div class="chart-bar${isNow?' today':cnt===0?' empty-day':''}" style="height:${height}px;background:${isNow?'var(--acc)':'var(--acc)'}"></div>
+      <div class="chart-day${isNow?' today':''}" style="font-size:8px">${h%6===0?label:'·'}</div>
+    </div>`;
+  }).join('');
+}
+
 // ── animated counter ─────────────────────────────────────
 function animNum(id,target){
   const el=$(id); if(!el) return;
@@ -740,6 +784,29 @@ document.querySelectorAll('input[name="env"]').forEach(r=>r.addEventListener('ch
 ['fFrom','fTo'].forEach(id=>$(id).addEventListener('change',render));
 $('fEventType').addEventListener('input', render);
 $('feedSearch').addEventListener('input', render);
+
+// ── auto-refresh (5 min) ─────────────────────────────────
+const REFRESH_SEC = 300;
+let refreshTimer = REFRESH_SEC;
+let refreshInterval;
+
+function startRefreshTimer(){
+  clearInterval(refreshInterval);
+  refreshTimer = REFRESH_SEC;
+  refreshInterval = setInterval(()=>{
+    refreshTimer--;
+    const m = Math.floor(refreshTimer/60);
+    const s = String(refreshTimer%60).padStart(2,'0');
+    $('status-txt').textContent = `${ALL_EVENTS.length} events · refresh in ${m}:${s}`;
+    if(refreshTimer <= 0){ fetchData(); }
+  }, 1000);
+}
+
+const _origFetch = fetchData;
+async function fetchData(){
+  await _origFetch.apply(this, arguments);
+  startRefreshTimer();
+}
 
 // ── init ─────────────────────────────────────────────────
 fetchData();
