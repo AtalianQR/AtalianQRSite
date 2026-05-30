@@ -215,6 +215,34 @@ label.chk input{accent-color:var(--acc);width:13px;height:13px;cursor:pointer}
 }
 .chart-col:hover .chart-tooltip{opacity:1}
 
+/* ─── CLIENT GROUP ────────────────────────── */
+.client-group{margin-bottom:16px}
+.client-header{
+  background:var(--s2);border:1px solid var(--b2);border-radius:10px 10px 0 0;
+  padding:12px 18px;display:flex;align-items:center;gap:12px;
+  border-bottom:2px solid var(--acc);
+}
+.client-name{font-size:15px;font-weight:700;color:var(--acc);flex:1;letter-spacing:.02em}
+.client-total{font-family:'JetBrains Mono',monospace;font-size:22px;font-weight:700;color:var(--acc)}
+.client-total-label{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.12em}
+.client-locs{border:1px solid var(--b2);border-top:none;border-radius:0 0 10px 10px;overflow:hidden}
+.loc-card-small{
+  background:var(--s1);
+  padding:10px 18px;display:grid;
+  grid-template-columns:80px 1fr auto;
+  gap:0 16px;align-items:center;
+  border-top:1px solid var(--b1);
+  transition:background .15s;
+}
+.loc-card-small:first-child{border-top:none}
+.loc-card-small:hover{background:var(--s2)}
+.loc-code-sm{font-family:'JetBrains Mono',monospace;font-size:14px;font-weight:700;color:var(--muted)}
+.loc-info{display:flex;flex-direction:column;gap:2px}
+.loc-name-sm{font-size:13px;font-weight:600;color:var(--text)}
+.loc-meta-sm{display:flex;gap:6px;align-items:center}
+.loc-count-sm{font-family:'JetBrains Mono',monospace;font-size:18px;font-weight:700;color:var(--text);text-align:right}
+.btn.active-filter{background:var(--acc-dim);border-color:var(--acc);color:var(--acc)}
+
 /* ─── EMPTY / LOADING ─────────────────────── */
 .empty{
   text-align:center;padding:48px 20px;color:var(--muted);
@@ -268,6 +296,9 @@ label.chk input{accent-color:var(--acc);width:13px;height:13px;cursor:pointer}
       Van <input type="date" id="fFrom" style="background:var(--s2);color:var(--text);border:1px solid var(--b1);border-radius:5px;padding:3px 6px;font-size:12px;font-family:'JetBrains Mono',monospace">
       t/m <input type="date" id="fTo"   style="background:var(--s2);color:var(--text);border:1px solid var(--b1);border-radius:5px;padding:3px 6px;font-size:12px;font-family:'JetBrains Mono',monospace">
     </label>
+    <div class="filter-sep"></div>
+    <span class="filter-label">Event type</span>
+    <input type="text" id="fEventType" placeholder="url_load, poets_info_viewed…" style="background:var(--s2);color:var(--text);border:1px solid var(--b1);border-radius:6px;padding:5px 10px;font-size:12px;font-family:'JetBrains Mono',monospace;width:220px">
     <div class="spacer"></div>
     <span id="filter-count" style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--muted)"></span>
   </div>
@@ -406,13 +437,13 @@ async function fetchData(){
 
 // ── filter ───────────────────────────────────────────────
 function getEnvMode(){ return document.querySelector('input[name="env"]:checked')?.value || 'prod'; }
-
 function getFiltered(){
-  const envMode = getEnvMode();
-  const from = $('fFrom').value ? new Date($('fFrom').value).setHours(0,0,0,0) : null;
-  const to   = $('fTo').value   ? new Date($('fTo').value).setHours(23,59,59,999) : null;
+  const envMode   = getEnvMode();
+  const from      = $('fFrom').value ? new Date($('fFrom').value).setHours(0,0,0,0) : null;
+  const to        = $('fTo').value   ? new Date($('fTo').value).setHours(23,59,59,999) : null;
+  const typeQuery = ($('fEventType')?.value || '').trim().toLowerCase();
 
-  return ALL_EVENTS.filter(ev => {
+  let events = ALL_EVENTS.filter(ev => {
     const env = readEnv(ev);
     if(envMode === 'prod' && env !== 'prod') return false;
     if(envMode === 'test' && env !== 'test' && env !== 'unknown') return false;
@@ -421,6 +452,16 @@ function getFiltered(){
     if(to   && ts > to)   return false;
     return true;
   });
+
+  // Filter op event type: toon alleen locaties die dat event hebben
+  if(typeQuery){
+    const matchCodes = new Set(
+      events.filter(e => (e.type||'').toLowerCase().includes(typeQuery))
+            .map(e => e.code||e.id||'')
+    );
+    events = events.filter(ev => matchCodes.has(ev.code||ev.id||''));
+  }
+  return events;
 }
 
 // ── render ───────────────────────────────────────────────
@@ -481,46 +522,55 @@ function render(){
     days14.push(fmt.dayKey(d.getTime()));
   }
 
-  const locsHtml = locs.length ? locs.map(loc=>{
-    const id6 = decode6(loc.code);
-    const buckets = Object.fromEntries(days14.map(d=>[d,0]));
-    for(const ev of loc.events){
-      const dk=fmt.dayKey(ev.ts);
-      if(dk in buckets) buckets[dk]++;
-    }
-    const vals = Object.values(buckets);
-    const maxV = Math.max(1,...vals);
-    const bars = vals.map((v,i)=>{
-      const h = Math.max(2, Math.round(v/maxV*28));
-      const isToday = days14[i]===today;
-      return `<div class="loc-bar${isToday?' today':''}" style="height:${h}px" title="${days14[i]}: ${v}"></div>`;
+  // Groepeer locaties per klant
+  const clientMap = new Map();
+  for(const loc of locs){
+    const locName    = [...loc.events].reverse().find(e=>e.locationName)?.locationName || '';
+    const clientName = [...loc.events].reverse().find(e=>e.clientName)?.clientName || 'Onbekend';
+    loc._locName    = locName;
+    loc._clientName = clientName;
+    if(!clientMap.has(clientName)) clientMap.set(clientName,{name:clientName,locs:[],total:0});
+    const cg = clientMap.get(clientName);
+    cg.locs.push(loc);
+    cg.total += loc.scans;
+  }
+  const clientGroups = [...clientMap.values()].sort((a,b)=>b.total-a.total);
+
+  const poetsCodes = new Set(events.filter(e=>e.type==='poets_info_viewed').map(e=>e.code||e.id||''));
+
+  const locsHtml = clientGroups.length ? clientGroups.map(cg=>{
+    const locRows = cg.locs.sort((a,b)=>b.scans-a.scans).map(loc=>{
+      const id6 = decode6(loc.code);
+      const frPct = loc.events.length ? Math.round(loc.lang.fr/loc.events.length*100) : 0;
+      const nlPct = 100-frPct;
+      const hasPoets = poetsCodes.has(loc.code);
+      return `<div class="loc-card-small">
+        <div class="loc-code-sm">${id6}<div style="font-size:9px;color:var(--dim)">${loc.code}</div></div>
+        <div class="loc-info">
+          <div class="loc-name-sm">${loc._locName||'—'} ${hasPoets?'<span title="Poetsprogramma bekeken" style="font-size:11px">🧹</span>':''}</div>
+          <div class="loc-meta-sm">
+            ${typeBadge(loc.type)}
+            ${frPct>0?badge('fr',`FR ${frPct}%`):''}
+            ${badge('nl',`NL ${nlPct}%`)}
+            <span style="font-size:10px;color:var(--muted);font-family:'JetBrains Mono',monospace">${loc.lastTs?fmt.date(loc.lastTs):''}</span>
+          </div>
+        </div>
+        <div style="text-align:right">
+          <div class="loc-count-sm">${loc.scans}</div>
+          <div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.1em">scans</div>
+        </div>
+      </div>`;
     }).join('');
 
-    const frPct = loc.events.length ? Math.round(loc.lang.fr/loc.events.length*100) : 0;
-    const nlPct = 100-frPct;
-
-    const locName = [...loc.events].reverse().find(e=>e.locationName)?.locationName || '';
-    const clientName = [...loc.events].reverse().find(e=>e.clientName)?.clientName || '';
-    return `<div class="loc-card">
-      <div>
-        <div class="loc-code">${id6}<small>${loc.code}</small></div>
-        ${locName ? `<div style="font-size:11px;color:var(--acc);margin-top:4px;font-weight:600">${locName}</div>` : ''}
-        ${clientName ? `<div style="font-size:12px;color:var(--text);margin-top:3px;font-weight:600;letter-spacing:.02em">${clientName}</div>` : ''}
-      </div>
-      <div class="loc-meta">
-        <div class="loc-meta-top">
-          ${typeBadge(loc.type)}
-          ${envBadge(loc.env)}
-          ${frPct>0?badge('fr',`FR ${frPct}%`):''}
-          ${badge('nl',`NL ${nlPct}%`)}
+    return `<div class="client-group">
+      <div class="client-header">
+        <div class="client-name">${cg.name}</div>
+        <div style="text-align:right">
+          <div class="client-total">${cg.total}</div>
+          <div class="client-total-label">scans</div>
         </div>
-        <div class="loc-bars">${bars}</div>
       </div>
-      <div class="loc-right">
-        <div class="scan-count">${loc.scans}</div>
-        <div class="scan-label">scans</div>
-        <div class="last-seen">${loc.lastTs?fmt.datetime(loc.lastTs):'—'}</div>
-      </div>
+      <div class="client-locs">${locRows}</div>
     </div>`;
   }).join('') : '<div class="empty"><big>📭</big>Geen locaties gevonden</div>';
 
@@ -681,6 +731,7 @@ function animNum(id,target){
 $('btnRefresh').onclick = fetchData;
 document.querySelectorAll('input[name="env"]').forEach(r=>r.addEventListener('change',render));
 ['fFrom','fTo'].forEach(id=>$(id).addEventListener('change',render));
+$('fEventType').addEventListener('input', render);
 
 // ── init ─────────────────────────────────────────────────
 fetchData();
