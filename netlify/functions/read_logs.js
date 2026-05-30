@@ -1,4 +1,6 @@
-// netlify/functions/read_logs.js  — Netlify Functions v2
+// netlify/functions/read_logs.js — Netlify Functions v2
+// NETLIFY_BLOBS_CONTEXT wordt automatisch geïnjecteerd in v2 functies.
+
 import { getStore } from '@netlify/blobs';
 
 const cors = {
@@ -8,7 +10,7 @@ const cors = {
   'Cache-Control': 'no-store'
 };
 
-function json(obj) {
+function respond(obj) {
   return new Response(JSON.stringify(obj), {
     status: 200,
     headers: { ...cors, 'Content-Type': 'application/json' }
@@ -21,43 +23,46 @@ function tsFromKey(key) {
   return isNaN(n) ? 0 : n;
 }
 
-export default async (req, context) => {
+export default async (req) => {
   if (req.method === 'OPTIONS') return new Response(null, { status: 204, headers: cors });
 
-  const url    = new URL(req.url);
-  const limit  = Math.min(2000, Math.max(10, parseInt(url.searchParams.get('limit') ?? '500', 10)));
+  const url   = new URL(req.url);
+  const limit = Math.min(2000, Math.max(10, parseInt(url.searchParams.get('limit') ?? '500', 10)));
 
   if (url.searchParams.get('debug') === '1') {
-    return json({ hasCtx: !!process.env.NETLIFY_BLOBS_CONTEXT, ctxLen: (process.env.NETLIFY_BLOBS_CONTEXT || '').length, hasContext: !!context });
+    return respond({ hasCtx: !!process.env.NETLIFY_BLOBS_CONTEXT, ctxLen: (process.env.NETLIFY_BLOBS_CONTEXT || '').length });
   }
 
   let store;
   try {
-    // context meegeven: Netlify v2 injecteert de Blobs-credentials via context
-    store = getStore({ name: 'formlog', context });
+    store = getStore('formlog');
   } catch (err) {
-    return json({ items: [], error: 'getStore failed', detail: String(err) });
+    return respond({ items: [], error: 'getStore failed', detail: String(err) });
   }
 
+  // Stap 1: keys verzamelen
   const allKeys = [];
   try {
     let cursor;
     while (true) {
       const page = await store.list(cursor ? { cursor } : {});
-      for (const b of (page?.blobs ?? [])) allKeys.push(b.key);
-      cursor = page?.cursor;
+      const blobs = Array.isArray(page?.blobs) ? page.blobs : [];
+      for (const b of blobs) { if (b?.key) allKeys.push(b.key); }
+      cursor = page?.cursor ?? null;
       if (!cursor) break;
     }
   } catch (err) {
-    return json({ items: [], error: 'list failed', detail: String(err), keysFound: allKeys.length });
+    return respond({ items: [], error: 'list failed', detail: String(err), keysFound: allKeys.length });
   }
 
-  if (!allKeys.length) return json({ items: [], total: 0 });
+  if (!allKeys.length) return respond({ items: [], total: 0 });
 
+  // Stap 2: sorteer en beperk
   allKeys.sort((a, b) => tsFromKey(b) - tsFromKey(a));
   const topKeys = allKeys.slice(0, limit);
 
-  const BATCH = 50;
+  // Stap 3: records ophalen in batches
+  const BATCH = 20;
   const items = [];
   for (let i = 0; i < topKeys.length; i += BATCH) {
     const results = await Promise.all(
@@ -72,5 +77,5 @@ export default async (req, context) => {
   }
 
   items.sort((a, b) => (b.ts || 0) - (a.ts || 0));
-  return json({ items, total: allKeys.length });
+  return respond({ items, total: allKeys.length });
 };

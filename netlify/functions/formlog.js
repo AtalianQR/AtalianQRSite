@@ -1,78 +1,54 @@
-// netlify/functions/formlog.js
+// netlify/functions/formlog.js — Netlify Functions v2
+// v2 is nodig zodat NETLIFY_BLOBS_CONTEXT beschikbaar is voor @netlify/blobs
+
 import { getStore } from '@netlify/blobs';
 
-const WORKER_URL = 'https://atalian-logs.atalianqr.workers.dev/api/log';
-const DUAL_WRITE_TO_BLOBS = true; // enkel actief in productie
+const DUAL_WRITE_TO_BLOBS = true;
 
-const corsHeaders = {
+const cors = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Methods': 'POST,GET,HEAD,OPTIONS',
   'Access-Control-Allow-Headers': 'Content-Type'
 };
 
-const json = (status, obj) => ({
-  statusCode: status,
-  headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-  body: JSON.stringify(obj)
-});
-
-export async function handler(event) {
-  const method = event.httpMethod?.toUpperCase() || 'GET';
-  if (method === 'HEAD' || method === 'OPTIONS') return { statusCode: 204, headers: corsHeaders };
-  if (method === 'GET') return json(200, { ok: true, hint: 'POST JSON telemetry to this endpoint' });
-  if (method !== 'POST') return json(405, { error: 'Method Not Allowed' });
+export default async (req) => {
+  const method = req.method?.toUpperCase() || 'GET';
+  if (method === 'HEAD' || method === 'OPTIONS') return new Response(null, { status: 204, headers: cors });
+  if (method === 'GET') return new Response(JSON.stringify({ ok: true, hint: 'POST JSON telemetry to this endpoint' }), { status: 200, headers: { ...cors, 'Content-Type': 'application/json' } });
+  if (method !== 'POST') return new Response(JSON.stringify({ error: 'Method Not Allowed' }), { status: 405, headers: cors });
 
   let data = {};
-  try { data = JSON.parse(event.body || '{}'); }
-  catch { return { statusCode: 204, headers: corsHeaders }; }
+  try { data = await req.json(); }
+  catch { return new Response(null, { status: 204, headers: cors }); }
 
-  const now = new Date();
-  const ts = Date.now();
+  const now  = new Date();
+  const ts   = Date.now();
   const code = String(data.code ?? 'unknown');
-  const id = String(data.id ?? code);
+  const id   = String(data.id ?? code);
 
   const payload = {
     ...data,
-    code, id,
-    ts,
+    code, id, ts,
     ts_server: now.toISOString(),
-    ua: event.headers['user-agent'] || '',
-    ip: event.headers['x-forwarded-for'] || ''
+    ua: req.headers.get('user-agent') || '',
+    ip: req.headers.get('x-forwarded-for') || ''
   };
 
-  // Enkel loggen in productie
   const isProd = process.env.CONTEXT === 'production';
 
-  if (isProd) {
+  if (isProd && DUAL_WRITE_TO_BLOBS) {
     try {
-      const r = await fetch(WORKER_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
-        redirect: 'follow',
-        cache: 'no-store',
-        keepalive: false
-      });
-      console.log('Worker POST status:', r.status);
-      if (!r.ok) console.error('Worker POST failed:', r.status, await r.text().catch(() => ''));
+      const store = getStore('formlog');
+      const day  = now.toISOString().slice(0, 10);
+      const rand = Math.random().toString(36).slice(2, 8);
+      const key  = `${code}/${day}/${ts}-${rand}.json`;
+      await store.set(key, JSON.stringify(payload), { contentType: 'application/json' });
     } catch (err) {
-      console.error('Worker POST error:', err);
+      console.error('Blobs write error:', err);
     }
-
-    if (DUAL_WRITE_TO_BLOBS) {
-      try {
-        const store = getStore('formlog');
-        const day = now.toISOString().slice(0, 10);
-        const rand = Math.random().toString(36).slice(2, 8);
-        const key = `${code}/${day}/${ts}-${rand}.json`;
-        await store.set(key, JSON.stringify(payload), { contentType: 'application/json' });
-      } catch (err) {
-        console.error('Blobs write error:', err);
-      }
-    }
-  } else {
+  } else if (!isProd) {
     console.log(`[TEST MODE] Logging uitgeschakeld voor code ${code}`);
   }
 
-  return { statusCode: 204, headers: corsHeaders };
-}
+  return new Response(null, { status: 204, headers: cors });
+};
