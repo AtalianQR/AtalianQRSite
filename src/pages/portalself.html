@@ -571,6 +571,7 @@ const sourceUrl = safeSameOriginUrl(srcRaw);
     );
     const d = await r.json();
     if(!d.description) return;
+    Telemetry.setExtra({ locationName: d.description });
     const el = document.getElementById('ruimte-info');
 
     el.innerHTML = `
@@ -814,7 +815,8 @@ const sourceUrl = safeSameOriginUrl(srcRaw);
         }).catch(()=>{});
       } catch(_) {}
     }
-    return { send };
+    function setExtra(extra) { Object.assign(base, extra); }
+    return { send, setExtra };
   })();
   Telemetry.send('url_load');
   addEventListener('pagehide', () => Telemetry.send('pagehide'), { capture: true });

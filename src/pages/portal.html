@@ -572,6 +572,7 @@ async function preloadContextAndShow() {
     );
     const d = await r.json();
     if(!d.description) return;
+    Telemetry.setExtra({ locationName: d.description });
     const el = document.getElementById('ruimte-info');
 
 	const portalTitle = `[${id}] ${d.description}`;
@@ -818,7 +819,8 @@ async function preloadContextAndShow() {
         }).catch(()=>{});
       } catch(_) {}
     }
-    return { send };
+    function setExtra(extra) { Object.assign(base, extra); }
+    return { send, setExtra };
   })();
   Telemetry.send('url_load');
   addEventListener('pagehide', () => Telemetry.send('pagehide'), { capture: true });

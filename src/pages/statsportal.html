@@ -453,9 +453,11 @@ function render(){
     const frPct = loc.events.length ? Math.round(loc.lang.fr/loc.events.length*100) : 0;
     const nlPct = 100-frPct;
 
+    const locName = [...loc.events].reverse().find(e=>e.locationName)?.locationName || '';
     return `<div class="loc-card">
       <div>
         <div class="loc-code">${id6}<small>${loc.code}</small></div>
+        ${locName ? `<div style="font-size:11px;color:var(--acc);margin-top:4px;font-weight:600">${locName}</div>` : ''}
       </div>
       <div class="loc-meta">
         <div class="loc-meta-top">
