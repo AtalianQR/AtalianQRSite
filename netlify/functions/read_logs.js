@@ -1,7 +1,4 @@
-// netlify/functions/read_logs.js
-// @netlify/blobs wordt door esbuild meegebundeld (niet external).
-// In productie injecteert Netlify automatisch NETLIFY_BLOBS_CONTEXT.
-
+// netlify/functions/read_logs.js  — Netlify Functions v2
 import { getStore } from '@netlify/blobs';
 
 const cors = {
@@ -11,12 +8,11 @@ const cors = {
   'Cache-Control': 'no-store'
 };
 
-function respond(obj) {
-  return {
-    statusCode: 200,
-    headers: { ...cors, 'Content-Type': 'application/json' },
-    body: JSON.stringify(obj)
-  };
+function json(obj) {
+  return new Response(JSON.stringify(obj), {
+    status: 200,
+    headers: { ...cors, 'Content-Type': 'application/json' }
+  });
 }
 
 function tsFromKey(key) {
@@ -25,27 +21,22 @@ function tsFromKey(key) {
   return isNaN(n) ? 0 : n;
 }
 
-export async function handler(event) {
-  if (event.httpMethod === 'OPTIONS') return { statusCode: 204, headers: cors };
+export default async (req, context) => {
+  if (req.method === 'OPTIONS') return new Response(null, { status: 204, headers: cors });
 
-  const params = event.queryStringParameters || {};
-  const limit  = Math.min(2000, Math.max(10, parseInt(params.limit ?? '500', 10)));
+  const url    = new URL(req.url);
+  const limit  = Math.min(2000, Math.max(10, parseInt(url.searchParams.get('limit') ?? '500', 10)));
 
-  // Debug: controleer welke context beschikbaar is
-  if (params.debug === '1') {
-    return respond({
-      hasCtx:    !!process.env.NETLIFY_BLOBS_CONTEXT,
-      ctxLen:    (process.env.NETLIFY_BLOBS_CONTEXT || '').length,
-      hasSiteId: !!process.env.NETLIFY_SITE_ID,
-      hasTok:    !!process.env.NETLIFY_TOKEN
-    });
+  if (url.searchParams.get('debug') === '1') {
+    return json({ hasCtx: !!process.env.NETLIFY_BLOBS_CONTEXT, ctxLen: (process.env.NETLIFY_BLOBS_CONTEXT || '').length, hasContext: !!context });
   }
 
   let store;
   try {
-    store = getStore('formlog');
+    // context meegeven: Netlify v2 injecteert de Blobs-credentials via context
+    store = getStore({ name: 'formlog', context });
   } catch (err) {
-    return respond({ items: [], error: 'getStore failed', detail: String(err) });
+    return json({ items: [], error: 'getStore failed', detail: String(err) });
   }
 
   const allKeys = [];
@@ -58,10 +49,10 @@ export async function handler(event) {
       if (!cursor) break;
     }
   } catch (err) {
-    return respond({ items: [], error: 'list failed', detail: String(err), keysFound: allKeys.length });
+    return json({ items: [], error: 'list failed', detail: String(err), keysFound: allKeys.length });
   }
 
-  if (!allKeys.length) return respond({ items: [], total: 0 });
+  if (!allKeys.length) return json({ items: [], total: 0 });
 
   allKeys.sort((a, b) => tsFromKey(b) - tsFromKey(a));
   const topKeys = allKeys.slice(0, limit);
@@ -81,5 +72,5 @@ export async function handler(event) {
   }
 
   items.sort((a, b) => (b.ts || 0) - (a.ts || 0));
-  return respond({ items, total: allKeys.length });
-}
+  return json({ items, total: allKeys.length });
+};
