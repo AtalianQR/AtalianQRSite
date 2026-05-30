@@ -251,9 +251,17 @@ label.chk input{accent-color:var(--acc);width:13px;height:13px;cursor:pointer}
   <!-- FILTERS -->
   <div class="filters">
     <span class="filter-label">Omgeving</span>
-    <label class="chk"><input type="checkbox" id="fProd" checked> <span class="badge prod">prod</span></label>
-    <label class="chk"><input type="checkbox" id="fTest"> <span class="badge test">test</span></label>
-    <label class="chk"><input type="checkbox" id="fUnk"> <span class="badge unk">onbekend</span></label>
+    <div style="display:flex;gap:0;border:1px solid var(--b2);border-radius:7px;overflow:hidden">
+      <label style="cursor:pointer;display:flex;align-items:center;gap:6px;padding:5px 12px;transition:background .15s" id="lProd">
+        <input type="radio" name="env" id="fProd" value="prod" checked style="accent-color:var(--prod);cursor:pointer">
+        <span style="font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;font-family:'JetBrains Mono',monospace;color:var(--prod)">PROD</span>
+      </label>
+      <div style="width:1px;background:var(--b2)"></div>
+      <label style="cursor:pointer;display:flex;align-items:center;gap:6px;padding:5px 12px;transition:background .15s" id="lTest">
+        <input type="radio" name="env" id="fTest" value="test" style="accent-color:var(--test);cursor:pointer">
+        <span style="font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;font-family:'JetBrains Mono',monospace;color:var(--test)">TEST</span>
+      </label>
+    </div>
     <div class="filter-sep"></div>
     <span class="filter-label">Periode</span>
     <label class="chk" style="gap:6px">
@@ -397,18 +405,17 @@ async function fetchData(){
 }
 
 // ── filter ───────────────────────────────────────────────
+function getEnvMode(){ return document.querySelector('input[name="env"]:checked')?.value || 'prod'; }
+
 function getFiltered(){
-  const fProd = $('fProd').checked;
-  const fTest = $('fTest').checked;
-  const fUnk  = $('fUnk').checked;
-  const from  = $('fFrom').value ? new Date($('fFrom').value).setHours(0,0,0,0) : null;
-  const to    = $('fTo').value   ? new Date($('fTo').value).setHours(23,59,59,999) : null;
+  const envMode = getEnvMode();
+  const from = $('fFrom').value ? new Date($('fFrom').value).setHours(0,0,0,0) : null;
+  const to   = $('fTo').value   ? new Date($('fTo').value).setHours(23,59,59,999) : null;
 
   return ALL_EVENTS.filter(ev => {
     const env = readEnv(ev);
-    if(!fProd && env==='prod') return false;
-    if(!fTest && env==='test') return false;
-    if(!fUnk  && env==='unknown') return false;
+    if(envMode === 'prod' && env !== 'prod') return false;
+    if(envMode === 'test' && env !== 'test' && env !== 'unknown') return false;
     const ts = ev.ts||0;
     if(from && ts < from) return false;
     if(to   && ts > to)   return false;
@@ -498,7 +505,7 @@ function render(){
       <div>
         <div class="loc-code">${id6}<small>${loc.code}</small></div>
         ${locName ? `<div style="font-size:11px;color:var(--acc);margin-top:4px;font-weight:600">${locName}</div>` : ''}
-        ${clientName ? `<div style="font-size:10px;color:var(--muted);margin-top:2px;letter-spacing:.04em">${clientName}</div>` : ''}
+        ${clientName ? `<div style="font-size:12px;color:var(--text);margin-top:3px;font-weight:600;letter-spacing:.02em">${clientName}</div>` : ''}
       </div>
       <div class="loc-meta">
         <div class="loc-meta-top">
@@ -672,7 +679,8 @@ function animNum(id,target){
 
 // ── events ───────────────────────────────────────────────
 $('btnRefresh').onclick = fetchData;
-['fProd','fTest','fUnk','fFrom','fTo'].forEach(id=>$(id).addEventListener('change',render));
+document.querySelectorAll('input[name="env"]').forEach(r=>r.addEventListener('change',render));
+['fFrom','fTo'].forEach(id=>$(id).addEventListener('change',render));
 
 // ── init ─────────────────────────────────────────────────
 fetchData();
