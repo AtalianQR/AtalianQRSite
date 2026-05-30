@@ -11,6 +11,7 @@
 const API_KEY       = process.env.ULTIMO_API_KEY;
 const BASE_URL_PROD = process.env.ULTIMO_API_BASEURL;
 const BASE_URL_TEST = process.env.ULTIMO_API_BASEURL_TEST || process.env.ULTIMO_API_BASEURL;
+const APP_QUERY     = process.env.APP_ELEMENT_QueryAtalianJobs;
 
 // === Response helper + CORS ======================================
 const json = (status, obj = {}) => ({
@@ -492,7 +493,7 @@ export async function handler(event) {
 
     const { base, env } = detectEnvironment(event);
 
-    const url = `${base}/object/Space('${spaceId}')?$expand=_Building($expand=_ComplexBuilding($expand=_Department))`;
+    const url = `${base}/object/Space('${spaceId}')`;
     const res = await fetch(url, {
       headers: {
         accept: 'application/json',
@@ -540,21 +541,32 @@ export async function handler(event) {
       ? formatCleaningProgram(String(cleaningProgram), lang)
       : '';
 
-    // Klant/department naam via Building → ComplexBuilding → Department
-    const dept =
-      data?._Building?._ComplexBuilding?._Department ??
-      data?.Building?._ComplexBuilding?._Department ??
-      data?._Building?.ComplexBuilding?._Department ??
-      null;
-    const clientName = String(
-      dept?.Description ?? dept?.description ?? dept?.Id ?? ''
-    ).trim();
+    // Klantnaam ophalen via workflow GET_SPACE_INFO
+    let clientName = '';
+    let clientId = '';
+    if (APP_QUERY && spaceId) {
+      try {
+        const wfRes = await fetch(`${base}/action/_rest_QueryAtalianJobs`, {
+          method: 'POST',
+          headers: { accept: 'application/json', 'Content-Type': 'application/json', ApiKey: API_KEY, ApplicationElementId: APP_QUERY },
+          body: JSON.stringify({ Action: 'GET_SPACE_INFO', SpaceId: spaceId })
+        });
+        if (wfRes.ok) {
+          const wfRaw = await wfRes.json().catch(() => ({}));
+          const objStr = wfRaw?.properties?.Output?.object ?? wfRaw?.object ?? null;
+          const obj = objStr ? JSON.parse(typeof objStr === 'string' ? objStr : JSON.stringify(objStr)) : {};
+          clientName = String(obj?.clientName ?? '').trim();
+          clientId   = String(obj?.clientId   ?? '').trim();
+        }
+      } catch (_) {}
+    }
 
     return json(200, {
       description: String(beschrijving || '').trim(),
       cleaningProgram: String(cleaningProgram || ''),
       cleaningProgramFormatted,
       clientName,
+      clientId,
       env
     });
   } catch (err) {
