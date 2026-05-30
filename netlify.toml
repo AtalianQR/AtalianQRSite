@@ -21,6 +21,7 @@
 [functions]
   node_bundler = "esbuild"
   external_node_modules = ["@netlify/blobs"]
+  # read_logs gebruikt de Netlify Blobs REST API direct (geen @netlify/blobs nodig)
 
 # =================================================================
 # 3. EDGE FUNCTIONS (specifieke routes)

@@ -1,8 +1,10 @@
 // netlify/functions/read_logs.js
-// Leest log-events uit de Netlify Blobs 'formlog' store.
-// Keys: ${code}/${day}/${ts}-${rand}.json  (geschreven door formlog.js)
+// Leest log-events rechtstreeks via de Netlify Blobs REST API.
 
-import { getStore } from '@netlify/blobs';
+const SITE_ID   = process.env.NETLIFY_SITE_ID || '4233a8d5-6bcf-4c11-bea4-9ceb922e17cf';
+const TOKEN     = process.env.NETLIFY_TOKEN;
+const STORE     = 'formlog';
+const API_BASE  = `https://api.netlify.com/api/v1/sites/${SITE_ID}/blobs/${STORE}`;
 
 const cors = {
   'Access-Control-Allow-Origin': '*',
@@ -20,32 +22,40 @@ function respond(obj) {
 }
 
 function tsFromKey(key) {
-  const file = key.split('/').pop() || '';
-  const ts = parseInt(file.split('-')[0], 10);
-  return isNaN(ts) ? 0 : ts;
+  const f = key.split('/').pop() || '';
+  const n = parseInt(f.split('-')[0], 10);
+  return isNaN(n) ? 0 : n;
+}
+
+async function blobsGet(path = '', params = {}) {
+  const url = new URL(API_BASE + (path ? '/' + path : ''));
+  Object.entries(params).forEach(([k, v]) => url.searchParams.set(k, v));
+  const res = await fetch(url.toString(), {
+    headers: { Authorization: `Bearer ${TOKEN}`, Accept: 'application/json' }
+  });
+  if (!res.ok) throw new Error(`Netlify Blobs API ${res.status}: ${await res.text()}`);
+  return res;
 }
 
 export async function handler(event) {
   if (event.httpMethod === 'OPTIONS') return { statusCode: 204, headers: cors };
 
+  if (!TOKEN) return respond({ items: [], error: 'NETLIFY_TOKEN not set' });
+
   const params = event.queryStringParameters || {};
   const limit = Math.min(2000, Math.max(10, parseInt(params.limit ?? '500', 10)));
 
-  let store;
-  try {
-    store = getStore('formlog');
-  } catch (err) {
-    return respond({ items: [], error: 'getStore failed', detail: String(err) });
-  }
-
-  // Stap 1: verzamel alle keys (gepagineerd)
+  // Stap 1: verzamel alle keys via list-endpoint
   const allKeys = [];
   try {
     let cursor;
     while (true) {
-      const page = await store.list(cursor ? { cursor } : {});
-      for (const b of (page?.blobs ?? [])) allKeys.push(b.key);
-      cursor = page?.cursor;
+      const qp = { list: 'true' };
+      if (cursor) qp.cursor = cursor;
+      const res = await blobsGet('', qp);
+      const data = await res.json();
+      for (const b of (data?.blobs ?? [])) allKeys.push(b.key);
+      cursor = data?.cursor;
       if (!cursor) break;
     }
   } catch (err) {
@@ -54,19 +64,19 @@ export async function handler(event) {
 
   if (!allKeys.length) return respond({ items: [], total: 0 });
 
-  // Stap 2: sorteer op timestamp aflopend, neem de top N
+  // Stap 2: sorteer op timestamp, neem top N
   allKeys.sort((a, b) => tsFromKey(b) - tsFromKey(a));
   const topKeys = allKeys.slice(0, limit);
 
-  // Stap 3: haal blobs op in batches van 50
+  // Stap 3: haal records op in batches van 50
   const BATCH = 50;
   const items = [];
   for (let i = 0; i < topKeys.length; i += BATCH) {
     const results = await Promise.all(
       topKeys.slice(i, i + BATCH).map(async (key) => {
         try {
-          const val = await store.get(key);
-          return val ? JSON.parse(val) : null;
+          const res = await blobsGet(encodeURIComponent(key));
+          return await res.json();
         } catch { return null; }
       })
     );
@@ -74,6 +84,5 @@ export async function handler(event) {
   }
 
   items.sort((a, b) => (b.ts || 0) - (a.ts || 0));
-
   return respond({ items, total: allKeys.length });
 }
