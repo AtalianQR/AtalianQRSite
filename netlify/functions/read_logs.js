@@ -28,7 +28,7 @@ export default async (req) => {
 
   const url   = new URL(req.url);
   // Max 200 records ophalen — elke key = 1 API-call, te veel = timeout
-  const limit = Math.min(200, Math.max(10, parseInt(url.searchParams.get('limit') ?? '150', 10)));
+  const limit = Math.min(400, Math.max(10, parseInt(url.searchParams.get('limit') ?? '300', 10)));
 
   if (url.searchParams.get('debug') === '1') {
     return respond({ hasCtx: !!process.env.NETLIFY_BLOBS_CONTEXT, ctxLen: (process.env.NETLIFY_BLOBS_CONTEXT || '').length });

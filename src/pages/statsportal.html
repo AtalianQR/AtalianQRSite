@@ -156,7 +156,7 @@ main{flex:1;padding:20px 24px;display:flex;flex-direction:column;gap:20px}
 .badge.acc{color:var(--acc);background:var(--acc-dim);border-color:rgba(232,160,48,.3)}
 
 /* ─── FEED ────────────────────────────────── */
-.feed-panel{background:var(--s1);border:1px solid var(--b1);border-radius:10px;padding:16px;display:flex;flex-direction:column;height:100%}
+.feed-panel{background:var(--s1);border:1px solid var(--b1);border-radius:10px;padding:16px;display:flex;flex-direction:column;min-height:0;overflow:hidden}
 .feed-list{overflow-y:auto;display:flex;flex-direction:column;gap:1px;flex:1}
 .feed-list::-webkit-scrollbar{width:4px}
 .feed-list::-webkit-scrollbar-track{background:transparent}
@@ -361,9 +361,9 @@ label.chk input{accent-color:var(--acc);width:13px;height:13px;cursor:pointer}
     </div>
 
     <!-- FEED -->
-    <div style="display:flex;flex-direction:column;height:100%">
+    <div style="display:flex;flex-direction:column;min-height:0;overflow:hidden">
       <div class="sec-head">Recente activiteit <em id="feed-count"></em></div>
-      <div class="feed-panel" style="flex:1">
+      <div class="feed-panel" style="flex:1;min-height:0">
         <input type="text" id="feedSearch" placeholder="url_load, poets_info_viewed…"
           style="width:100%;background:var(--bg);color:var(--text);border:1px solid var(--b1);border-radius:6px;
                  padding:6px 10px;font-size:12px;font-family:'JetBrains Mono',monospace;margin-bottom:8px;outline:none">
@@ -440,7 +440,7 @@ let selectedDay    = null; // voor uurdiagram: null = vandaag, anders 'YYYY-MM-D
 async function fetchData(){
   setStatus('Laden…','loading');
   try {
-    const r = await fetch(`${API}?limit=150`, {cache:'no-store'});
+    const r = await fetch(`${API}?limit=300`, {cache:'no-store'});
     if(!r.ok) throw new Error(`HTTP ${r.status}`);
     const d = await r.json();
     ALL_EVENTS = Array.isArray(d.items) ? d.items : [];
@@ -500,7 +500,7 @@ function render(){
   animNum('k-scans', scans.length);
   animNum('k-locs', uniqueLocs);
   animNum('k-today', todayScans);
-  $('k-scans-sub').textContent = `van ${events.length} events totaal`;
+  $('k-scans-sub').textContent = `van ${events.length} events (laatste 300)`;
   $('k-locs-sub').textContent = `unieke QR-codes`;
   $('k-lang').textContent = scans.length ? `${Math.round(nlCount/scans.length*100)}% / ${Math.round(frCount/scans.length*100)}%` : '—';
   $('k-lang-sub').textContent = `${nlCount} NL · ${frCount} FR`;
@@ -835,7 +835,7 @@ function startRefreshTimer(){
 async function loadAndRefresh(){
   setStatus('Laden…','loading');
   try {
-    const r = await fetch(`${API}?limit=150`, {cache:'no-store'});
+    const r = await fetch(`${API}?limit=300`, {cache:'no-store'});
     if(!r.ok) throw new Error('HTTP '+r.status);
     const d = await r.json();
     ALL_EVENTS = Array.isArray(d.items) ? d.items : [];
