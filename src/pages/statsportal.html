@@ -1,295 +1,526 @@
 <!DOCTYPE html>
 <html lang="nl">
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>StatsPortal — Recente logs (top 50) + duidelijke ID</title>
-  <style>
-    :root{ --bg:#0f1115; --card:#151923; --muted:#8b93a7; --text:#e7ecf2; --br:#23293a; --chip:#2a3142; --accent:#6ea8fe; }
-    *{box-sizing:border-box}
-    body{margin:0;background:var(--bg);color:var(--text);font:14px/1.5 system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,'Noto Sans',sans-serif}
-    header{padding:16px 18px 0 18px}
-    h1{margin:0 0 8px;font-size:18px;display:flex;gap:8px;align-items:center}
-    h1 small{font-size:12px;color:var(--muted);font-weight:400}
-    .bar{display:flex;gap:12px;align-items:center;flex-wrap:wrap;background:var(--card);border:1px solid var(--br);padding:10px 12px;border-radius:12px}
-    .bar input[type="text"], .bar input[type="number"]{background:#0f1422;color:var(--text);border:1px solid var(--br);border-radius:8px;padding:6px 8px}
-    .btn{border:1px solid var(--br);background:#0f1422;color:var(--text);padding:8px 10px;border-radius:10px;cursor:pointer}
-    .btn:hover{border-color:#3a4260}
-    .btn:disabled{opacity:0.5;cursor:not-allowed}
-    .wrap{padding:0 18px 18px;display:grid;grid-template-columns:1fr 360px;gap:12px}
-    @media (max-width: 1000px){ .wrap{grid-template-columns:1fr} }
-    .panel{background:var(--card);border:1px solid var(--br);border-radius:12px;padding:12px}
-    .status{margin-top:8px;padding:10px 12px;border-radius:10px;background:#0f1422;border:1px solid var(--br);color:var(--muted)}
-    .status.ok{color:#c7f5d9;border-color:#1e3b2b;background:#0d1a14}
-    .status.warn{color:#ffe8c7;border-color:#5a3b14;background:#1a130a}
-    .status.err{color:#ffd3d0;border-color:#5a1714;background:#1a0d0c}
-    .day{margin:10px 0 18px;border:1px solid var(--br);border-radius:12px;overflow:hidden}
-    .day>header{background:#101625;border-bottom:1px solid var(--br);padding:10px 12px;display:flex;justify-content:space-between;align-items:center}
-    .day>header h3{margin:0;font-size:14px;font-weight:600}
-    .day ul{list-style:none;margin:0;padding:0}
-    .day li{display:grid;grid-template-columns:80px 1fr auto;gap:10px;align-items:center;padding:10px 12px;border-top:1px solid var(--br)}
-    .day li:first-child{border-top:0}
-    code.time{font-family:ui-monospace,Consolas,monospace;font-size:12px;color:#c1c9da;background:#0b0f19;border:1px solid var(--br);padding:2px 6px;border-radius:6px;min-width:60px;text-align:center}
-    .chip{padding:2px 8px;border-radius:999px;font-size:11px;border:1px solid var(--br);background:var(--chip);color:#dbe4ff}
-    .chip.env-prod{background:#0f2016;border-color:#18492a;color:#bff2d1}
-    .chip.env-test{background:#241d10;border-color:#6b4d15;color:#ffe5b5}
-    .chip.env-unknown{background:#201626;border-color:#5c325d;color:#f3c9ff}
-    .chip.kind-space{background:#0e1a2b;border-color:#1d3557;color:#a7c4ff}
-    .chip.kind-eq{background:#1a0f16;border-color:#5d234a;color:#f7bfe3}
-    .idbadge{font-family:ui-monospace,Consolas,monospace;background:#0b0f19;border:1px solid var(--br);padding:2px 8px;border-radius:8px;color:#dfe6f3}
-    .idwrap{display:flex;gap:8px;align-items:center;justify-content:flex-end}
-    .list-meta{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
-    .muted{color:#9aa3b8}
-    .kv{font-size:12px;color:#b7bfd2;display:flex;justify-content:space-between;border-bottom:1px dashed #2a334a;padding:6px 0}
-  </style>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Portal Monitor — Atalian</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg:       #060a11;
+  --s1:       #0c1422;
+  --s2:       #111d30;
+  --b1:       #1a2a40;
+  --b2:       #243550;
+  --text:     #dde4f0;
+  --muted:    #4a6080;
+  --dim:      #2a3f5a;
+  --acc:      #e8a030;
+  --acc-dim:  rgba(232,160,48,.12);
+  --acc-glow: rgba(232,160,48,.25);
+  --prod:     #34d399;
+  --prod-bg:  rgba(52,211,153,.10);
+  --test:     #60a5fa;
+  --test-bg:  rgba(96,165,250,.10);
+  --unk:      #a78bfa;
+  --unk-bg:   rgba(167,139,250,.10);
+  --eq:       #fb923c;
+  --sp:       #38bdf8;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;background:var(--bg);color:var(--text);font-family:'Syne',sans-serif;font-size:14px;line-height:1.5}
+
+/* ─── BACKGROUND GRID ─────────────────────── */
+body::before{
+  content:'';position:fixed;inset:0;
+  background-image:
+    linear-gradient(var(--b1) 1px,transparent 1px),
+    linear-gradient(90deg,var(--b1) 1px,transparent 1px);
+  background-size:40px 40px;
+  opacity:.3;pointer-events:none;z-index:0;
+}
+
+/* ─── LAYOUT ──────────────────────────────── */
+.shell{position:relative;z-index:1;min-height:100vh;display:flex;flex-direction:column}
+
+/* ─── TOPBAR ──────────────────────────────── */
+header{
+  display:flex;align-items:center;gap:16px;
+  padding:16px 24px;
+  border-bottom:1px solid var(--b1);
+  background:rgba(6,10,17,.85);
+  backdrop-filter:blur(12px);
+  position:sticky;top:0;z-index:100;
+}
+.logo{
+  font-size:11px;font-weight:700;letter-spacing:.2em;text-transform:uppercase;
+  color:var(--acc);border:1px solid var(--acc);padding:4px 10px;border-radius:4px;
+  font-family:'JetBrains Mono',monospace;
+}
+header h1{font-size:15px;font-weight:700;letter-spacing:.05em;color:var(--text)}
+header h1 span{color:var(--muted);font-weight:400}
+.spacer{flex:1}
+#status-dot{
+  width:8px;height:8px;border-radius:50%;background:var(--muted);
+  box-shadow:0 0 0 2px var(--bg);transition:all .3s;
+}
+#status-dot.ok{background:var(--prod);box-shadow:0 0 8px var(--prod)}
+#status-dot.err{background:#f87171;box-shadow:0 0 8px #f87171}
+#status-dot.loading{background:var(--acc);animation:pulse 1s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+#status-txt{font-size:12px;color:var(--muted);font-family:'JetBrains Mono',monospace}
+.btn{
+  font-family:'Syne',sans-serif;font-size:12px;font-weight:600;letter-spacing:.08em;
+  text-transform:uppercase;padding:7px 14px;border-radius:6px;cursor:pointer;
+  border:1px solid var(--b2);background:var(--s2);color:var(--text);transition:all .2s;
+}
+.btn:hover{border-color:var(--acc);color:var(--acc)}
+.btn.primary{background:var(--acc-dim);border-color:var(--acc);color:var(--acc)}
+
+/* ─── MAIN ────────────────────────────────── */
+main{flex:1;padding:20px 24px;display:flex;flex-direction:column;gap:20px}
+
+/* ─── KPI STRIP ───────────────────────────── */
+.kpi-strip{display:grid;grid-template-columns:repeat(5,1fr);gap:12px}
+.kpi{
+  background:var(--s1);border:1px solid var(--b1);border-radius:10px;
+  padding:16px 18px;position:relative;overflow:hidden;transition:border-color .2s;
+}
+.kpi:hover{border-color:var(--b2)}
+.kpi::before{
+  content:'';position:absolute;top:0;left:0;right:0;height:2px;
+  background:linear-gradient(90deg,transparent,var(--acc),transparent);
+  opacity:0;transition:opacity .2s;
+}
+.kpi:hover::before{opacity:1}
+.kpi-label{font-size:10px;font-weight:700;letter-spacing:.15em;text-transform:uppercase;color:var(--muted);margin-bottom:8px}
+.kpi-val{font-family:'JetBrains Mono',monospace;font-size:28px;font-weight:700;color:var(--text);line-height:1}
+.kpi-sub{font-size:11px;color:var(--muted);margin-top:6px;font-family:'JetBrains Mono',monospace}
+.kpi-acc .kpi-val{color:var(--acc)}
+
+/* ─── BODY GRID ───────────────────────────── */
+.body-grid{display:grid;grid-template-columns:1fr 340px;gap:16px;min-height:0}
+
+/* ─── SECTION HEADER ──────────────────────── */
+.sec-head{
+  display:flex;align-items:center;gap:10px;
+  font-size:10px;font-weight:700;letter-spacing:.18em;text-transform:uppercase;
+  color:var(--muted);margin-bottom:14px;
+}
+.sec-head::after{content:'';flex:1;height:1px;background:var(--b1)}
+.sec-head em{color:var(--acc);font-style:normal;font-family:'JetBrains Mono',monospace}
+
+/* ─── LOCATION CARDS ──────────────────────── */
+.locs{display:flex;flex-direction:column;gap:10px}
+.loc-card{
+  background:var(--s1);border:1px solid var(--b1);border-radius:10px;
+  padding:16px 18px;display:grid;
+  grid-template-columns:auto 1fr auto;
+  gap:0 20px;align-items:center;
+  transition:border-color .2s,background .2s;cursor:default;
+}
+.loc-card:hover{border-color:var(--b2);background:var(--s2)}
+.loc-code{
+  font-family:'JetBrains Mono',monospace;font-size:22px;font-weight:700;
+  color:var(--text);letter-spacing:.05em;line-height:1;
+}
+.loc-code small{display:block;font-size:10px;color:var(--muted);font-weight:400;margin-top:3px;letter-spacing:.1em}
+.loc-meta{display:flex;flex-direction:column;gap:8px}
+.loc-meta-top{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.loc-bars{display:flex;gap:3px;align-items:flex-end;height:28px}
+.loc-bar{
+  width:6px;border-radius:2px 2px 0 0;
+  background:var(--acc);opacity:.6;
+  transition:opacity .2s;min-height:2px;
+}
+.loc-bar.today{opacity:1;background:var(--acc)}
+.loc-right{text-align:right;display:flex;flex-direction:column;align-items:flex-end;gap:6px}
+.scan-count{font-family:'JetBrains Mono',monospace;font-size:32px;font-weight:700;color:var(--acc);line-height:1}
+.scan-label{font-size:10px;color:var(--muted);letter-spacing:.12em;text-transform:uppercase}
+.last-seen{font-size:11px;color:var(--muted);font-family:'JetBrains Mono',monospace}
+
+/* ─── BADGES ──────────────────────────────── */
+.badge{
+  font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;
+  padding:3px 8px;border-radius:4px;font-family:'JetBrains Mono',monospace;
+  border:1px solid;white-space:nowrap;
+}
+.badge.prod{color:var(--prod);background:var(--prod-bg);border-color:rgba(52,211,153,.25)}
+.badge.test{color:var(--test);background:var(--test-bg);border-color:rgba(96,165,250,.25)}
+.badge.unk{color:var(--unk);background:var(--unk-bg);border-color:rgba(167,139,250,.25)}
+.badge.eq{color:var(--eq);background:rgba(251,146,60,.10);border-color:rgba(251,146,60,.25)}
+.badge.sp{color:var(--sp);background:rgba(56,189,248,.10);border-color:rgba(56,189,248,.25)}
+.badge.nl{color:var(--text);background:var(--s2);border-color:var(--b1)}
+.badge.fr{color:#f472b6;background:rgba(244,114,182,.10);border-color:rgba(244,114,182,.25)}
+.badge.acc{color:var(--acc);background:var(--acc-dim);border-color:rgba(232,160,48,.3)}
+
+/* ─── FEED ────────────────────────────────── */
+.feed-panel{background:var(--s1);border:1px solid var(--b1);border-radius:10px;padding:16px;display:flex;flex-direction:column;max-height:600px}
+.feed-list{overflow-y:auto;display:flex;flex-direction:column;gap:1px;flex:1}
+.feed-list::-webkit-scrollbar{width:4px}
+.feed-list::-webkit-scrollbar-track{background:transparent}
+.feed-list::-webkit-scrollbar-thumb{background:var(--b2);border-radius:2px}
+.feed-item{
+  display:grid;grid-template-columns:80px 1fr auto;
+  gap:8px;align-items:center;padding:8px 6px;
+  border-radius:6px;transition:background .15s;
+}
+.feed-item:hover{background:var(--s2)}
+.feed-time{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--muted)}
+.feed-info{display:flex;flex-direction:column;gap:2px}
+.feed-type{
+  font-size:11px;font-weight:600;letter-spacing:.06em;
+  font-family:'JetBrains Mono',monospace;
+}
+.feed-type.url_load{color:var(--acc)}
+.feed-type.pagehide{color:var(--muted)}
+.feed-type.idle{color:var(--dim)}
+.feed-type.step{color:var(--test)}
+.feed-type.other{color:var(--muted)}
+.feed-code{font-size:10px;color:var(--muted);font-family:'JetBrains Mono',monospace}
+.feed-badges{display:flex;gap:4px;flex-wrap:wrap;justify-content:flex-end}
+
+/* ─── FILTERS ─────────────────────────────── */
+.filters{
+  display:flex;gap:10px;align-items:center;flex-wrap:wrap;
+  background:var(--s1);border:1px solid var(--b1);border-radius:8px;
+  padding:10px 14px;font-size:12px;
+}
+.filter-label{color:var(--muted);font-size:11px;font-weight:600;letter-spacing:.1em;text-transform:uppercase}
+label.chk{display:flex;align-items:center;gap:5px;cursor:pointer;color:var(--text);user-select:none}
+label.chk input{accent-color:var(--acc);width:13px;height:13px;cursor:pointer}
+.filter-sep{width:1px;height:18px;background:var(--b1)}
+
+/* ─── EMPTY / LOADING ─────────────────────── */
+.empty{
+  text-align:center;padding:48px 20px;color:var(--muted);
+  font-size:13px;font-family:'JetBrains Mono',monospace;
+}
+.empty big{display:block;font-size:32px;margin-bottom:8px;opacity:.3}
+
+/* ─── RESPONSIVE ──────────────────────────── */
+@media(max-width:1000px){
+  .kpi-strip{grid-template-columns:repeat(3,1fr)}
+  .body-grid{grid-template-columns:1fr}
+}
+@media(max-width:600px){
+  .kpi-strip{grid-template-columns:repeat(2,1fr)}
+  main{padding:12px}
+}
+</style>
 </head>
 <body>
+<div class="shell">
+
+<!-- HEADER -->
 <header>
-  <h1>📊 StatsPortal <small>Recente logs (top 50) + duidelijke ID</small></h1>
-  <div class="bar">
-    <label>Logs API:
-      <input type="text" id="api" size="48" value="/.netlify/functions/read_logs">
-    </label>
-    <label>Max events (vandaag): <input type="number" id="limit" value="50" min="10" step="10"></label>
-    <button class="btn" id="btnLoad">Laden</button>
-    <button class="btn" id="btnCsv">CSV</button>
-    <span style="flex:1"></span>
-    <label style="display:flex;gap:8px;align-items:center">Env:
-      <label><input type="checkbox" id="envProd" checked> prod</label>
-      <label><input type="checkbox" id="envTest" checked> test</label>
-      <label><input type="checkbox" id="envUnknown" checked> onbekend</label>
-    </label>
-    <label>Zoek: <input type="text" id="q" placeholder="type, id6, id13, url…"></label>
-  </div>
-  <div id="status" class="status">Klaar.</div>
+  <div class="logo">ATL</div>
+  <h1>Portal Monitor <span>/ QR activiteit</span></h1>
+  <div class="spacer"></div>
+  <div id="status-dot" class="loading"></div>
+  <span id="status-txt">Laden…</span>
+  <button class="btn primary" id="btnRefresh">↻ Vernieuwen</button>
 </header>
 
-<div class="wrap">
-  <main class="panel" id="list"></main>
-  <aside class="panel">
-    <h3>📌 Samenvatting</h3>
-    <div class="kv"><span>Totaal getoond</span><b id="mTotal">0</b></div>
-    <div class="kv"><span>prod</span><b id="mProd">0</b></div>
-    <div class="kv"><span>test</span><b id="mTest">0</b></div>
-    <div class="kv"><span>onbekend</span><b id="mUnknown">0</b></div>
-    <hr style="border:none;border-top:1px solid var(--br);margin:10px 0">
-    <div class="kv"><span>Equipment</span><b id="mEq">0</b></div>
-    <div class="kv"><span>Space</span><b id="mSp">0</b></div>
-    <div class="kv"><span>Unknown target</span><b id="mTk">0</b></div>
-    <hr style="border:none;border-top:1px solid var(--br);margin:10px 0">
-    <div class="kv"><span>Dagfilter</span><b id="mDay">Recentste logs (alle dagen)</b></div>
-    <div class="kv"><span>Laatst geladen</span><b id="mLoaded">—</b></div>
-  </aside>
+<main>
+
+  <!-- FILTERS -->
+  <div class="filters">
+    <span class="filter-label">Omgeving</span>
+    <label class="chk"><input type="checkbox" id="fProd" checked> <span class="badge prod">prod</span></label>
+    <label class="chk"><input type="checkbox" id="fTest"> <span class="badge test">test</span></label>
+    <label class="chk"><input type="checkbox" id="fUnk"> <span class="badge unk">onbekend</span></label>
+    <div class="filter-sep"></div>
+    <span class="filter-label">Periode</span>
+    <label class="chk" style="gap:6px">
+      Van <input type="date" id="fFrom" style="background:var(--s2);color:var(--text);border:1px solid var(--b1);border-radius:5px;padding:3px 6px;font-size:12px;font-family:'JetBrains Mono',monospace">
+      t/m <input type="date" id="fTo"   style="background:var(--s2);color:var(--text);border:1px solid var(--b1);border-radius:5px;padding:3px 6px;font-size:12px;font-family:'JetBrains Mono',monospace">
+    </label>
+    <div class="spacer"></div>
+    <span id="filter-count" style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--muted)"></span>
+  </div>
+
+  <!-- KPI STRIP -->
+  <div class="kpi-strip">
+    <div class="kpi kpi-acc">
+      <div class="kpi-label">Totaal scans</div>
+      <div class="kpi-val" id="k-scans">—</div>
+      <div class="kpi-sub" id="k-scans-sub"></div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-label">Actieve locaties</div>
+      <div class="kpi-val" id="k-locs">—</div>
+      <div class="kpi-sub" id="k-locs-sub"></div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-label">Vandaag</div>
+      <div class="kpi-val" id="k-today">—</div>
+      <div class="kpi-sub">scans vandaag</div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-label">Taal NL / FR</div>
+      <div class="kpi-val" id="k-lang">—</div>
+      <div class="kpi-sub" id="k-lang-sub"></div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-label">Prod / Test</div>
+      <div class="kpi-val" id="k-env">—</div>
+      <div class="kpi-sub" id="k-env-sub"></div>
+    </div>
+  </div>
+
+  <!-- BODY -->
+  <div class="body-grid">
+
+    <!-- LOCATIONS -->
+    <div>
+      <div class="sec-head">Locaties <em id="loc-count"></em></div>
+      <div class="locs" id="locs-list">
+        <div class="empty"><big>⏳</big>Laden…</div>
+      </div>
+    </div>
+
+    <!-- FEED -->
+    <div style="display:flex;flex-direction:column">
+      <div class="sec-head">Recente activiteit <em id="feed-count"></em></div>
+      <div class="feed-panel">
+        <div class="feed-list" id="feed-list">
+          <div class="empty"><big>⏳</big>Laden…</div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</main>
 </div>
 
 <script>
-const TZ = 'Europe/Brussels';
-const PROD_HOSTS = new Set(['atalianqrportal.netlify.app','atalianqr.workers.dev','atalian-logs.atalianqr.workers.dev','atalian.ultimo.net']);
-const TEST_HOSTS = new Set(['atalianqrportal--test.netlify.app','atalianqrportal-test.netlify.app','atalianqr-test.workers.dev','test.ultimo.net','preprod.ultimo.net']);
-const $ = s => document.querySelector(s);
-function setStatus(m,k=''){ const el=$('#status'); el.textContent=m; el.className='status '+(k||''); }
-function toLocalDayKey(ts){ const d=new Date(Number(ts)); const y=d.toLocaleDateString('nl-BE',{timeZone:TZ,year:'numeric'}); const m=d.toLocaleDateString('nl-BE',{timeZone:TZ,month:'2-digit'}); const da=d.toLocaleDateString('nl-BE',{timeZone:TZ,day:'2-digit'}); return `${y}-${m}-${da}`; }
-function todayKey(){ return toLocalDayKey(Date.now()); }
-function fmtTime(ts){ return new Intl.DateTimeFormat('nl-BE',{timeZone:TZ,hour:'2-digit',minute:'2-digit',second:'2-digit'}).format(new Date(Number(ts))); }
-function fmtDate(ts){ return new Intl.DateTimeFormat('nl-BE',{timeZone:TZ,month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'}).format(new Date(Number(ts))); } // Aangepast formaat voor de lijst
+const API = '/.netlify/functions/read_logs';
+const TZ  = 'Europe/Brussels';
 
-function decode13to6(code13){
-  const s=String(code13);
-  if(!/^\d{13}$/.test(s)) return '';
-  return s[0]+s[2]+s[4]+s[6]+s[8]+s[10];
-}
+// ── helpers ─────────────────────────────────────────────
+const $ = id => document.getElementById(id);
+const fmt = {
+  time: ts => new Intl.DateTimeFormat('nl-BE',{timeZone:TZ,hour:'2-digit',minute:'2-digit'}).format(new Date(+ts)),
+  date: ts => new Intl.DateTimeFormat('nl-BE',{timeZone:TZ,day:'numeric',month:'short'}).format(new Date(+ts)),
+  datetime: ts => new Intl.DateTimeFormat('nl-BE',{timeZone:TZ,day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'}).format(new Date(+ts)),
+  dayKey: ts => {
+    const d = new Date(+ts);
+    return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+  }
+};
+
+function todayKey(){ return fmt.dayKey(Date.now()); }
 
 function readEnv(ev){
-  const direct=(ev.env||ev.environment||'').toString().toLowerCase();
-  if (direct==='prod'||direct==='production') return 'prod';
-  if (direct==='test'||direct==='accept'||direct==='acc') return 'test';
-  
-  const urlish=ev.href||ev.url||ev.location||ev.referrer||ev.origin||'';
-  let host=''; try{ host=new URL(urlish).host.toLowerCase(); }catch(_){ host=(ev.host||ev.domain||'').toLowerCase(); }
-  if (PROD_HOSTS.has(host)) return 'prod';
-  if (TEST_HOSTS.has(host)) return 'test';
-  return 'unknown';
+  const d = (ev.env||ev.environment||'').toString().toLowerCase();
+  if(d==='prod'||d==='production') return 'prod';
+  if(d==='test'||d==='acc'||d==='accept') return 'test';
+  const h = (() => { try{ return new URL(ev.href||ev.url||'').hostname; }catch{ return ''; } })();
+  if(/test|staging/i.test(h)) return 'test';
+  if(h.includes('netlify.app')&&!h.includes('test')) return 'prod';
+  return 'unknown';
 }
 
-function extractIdentity(ev){
-  const fields = [ev.id, ev.code, ev.eq_id, ev.spc_id, ev.equipmentId, ev.spaceId, ev._id].filter(Boolean).map(String);
-  let urlId=''; let urlType='';
-  try{
-    const u=new URL(ev.url||ev.location||'https://x.invalid');
-    urlId = u.searchParams.get('id') || '';
-    urlType = (u.searchParams.get('type')||u.searchParams.get('t')||'').toLowerCase();
-  }catch(_){}
-
-  const hit13 = fields.find(v=>/^\d{13}$/.test(v)) || (urlId && /^\d{13}$/.test(urlId) ? urlId : '');
-  if (hit13){
-    const id6 = decode13to6(hit13);
-    const last = hit13.slice(-1);
-    const kind = last==='9' ? 'equipment' : (last==='0' ? 'space' : 'unknown');
-    return { kind, id6, id13: hit13 };
-  }
-
-  const hit6 = fields.find(v=>/^\d{6}$/.test(v)) || (urlId && /^\d{6}$/.test(urlId) ? urlId : '');
-  if (hit6){
-    let kind = 'unknown';
-    const t = String(ev.type||'').toLowerCase();
-    if (/(equip|eq)/.test(t) || /equipment/i.test(JSON.stringify(ev))) kind='equipment';
-    if (/(space|sp)/.test(t)   || /space/i.test(JSON.stringify(ev)))     kind='space';
-    if (urlType==='eq'||urlType==='equipment') kind='equipment';
-    if (urlType==='sp'||urlType==='space') kind='space';
-    return { kind, id6: hit6, id13: '' };
-  }
-
-  const raw = fields[0] || urlId || '';
-  let kind = 'unknown';
-  const t = String(ev.type||'').toLowerCase();
-  if (/(equip|eq)/.test(t)) kind='equipment';
-  if (/(space|sp)/.test(t)) kind='space';
-  if (!kind || kind==='unknown'){
-    if ('equipmentId' in ev || 'eq_id' in ev) kind='equipment';
-    if ('spaceId' in ev || 'spc_id' in ev) kind='space';
-  }
-  return { kind, id6: '', id13: raw };
+function decode6(code){
+  const s = String(code||'');
+  if(/^\d{13}$/.test(s)) return s[0]+s[2]+s[4]+s[6]+s[8]+s[10];
+  if(s.length>6) return s.slice(-6);
+  return s;
 }
 
-function applySearch(items, q){
-  const s=q.trim().toLowerCase(); if(!s) return items;
-  return items.filter(e=>{
-    const hay=[e.type||e.event||'', e.__env||'', e.__kind||'', e.__id6||'', e.__id13||'', e.url||e.location||''].join(' ').toLowerCase();
-    return hay.includes(s);
-  });
+function getType(ev){
+  if(ev.isEquipment===true||ev.isEquipment==='true') return 'equipment';
+  const s = String(ev.code||ev.id||'');
+  if(s.slice(-1)==='9') return 'equipment';
+  if(s.slice(-1)==='0') return 'space';
+  return 'unknown';
 }
 
-function renderList(dayKey, arr){
-  const root=$('#list'); root.innerHTML='';
-  const box=document.createElement('section'); box.className='day';
-  const hd=document.createElement('header');
-  const h3=document.createElement('h3'); h3.textContent=`Meest recent ${arr.length} events`; // Titel is aangepast
-  const sub=document.createElement('div'); sub.className='muted'; sub.textContent=`${arr.length} events getoond`;
-  hd.appendChild(h3); hd.appendChild(sub); box.appendChild(hd);
-  const ul=document.createElement('ul');
+function badge(cls,txt){ return `<span class="badge ${cls}">${txt}</span>`; }
+function typeBadge(t){ return t==='equipment'?badge('eq','Equipment'):t==='space'?badge('sp','Space'):badge('unk','?'); }
+function envBadge(e){ return e==='prod'?badge('prod','prod'):e==='test'?badge('test','test'):badge('unk','unk'); }
+function langBadge(l){ return l==='fr'?badge('fr','FR'):badge('nl','NL'); }
 
-  let cTotal=0,cProd=0,cTest=0,cUnk=0,cEq=0,cSp=0,cTk=0;
-
-  for (const e of arr){
-    const li=document.createElement('li');
-    // Toon nu datum en tijd, aangezien we events van alle dagen tonen
-    const time=document.createElement('code'); time.className='time'; time.textContent=fmtDate(e.__ts); 
-    
-    const meta=document.createElement('div'); meta.className='list-meta';
-    const env=document.createElement('span'); env.className='chip env-'+e.__env; env.textContent=e.__env;
-    const kind=document.createElement('span'); kind.className='chip '+(e.__kind==='equipment'?'kind-eq':(e.__kind==='space'?'kind-space':'env-unknown')); kind.textContent=e.__kind;
-    const type=document.createElement('span'); type.textContent=e.type||e.event||'event';
-    meta.appendChild(type); meta.appendChild(env); meta.appendChild(kind);
-
-    const idwrap=document.createElement('div'); idwrap.className='idwrap';
-    if (e.__id6){ const b=document.createElement('span'); b.className='idbadge'; b.title='ID (6)'; b.textContent=e.__id6; idwrap.appendChild(b); }
-    if (e.__id13){ const s=document.createElement('span'); s.className='muted'; s.title='Code (13)'; s.textContent=e.__id13; idwrap.appendChild(s); }
-
-    li.appendChild(time);
-    li.appendChild(meta);
-    li.appendChild(idwrap);
-    ul.appendChild(li);
-
-    cTotal++; if (e.__env==='prod') cProd++; else if (e.__env==='test') cTest++; else cUnk++;
-    if (e.__kind==='equipment') cEq++; else if (e.__kind==='space') cSp++; else cTk++;
-  }
-  box.appendChild(ul); root.appendChild(box);
-
-  $('#mTotal').textContent=cTotal; $('#mProd').textContent=cProd; $('#mTest').textContent=cTest; $('#mUnknown').textContent=cUnk;
-  $('#mEq').textContent=cEq; $('#mSp').textContent=cSp; $('#mTk').textContent=cTk;
-  $('#mLoaded').textContent=new Date().toLocaleString('nl-BE',{timeZone:TZ});
-  $('#mDay').textContent='Recentste logs (alle dagen)'; // Samenvatting is aangepast
+function setStatus(txt, state){
+  $('status-txt').textContent = txt;
+  $('status-dot').className = state||'';
 }
 
-async function fetchEvents(url, limitHint){
-  const u=new URL(url, location.origin);
-  // De limiet wordt verhoogd om de 'top 50' uit een grotere set te halen
-  if (!u.searchParams.has('limit')) u.searchParams.set('limit', String(Math.max(200, limitHint*3)));
-  const r=await fetch(u.toString(),{headers:{accept:'application/json'},cache:'no-store'});
-  if (!r.ok) throw new Error(`HTTP ${r.status}`);
-  const data=await r.json();
-  return Array.isArray(data)?data:(data.items||data.logs||data.results||Object.values(data));
+// ── state ────────────────────────────────────────────────
+let ALL_EVENTS = [];
+
+// ── fetch ────────────────────────────────────────────────
+async function fetchData(){
+  setStatus('Laden…','loading');
+  try {
+    const r = await fetch(`${API}?limit=2000`, {cache:'no-store'});
+    if(!r.ok) throw new Error(`HTTP ${r.status}`);
+    const d = await r.json();
+    ALL_EVENTS = Array.isArray(d.items) ? d.items : [];
+    setStatus(`${ALL_EVENTS.length} events · ${new Date().toLocaleTimeString('nl-BE')}`, 'ok');
+    render();
+  } catch(e){
+    setStatus(`Fout: ${e.message}`, 'err');
+  }
 }
 
-async function loadAll(){
-  const api=$('#api').value.trim();
-  const lim=Number($('#limit').value)||50;
-  const fProd=$('#envProd').checked, fTest=$('#envTest').checked, fUnk=$('#envUnknown').checked;
-  const q=$('#q').value||'';
-  setStatus('Laden…');
+// ── filter ───────────────────────────────────────────────
+function getFiltered(){
+  const fProd = $('fProd').checked;
+  const fTest = $('fTest').checked;
+  const fUnk  = $('fUnk').checked;
+  const from  = $('fFrom').value ? new Date($('fFrom').value).setHours(0,0,0,0) : null;
+  const to    = $('fTo').value   ? new Date($('fTo').value).setHours(23,59,59,999) : null;
 
-  // De knop wordt niet uitgeschakeld, zodat onbeperkt vernieuwen mogelijk is.
-  const btnLoad = $('#btnLoad');
-  btnLoad.disabled = false; 
+  return ALL_EVENTS.filter(ev => {
+    const env = readEnv(ev);
+    if(!fProd && env==='prod') return false;
+    if(!fTest && env==='test') return false;
+    if(!fUnk  && env==='unknown') return false;
+    const ts = ev.ts||0;
+    if(from && ts < from) return false;
+    if(to   && ts > to)   return false;
+    return true;
+  });
+}
 
-  let raw=[];
-  try{ raw=await fetchEvents(api, lim); }
-  catch(e){ 
-    setStatus('Fout bij laden: '+e.message, 'err'); 
-    btnLoad.disabled = false; // Herstel de knop bij een fout
-    return; 
+// ── render ───────────────────────────────────────────────
+function render(){
+  const events = getFiltered();
+  const scans  = events.filter(e=>e.type==='url_load'||e.type==='visit');
+  const today  = todayKey();
+
+  $('filter-count').textContent = `${events.length} events`;
+
+  // ── KPIs
+  const todayScans = scans.filter(e=>fmt.dayKey(e.ts)===today).length;
+  const nlCount = scans.filter(e=>(e.lang||'nl')==='nl').length;
+  const frCount = scans.filter(e=>e.lang==='fr').length;
+  const prodCount = events.filter(e=>readEnv(e)==='prod').length;
+  const testCount = events.filter(e=>readEnv(e)==='test').length;
+
+  const uniqueLocs = new Set(scans.map(e=>e.code||e.id)).size;
+
+  animNum('k-scans', scans.length);
+  animNum('k-locs', uniqueLocs);
+  animNum('k-today', todayScans);
+  $('k-scans-sub').textContent = `van ${events.length} events totaal`;
+  $('k-locs-sub').textContent = `unieke QR-codes`;
+  $('k-lang').textContent = scans.length ? `${Math.round(nlCount/scans.length*100)}% / ${Math.round(frCount/scans.length*100)}%` : '—';
+  $('k-lang-sub').textContent = `${nlCount} NL · ${frCount} FR`;
+  $('k-env').textContent = events.length ? `${Math.round(prodCount/events.length*100)}% / ${Math.round(testCount/events.length*100)}%` : '—';
+  $('k-env-sub').textContent = `${prodCount} prod · ${testCount} test`;
+
+  // ── Locations
+  const locMap = new Map();
+  for(const ev of events){
+    const code = ev.code||ev.id||'?';
+    if(!locMap.has(code)) locMap.set(code,{code,scans:0,events:[],env:'unknown',type:'unknown',lang:{nl:0,fr:0},lastTs:0});
+    const loc = locMap.get(code);
+    loc.events.push(ev);
+    if(ev.type==='url_load'||ev.type==='visit') loc.scans++;
+    if(ev.ts>loc.lastTs){ loc.lastTs=ev.ts; loc.env=readEnv(ev); loc.type=getType(ev); }
+    if(ev.lang==='fr') loc.lang.fr++; else loc.lang.nl++;
   }
 
-  const tKey=todayKey();
-  const rows=[];
-  for (const ev of raw){
-    const ts=Number(ev.server_ts ?? ev.ts ?? ev.time ?? ev.timestamp ?? ev.createdAt ?? ev.date);
-    if (!Number.isFinite(ts)) continue;
-    
-    // !!! DE OPLOSSING: DE STRIKTE "ENKEL VANDAAG" FILTER IS VERWIJDERD !!!
-    // if (toLocalDayKey(ts)!==tKey) continue; 
-    
-    const env=readEnv(ev);
-    const {kind,id6,id13}=extractIdentity(ev);
-    rows.push({...ev, __ts:ts, __env:env, __kind:kind, __id6:id6||'', __id13:id13||''});
-  }
+  const locs = [...locMap.values()].sort((a,b)=>b.scans-a.scans);
+  $('loc-count').textContent = locs.length;
 
-  // env filter
-  let filtered = rows.filter(e => (e.__env==='prod'&&fProd)||(e.__env==='test'&&fTest)||(e.__env==='unknown'&&fUnk));
+  // Build day buckets for sparkline (last 14 days)
+  const days14 = [];
+  for(let i=13;i>=0;i--){
+    const d=new Date(); d.setDate(d.getDate()-i);
+    days14.push(fmt.dayKey(d.getTime()));
+  }
 
-  // zoekfilter
-  filtered = applySearch(filtered, q);
+  const locsHtml = locs.length ? locs.map(loc=>{
+    const id6 = decode6(loc.code);
+    const buckets = Object.fromEntries(days14.map(d=>[d,0]));
+    for(const ev of loc.events){
+      const dk=fmt.dayKey(ev.ts);
+      if(dk in buckets) buckets[dk]++;
+    }
+    const vals = Object.values(buckets);
+    const maxV = Math.max(1,...vals);
+    const bars = vals.map((v,i)=>{
+      const h = Math.max(2, Math.round(v/maxV*28));
+      const isToday = days14[i]===today;
+      return `<div class="loc-bar${isToday?' today':''}" style="height:${h}px" title="${days14[i]}: ${v}"></div>`;
+    }).join('');
 
-  // Sorteer meest recent eerst en beperk tot 50
-  filtered.sort((a,b)=> b.__ts - a.__ts);
-  const top = filtered.slice(0, lim);
+    const frPct = loc.events.length ? Math.round(loc.lang.fr/loc.events.length*100) : 0;
+    const nlPct = 100-frPct;
 
-  if (!top.length){ setStatus('Geen events gevonden die aan de filters voldoen.', 'warn'); $('#list').innerHTML=''; return; }
+    return `<div class="loc-card">
+      <div>
+        <div class="loc-code">${id6}<small>${loc.code}</small></div>
+      </div>
+      <div class="loc-meta">
+        <div class="loc-meta-top">
+          ${typeBadge(loc.type)}
+          ${envBadge(loc.env)}
+          ${frPct>0?badge('fr',`FR ${frPct}%`):''}
+          ${badge('nl',`NL ${nlPct}%`)}
+        </div>
+        <div class="loc-bars">${bars}</div>
+      </div>
+      <div class="loc-right">
+        <div class="scan-count">${loc.scans}</div>
+        <div class="scan-label">scans</div>
+        <div class="last-seen">${loc.lastTs?fmt.datetime(loc.lastTs):'—'}</div>
+      </div>
+    </div>`;
+  }).join('') : '<div class="empty"><big>📭</big>Geen locaties gevonden</div>';
 
-  renderList(tKey, top);
-  setStatus(`OK — ${top.length} meest recente events geladen.`, 'ok');
-  // Zorg dat de knop weer klikbaar is als het laden klaar is
-  btnLoad.disabled = false; 
+  $('locs-list').innerHTML = locsHtml;
+
+  // ── Feed (last 60 events)
+  const feedEvents = [...events].sort((a,b)=>(b.ts||0)-(a.ts||0)).slice(0,60);
+  $('feed-count').textContent = Math.min(60,events.length);
+
+  const feedHtml = feedEvents.length ? feedEvents.map(ev=>{
+    const t = ev.type||'event';
+    const tClass = ['url_load','pagehide','idle','step'].includes(t)?t:'other';
+    const id6 = decode6(ev.code||ev.id||'');
+    return `<div class="feed-item">
+      <div class="feed-time">${ev.ts?fmt.time(ev.ts):'—'}<br><span style="font-size:10px;color:var(--dim)">${ev.ts?fmt.date(ev.ts):''}</span></div>
+      <div class="feed-info">
+        <div class="feed-type ${tClass}">${t}</div>
+        <div class="feed-code">${id6}</div>
+      </div>
+      <div class="feed-badges">
+        ${envBadge(readEnv(ev))}
+        ${langBadge(ev.lang||'nl')}
+      </div>
+    </div>`;
+  }).join('') : '<div class="empty"><big>📭</big>Geen events</div>';
+
+  $('feed-list').innerHTML = feedHtml;
 }
 
-function exportCsv(){
-  const rows=[['day','time','env','kind','id6','id13','type']];
-  // De dag key wordt nu uit de individuele list items gehaald in plaats van de header, omdat we meerdere dagen tonen
-  document.querySelectorAll('.day li').forEach(li=>{
-    const fullDateTime=li.querySelector('code.time')?.textContent||'';
-    const dayKey=fullDateTime.split(',')[0].trim(); // bijv. "15 sep", de datum
-    const time=fullDateTime.split(',')[1]?.trim()||''; // bijv. "20:08"
-    
-    const chips=li.querySelectorAll('.chip');
-    const env=chips[0]?.textContent||'';
-    const kind=chips[1]?.textContent||'';
-    const id6=li.querySelector('.idbadge')?.textContent||'';
-    const id13=Array.from(li.querySelectorAll('.idwrap .muted')).find(s=>/^\d{13}$/.test(s.textContent||''))?.textContent||'';
-    const type=li.querySelector('.list-meta span')?.textContent||'';
-    rows.push([dayKey,time,env,kind,id6,id13,type]);
-  });
-  const csv=rows.map(r=>r.map(x=>`"${String(x).replace(/"/g,'""')}"`).join(',')).join('\r\n');
-  const blob=new Blob([csv],{type:'text/csv;charset=utf-8;'});
-  const url=URL.createObjectURL(blob); const a=document.createElement('a'); a.href=url; a.download='events_recent_top50.csv'; document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
+// ── animated counter ─────────────────────────────────────
+function animNum(id,target){
+  const el=$(id); if(!el) return;
+  const start=parseInt(el.textContent)||0;
+  const diff=target-start; if(!diff){ el.textContent=target; return; }
+  const dur=600; const t0=performance.now();
+  const step=t=>{
+    const prog=Math.min((t-t0)/dur,1);
+    const ease=1-Math.pow(1-prog,3);
+    el.textContent=Math.round(start+diff*ease);
+    if(prog<1) requestAnimationFrame(step);
+  };
+  requestAnimationFrame(step);
 }
 
-document.getElementById('btnLoad').addEventListener('click', loadAll);
-document.getElementById('btnCsv').addEventListener('click', exportCsv);
-document.getElementById('envProd').addEventListener('change', loadAll); 
-document.getElementById('envTest').addEventListener('change', loadAll);
-document.getElementById('envUnknown').addEventListener('change', loadAll);
-document.getElementById('q').addEventListener('input', ()=>{ clearTimeout(window.__q_t); window.__q_t=setTimeout(loadAll,250); });
-window.addEventListener('DOMContentLoaded', loadAll);
+// ── events ───────────────────────────────────────────────
+$('btnRefresh').onclick = fetchData;
+['fProd','fTest','fUnk','fFrom','fTo'].forEach(id=>$(id).addEventListener('change',render));
+
+// ── init ─────────────────────────────────────────────────
+fetchData();
 </script>
 </body>
 </html>
