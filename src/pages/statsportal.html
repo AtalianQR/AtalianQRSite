@@ -578,7 +578,7 @@ function renderChart(events){
       <div class="chart-bar ${isToday?'today':total===0?'empty-day':''}" style="height:${h}px">
         ${total>0&&bucketCodes.length>1?segments:''}
       </div>
-      <div class="chart-day ${isToday?'today':''">${isToday?'▲':dk.slice(8)}</div>
+      <div class="chart-day ${isToday?'today':''}">${isToday?'▲':dk.slice(8)}</div>
     </div>`;
   }).join('');
 }
