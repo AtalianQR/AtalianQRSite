@@ -355,7 +355,7 @@ let ALL_EVENTS = [];
 async function fetchData(){
   setStatus('Laden…','loading');
   try {
-    const r = await fetch(`${API}?limit=2000`, {cache:'no-store'});
+    const r = await fetch(`${API}?limit=150`, {cache:'no-store'});
     if(!r.ok) throw new Error(`HTTP ${r.status}`);
     const d = await r.json();
     ALL_EVENTS = Array.isArray(d.items) ? d.items : [];
