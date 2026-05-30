@@ -202,7 +202,7 @@ function renderList(dayKey, arr){
 }
 
 async function fetchEvents(url, limitHint){
-  const u=new URL(url);
+  const u=new URL(url, location.origin);
   // De limiet wordt verhoogd om de 'top 50' uit een grotere set te halen
   if (!u.searchParams.has('limit')) u.searchParams.set('limit', String(Math.max(200, limitHint*3)));
   const r=await fetch(u.toString(),{headers:{accept:'application/json'},cache:'no-store'});
