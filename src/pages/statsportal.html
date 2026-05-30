@@ -268,6 +268,7 @@ label.chk input{accent-color:var(--acc);width:13px;height:13px;cursor:pointer}
   <div class="spacer"></div>
   <div id="status-dot" class="loading"></div>
   <span id="status-txt">Laden…</span>
+  <button class="btn" id="btnExport">⬇ CSV</button>
   <button class="btn primary" id="btnRefresh">↻ Vernieuwen</button>
 </header>
 
@@ -808,10 +809,66 @@ function animNum(id,target){
 
 // ── events ───────────────────────────────────────────────
 $('btnRefresh').onclick = loadAndRefresh;
+$('btnExport').onclick = exportCSV;
 document.querySelectorAll('input[name="env"]').forEach(r=>r.addEventListener('change',render));
 ['fFrom','fTo'].forEach(id=>$(id).addEventListener('change',render));
 $('fEventType').addEventListener('input', render);
 $('feedSearch').addEventListener('input', render);
+
+// ── CSV export ───────────────────────────────────────────
+async function exportCSV(){
+  const btn = $('btnExport');
+  btn.textContent = '⏳ Laden…';
+  btn.disabled = true;
+
+  try {
+    // Haal alle events op (hogere limiet voor export)
+    const r = await fetch(`${API}?limit=2000`, {cache:'no-store'});
+    const d = await r.json();
+    const items = Array.isArray(d.items) ? d.items : [];
+
+    const cols = ['datum','tijdstip','type','klant','locatie','lokaal_id','type_lokaal','qr_code','taal','omgeving','href'];
+    const esc = v => {
+      const s = String(v ?? '').replace(/"/g,'""');
+      return s.includes(',') || s.includes('"') || s.includes('\n') ? `"${s}"` : s;
+    };
+
+    const rows = [cols.join(',')];
+    for(const ev of items){
+      const code = ev.code||ev.id||'';
+      const ts = ev.ts ? new Date(ev.ts) : null;
+      const typeLokaal = (ev.isEquipment===true||ev.isEquipment==='true') ? 'Equipment' : 'Space';
+      const id6 = decode6(code);
+      rows.push([
+        ts ? ts.toLocaleDateString('nl-BE',{timeZone:TZ}) : '',
+        ts ? ts.toLocaleTimeString('nl-BE',{timeZone:TZ}) : '',
+        ev.type || '',
+        codeToClient[code] || ev.clientName || '',
+        codeToLocation[code] || ev.locationName || '',
+        id6,
+        typeLokaal,
+        code,
+        ev.lang || '',
+        readEnv(ev),
+        ev.href || ''
+      ].map(esc).join(','));
+    }
+
+    const blob = new Blob([rows.join('\n')], {type:'text/csv;charset=utf-8;'});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `atalian-portal-stats-${todayKey()}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+    setStatus(`CSV geëxporteerd — ${items.length} events`, 'ok');
+  } catch(e) {
+    setStatus(`Export mislukt: ${e.message}`, 'err');
+  }
+
+  btn.textContent = '⬇ CSV';
+  btn.disabled = false;
+}
 
 // ── auto-refresh (5 min) ─────────────────────────────────
 const REFRESH_SEC = 300;
