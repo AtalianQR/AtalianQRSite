@@ -8,27 +8,28 @@
   <style>
     *{box-sizing:border-box;margin:0;padding:0}
     html,body{height:100%;font-family:'Segoe UI',sans-serif;background:#f4f6fa;display:flex;align-items:center;justify-content:center}
-    body{background-image:url('/dm-assistent.png');background-size:cover;background-position:center}
+    body{background-image:url('/dm-assistent.png');background-size:cover;background-position:center;background-attachment:fixed}
 
     .card{
-      background:rgba(255,255,255,.96);
+      background:rgba(255,255,255,.88);
+      backdrop-filter:blur(6px);
       border:2.5px solid #EE7E00;
       border-radius:16px;
-      padding:2.5rem 2rem;
-      max-width:480px;width:90%;
+      padding:1.75rem 1.75rem;
+      max-width:360px;width:88%;
       text-align:center;
-      box-shadow:0 8px 32px rgba(0,0,0,.15);
+      box-shadow:0 8px 32px rgba(0,0,0,.18);
     }
-    .logo{max-height:56px;margin-bottom:1.5rem}
-    h1{font-size:1.2rem;font-weight:700;color:#1a202c;margin-bottom:.5rem}
-    .sub{font-size:.9rem;color:#6b7280;margin-bottom:2rem}
+    .logo{max-height:44px;margin-bottom:1rem}
+    h1{font-size:1.05rem;font-weight:700;color:#1a202c;margin-bottom:.4rem}
+    .sub{font-size:.85rem;color:#6b7280;margin-bottom:1.5rem}
 
     /* Spinner */
-    .spinner{width:52px;height:52px;border:5px solid #fde8cc;border-top-color:#EE7E00;border-radius:50%;animation:spin 0.8s linear infinite;margin:0 auto 1.5rem}
+    .spinner{width:44px;height:44px;border:4px solid #fde8cc;border-top-color:#EE7E00;border-radius:50%;animation:spin 0.8s linear infinite;margin:0 auto 1.25rem}
     @keyframes spin{to{transform:rotate(360deg)}}
 
     /* Status icons */
-    .icon{font-size:3rem;margin-bottom:1rem}
+    .icon{font-size:2.5rem;margin-bottom:.75rem}
 
     /* Tellers */
     .dm-count{font-size:3rem;font-weight:900;color:#EE7E00;line-height:1}
@@ -53,9 +54,13 @@
 <body>
 <div class="card" id="card">
   <img src="/AtalianLogo.png" alt="Atalian" class="logo" />
-  <h1>Wijziging verwerken</h1>
-  <p class="sub" id="sub">De aanpassing wordt doorgevoerd naar de DM-mobiele app.<br>Even geduld…</p>
-  <div class="spinner" id="spinner"></div>
+  <h1>Wijziging doorvoeren</h1>
+  <p class="sub" id="sub">Wil je de aanpassing nu meteen doorvoeren naar de DM-app?</p>
+  <div id="confirm">
+    <button class="btn" onclick="startSync()">Ja, nu doorvoeren</button>
+    <button class="btn btn-sec" onclick="window.close()" style="margin-top:.5rem;display:block;width:100%;text-align:center">Nee, later</button>
+  </div>
+  <div class="spinner" id="spinner" style="display:none"></div>
   <div id="result" style="display:none"></div>
 </div>
 
@@ -66,6 +71,13 @@
   const isTest = qs.get('env') === 'test';
   const envStr = isTest ? '&env=test' : '';
   const api    = `/.netlify/functions/dmassistent?action=SYNC${envStr}`;
+
+  function startSync() {
+    document.getElementById('confirm').style.display = 'none';
+    document.getElementById('spinner').style.display = 'block';
+    document.getElementById('sub').textContent = 'Bezig met verwerken… even geduld.';
+    doSyncWithAutoClose();
+  }
 
   async function doSync() {
     try {
@@ -101,7 +113,7 @@
     document.getElementById('result').style.display = 'block';
   }
 
-  // Auto-close na succes (10 sec)
+  // Auto-close na succes (10 sec) — wordt aangeroepen na bevestiging
   const origDoSync = doSync;
   async function doSyncWithAutoClose() {
     await origDoSync();
@@ -119,7 +131,7 @@
     }
   }
 
-  doSyncWithAutoClose();
+  // Pagina laadt → toon bevestigingsknop, geen automatische sync
 </script>
 </body>
 </html>
