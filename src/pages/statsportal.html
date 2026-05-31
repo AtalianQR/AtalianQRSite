@@ -475,6 +475,7 @@ let codeToClient   = {};
 let codeToLocation = {};
 let codeToBuilding = {};
 let globalKeyColor = {}; // dagkaart-kleuren hergebruikt in uurdiagram
+let globalGetKey   = null; // getKey-functie gedeeld met uurdiagram
 let selectedDay    = null; // voor uurdiagram: null = vandaag, anders 'YYYY-MM-DD'
 
 // ── fetch ────────────────────────────────────────────────
@@ -760,7 +761,8 @@ function renderChart(events){
 
   const allKeys = [...new Set(scans.map(getKey))];
   const keyColor = Object.fromEntries(allKeys.map(k=>[k, getColor(k)]));
-  globalKeyColor = keyColor; // beschikbaar voor uurdiagram
+  globalKeyColor = keyColor;   // beschikbaar voor uurdiagram
+  globalGetKey   = getKey;     // beschikbaar voor uurdiagram
 
   // Buckets: dag → { key → count }
   const buckets = Object.fromEntries(days.map(d=>[d,{}]));
@@ -887,11 +889,12 @@ function renderHourChart(events){
   if(lbl) lbl.textContent = isToday ? 'vandaag' : new Intl.DateTimeFormat('nl-BE',{day:'numeric',month:'short'}).format(new Date(day+'T12:00:00'));
 
   // Groepeer per uur én per site (zelfde logica als dagdiagram)
+  const keyFn = globalGetKey || (ev => ev.siteName || ev.clientName || '?');
   const hourBuckets = Array.from({length:24}, ()=>({}));
   for(const ev of scans){
     if(fmt.dayKey(ev.ts)!==day) continue;
     const h = new Date(ev.ts).getHours();
-    const k = getKey(ev);
+    const k = keyFn(ev);
     hourBuckets[h][k] = (hourBuckets[h][k]||0)+1;
   }
   const hourTotals = hourBuckets.map(b=>Object.values(b).reduce((a,v)=>a+v,0));
