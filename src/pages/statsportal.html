@@ -594,10 +594,14 @@ function render(){
     renderFeed(events);
     return;
   }
-  // In ALLE-modus: DM-tabel toevoegen na klant-locaties
+  // In ALLE-modus: DM-sectie toevoegen na klant-locaties (met scheidingslijn)
   if(getUserType() === 'all' || getUserType() === 'alle'){
-    const dmEvents = ALL_EVENTS.filter(e=>isDmEvent(e)&&(readEnv(e)===getEnvMode()||readEnv(e)==='unknown'));
-    if(dmEvents.length) renderDmSummary(dmEvents);
+    const envMode  = getEnvMode();
+    const dmEvents = ALL_EVENTS.filter(e=>isDmEvent(e)&&(readEnv(e)===envMode||readEnv(e)==='unknown'));
+    if(dmEvents.length){
+      renderDmSummary(dmEvents);    // DM-activiteiten tabel
+      renderDmSpaces(dmEvents);     // DM-behandelde ruimtes
+    }
   }
 
   // Locatielijst: altijd alleen klant-events (url_load/visit) — DM-events nooit tonen hier
@@ -1068,7 +1072,7 @@ function renderDmSpaces(events){
   const block = document.createElement('div');
   block.id = 'dm-spaces-block';
   block.style.cssText = 'margin-top:20px';
-  block.innerHTML = `<div class="sec-head" style="margin-bottom:10px">DM bezochte ruimtes <em>${spaceEvents.length}</em></div>${locRows}`;
+  block.innerHTML = `<div class="sec-head" style="margin-bottom:10px">DM behandelde ruimtes <em>${spaceEvents.length}</em></div>${locRows}`;
 
   const locsEl = $('locs-list');
   if(locsEl) locsEl.after(block);
@@ -1079,10 +1083,17 @@ function renderDmSummary(dmEvents){
   const existing = $('locs-list');
   if(!existing) return;
   const wrapper = document.createElement('div');
-  wrapper.id = 'dm-summary-block'; // vaste ID → kan worden opgeruimd bij volgende render
-  wrapper.style.cssText = 'margin-top:16px';
+  wrapper.id = 'dm-summary-block';
+  wrapper.style.cssText = 'margin-top:24px';
   const dmCount = [...new Set(dmEvents.filter(e=>e.email).map(e=>e.email))].length;
-  wrapper.innerHTML = '<div class="sec-head" style="margin-bottom:8px">DM-activiteit <em>' + dmCount + ' DM\'s</em></div>';
+  // Scheidingslijn tussen klant-data en DM-data
+  wrapper.innerHTML = `
+    <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px">
+      <div style="flex:1;height:1px;background:linear-gradient(90deg,var(--dm,#c084fc),transparent)"></div>
+      <span style="font-size:11px;font-weight:700;letter-spacing:.15em;text-transform:uppercase;color:#c084fc;white-space:nowrap">DM-activiteit</span>
+      <div style="flex:1;height:1px;background:linear-gradient(270deg,var(--dm,#c084fc),transparent)"></div>
+    </div>
+    <div class="sec-head" style="margin-bottom:8px">DM-gebruikers <em>${dmCount} DM's</em></div>`;
   const inner = document.createElement('div');
   dmTableHtml(dmEvents, inner);
   wrapper.appendChild(inner);
