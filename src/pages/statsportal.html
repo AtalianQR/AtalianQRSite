@@ -586,12 +586,16 @@ function render(){
   renderHourChart(events);
 
   // ── DM-weergave ──────────────────────────────────────────
+  // Verwijder altijd oude DM-summary (voorkomt duplicaten bij wisselen van modus)
+  const oldSummary = document.getElementById('dm-summary-block');
+  if(oldSummary) oldSummary.remove();
+
   if(getUserType() === 'dm'){
     renderDmView(events);
     renderFeed(events);
     return;
   }
-  // In ALLE-modus: DM-tabel ook tonen na de klant-locaties
+  // In ALLE-modus: DM-tabel toevoegen na klant-locaties
   if(getUserType() === 'all' || getUserType() === 'alle'){
     const dmEvents = ALL_EVENTS.filter(e=>isDmEvent(e)&&(readEnv(e)===getEnvMode()||readEnv(e)==='unknown'));
     if(dmEvents.length) renderDmSummary(dmEvents);
@@ -1023,11 +1027,16 @@ function renderDmView(events){
 // DM-samenvatting in ALLE-modus (compact, onder klant-locaties)
 function renderDmSummary(dmEvents){
   const existing = $('locs-list');
+  if(!existing) return;
   const wrapper = document.createElement('div');
+  wrapper.id = 'dm-summary-block'; // vaste ID → kan worden opgeruimd bij volgende render
   wrapper.style.cssText = 'margin-top:16px';
-  wrapper.innerHTML = '<div class="sec-head" style="margin-bottom:8px">DM-activiteit <em>' + [...new Set(dmEvents.filter(e=>e.email).map(e=>e.email))].length + ' DM\'s</em></div>';
-  dmTableHtml(dmEvents, wrapper);
-  if(existing) existing.after(wrapper);
+  const dmCount = [...new Set(dmEvents.filter(e=>e.email).map(e=>e.email))].length;
+  wrapper.innerHTML = '<div class="sec-head" style="margin-bottom:8px">DM-activiteit <em>' + dmCount + ' DM\'s</em></div>';
+  const inner = document.createElement('div');
+  dmTableHtml(dmEvents, inner);
+  wrapper.appendChild(inner);
+  existing.after(wrapper);
 }
 
 // ── events ───────────────────────────────────────────────
