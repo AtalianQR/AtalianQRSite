@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>DM-assistent — Synchroniseren</title>
+  <link rel="icon" href="/AtalianFavicon.png" />
+  <style>
+    *{box-sizing:border-box;margin:0;padding:0}
+    html,body{height:100%;font-family:'Segoe UI',sans-serif;background:#f4f6fa;display:flex;align-items:center;justify-content:center}
+    body{background-image:url('/dm-assistent.png');background-size:cover;background-position:center}
+
+    .card{
+      background:rgba(255,255,255,.96);
+      border:2.5px solid #EE7E00;
+      border-radius:16px;
+      padding:2.5rem 2rem;
+      max-width:480px;width:90%;
+      text-align:center;
+      box-shadow:0 8px 32px rgba(0,0,0,.15);
+    }
+    .logo{max-height:56px;margin-bottom:1.5rem}
+    h1{font-size:1.2rem;font-weight:700;color:#1a202c;margin-bottom:.5rem}
+    .sub{font-size:.9rem;color:#6b7280;margin-bottom:2rem}
+
+    /* Spinner */
+    .spinner{width:52px;height:52px;border:5px solid #fde8cc;border-top-color:#EE7E00;border-radius:50%;animation:spin 0.8s linear infinite;margin:0 auto 1.5rem}
+    @keyframes spin{to{transform:rotate(360deg)}}
+
+    /* Status icons */
+    .icon{font-size:3rem;margin-bottom:1rem}
+
+    /* Tellers */
+    .dm-count{font-size:3rem;font-weight:900;color:#EE7E00;line-height:1}
+    .dm-label{font-size:.85rem;color:#6b7280;text-transform:uppercase;letter-spacing:.08em;margin-bottom:1.5rem}
+
+    .msg{font-size:.95rem;color:#374151;margin-bottom:1.5rem;line-height:1.5}
+    .msg.error{color:#dc2626}
+
+    .btn{
+      display:inline-block;padding:.55rem 1.4rem;
+      background:#EE7E00;color:#fff;
+      border:none;border-radius:8px;
+      font-weight:700;font-size:.95rem;
+      cursor:pointer;text-decoration:none;
+      transition:filter .12s;
+    }
+    .btn:hover{filter:brightness(.92)}
+    .btn-sec{background:#e5e7eb;color:#374151;margin-left:.5rem}
+    .btn-sec:hover{background:#d1d5db}
+  </style>
+</head>
+<body>
+<div class="card" id="card">
+  <img src="/AtalianLogo.png" alt="Atalian" class="logo" />
+  <h1>Wijziging verwerken</h1>
+  <p class="sub" id="sub">De aanpassing wordt doorgevoerd naar de DM-mobiele app.<br>Even geduld…</p>
+  <div class="spinner" id="spinner"></div>
+  <div id="result" style="display:none"></div>
+</div>
+
+<script>
+  // Omgeving wordt door Ultimo WFL meegegeven via #{Environment.WebRoot} check:
+  // test-Ultimo voegt ?env=test toe, prod geeft geen parameter
+  const qs     = new URLSearchParams(location.search);
+  const isTest = qs.get('env') === 'test';
+  const envStr = isTest ? '&env=test' : '';
+  const api    = `/.netlify/functions/dmassistent?action=SYNC${envStr}`;
+
+  async function doSync() {
+    try {
+      const r   = await fetch(api, { headers: { accept: 'application/json' } });
+      const data= await r.json();
+
+      document.getElementById('spinner').style.display = 'none';
+
+      if(r.ok && data.ok) {
+        document.getElementById('sub').innerHTML = isTest
+          ? '<span style="background:#fef3c7;border:1px solid #fcd34d;color:#92400e;padding:2px 10px;border-radius:999px;font-weight:700;font-size:.8rem">⚠️ TEST-omgeving</span>'
+          : '<span style="background:#d1fae5;border:1px solid #6ee7b7;color:#065f46;padding:2px 10px;border-radius:999px;font-weight:700;font-size:.8rem">✅ Productie</span>';
+        document.getElementById('result').innerHTML = `
+          <div class="icon">✅</div>
+          <p class="msg" style="font-size:1.05rem;font-weight:600;margin-bottom:.5rem">De wijziging is doorgevoerd.</p>
+          <p class="msg" style="color:#6b7280">De district managers zien de aanpassing de volgende keer dat ze de app openen.</p>
+          <button class="btn" onclick="window.close()">Sluiten</button>
+        `;
+      } else {
+        throw new Error(data.error || `HTTP ${r.status}`);
+      }
+    } catch(e) {
+      document.getElementById('spinner').style.display = 'none';
+      document.getElementById('sub').textContent = '';
+      document.getElementById('result').innerHTML = `
+        <div class="icon">⚠️</div>
+        <p class="msg" style="font-weight:600;margin-bottom:.5rem">De wijziging kon niet worden verwerkt.</p>
+        <p class="msg" style="color:#6b7280">Probeer het opnieuw of contacteer de beheerder als het probleem aanhoudt.</p>
+        <button class="btn" onclick="doSyncWithAutoClose()">Opnieuw proberen</button>
+        <button class="btn btn-sec" onclick="window.close()">Sluiten</button>
+      `;
+    }
+    document.getElementById('result').style.display = 'block';
+  }
+
+  // Auto-close na succes (10 sec)
+  const origDoSync = doSync;
+  async function doSyncWithAutoClose() {
+    await origDoSync();
+    const resultEl = document.getElementById('result');
+    if(resultEl.querySelector('.dm-count')) {
+      // Succes → countdown
+      let sec = 10;
+      const countdown = document.createElement('p');
+      countdown.style.cssText = 'font-size:.8rem;color:#9ca3af;margin-top:.75rem';
+      resultEl.appendChild(countdown);
+      const iv = setInterval(()=>{
+        countdown.textContent = `Dit venster sluit automatisch over ${sec} seconden`;
+        if(--sec < 0){ clearInterval(iv); window.close(); }
+      }, 1000);
+    }
+  }
+
+  doSyncWithAutoClose();
+</script>
+</body>
+</html>
