@@ -580,7 +580,13 @@ function render(){
   // ── DM-weergave ──────────────────────────────────────────
   if(getUserType() === 'dm'){
     renderDmView(events);
+    renderFeed(events);
     return;
+  }
+  // In ALLE-modus: DM-tabel ook tonen na de klant-locaties
+  if(getUserType() === 'all' || getUserType() === 'alle'){
+    const dmEvents = ALL_EVENTS.filter(e=>isDmEvent(e)&&(readEnv(e)===getEnvMode()||readEnv(e)==='unknown'));
+    if(dmEvents.length) renderDmSummary(dmEvents);
   }
 
   // Locatielijst: altijd alleen klant-events (url_load/visit) — DM-events nooit tonen hier
@@ -671,6 +677,10 @@ function render(){
   $('locs-list').innerHTML = locsHtml;
 
   // ── Feed (last 60 events)
+  renderFeed(events);
+}
+
+function renderFeed(events){
   const feedQ = ($('feedSearch')?.value || '').trim().toLowerCase();
   const feedFiltered = feedQ
     ? events.filter(e => (e.type||'').toLowerCase().includes(feedQ))
@@ -701,7 +711,7 @@ function render(){
   }).join('') : '<div class="empty"><big>📭</big>Geen events</div>';
 
   $('feed-list').innerHTML = feedHtml;
-}
+} // end renderFeed
 
 // ── chart state ──────────────────────────────────────────────
 let selectedClient = null;
@@ -937,16 +947,22 @@ function animNum(id,target){
 }
 
 // ── DM-weergave ─────────────────────────────────────────
-function renderDmView(events){
-  // Stap 1: bouw email-lookup via dm_auth (bevat altijd email + employeeId)
-  const authBySession = new Map(); // href-prefix → email (benadering op basis van gelijktijdige events)
-  const knownEmails   = new Set();
+// Bouw complexId → { siteName, color } map uit dm_complex_selected events
+function buildComplexMap(events) {
+  const map = {};
   for(const ev of events){
-    if(ev.type==='dm_auth' && ev.email) knownEmails.add(ev.email);
+    if(ev.type==='dm_complex_selected' && ev.complexId && ev.siteName){
+      if(!map[ev.complexId]) map[ev.complexId] = { siteName: ev.siteName, color: hashColor(ev.siteName) };
+    }
   }
+  return map;
+}
 
-  // Stap 2: groepeer alle DM-events per email
-  // dm_load heeft geen email (vóór login) → wijs toe aan de enige bekende email als er maar 1 is
+function dmTableHtml(events, targetEl) {
+  const knownEmails = new Set();
+  for(const ev of events){ if(ev.type==='dm_auth' && ev.email) knownEmails.add(ev.email); }
+  const complexMap = buildComplexMap(events);
+
   const dmMap = new Map();
   const addEvent = (email, ev) => {
     if(!dmMap.has(email)) dmMap.set(email,{ email, sessions:0, complexes: new Set(), events:[], lastTs:0 });
@@ -956,30 +972,28 @@ function renderDmView(events){
     if(ev.type==='dm_complex_selected') dm.complexes.add(ev.complexId||'');
     if(ev.ts>dm.lastTs)                 dm.lastTs=ev.ts;
   };
-
   for(const ev of events){
-    const email = ev.email
-      || (knownEmails.size===1 ? [...knownEmails][0] : null) // 1 bekende gebruiker → koppel
-      || '(onbekend)';
+    const email = ev.email || (knownEmails.size===1?[...knownEmails][0]:null) || '(onbekend)';
     addEvent(email, ev);
   }
 
   const dms = [...dmMap.values()].sort((a,b)=>b.sessions-a.sessions);
-  $('loc-count').textContent = dms.length;
+  if(!dms.length){ targetEl.innerHTML = '<div class="empty"><big>🏢</big>Geen DM-activiteit gevonden</div>'; return; }
 
-  if(!dms.length){
-    $('locs-list').innerHTML = '<div class="empty"><big>🏢</big>Geen DM-activiteit gevonden</div>';
-    return;
-  }
+  const complexTags = (complexSet) => [...complexSet].filter(Boolean).map(cid=>{
+    const info = complexMap[cid];
+    const name = info?.siteName || cid;
+    const col  = info?.color    || '#888';
+    return `<span style="display:inline-block;margin:1px 2px;padding:1px 6px;border-radius:4px;font-size:10px;font-weight:700;background:${col}22;border:1px solid ${col};color:${col};font-family:'JetBrains Mono',monospace" title="${cid}">${name}</span>`;
+  }).join('') || '—';
 
   const rows = dms.map(dm=>{
-    const complexList = [...dm.complexes].filter(Boolean).join(', ') || '—';
     const counters  = dm.events.filter(e=>e.type==='dm_counter_clicked').length;
     const switches  = dm.events.filter(e=>e.type==='dm_site_switched').length;
     const jobOpened = dm.events.filter(e=>e.type==='dm_job_opened').length;
     return `<tr>
       <td><span class="dm-email">${dm.email}</span></td>
-      <td style="font-size:11px;color:var(--muted);font-family:'JetBrains Mono',monospace">${complexList}</td>
+      <td>${complexTags(dm.complexes)}</td>
       <td style="text-align:center;font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--acc)">${counters}</td>
       <td style="text-align:center;font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--prod)">${jobOpened}</td>
       <td style="text-align:center;font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--muted)">${switches}</td>
@@ -988,19 +1002,32 @@ function renderDmView(events){
     </tr>`;
   }).join('');
 
-  $('locs-list').innerHTML = `
-    <table class="dm-table">
-      <thead><tr>
-        <th>DM-gebruiker</th>
-        <th>Bekeken complexen</th>
-        <th style="text-align:center">Teller-kliks</th>
-        <th style="text-align:center">Jobs geopend</th>
-        <th style="text-align:center">Site-wisselingen</th>
-        <th style="text-align:right">Laatste activiteit</th>
-        <th style="text-align:right">Sessies</th>
-      </tr></thead>
-      <tbody>${rows}</tbody>
-    </table>`;
+  targetEl.innerHTML = `<table class="dm-table">
+    <thead><tr>
+      <th>DM-gebruiker</th><th>Bekeken complexen</th>
+      <th style="text-align:center">Teller-kliks</th>
+      <th style="text-align:center">Jobs geopend</th>
+      <th style="text-align:center">Wisselingen</th>
+      <th style="text-align:right">Laatste activiteit</th>
+      <th style="text-align:right">Sessies</th>
+    </tr></thead>
+    <tbody>${rows}</tbody>
+  </table>`;
+}
+
+function renderDmView(events){
+  $('loc-count').textContent = [...new Set(events.filter(e=>e.email).map(e=>e.email))].length || 0;
+  dmTableHtml(events, $('locs-list'));
+}
+
+// DM-samenvatting in ALLE-modus (compact, onder klant-locaties)
+function renderDmSummary(dmEvents){
+  const existing = $('locs-list');
+  const wrapper = document.createElement('div');
+  wrapper.style.cssText = 'margin-top:16px';
+  wrapper.innerHTML = '<div class="sec-head" style="margin-bottom:8px">DM-activiteit <em>' + [...new Set(dmEvents.filter(e=>e.email).map(e=>e.email))].length + ' DM\'s</em></div>';
+  dmTableHtml(dmEvents, wrapper);
+  if(existing) existing.after(wrapper);
 }
 
 // ── events ───────────────────────────────────────────────
