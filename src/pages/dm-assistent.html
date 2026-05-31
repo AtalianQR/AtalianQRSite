@@ -367,6 +367,11 @@
           sessionStorage.setItem('vendor_session_ts',    String(Date.now()));
         }
         if (complexId) sessionStorage.setItem('dm_return_complex', complexId);
+        // Telemetrie: DM opent een job in vendor.html/vendor-issues.html
+        try {
+          const jobId = new URL(url, location.origin).searchParams.get('job') || '';
+          Telemetry.send('dm_job_opened', { complexId, jobId });
+        } catch {}
       } catch {}
       location.href = url;
     }

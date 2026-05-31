@@ -411,7 +411,7 @@ const API = '/.netlify/functions/read_logs';
 const TZ  = 'Europe/Brussels';
 
 // ── event-classificatie ──────────────────────────────────
-const DM_EVENTS    = new Set(['dm_load','dm_pagehide','dm_auth','dm_complex_selected','dm_counter_clicked','dm_jobs_viewed','dm_site_switched']);
+const DM_EVENTS    = new Set(['dm_load','dm_pagehide','dm_auth','dm_complex_selected','dm_counter_clicked','dm_jobs_viewed','dm_site_switched','dm_job_opened']);
 const KLANT_EVENTS = new Set(['url_load','visit']);
 // location_known: niet als scan tellen, maar wél voor clientName/locationName lookup
 const META_EVENTS  = new Set(['location_known']);
@@ -886,17 +886,33 @@ function renderHourChart(events){
   const lbl = $('hour-day-label');
   if(lbl) lbl.textContent = isToday ? 'vandaag' : new Intl.DateTimeFormat('nl-BE',{day:'numeric',month:'short'}).format(new Date(day+'T12:00:00'));
 
-  // Gebruik de eerste kleur uit globalKeyColor voor consistentie met dagdiagram
-  const hourColor = Object.values(globalKeyColor)[0] || 'var(--acc)';
+  // Groepeer per uur én per site (zelfde logica als dagdiagram)
+  const hourBuckets = Array.from({length:24}, ()=>({}));
+  for(const ev of scans){
+    if(fmt.dayKey(ev.ts)!==day) continue;
+    const h = new Date(ev.ts).getHours();
+    const k = getKey(ev);
+    hourBuckets[h][k] = (hourBuckets[h][k]||0)+1;
+  }
+  const hourTotals = hourBuckets.map(b=>Object.values(b).reduce((a,v)=>a+v,0));
+  const maxV2 = Math.max(1,...hourTotals);
 
-  wrap.innerHTML = hours.map((cnt,h)=>{
-    const height = cnt ? Math.max(4, Math.round(cnt/maxV*60)) : 0;
+  wrap.innerHTML = hourBuckets.map((bucket,h)=>{
+    const total = hourTotals[h];
+    const height = total ? Math.max(4, Math.round(total/maxV2*60)) : 0;
     const isNow = isToday && h === nowH;
     const label = String(h).padStart(2,'0');
-    const barStyle = `height:${height}px;background:${cnt>0?hourColor:'var(--b1)'}`;
-    return `<div class="chart-col" title="${label}u: ${cnt} scan${cnt!==1?'s':''}">
-      <div class="chart-tooltip">${cnt} scan${cnt!==1?'s':''}<br>${label}:00</div>
-      <div class="chart-bar${isNow?' today':cnt===0?' empty-day':''}" style="${barStyle}${isNow?';box-shadow:0 0 8px '+hourColor:''}"></div>
+    const entries = Object.entries(bucket).sort((a,b)=>a[0].localeCompare(b[0]));
+    const segments = entries.map(([k,cnt],j)=>{
+      const sh = Math.max(2, Math.round(cnt/maxV2*60));
+      const col = globalKeyColor[k] || 'var(--acc)';
+      return `<div style="height:${sh}px;width:100%;background:${col};border-radius:${j===entries.length-1?'3px 3px 0 0':'0'}"></div>`;
+    }).join('');
+    return `<div class="chart-col" title="${label}u: ${total} scan${total!==1?'s':''}">
+      <div class="chart-tooltip">${total} scan${total!==1?'s':''}<br>${label}:00</div>
+      <div class="chart-bar${isNow?' today':total===0?' empty-day':''}" style="height:${height}px;overflow:hidden;display:flex;flex-direction:column-reverse${isNow?';box-shadow:0 0 8px var(--acc-glow)':''}">
+        ${total>0?segments:''}
+      </div>
       <div class="chart-day${isNow?' today':''}" style="font-size:8px">${h%6===0?label:'·'}</div>
     </div>`;
   }).join('');
@@ -955,12 +971,14 @@ function renderDmView(events){
 
   const rows = dms.map(dm=>{
     const complexList = [...dm.complexes].filter(Boolean).join(', ') || '—';
-    const counters    = dm.events.filter(e=>e.type==='dm_counter_clicked').length;
-    const switches    = dm.events.filter(e=>e.type==='dm_site_switched').length;
+    const counters  = dm.events.filter(e=>e.type==='dm_counter_clicked').length;
+    const switches  = dm.events.filter(e=>e.type==='dm_site_switched').length;
+    const jobOpened = dm.events.filter(e=>e.type==='dm_job_opened').length;
     return `<tr>
       <td><span class="dm-email">${dm.email}</span></td>
       <td style="font-size:11px;color:var(--muted);font-family:'JetBrains Mono',monospace">${complexList}</td>
       <td style="text-align:center;font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--acc)">${counters}</td>
+      <td style="text-align:center;font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--prod)">${jobOpened}</td>
       <td style="text-align:center;font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--muted)">${switches}</td>
       <td style="font-size:10px;color:var(--muted);font-family:'JetBrains Mono',monospace;text-align:right">${dm.lastTs?fmt.datetime(dm.lastTs):'—'}</td>
       <td class="dm-count">${dm.sessions}</td>
@@ -973,6 +991,7 @@ function renderDmView(events){
         <th>DM-gebruiker</th>
         <th>Bekeken complexen</th>
         <th style="text-align:center">Teller-kliks</th>
+        <th style="text-align:center">Jobs geopend</th>
         <th style="text-align:center">Site-wisselingen</th>
         <th style="text-align:right">Laatste activiteit</th>
         <th style="text-align:right">Sessies</th>
