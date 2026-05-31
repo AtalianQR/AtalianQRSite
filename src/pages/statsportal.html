@@ -411,7 +411,7 @@ const API = '/.netlify/functions/read_logs';
 const TZ  = 'Europe/Brussels';
 
 // ── event-classificatie ──────────────────────────────────
-const DM_EVENTS    = new Set(['dm_load','dm_pagehide','dm_auth','dm_complex_selected','dm_counter_clicked','dm_jobs_viewed','dm_site_switched','dm_job_opened']);
+const DM_EVENTS    = new Set(['dm_load','dm_pagehide','dm_auth','dm_complex_selected','dm_counter_clicked','dm_jobs_viewed','dm_site_switched','dm_job_opened','dm_space_visited']);
 const KLANT_EVENTS = new Set(['url_load','visit']);
 // location_known: niet als scan tellen, maar wél voor clientName/locationName lookup
 const META_EVENTS  = new Set(['location_known']);
@@ -586,9 +586,8 @@ function render(){
   renderHourChart(events);
 
   // ── DM-weergave ──────────────────────────────────────────
-  // Verwijder altijd oude DM-summary (voorkomt duplicaten bij wisselen van modus)
-  const oldSummary = document.getElementById('dm-summary-block');
-  if(oldSummary) oldSummary.remove();
+  // Verwijder altijd oude DM-blokken (voorkomt duplicaten bij wisselen van modus)
+  ['dm-summary-block','dm-spaces-block'].forEach(id=>{ const el=document.getElementById(id); if(el) el.remove(); });
 
   if(getUserType() === 'dm'){
     renderDmView(events);
@@ -1022,6 +1021,57 @@ function dmTableHtml(events, targetEl) {
 function renderDmView(events){
   $('loc-count').textContent = [...new Set(events.filter(e=>e.email).map(e=>e.email))].length || 0;
   dmTableHtml(events, $('locs-list'));
+  renderDmSpaces(events);
+}
+
+function renderDmSpaces(events){
+  // Verwijder oude sectie
+  const old = document.getElementById('dm-spaces-block');
+  if(old) old.remove();
+
+  const spaceEvents = events.filter(e=>e.type==='dm_space_visited' && e.siteName);
+  if(!spaceEvents.length) return;
+
+  // Groepeer per site
+  const siteMap = new Map();
+  for(const ev of spaceEvents){
+    const site = ev.siteName || '?';
+    if(!siteMap.has(site)) siteMap.set(site, []);
+    siteMap.get(site).push(ev);
+  }
+
+  const locRows = [...siteMap.entries()].map(([site, evs])=>{
+    const col = hashColor(site);
+    const spaceRows = evs.map(ev=>{
+      const space = [ev.spaceDesc, ev.spaceRoom ? `(${ev.spaceRoom})` : ''].filter(Boolean).join(' ') || ev.jobId || '—';
+      return `<div class="loc-card-small">
+        <div class="loc-code-sm">${ev.jobId||'—'}</div>
+        <div class="loc-info">
+          <div class="loc-name-sm">${space}</div>
+          <div class="loc-meta-sm"><span class="badge sp">SPACE</span><span style="font-size:10px;color:var(--muted);margin-left:6px">${ev.ts?fmt.date(ev.ts):''}</span></div>
+        </div>
+      </div>`;
+    }).join('');
+
+    return `<div class="client-group">
+      <div class="client-header">
+        <div class="client-name" style="color:${col}">${site}</div>
+        <div style="text-align:right">
+          <div class="client-total" style="color:${col}">${evs.length}</div>
+          <div class="client-total-label">bezoeken</div>
+        </div>
+      </div>
+      <div class="client-locs">${spaceRows}</div>
+    </div>`;
+  }).join('');
+
+  const block = document.createElement('div');
+  block.id = 'dm-spaces-block';
+  block.style.cssText = 'margin-top:20px';
+  block.innerHTML = `<div class="sec-head" style="margin-bottom:10px">DM bezochte ruimtes <em>${spaceEvents.length}</em></div>${locRows}`;
+
+  const locsEl = $('locs-list');
+  if(locsEl) locsEl.after(block);
 }
 
 // DM-samenvatting in ALLE-modus (compact, onder klant-locaties)

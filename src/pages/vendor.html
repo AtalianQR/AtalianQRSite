@@ -929,6 +929,18 @@ async function requireGpsIfPortalSelf({ botui, Telemetry, isFr, cameFromPortalSe
   async function showJobTextsThenAskTranslate(job){
     renderJobHeader(job);
 
+    // DM-telemetrie: ruimte bijhouden wanneer een DM een job opent
+    if (sessionEmail && sessionEmail.endsWith('@atalianworld.com')) {
+      const sp = job.Space || {};
+      const siteParts = [job.CustomerName, job.ComplexName].filter(Boolean);
+      Telemetry.send('dm_space_visited', {
+        spaceDesc:  (sp.Description  || '').trim(),
+        spaceRoom:  (sp.RoomNumber   || '').trim(),
+        siteName:   siteParts.join(' — '),
+        jobId:      job.Id || '',
+      });
+    }
+
     const rawDesc     = job.Description   || '';
     const rawReport   = job.Report || job.JobReportText || '';
     const rawFeedback = job.FeedbackText || '';

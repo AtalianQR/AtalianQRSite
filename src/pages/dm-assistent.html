@@ -312,9 +312,11 @@
         try {
           auth = await apiGet({ action: 'AUTH', email });
         } catch (e) {
-          // 403 = niet gekend als DM — vriendelijke melding, geen technische fout tonen
-          if (String(e.message).includes('403')) {
+          const msg = String(e.message);
+          if (msg.includes('403')) {
             await botui.message.add({ content: '⚠️ Dit e-mailadres is niet gekend als district manager. Controleer of je e-mailadres correct is.' });
+          } else if (msg.includes('503')) {
+            await botui.message.add({ content: '⚙️ De DM-configuratie wordt bijgewerkt. Probeer over enkele minuten opnieuw.' });
           } else {
             await botui.message.add({ content: '❌ Verbindingsfout. Probeer opnieuw.' });
           }
