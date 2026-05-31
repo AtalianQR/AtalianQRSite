@@ -426,13 +426,7 @@
             <span class='badge ${kw.cls}'>${kw.txt}</span>
             ${vendorBadge(j.VendorId)}
             <span class='badge badge-status'>${esc(statusLabel(j.ProgressStatusId))}</span>
-            ${(() => {
-              const space = [j.SpaceDesc, j.SpaceRoom ? `(${j.SpaceRoom})` : ''].filter(Boolean).join(' ');
-              const dateLine = !isComp ? `<div class='muted' style='font-size:.78rem'>${esc(datePart)}</div>` : '';
-              return space
-                ? `<div style='margin-top:.3rem;font-size:.85rem;font-weight:600;color:#374151'>📍 ${esc(space)}</div>${dateLine}`
-                : `<div class='muted' style='margin-top:.3rem'>${esc(datePart)}</div>`;
-            })()}
+            ${!isComp ? `<div class='muted' style='margin-top:.3rem'>${esc(datePart)}</div>` : ''}
             ${preview ? `<div class='report-preview' style='margin-top:.2rem'>${esc(preview)}</div>` : ''}
           </div>
           <button style='flex-shrink:0;margin-top:0;background:#fff;border:2px solid #EE7E00;border-radius:999px;padding:.35rem .75rem;font-weight:800;font-size:1rem;cursor:pointer;color:#EE7E00;box-shadow:0 4px 10px rgba(238,126,0,.3);transition:background .12s,box-shadow .12s' onmouseover="this.style.background='#FEF0DC';this.style.boxShadow='0 6px 16px rgba(238,126,0,.45)'" onmouseout="this.style.background='#fff';this.style.boxShadow='0 4px 10px rgba(238,126,0,.3)'" onclick='window._dmOpenJob("${esc(url)}","${esc(activeComplexId)}")'>➜</button>
