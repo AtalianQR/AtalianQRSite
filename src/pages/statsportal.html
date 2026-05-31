@@ -600,7 +600,7 @@ function render(){
     const dmEvents = ALL_EVENTS.filter(e=>isDmEvent(e)&&(readEnv(e)===envMode||readEnv(e)==='unknown'));
     if(dmEvents.length){
       renderDmSummary(dmEvents);    // DM-activiteiten tabel
-      renderDmSpaces(dmEvents);     // DM-behandelde ruimtes
+      renderDmSpaces(dmEvents, 'dm-summary-block'); // ná DM-activiteit
     }
   }
 
@@ -1028,7 +1028,7 @@ function renderDmView(events){
   renderDmSpaces(events);
 }
 
-function renderDmSpaces(events){
+function renderDmSpaces(events, anchorId){
   // Verwijder oude sectie
   const old = document.getElementById('dm-spaces-block');
   if(old) old.remove();
@@ -1074,8 +1074,11 @@ function renderDmSpaces(events){
   block.style.cssText = 'margin-top:20px';
   block.innerHTML = `<div class="sec-head" style="margin-bottom:10px">DM behandelde ruimtes <em>${spaceEvents.length}</em></div>${locRows}`;
 
-  const locsEl = $('locs-list');
-  if(locsEl) locsEl.after(block);
+  // Anker: expliciet meegegeven ID, anders dm-summary-block, anders locs-list
+  const anchor = (anchorId && document.getElementById(anchorId))
+    || document.getElementById('dm-summary-block')
+    || $('locs-list');
+  if(anchor) anchor.after(block);
 }
 
 // DM-samenvatting in ALLE-modus (compact, onder klant-locaties)
