@@ -474,8 +474,16 @@ let ALL_EVENTS = [];
 let codeToClient   = {};
 let codeToLocation = {};
 let codeToBuilding = {};
-let globalKeyColor = {}; // dagkaart-kleuren hergebruikt in uurdiagram
-let globalGetKey   = null; // getKey-functie gedeeld met uurdiagram
+let globalKeyColor = {};
+let globalGetKey   = null;
+
+// Consistente kleur per sitenaam — beschikbaar voor chart én DM-tabel
+const SITE_COLORS = ['#e8a030','#34d399','#60a5fa','#f472b6','#fb923c','#4ade80','#38bdf8','#fbbf24'];
+function hashColor(name) {
+  let h = 0;
+  for(const c of String(name)) h = (h * 31 + c.charCodeAt(0)) >>> 0;
+  return SITE_COLORS[h % SITE_COLORS.length];
+}
 let selectedDay    = null; // voor uurdiagram: null = vandaag, anders 'YYYY-MM-DD'
 
 // ── fetch ────────────────────────────────────────────────
@@ -721,16 +729,8 @@ function renderChart(events){
   const wrap = $('chart-wrap');
   if(!wrap) return;
 
-  const COLORS    = ['#e8a030','#34d399','#60a5fa','#f472b6','#fb923c','#4ade80','#38bdf8','#fbbf24'];
-  const DM_COLORS = COLORS; // DM gebruikt dezelfde kleuren — zelfde complex = zelfde kleur
-
-  // Één consistente kleur per sitenaam — zelfde kleur in ALLE, KLANTEN én DM
-  function hashColor(name) {
-    let h = 0;
-    for(const c of String(name)) h = (h * 31 + c.charCodeAt(0)) >>> 0;
-    return COLORS[h % COLORS.length];
-  }
-  const getColor = key => hashColor(key);
+  const COLORS    = SITE_COLORS; // gebruik de module-level palette
+  const getColor  = key => hashColor(key);
   const DAYS = 30;
   const today = todayKey();
   const days = [];
