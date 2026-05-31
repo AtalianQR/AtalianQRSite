@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="nl">
 <head>
   <meta charset="UTF-8" />
@@ -9,6 +9,7 @@
   <link rel="icon" href="/AtalianFavicon.png" />
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/botui/build/botui.min.css" />
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/botui/build/botui-theme-default.css" />
+  <link rel="stylesheet" href="/portal-theme.css" />
   <style>
     html, body{
       height:auto;
@@ -572,7 +573,8 @@ async function preloadContextAndShow() {
     );
     const d = await r.json();
     if(!d.description) return;
-    Telemetry.setExtra({ locationName: d.description, ...(d.clientName ? { clientName: d.clientName } : {}) });
+    Telemetry.setExtra({ locationName: d.description, buildingName: d.buildingName || '', ...(d.clientName ? { clientName: d.clientName } : {}) });
+    Telemetry.send('location_known', { locationName: d.description, clientName: d.clientName || '', buildingName: d.buildingName || '' });
     const el = document.getElementById('ruimte-info');
 
 	const portalTitle = `[${id}] ${d.description}`;

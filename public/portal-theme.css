@@ -1,0 +1,178 @@
+/*
+  portal-theme.css — gedeelde stijlen voor alle Atalian portalpagina's
+  Inclusief door: vendor.html, vendor-issues.html, portal.html, dm-assistent.html
+*/
+
+/* ── Reset & base ─────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+html, body {
+  height: auto;
+  min-height: 100vh;
+  width: 100%;
+  font-family: 'Segoe UI', sans-serif;
+  font-size: 14px;
+  line-height: 1.5;
+  background-color: #f4f6fa;
+  overflow-y: auto;
+}
+body {
+  background-image: url('/building-cleaning.png');
+  background-size: cover;
+  background-repeat: no-repeat;
+  background-position: center;
+  background-attachment: fixed;
+}
+header, #botui-app { position: relative; z-index: 1; }
+
+/* ── Test-banner ──────────────────────────────────────── */
+.test-banner {
+  position: fixed; top: 0; left: 0; width: 100%;
+  background: #28a745; color: #fff;
+  text-align: center; padding: 5px 0;
+  font-weight: bold; font-size: 14px;
+  text-transform: uppercase; opacity: .9;
+  z-index: 1000;
+}
+body.is-test { padding-top: 30px; }
+
+/* ── Header ───────────────────────────────────────────── */
+.lang-switch { text-align: right; padding-right: 1rem; margin-top: 1rem; }
+.lang-switch a { margin: 0 .5rem; text-decoration: none; font-size: 1.2rem; }
+
+.header-flex {
+  display: flex; flex-direction: column; align-items: center;
+  max-width: 680px; width: 100%;
+  margin: 0 auto; padding: .5rem 0; gap: .5rem;
+}
+img.logo {
+  max-height: 60px; height: auto; width: auto;
+  display: block; margin: 0 auto;
+  background: rgba(255,255,255,.85);
+  padding: .1rem; border-radius: 12px;
+}
+.ruimte-label {
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  text-align: center;
+  background: rgba(255,255,255,.95); color: #1a202c;
+  padding: .55rem 1rem; border-radius: 12px;
+  font-size: 1rem; font-weight: 600;
+  white-space: normal;
+  border: 2.5px solid #EE7E00;
+  box-shadow: 0 2px 6px rgba(0,0,0,.05);
+  width: 100%; max-width: 680px; margin: 0 auto;
+  border-bottom-width: 4px;
+}
+.ruimte-label .sub  { font-size: .9rem;  font-weight: 500; color: #374151; margin-top: .2rem; }
+.ruimte-label .type { font-size: .85rem; font-weight: normal; color: #666; margin-top: .25rem; }
+
+/* ── BotUI container ─────────────────────────────────── */
+#botui-app {
+  width: 100%; max-width: 680px;
+  margin: 1rem auto 0; padding: .5rem 1rem 1rem;
+}
+.botui-container {
+  max-width: 680px; width: 100%; margin: 0 auto;
+  background: linear-gradient(120deg, #fff 85%, #f4f6fa 100%);
+  border: 2px solid #EE7E00;
+  box-shadow: 0 6px 32px rgba(0,0,0,.12), 0 1.5px 8px rgba(238,126,0,.10);
+  border-radius: 12px; padding: 1rem;
+  box-sizing: border-box;
+  opacity: 0; animation: atl-fadeIn 2.2s ease forwards;
+}
+.botui-container, .botui-message-content {
+  font-family: 'Segoe UI', sans-serif;
+  color: #24313F;
+}
+@keyframes atl-fadeIn { to { opacity: 1; } }
+
+/* ── Bot-bubbels (blauwgrijs) ────────────────────────── */
+.botui-message-content {
+  background: #D6E4F0 !important;
+  color: #1a202c !important;
+}
+
+/* ── BotUI knoppen — wit + oranje rand ───────────────── */
+.botui-button,
+.botui-actions-buttons-button {
+  font-weight: 600 !important;
+  background: #fff !important;
+  color: #24313F !important;
+  border: 2px solid #EE7E00 !important;
+  border-radius: 20px !important;
+  box-shadow: 0 6px 18px rgba(0,0,0,.22), 0 2px 6px rgba(238,126,0,.3) !important;
+  transition: background .12s !important;
+}
+.botui-button:hover,
+.botui-actions-buttons-button:hover {
+  background: #FEF0DC !important;
+}
+.botui-button:active,
+.botui-actions-buttons-button:active {
+  background: #EE7E00 !important;
+  color: #fff !important;
+}
+
+/* ── Tekstveld ───────────────────────────────────────── */
+.botui-actions-text-input {
+  width: 100% !important;
+  max-width: 80% !important;
+  flex-grow: 1 !important;
+}
+
+/* ── Badges ───────────────────────────────────────────── */
+.atl-badge {
+  display: inline-block;
+  padding: .12rem .5rem;
+  border-radius: 999px;
+  font-size: .74rem; font-weight: 800;
+  margin: .1rem .15rem 0 0;
+  vertical-align: middle;
+  border: 1px solid;
+}
+.atl-badge-klacht   { background: #fee2e2; border-color: #fca5a5; color: #991b1b; }
+.atl-badge-opdracht { background: #eff6ff; border-color: #93c5fd; color: #1d4ed8; }
+.atl-badge-job      { background: #fff7ed; border-color: #fdba74; color: #9a3412; }
+.atl-badge-status   { background: #f0fdf4; border-color: #86efac; color: #166534; }
+.atl-badge-extern   { background: #fef3c7; border-color: #fcd34d; color: #92400e; }
+
+/* ── Primaire knop (oranje, gevuld) ──────────────────── */
+.atl-btn-primary {
+  display: inline-block;
+  background: #EE7E00; color: #fff;
+  border: 2px solid #EE7E00;
+  border-radius: 8px;
+  padding: .42rem .8rem;
+  font-weight: 800; font-size: .9rem;
+  cursor: pointer; text-decoration: none;
+  font-family: 'Segoe UI', sans-serif;
+  transition: filter .12s;
+}
+.atl-btn-primary:hover { filter: brightness(.93); }
+
+/* ── Kaarten ──────────────────────────────────────────── */
+.atl-card {
+  background: #f5f8fc;
+  border-radius: 10px;
+  padding: .75em 1em;
+  margin: .65em 0;
+  border-left: 4px solid #EE7E00;
+}
+
+/* ── Muted tekst ─────────────────────────────────────── */
+.atl-muted { color: #6b7280; font-size: .85rem; margin: .15rem 0; }
+
+/* ── Responsive ───────────────────────────────────────── */
+@media (max-width: 768px) {
+  .botui-actions-text-input { max-width: 100% !important; }
+  .header-flex { max-width: 95%; }
+  .botui-container { max-width: 95%; }
+  .botui-button,
+  .botui-actions-buttons-button {
+    min-height: 44px !important;
+    padding: .6rem 1.2rem !important;
+    font-size: 1rem !important;
+    margin: .25rem .2rem !important;
+  }
+}

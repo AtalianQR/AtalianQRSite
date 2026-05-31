@@ -1,0 +1,682 @@
+﻿<!DOCTYPE html>
+<html lang="nl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>DM-assistent — Mijn complexen</title>
+
+  <link rel="icon" href="/AtalianFavicon.png" />
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/botui/build/botui.min.css" />
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/botui/build/botui-theme-default.css" />
+  <link rel="stylesheet" href="/portal-theme.css" />
+
+  <style>
+    html,body{height:auto;min-height:100vh;width:100%;margin:0;padding:0;box-sizing:border-box;font-family:'Segoe UI',sans-serif;background-color:#f4f6fa;overflow-y:auto}
+    body{background-image:url('/building-cleaning.png');background-size:cover;background-repeat:no-repeat;background-position:center}
+    *{box-sizing:border-box}
+
+    .test-banner{position:fixed;top:0;left:0;width:100%;background:#28a745;color:#fff;text-align:center;padding:5px 0;font-weight:bold;z-index:1000;font-size:14px;text-transform:uppercase;opacity:.9}
+    body.is-test{padding-top:30px}
+
+    .header-flex{display:flex;flex-direction:column;align-items:center;max-width:680px;width:100%;margin:0 auto;padding:.5rem 0;gap:.5rem}
+    img.logo{max-height:60px;height:auto;width:auto;display:block;margin:0 auto;background:rgba(255,255,255,.85);padding:.1rem;border-radius:12px}
+    .header-flex .ruimte-label{display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;background:rgba(255,255,255,.95);color:#1a202c;padding:.55rem 1rem;border-radius:12px;font-size:1rem;font-weight:600;white-space:normal;box-shadow:0 2px 6px rgba(0,0,0,.05);border:2.5px solid #EE7E00;width:100%;max-width:680px;margin:0 auto;border-bottom-width:4px}
+    .ruimte-label .sub{font-size:.9rem;font-weight:500;color:#374151;margin-top:.2rem}
+
+    #botui-app{width:100%;max-width:680px;margin:1rem auto 0 auto;padding:.5rem 1rem 1rem}
+    .botui-container{max-width:680px;width:100%;margin:0 auto;background:linear-gradient(120deg,#fff 85%,#f4f6fa 100%);border:2px solid #EE7E00;box-shadow:0 6px 32px rgba(0,0,0,.12),0 1.5px 8px rgba(238,126,0,.10);border-radius:12px;padding:1rem;box-sizing:border-box;opacity:0;animation:fadeIn 2.2s ease forwards}
+    .botui-container,.botui-message-content{font-family:'Segoe UI',sans-serif;color:#24313F}
+
+    /* Bot-bubbels zelfde als portal */
+    .botui-message-content{background:#D6E4F0 !important;color:#1a202c !important}
+
+    /* Knoppen: exact portal-stijl */
+    .botui-button,.botui-actions-buttons-button{
+      font-weight:600 !important;background:#fff !important;color:#24313F !important;
+      border:2px solid #EE7E00 !important;border-radius:20px !important;
+      box-shadow:0 6px 18px rgba(0,0,0,.22),0 2px 6px rgba(238,126,0,.3) !important;
+      transition:background .12s !important}
+    .botui-button:hover,.botui-actions-buttons-button:hover{background:#FEF0DC !important}
+    .botui-button:active,.botui-actions-buttons-button:active{background:#EE7E00 !important;color:#fff !important}
+
+    .botui-actions-text-input{width:100% !important;max-width:80% !important;flex-grow:1 !important}
+    @media(max-width:768px){.botui-actions-text-input{max-width:100% !important}.header-flex{max-width:95%}.botui-container{max-width:95%}
+      .botui-button,.botui-actions-buttons-button{min-height:44px !important;padding:.6rem 1.2rem !important;font-size:1rem !important;margin:.25rem .2rem !important}}
+    @keyframes fadeIn{to{opacity:1}}
+
+    /* Job & complex cards */
+    .card{background:#f5f8fc;border-radius:10px;padding:.75em 1em;margin:.65em 0;border-left:4px solid #EE7E00}
+    .card-internal{border-left-color:#3b82f6}
+    .card-complaint{border-left-color:#ef4444}
+    .card h4{margin:.1em 0 .3em;font-size:1rem;color:#1a202c;font-weight:700}
+    .muted{color:#6b7280;font-size:.85rem;margin:.15rem 0}
+
+    /* Badges */
+    .badge{display:inline-block;padding:.12rem .5rem;border-radius:999px;font-size:.74rem;font-weight:800;margin:.1rem .15rem 0 0;vertical-align:middle}
+    .badge-klacht{background:#fee2e2;border:1px solid #fca5a5;color:#991b1b}
+    .badge-job{background:#fff7ed;border:1px solid #fdba74;color:#9a3412}
+    .badge-opdracht{background:#eff6ff;border:1px solid #93c5fd;color:#1d4ed8}
+    .badge-intern{background:#dbeafe;border:1px solid #93c5fd;color:#1e40af}
+    .badge-extern{background:#fef3c7;border:1px solid #fcd34d;color:#92400e}
+    .badge-status{background:#f0fdf4;border:1px solid #86efac;color:#166534}
+
+    /* Buttons */
+    .btn{display:inline-block;margin-top:.5rem;padding:.42rem .8rem;border-radius:8px;font-weight:800;text-decoration:none;font-size:.9rem;cursor:pointer;border:none}
+    .btn-primary{background:#EE7E00;color:#fff}
+    .btn-primary:hover{filter:brightness(.93)}
+    .btn-secondary{background:#e5e7eb;color:#374151;margin-left:.35rem}
+    .btn-secondary:hover{background:#d1d5db}
+
+    /* Complex picker — zelfde stijl als portal-knoppen */
+    .complex-grid{display:grid;grid-template-columns:1fr;gap:.45rem;margin:.4rem 0}
+    .complex-btn{
+      background:#fff;border:2px solid #EE7E00;border-radius:20px;
+      padding:.6rem 1.1rem;text-align:left;cursor:pointer;
+      box-shadow:0 6px 18px rgba(0,0,0,.22),0 2px 6px rgba(238,126,0,.3);
+      transition:background .12s;width:100%;
+      display:flex;align-items:center;gap:.65rem;font-family:inherit}
+    .complex-btn:hover{background:#FEF0DC}
+    .complex-btn:active{background:#EE7E00;color:#fff}
+    .complex-btn:active .cb-customer,.complex-btn:active .cb-site{color:#fff}
+    .complex-btn .cb-icon{font-size:1.1rem;flex-shrink:0}
+    .complex-btn .cb-body{flex:1;min-width:0}
+    .complex-btn .cb-customer{font-weight:700;color:#24313F;font-size:.95rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .complex-btn .cb-site{color:#6b7280;font-size:.78rem;margin-top:.05rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+
+    /* Zwevende site-wisselknop */
+    #site-switcher{display:none;position:fixed;bottom:1.5rem;right:1rem;z-index:500}
+    .sws-btn{background:#fff;color:#24313F;border:2px solid #EE7E00;border-radius:999px;padding:.5rem 1.1rem .5rem .85rem;font-weight:700;font-size:.85rem;cursor:pointer;box-shadow:0 6px 18px rgba(0,0,0,.22),0 2px 6px rgba(238,126,0,.3);display:flex;align-items:center;gap:.5rem;transition:background .12s;font-family:'Segoe UI',sans-serif}
+    .sws-btn:hover{background:#FEF0DC}
+    .sws-btn:active{background:#EE7E00;color:#fff}
+    .sws-btn:active .sws-name,.sws-btn:active .sws-lbl{color:#fff}
+    .sws-icon{font-size:1.1rem}
+    .sws-body{text-align:left}
+    .sws-lbl{font-size:.68rem;font-weight:500;color:#6b7280;line-height:1}
+    .sws-name{font-size:.88rem;font-weight:800;color:#24313F;line-height:1.3;max-width:160px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+
+    /* Report text (ingekort) */
+    .report-preview{color:#4b5563;font-size:.82rem;margin:.25rem 0;max-height:3.5em;overflow:hidden;position:relative}
+    .report-preview::after{content:'';position:absolute;bottom:0;left:0;right:0;height:1.2em;background:linear-gradient(transparent,#f5f8fc)}
+
+    /* Teller-knoppen */
+    .counter-btns{display:grid;grid-template-columns:1fr 1fr;gap:.5rem;margin:.5rem 0}
+    .counter-btn{background:#fff;border:2px solid #e5e7eb;border-radius:10px;padding:.85rem .6rem;text-align:center;cursor:pointer;transition:all .15s;width:100%;font-family:inherit}
+    .counter-btn:hover{transform:translateY(-1px);box-shadow:0 4px 12px rgba(0,0,0,.1)}
+    .counter-btn .num{font-size:2.2rem;font-weight:900;line-height:1;margin-bottom:.25rem}
+    .counter-btn .lbl{font-size:.68rem;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:#6b7280}
+    .counter-btn.red  {border-color:#fca5a5;background:#fff8f8}.counter-btn.red   .num{color:#dc2626}
+    .counter-btn.red:hover{border-color:#ef4444;background:#fee2e2}
+    .counter-btn.amber{border-color:#fcd34d;background:#fffbeb}.counter-btn.amber .num{color:#d97706}
+    .counter-btn.amber:hover{border-color:#f59e0b;background:#fef3c7}
+    .counter-btn.blue {border-color:#93c5fd;background:#eff6ff}.counter-btn.blue  .num{color:#2563eb}
+    .counter-btn.blue:hover{border-color:#3b82f6;background:#dbeafe}
+    .counter-btn.green{border-color:#86efac;background:#f0fdf4}.counter-btn.green .num{color:#16a34a}
+    .counter-btn.green:hover{border-color:#22c55e;background:#dcfce7}
+    .counter-btn.disabled{opacity:.45;cursor:not-allowed}
+    .counter-btn.disabled:hover{transform:none;box-shadow:none;border-color:#e5e7eb;background:#fff}
+  </style>
+</head>
+
+<body>
+  <div id="test-indicator" class="test-banner" style="display:none">⚠️ TEST OMGEVING ACTIEF</div>
+
+  <header>
+    <div class="header-flex">
+      <img src="/AtalianLogo.png" alt="Atalian Logo" class="logo" />
+      <div id="hdr" class="ruimte-label">
+        <div>DM-assistent — Mijn complexen</div>
+        <div id="hdr-sub" class="sub"></div>
+      </div>
+    </div>
+  </header>
+
+  <div id="botui-app"><bot-ui></bot-ui></div>
+
+  <div id="site-switcher">
+    <button class="sws-btn" onclick="window._dmSwitchSite()">
+      <span class="sws-icon">🏢</span>
+      <div class="sws-body">
+        <div class="sws-lbl">Wissel van site</div>
+        <div id="sws-name" class="sws-name"></div>
+      </div>
+    </button>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/vue@2"></script>
+  <script src="https://cdn.jsdelivr.net/npm/botui/build/botui.min.js"></script>
+
+  <script type="module">
+    // ── env ────────────────────────────────────────────────────────
+    const qs     = new URLSearchParams(location.search);
+    const host   = location.host || '';
+    const isTest = qs.has('test') || qs.get('env') === 'test' || /test|staging/i.test(host);
+
+    if (isTest) {
+      const show = () => {
+        const el = document.getElementById('test-indicator');
+        if (el) el.style.display = 'block';
+        document.body.classList.add('is-test');
+      };
+      document.readyState === 'loading' ? document.addEventListener('DOMContentLoaded', show) : show();
+    }
+
+    const endpoint = '/.netlify/functions/dmassistent';
+    const botui    = new BotUI('botui-app');
+
+    // ── Telemetrie (zelfde patroon als portal.html → formlog) ──────
+    const Telemetry = (() => {
+      const base = {
+        path: location.pathname,
+        env:  isTest ? 'test' : 'prod',
+        page: 'dm-assistent',
+      };
+      async function send(type, extra = {}) {
+        const payload = { type, ts: Date.now(), href: location.href, ...base, ...extra };
+        try {
+          if (navigator.sendBeacon) {
+            const ok = navigator.sendBeacon(
+              '/.netlify/functions/formlog',
+              new Blob([JSON.stringify(payload)], { type: 'application/json' })
+            );
+            if (ok) return;
+          }
+          await fetch('/.netlify/functions/formlog', {
+            method: 'POST',
+            headers: { 'content-type': 'application/json' },
+            body: JSON.stringify(payload),
+            keepalive: true, credentials: 'omit', cache: 'no-store'
+          }).catch(() => {});
+        } catch (_) {}
+      }
+      function setExtra(extra) { Object.assign(base, extra); }
+      return { send, setExtra };
+    })();
+    Telemetry.send('dm_load');
+    addEventListener('pagehide', () => Telemetry.send('dm_pagehide'), { capture: true });
+
+    // Gebruiker-bubbels oranje stylen — zelfde als portal.html
+    // Bubbels met interactieve elementen (zoekbalk, joblijst) nooit overschrijven
+    const styleHumanBubbles = () => {
+      const app = document.getElementById('botui-app');
+      if (!app) return;
+      const midX = app.getBoundingClientRect().left + app.getBoundingClientRect().width / 2;
+      document.querySelectorAll('.botui-message-content').forEach(el => {
+        // Nooit stijlen als de bubble een kaart, zoekbalk of knop bevat
+        if (el.querySelector('.card, input, button, .counter-btns, .complex-btn')) return;
+        const rect = el.getBoundingClientRect();
+        if (rect.width === 0) return;
+        if (rect.left >= midX) {
+          el.style.setProperty('background',    '#FFF3E0',              'important');
+          el.style.setProperty('color',         '#9E5A00',              'important');
+          el.style.setProperty('border',        '1px solid #F5C07A',   'important');
+          el.style.setProperty('border-radius', '18px 4px 18px 18px',  'important');
+          el.style.setProperty('box-shadow',    'none',                 'important');
+          el.style.setProperty('font-style',    'italic',               'important');
+        } else {
+          el.style.removeProperty('background');
+          el.style.removeProperty('color');
+          el.style.removeProperty('border');
+          el.style.removeProperty('font-style');
+        }
+      });
+    };
+    new MutationObserver(styleHumanBubbles).observe(
+      document.getElementById('botui-app'), { childList: true, subtree: true }
+    );
+    setInterval(styleHumanBubbles, 500);
+
+    // ── basis helpers ──────────────────────────────────────────────
+    const esc = (s = '') => String(s)
+      .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+      .replace(/"/g,'&quot;').replace(/'/g,'&#039;');
+
+    const stripHtml = s => String(s || '').replace(/<[^>]*>/g,' ').replace(/\s+/g,' ').trim();
+
+    function setHeaderSub(txt) {
+      const el = document.getElementById('hdr-sub');
+      if (el) el.textContent = txt || '';
+    }
+
+    function firstName(email) {
+      const part = String(email || '').split('@')[0].split('.')[0];
+      return part.charAt(0).toUpperCase() + part.slice(1);
+    }
+
+    function greeting() {
+      const h = new Date().getHours();
+      if (h < 12) return 'Goedemorgen';
+      if (h < 18) return 'Goedemiddag';
+      return 'Goedenavond';
+    }
+
+    // ── session ────────────────────────────────────────────────────
+    function getDmSession(maxMin = 120) {
+      try {
+        const email = String(sessionStorage.getItem('dm_session_email') || '').trim().toLowerCase();
+        const ts    = Number(sessionStorage.getItem('dm_session_ts') || 0);
+        if (!email || !ts || (Date.now() - ts) > maxMin * 60 * 1000) return null;
+        const cids      = JSON.parse(sessionStorage.getItem('dm_session_complexIds') || '[]');
+        const firstName = sessionStorage.getItem('dm_session_firstname') || '';
+        return { email, complexIds: cids, firstName };
+      } catch { return null; }
+    }
+    function setDmSession(email, complexIds, firstName = '') {
+      try {
+        sessionStorage.setItem('dm_session_email',      email);
+        sessionStorage.setItem('dm_session_ts',         String(Date.now()));
+        sessionStorage.setItem('dm_session_complexIds', JSON.stringify(complexIds || []));
+        sessionStorage.setItem('dm_session_firstname',  firstName);
+      } catch {}
+    }
+
+    // ── API ────────────────────────────────────────────────────────
+    async function apiGet(params = {}) {
+      const u = new URL(endpoint, location.origin);
+      Object.entries(params).forEach(([k, v]) => u.searchParams.set(k, String(v)));
+      if (isTest) u.searchParams.set('env', 'test');
+      const r = await fetch(u.toString(), { headers: { accept: 'application/json' } });
+      if (!r.ok) throw new Error(`HTTP ${r.status}: ${await r.text().catch(() => r.statusText)}`);
+      return r.json();
+    }
+
+    // ── login ──────────────────────────────────────────────────────
+    async function requireLogin() {
+      const cached = getDmSession();
+      if (cached) {
+        // Hervalideer altijd zodat complexIds actueel zijn na een sync
+        try {
+          const fresh = await apiGet({ action: 'AUTH', email: cached.email });
+          if (fresh.ok) {
+            const fname = fresh.firstName || fresh.displayName?.split(' ').filter(Boolean).pop() || cached.firstName || '';
+            setDmSession(cached.email, fresh.complexIds || [], fname);
+            return { email: cached.email, complexIds: fresh.complexIds || [], firstName: fname };
+          }
+        } catch { /* bij verbindingsfout: gebruik gecachte sessie */ }
+        return cached;
+      }
+
+      await botui.message.add({ content: '📧 Geef je Atalian e-mailadres in om aan te melden:' });
+
+      for (let i = 0; i < 3; i++) {
+        const a     = await botui.action.text({ action: { placeholder: 'voornaam.naam@atalianworld.com' } });
+        const email = String(a.value || '').trim().toLowerCase();
+
+        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+          await botui.message.add({ content: '⚠️ Ongeldig e-mailformaat.' }); continue;
+        }
+        if (!email.endsWith('@atalianworld.com')) {
+          await botui.message.add({ content: '⛔ Enkel @atalianworld.com e-mailadressen zijn toegelaten.' }); continue;
+        }
+
+        let auth;
+        try { auth = await apiGet({ action: 'AUTH', email }); }
+        catch (e) { await botui.message.add({ content: `❌ Verbindingsfout: ${e.message}` }); continue; }
+
+        if (!auth.ok) {
+          await botui.message.add({ content: '❌ Dit e-mailadres is niet gekend als district manager.' }); continue;
+        }
+
+        const fname = auth.firstName || auth.displayName?.split(' ')[0] || '';
+        setDmSession(email, auth.complexIds || [], fname);
+        Telemetry.setExtra({ email, employeeId: auth.employeeId || '' });
+        Telemetry.send('dm_auth', { complexCount: (auth.complexIds || []).length });
+        return { email, complexIds: auth.complexIds || [], firstName: fname };
+      }
+      throw new Error('max-login-attempts');
+    }
+
+    // ── job helpers ────────────────────────────────────────────────
+    function kwisLabel(kwis) {
+      const k = String(kwis || '').trim();
+      if (k === '002') return { cls: 'badge-klacht',   txt: 'KLACHT'     };
+      if (k === '105') return { cls: 'badge-job',      txt: 'ONGEDIERTE' };
+      if (k === '107') return { cls: 'badge-opdracht', txt: 'OPDRACHT'   };
+      if (k === '005') return { cls: 'badge-opdracht', txt: 'OPDRACHT'   };
+      return                  { cls: 'badge-job',      txt: 'JOB'        };
+    }
+    function vendorBadge(vid) {
+      const v = String(vid || '').trim();
+      if (v === '000016' || !v) return ''; // Atalian intern weglaten — altijd intern in DM-weergave
+      return `<span class='badge badge-extern'>Extern: ${esc(v)}</span>`;
+    }
+    function statusLabel(ps) {
+      const s = String(ps || '').trim();
+      if (s === '1008') return 'Actief';
+      if (s === '1012') return 'Gepland';
+      if (s === '1016') return 'Gesloten vendor';
+      return s;
+    }
+    function buildJobUrl(job) {
+      const id   = String(job?.Id || '').trim();
+      if (!id) return '#';
+      const kwis = String(job?.KwisId || '').trim();
+      const base = kwis === '002' ? '/vendor-issues.html' : '/vendor.html';
+      const u    = new URL(base, location.origin);
+      u.searchParams.set('job', id);
+      u.searchParams.set('lang', 'nl');
+      u.searchParams.set('src', location.href);
+      if (isTest) u.searchParams.set('test', '1');
+      return u.toString();
+    }
+    // Sla email + actief complex op zodat we bij terugkeer meteen de tellers tonen
+    function openJob(url, complexId) {
+      try {
+        const email = sessionStorage.getItem('dm_session_email') || '';
+        if (email) {
+          sessionStorage.setItem('vendor_session_email', email);
+          sessionStorage.setItem('vendor_session_ts',    String(Date.now()));
+        }
+        if (complexId) sessionStorage.setItem('dm_return_complex', complexId);
+      } catch {}
+      location.href = url;
+    }
+    window._dmOpenJob = openJob;
+
+    function daysOpen(dateStr) {
+      if (!dateStr) return null;
+      // formaat: "24-4-2026 17:49:05" (DD-M-YYYY)
+      const parts = dateStr.split(' ')[0].split('-');
+      if (parts.length < 3) return null;
+      const d = new Date(+parts[2], +parts[1] - 1, +parts[0]);
+      const diff = Math.floor((Date.now() - d.getTime()) / 86400000);
+      return isNaN(diff) ? null : diff;
+    }
+
+    function urgencyColor(days) {
+      if (days === null) return '#16a34a';
+      if (days > 14) return '#dc2626';
+      if (days > 7)  return '#d97706';
+      return '#16a34a';
+    }
+
+    function daysBadge(days) {
+      if (days === null) return '';
+      const col = urgencyColor(days);
+      return `<span style='display:inline-block;padding:.15rem .55rem;border-radius:999px;font-size:.78rem;font-weight:800;background:${col};color:#fff;margin-left:.3rem'>${days}d open</span>`;
+    }
+
+    function jobCard(j) {
+      const kw       = kwisLabel(j.KwisId);
+      const isComp   = j.KwisId === '002';
+      const preview  = stripHtml(j.ReportText).slice(0, 120);
+      const url      = buildJobUrl(j);
+      const datePart = (j.Date || '').split(' ')[0];
+      const days     = isComp ? daysOpen(j.Date) : null;
+
+      const borderColor = isComp ? urgencyColor(days) : '#EE7E00';
+      return `<div class='card' style='border-left-color:${borderColor}' data-search='${esc((j.Description||'') + ' ' + stripHtml(j.ReportText||'') + ' ' + (j.Id||'')).toLowerCase()}'>
+        <div style='display:flex;justify-content:space-between;align-items:flex-start;gap:.5rem'>
+          <div style='flex:1;min-width:0'>
+            ${isComp && days !== null ? `<div style='margin-bottom:.3rem'>${daysBadge(days)}<span style='font-size:.78rem;color:#6b7280;margin-left:.3rem'>gemeld op ${esc(datePart)}</span></div>` : ''}
+            <div style='font-weight:700;font-size:.92rem;color:#1a202c;margin-bottom:.25rem'>${esc(j.Description || '(zonder omschrijving)')}</div>
+            <span class='badge ${kw.cls}'>${kw.txt}</span>
+            ${vendorBadge(j.VendorId)}
+            <span class='badge badge-status'>${esc(statusLabel(j.ProgressStatusId))}</span>
+            ${!isComp ? `<div class='muted' style='margin-top:.3rem'>Job ${esc(j.Id)} &middot; ${esc(datePart)}</div>` : `<div class='muted' style='margin-top:.3rem'>Job ${esc(j.Id)}</div>`}
+            ${preview ? `<div class='report-preview' style='margin-top:.2rem'>${esc(preview)}</div>` : ''}
+          </div>
+          <button style='flex-shrink:0;margin-top:0;background:#fff;border:2px solid #EE7E00;border-radius:999px;padding:.35rem .75rem;font-weight:800;font-size:1rem;cursor:pointer;color:#EE7E00;box-shadow:0 4px 10px rgba(238,126,0,.3);transition:background .12s,box-shadow .12s' onmouseover="this.style.background='#FEF0DC';this.style.boxShadow='0 6px 16px rgba(238,126,0,.45)'" onmouseout="this.style.background='#fff';this.style.boxShadow='0 4px 10px rgba(238,126,0,.3)'" onclick='window._dmOpenJob("${esc(url)}","${esc(activeComplexId)}")'>➜</button>
+        </div>
+      </div>`;
+    }
+
+    function jobListHtml(jobs) {
+      if (!jobs.length) return `<div class='muted' style='text-align:center;padding:1rem'>Geen items gevonden.</div>`;
+      return `
+        <input type='search' id='dm-job-filter' placeholder='🔍 Zoeken…'
+          style='width:100%;padding:.45rem .7rem;border:1.5px solid #e5e7eb;border-radius:8px;font-size:.88rem;font-family:inherit;margin-bottom:.6rem;outline:none'
+          oninput='window._dmFilterJobs(this.value)'>
+        <div id='dm-job-list'>${jobs.map(jobCard).join('')}</div>
+        <div id='dm-job-count' class='muted' style='font-size:.8rem;margin-top:.4rem;text-align:right'>${jobs.length} item${jobs.length!==1?'s':''}</div>`;
+    }
+
+    window._dmFilterJobs = (q) => {
+      const term = q.trim().toLowerCase();
+      const list = document.getElementById('dm-job-list');
+      const cnt  = document.getElementById('dm-job-count');
+      if (!list) return;
+      let visible = 0;
+      list.querySelectorAll('.card').forEach(card => {
+        const match = !term || (card.dataset.search||'').includes(term);
+        card.style.display = match ? '' : 'none';
+        if (match) visible++;
+      });
+      if (cnt) cnt.textContent = `${visible} item${visible!==1?'s':''} zichtbaar`;
+    };
+
+    // ── tellers berekenen ──────────────────────────────────────────
+    function calcCounters(jobs) {
+      let lopendKlachten = 0, goedTeKeurenSPOC = 0, openJobsDM = 0, nogTeAccepteren = 0;
+      for (const j of jobs) {
+        const kwis   = String(j.KwisId          || '').trim();
+        const prs    = String(j.ProgressStatusId || '').trim();
+        const status = String(j.Status           || '').trim();
+        const vendor = String(j.VendorId         || '').trim();
+        if (kwis === '002' && prs === '1008' && status === '4')              lopendKlachten++;
+        if (kwis === '002' && prs === '1016')                                goedTeKeurenSPOC++;
+        if (vendor === '000016' && kwis !== '002' && ['2','4','64'].includes(status)) openJobsDM++;
+        if (status === '16')                                                  nogTeAccepteren++;
+      }
+      return { lopendKlachten, goedTeKeurenSPOC, openJobsDM, nogTeAccepteren };
+    }
+
+    function filterJobs(jobs, type) {
+      return jobs.filter(j => {
+        const kwis   = String(j.KwisId          || '').trim();
+        const prs    = String(j.ProgressStatusId || '').trim();
+        const status = String(j.Status           || '').trim();
+        const vendor = String(j.VendorId         || '').trim();
+        if (type === 'klachten')  return kwis === '002' && prs === '1008' && status === '4';
+        if (type === 'spoc')      return kwis === '002' && prs === '1016';
+        if (type === 'jobsdm')    return vendor === '000016' && kwis !== '002' && ['2','4','64'].includes(status);
+        if (type === 'accepteren')return status === '16';
+        return false;
+      });
+    }
+
+    // ── tellers als knoppen ────────────────────────────────────────
+    function counterBtnsHtml(c) {
+      const btn = (num, lbl, cls, type, disabled = false) => {
+        const dis     = disabled ? 'disabled' : '';
+        const onclick = disabled ? '' : `onclick="window._dmCounter('${type}')"`;
+        return `<button class='counter-btn ${cls} ${dis}' ${onclick}>
+          <div class='num'>${num}</div>
+          <div class='lbl'>${lbl}</div>
+        </button>`;
+      };
+      return `<div class='muted' style='margin:.4rem 0 .3rem;font-size:.82rem'>Druk op een teller om de bijbehorende jobs te bekijken:</div>
+      <div class='counter-btns'>
+        ${btn(c.lopendKlachten,   'Lopende klachten',      'red',   'klachten')}
+        ${btn(c.goedTeKeurenSPOC,'Goed te keuren (SPOC)', 'blue',  'spoc'    )}
+        ${btn(c.openJobsDM,       'Openstaande jobs DM',   'green', 'jobsdm'  )}
+        ${btn(c.nogTeAccepteren,  'Nog te accepteren',     'amber', 'accepteren', true)}
+      </div>`;
+    }
+
+    // ── complex picker ─────────────────────────────────────────────
+    const complexCache = {};
+    // Info-bericht slechts 1 keer per sessie (overleeft reload via sessionStorage)
+    const switcherInfoKey = 'dm_switcher_info_shown';
+    let activeComplexId   = ''; // bijgehouden voor terugkeer vanuit vendor.html
+    const switcherInfoShown = () => sessionStorage.getItem(switcherInfoKey) === '1';
+    const markSwitcherInfoShown = () => sessionStorage.setItem(switcherInfoKey, '1');
+
+    function complexCard(id) {
+      const info = complexCache[id] || {};
+      const site = info.complexName  || `Complex ${id}`;
+      const cust = info.customerName || '';
+      return `<div class='complex-btn' onclick='window._dmPickComplex("${id}")'>
+        <span class='cb-icon'>📍</span>
+        <div class='cb-body'>
+          <div class='cb-customer'>${esc(site)}</div>
+          ${cust ? `<div class='cb-site'>${esc(cust)}</div>` : ''}
+        </div>
+      </div>`;
+    }
+
+    async function pickComplex(email, complexIds) {
+      if (!complexIds.length) {
+        await botui.message.add({ content: '⚠️ Geen complexen gevonden. Controleer je instellingen in Ultimo.' });
+        return;
+      }
+      if (complexIds.length === 1) {
+        await loadComplex(email, complexIds[0], complexIds);
+        return;
+      }
+
+      // Namen + jobs vooraf parallel laden (stil, geen laadmelding)
+      const toLoad = complexIds.filter(id => !complexCache[id]);
+      if (toLoad.length) {
+        await Promise.all(toLoad.map(async id => {
+          try {
+            const data = await apiGet({ action: 'LIST_JOBS', email, complexId: id });
+            complexCache[id] = { complexName: data.complexName || '', customerName: data.customerName || '', jobs: data.jobs || [] };
+          } catch { complexCache[id] = { complexName: '', customerName: '', jobs: [] }; }
+        }));
+      }
+
+      // BotUI action-knoppen — exact portal-stijl
+      const actions = complexIds.map(id => {
+        const info = complexCache[id] || {};
+        const name = info.customerName || info.complexName || `Complex ${id}`;
+        const site = info.customerName && info.complexName ? ` — ${info.complexName}` : '';
+        return { text: `📍 ${name}${site}`, value: id };
+      });
+
+      hideSiteSwitcher();
+      const pick = await botui.action.button({ action: actions });
+      await loadComplex(email, pick.value, complexIds);
+    }
+
+    // ── zwevende site-wisselknop ───────────────────────────────────
+    function showSiteSwitcher(complexName, multipleComplexes) {
+      if (!multipleComplexes) return;
+      const el = document.getElementById('site-switcher');
+      const nm = document.getElementById('sws-name');
+      if (el && nm) { nm.textContent = complexName || ''; el.style.display = 'block'; }
+    }
+    function hideSiteSwitcher() {
+      const el = document.getElementById('site-switcher');
+      if (el) el.style.display = 'none';
+    }
+    // Reload: sessie is gecached → geen herlogin, meteen complex-picker
+    window._dmSwitchSite = () => {
+      Telemetry.send('dm_site_switched');
+      location.reload();
+    };
+
+    // ── complex laden → tellers tonen ─────────────────────────────
+    async function loadComplex(email, complexId, complexIds) {
+      let cached = complexCache[complexId];
+      if (!cached) {
+        await botui.message.add({ content: '⏳ Tellers laden…' });
+        try {
+          const data = await apiGet({ action: 'LIST_JOBS', email, complexId });
+          cached = { complexName: data.complexName || '', customerName: data.customerName || '', jobs: data.jobs || [] };
+          complexCache[complexId] = cached;
+        } catch (e) { await botui.message.add({ content: `❌ Fout: ${e.message}` }); return; }
+      }
+
+      // Zwevende knop tonen + info-bericht (enkel bij meerdere complexen)
+      activeComplexId = complexId; // onthouden voor terugkeer vanuit vendor.html
+      const parts    = [cached.customerName, cached.complexName].filter(Boolean);
+      const siteName = parts.length ? parts.join(' — ') : `Complex ${complexId}`;
+      Telemetry.send('dm_complex_selected', { complexId, siteName, jobCount: cached.jobs?.length ?? 0 });
+
+      // Sitenaam altijd tonen als bot-bericht (ook bij terugkeer zonder klik)
+      await botui.message.add({ type: 'html', content: `📍 <strong>${esc(siteName)}</strong>` });
+      if (complexIds.length > 1) {
+        showSiteSwitcher(siteName, true);
+        if (!switcherInfoShown()) {
+          markSwitcherInfoShown();
+          await botui.message.add({
+            type: 'html',
+            content: `💡 Via de knop <strong>🏢 Wissel van site</strong> onderaan rechts kun je steeds naar een andere site navigeren.`
+          });
+        }
+      }
+
+      const jobs     = cached.jobs;
+      const counters = calcCounters(jobs);
+      await showCounterButtons(email, complexId, complexIds, jobs, counters);
+    }
+
+    // ── teller-knoppen tonen en afhandelen ────────────────────────
+    async function showCounterButtons(email, complexId, complexIds, jobs, counters) {
+      const actions = [
+        { text: `🔴 ${counters.lopendKlachten} Lopende klachten`,        value: 'klachten' },
+        { text: `🔵 ${counters.goedTeKeurenSPOC} Goed te keuren (SPOC)`, value: 'spoc'     },
+        { text: `🟢 ${counters.openJobsDM} Openstaande jobs DM`,          value: 'jobsdm'   },
+      ];
+
+      const pick = await botui.action.button({ action: actions });
+      const type = pick.value ?? pick;
+      hideSiteSwitcher();
+      Telemetry.send('dm_counter_clicked', { complexId, counter: type });
+
+      let filtered = filterJobs(jobs, type);
+      // Klachten: oudste bovenaan (meeste dagen open eerst)
+      if (type === 'klachten') {
+        filtered = [...filtered].sort((a, b) => (daysOpen(a.Date) ?? 0) > (daysOpen(b.Date) ?? 0) ? -1 : 1);
+      }
+      const label = {
+        klachten:  'Lopende klachten',
+        spoc:      'Goed te keuren (SPOC)',
+        jobsdm:    'Openstaande jobs DM',
+        accepteren:'Nog te accepteren',
+      }[type] || type;
+
+      Telemetry.send('dm_jobs_viewed', { complexId, counter: type, count: filtered.length });
+      await botui.message.add({ type: 'html', content: `📂 <strong>${esc(label)}</strong> (${filtered.length})<br><span style='font-size:.78rem;color:#6b7280'>Gebruik de zoekbalk om te filteren op titel, omschrijving of job-ID.</span>` });
+
+      await botui.message.add({
+        type: 'html',
+        content: filtered.length
+          ? jobListHtml(filtered)
+          : `<div class='muted' style='text-align:center;padding:1rem'>✅ Geen items in deze categorie.</div>`
+      });
+
+      const navBtns = [
+        { text: '↩️ Terug naar tellers', value: 'back' },
+      ];
+      const navPick = await botui.action.button({ action: navBtns });
+      const nav     = navPick.value ?? navPick;
+
+      if (nav === 'back') {
+        showSiteSwitcher(complexCache[complexId]?.customerName || complexCache[complexId]?.complexName || '', complexIds.length > 1);
+        await showCounterButtons(email, complexId, complexIds, jobs, counters);
+      }
+    }
+
+    // ── start ──────────────────────────────────────────────────────
+    async function start() {
+      const session = await requireLogin();
+      const fname   = session.firstName || firstName(session.email);
+      setHeaderSub(session.email);
+
+      // Terugkeer vanuit vendor.html? → meteen tellers tonen voor dat complex
+      const returnComplex = sessionStorage.getItem('dm_return_complex') || '';
+      if (returnComplex && session.complexIds.includes(returnComplex)) {
+        sessionStorage.removeItem('dm_return_complex');
+        await loadComplex(session.email, returnComplex, session.complexIds);
+        return;
+      }
+
+      await botui.message.add({
+        type:    'html',
+        content: `${greeting()}, <strong>${esc(fname)}</strong>! 👋 Ik ben je DM-assistent. Naar welke site wil je kijken?`
+      });
+
+      await pickComplex(session.email, session.complexIds);
+    }
+
+    start().catch(async e => {
+      console.error(e);
+      if (e.message === 'max-login-attempts')
+        await botui.message.add({ content: '🔒 Maximaal aantal pogingen bereikt. Herlaad de pagina.' });
+      else
+        await botui.message.add({ content: `❌ Onverwachte fout: ${e.message}` });
+    });
+  </script>
+</body>
+</html>

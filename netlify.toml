@@ -21,6 +21,9 @@
 [functions]
   node_bundler = "esbuild"
 
+[functions."dm-sync"]
+  schedule = "0 3 * * *"
+
 # =================================================================
 # 3. EDGE FUNCTIONS (specifieke routes)
 # =================================================================
@@ -62,6 +65,12 @@
 [[redirects]]
   from = "/mobile/*"
   to = "/mobile.html"
+  status = 200
+  force = true
+
+[[redirects]]
+  from = "/dm-assistent/*"
+  to = "/dm-assistent.html"
   status = 200
   force = true
   

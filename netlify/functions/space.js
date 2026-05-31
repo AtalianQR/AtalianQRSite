@@ -542,8 +542,9 @@ export async function handler(event) {
       : '';
 
     // Klantnaam ophalen via workflow GET_SPACE_INFO
-    let clientName = '';
-    let clientId = '';
+    let clientName   = '';
+    let clientId     = '';
+    let buildingName = '';
     if (APP_QUERY && spaceId) {
       try {
         const wfRes = await fetch(`${base}/action/_rest_QueryAtalianJobs`, {
@@ -555,8 +556,9 @@ export async function handler(event) {
           const wfRaw = await wfRes.json().catch(() => ({}));
           const objStr = wfRaw?.properties?.Output?.object ?? wfRaw?.object ?? null;
           const obj = objStr ? JSON.parse(typeof objStr === 'string' ? objStr : JSON.stringify(objStr)) : {};
-          clientName = String(obj?.clientName ?? '').trim();
-          clientId   = String(obj?.clientId   ?? '').trim();
+          clientName   = String(obj?.clientName   ?? '').trim();
+          clientId     = String(obj?.clientId     ?? '').trim();
+          buildingName = String(obj?.buildingName ?? '').trim();
         }
       } catch (_) {}
     }
@@ -567,6 +569,7 @@ export async function handler(event) {
       cleaningProgramFormatted,
       clientName,
       clientId,
+      buildingName,
       env
     });
   } catch (err) {

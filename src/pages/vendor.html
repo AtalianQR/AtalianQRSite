@@ -8,6 +8,7 @@
   <link rel="icon" href="/AtalianFavicon.png" />
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/botui/build/botui.min.css" />
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/botui/build/botui-theme-default.css" />
+  <link rel="stylesheet" href="/portal-theme.css" />
   <style>
     html, body{height:auto;min-height:100vh;width:100%;margin:0;padding:0;box-sizing:border-box;
       font-family:'Segoe UI',sans-serif;background-color:#f4f6fa;overflow-y:auto}
@@ -705,7 +706,20 @@ async function requireGpsIfPortalSelf({ botui, Telemetry, isFr, cameFromPortalSe
 	  }
 	}
   
-  const copy = { nl:{ intro1:"Welkom! We helpen je om deze taak snel en correct af te ronden. 👋", ask:"Gelieve uw login in te voeren:", invalid:"Foutieve login." }, fr:{ intro1:"Bienvenue ! Nous vous aidons à clôturer cette tâche rapidement et correctement. 👋", ask:"Veuillez entrer votre identifiant :", invalid:"Erreur d'identifiant." } };
+  function extractFirstName(email) {
+    const part = String(email || '').split('@')[0].split('.')[0];
+    return part ? part.charAt(0).toUpperCase() + part.slice(1) : '';
+  }
+  function makeIntro(email, isFr) {
+    const name = extractFirstName(email);
+    if (isFr) return name
+      ? `Bonjour <strong>${name}</strong>&nbsp;! Je vous aide à clôturer cette tâche rapidement et correctement. 👋`
+      : `Bonjour&nbsp;! Je vous aide à clôturer cette tâche rapidement et correctement. 👋`;
+    return name
+      ? `Hallo <strong>${name}</strong>! Ik help je om deze taak snel en correct af te ronden. 👋`
+      : `Hallo! Ik help je om deze taak snel en correct af te ronden. 👋`;
+  }
+  const copy = { nl:{ ask:"Gelieve uw login in te voeren:", invalid:"Foutieve login." }, fr:{ ask:"Veuillez entrer votre identifiant :", invalid:"Erreur d'identifiant." } };
 
   async function isAllowedBusinessMail(e=''){
     const okSyntax = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e);
@@ -724,10 +738,24 @@ async function requireGpsIfPortalSelf({ botui, Telemetry, isFr, cameFromPortalSe
 	async function emailIntroAndLogin() {
 	  const t = isFr ? copy.fr : copy.nl;
 
-	  // Prefill enkel: nooit auto-skip login
 	  const remembered = getVendorSessionEmail({ maxAgeMin: 120 }) || '';
 
-	  await botui.message.add({ content: t.intro1 });
+	  // DM-assistent: @atalianworld.com email automatisch doorsturen zonder prompt
+	  if (remembered && remembered.endsWith('@atalianworld.com')) {
+		sessionEmail = remembered;
+		await botui.message.add({ type: 'html', content: makeIntro(remembered, isFr) });
+		try {
+		  await fetchJobDetails();
+		  Telemetry.send('email_ok', { emailMasked: remembered.replace(/(.).+(@.*)/, '$1***$2'), autoLogin: true });
+		  return true;
+		} catch (err) {
+		  // Validatie mislukt → gewone loginflow starten
+		  sessionEmail = '';
+		}
+	  }
+
+	  // Voornaam onbekend vóór login → generieke begroeting
+	  await botui.message.add({ type: 'html', content: makeIntro('', isFr) });
 
 	  let attempts = 0;
 	  const maxAttempts = 3;
@@ -2406,26 +2434,25 @@ async function askDeliveredQtyInline({ label, defaultQty }) {
 		});
 
 		closeDocPanel();
-		if (cameFromPortalSelf) return goBackAfterVendor();
+		if (sourceUrl) return goBackAfterVendor();
 		return;
 	  }
 
 	  if (ans.value === 'exit') {
 		Telemetry.send('session_exit', { cameFromPortalSelf });
 
-		if (cameFromPortalSelf) {
-		  await botui.message.add({
-			content: isFr
-			  ? '🔚 Session terminée. Retour au portail…'
-			  : '🔚 Sessie beëindigd. Terug naar portal…'
-		  });
-		  return goBackAfterVendor();
-		}
+		await botui.message.add({
+		  content: isFr
+			? '🔚 Session terminée. Retour au portail…'
+			: '🔚 Sessie beëindigd. Terug naar portal…'
+		});
+
+		if (sourceUrl) return goBackAfterVendor();
 
 		await botui.message.add({
 		  content: isFr
-			? '🔚 Merci. Vous pouvez fermer cette fenêtre.'
-			: '🔚 Bedankt. Je kunt dit venster sluiten.'
+			? 'Vous pouvez fermer cette fenêtre.'
+			: 'Je kunt dit venster sluiten.'
 		});
 	  }
 	}

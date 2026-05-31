@@ -27,6 +27,8 @@
   --unk-bg:   rgba(167,139,250,.10);
   --eq:       #fb923c;
   --sp:       #38bdf8;
+  --dm:       #c084fc;
+  --dm-bg:    rgba(192,132,252,.10);
 }
 *{box-sizing:border-box;margin:0;padding:0}
 html,body{height:100%;background:var(--bg);color:var(--text);font-family:'Syne',sans-serif;font-size:14px;line-height:1.5}
@@ -139,6 +141,14 @@ main{flex:1;padding:20px 24px;display:flex;flex-direction:column;gap:20px}
 .scan-count{font-family:'JetBrains Mono',monospace;font-size:32px;font-weight:700;color:var(--acc);line-height:1}
 .scan-label{font-size:10px;color:var(--muted);letter-spacing:.12em;text-transform:uppercase}
 .last-seen{font-size:11px;color:var(--muted);font-family:'JetBrains Mono',monospace}
+
+/* ─── DM TABLE ────────────────────────────── */
+.dm-table{width:100%;border-collapse:collapse}
+.dm-table th{font-size:10px;font-weight:700;letter-spacing:.15em;text-transform:uppercase;color:var(--muted);text-align:left;padding:8px 12px;border-bottom:1px solid var(--b1)}
+.dm-table td{padding:9px 12px;font-size:12px;border-bottom:1px solid var(--b1);vertical-align:middle}
+.dm-table tr:hover td{background:var(--s2)}
+.dm-email{font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--dm)}
+.dm-count{font-family:'JetBrains Mono',monospace;font-size:16px;font-weight:700;color:var(--acc);text-align:right}
 
 /* ─── BADGES ──────────────────────────────── */
 .badge{
@@ -289,6 +299,24 @@ label.chk input{accent-color:var(--acc);width:13px;height:13px;cursor:pointer}
       </label>
     </div>
     <div class="filter-sep"></div>
+    <span class="filter-label">Gebruiker</span>
+    <div style="display:flex;gap:0;border:1px solid var(--b2);border-radius:7px;overflow:hidden">
+      <label style="cursor:pointer;display:flex;align-items:center;gap:6px;padding:5px 12px;transition:background .15s">
+        <input type="radio" name="usertype" value="all" checked style="accent-color:var(--acc);cursor:pointer">
+        <span style="font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;font-family:'JetBrains Mono',monospace;color:var(--acc)">Alle</span>
+      </label>
+      <div style="width:1px;background:var(--b2)"></div>
+      <label style="cursor:pointer;display:flex;align-items:center;gap:6px;padding:5px 12px;transition:background .15s">
+        <input type="radio" name="usertype" value="klant" style="accent-color:var(--prod);cursor:pointer">
+        <span style="font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;font-family:'JetBrains Mono',monospace;color:var(--prod)">Klanten</span>
+      </label>
+      <div style="width:1px;background:var(--b2)"></div>
+      <label style="cursor:pointer;display:flex;align-items:center;gap:6px;padding:5px 12px;transition:background .15s">
+        <input type="radio" name="usertype" value="dm" style="accent-color:var(--dm);cursor:pointer">
+        <span style="font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;font-family:'JetBrains Mono',monospace;color:var(--dm)">DM</span>
+      </label>
+    </div>
+    <div class="filter-sep"></div>
     <span class="filter-label">Periode</span>
     <label class="chk" style="gap:6px">
       Van <input type="date" id="fFrom" style="background:var(--s2);color:var(--text);border:1px solid var(--b1);border-radius:5px;padding:3px 6px;font-size:12px;font-family:'JetBrains Mono',monospace">
@@ -304,7 +332,7 @@ label.chk input{accent-color:var(--acc);width:13px;height:13px;cursor:pointer}
   <!-- KPI STRIP -->
   <div class="kpi-strip">
     <div class="kpi kpi-acc">
-      <div class="kpi-label">Totaal scans</div>
+      <div class="kpi-label">Klant scans</div>
       <div class="kpi-val" id="k-scans">—</div>
       <div class="kpi-sub" id="k-scans-sub"></div>
     </div>
@@ -318,10 +346,10 @@ label.chk input{accent-color:var(--acc);width:13px;height:13px;cursor:pointer}
       <div class="kpi-val" id="k-today">—</div>
       <div class="kpi-sub">scans vandaag</div>
     </div>
-    <div class="kpi">
-      <div class="kpi-label">Taal NL / FR</div>
-      <div class="kpi-val" id="k-lang">—</div>
-      <div class="kpi-sub" id="k-lang-sub"></div>
+    <div class="kpi" style="border-color:rgba(192,132,252,.3)">
+      <div class="kpi-label" style="color:var(--dm)">DM sessies</div>
+      <div class="kpi-val" id="k-dm" style="color:var(--dm)">—</div>
+      <div class="kpi-sub" id="k-dm-sub"></div>
     </div>
     <div class="kpi">
       <div class="kpi-label">Prod / Test</div>
@@ -332,7 +360,7 @@ label.chk input{accent-color:var(--acc);width:13px;height:13px;cursor:pointer}
 
   <!-- CHART -->
   <div class="chart-panel">
-    <div class="sec-head" style="margin-bottom:8px">Scans per dag <em id="chart-range"></em> <span id="chart-crumb" style="margin-left:8px"></span></div>
+    <div class="sec-head" style="margin-bottom:8px"><span id="chart-title">Scans per dag</span> <em id="chart-range"></em> <span id="chart-crumb" style="margin-left:8px"></span></div>
     <div id="chart-legend" style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px"></div>
     <div class="chart-wrap" id="chart-wrap"></div>
   </div>
@@ -381,6 +409,16 @@ label.chk input{accent-color:var(--acc);width:13px;height:13px;cursor:pointer}
 <script>
 const API = '/.netlify/functions/read_logs';
 const TZ  = 'Europe/Brussels';
+
+// ── event-classificatie ──────────────────────────────────
+const DM_EVENTS    = new Set(['dm_load','dm_pagehide','dm_auth','dm_complex_selected','dm_counter_clicked','dm_jobs_viewed','dm_site_switched']);
+const KLANT_EVENTS = new Set(['url_load','visit']);
+// location_known: niet als scan tellen, maar wél voor clientName/locationName lookup
+const META_EVENTS  = new Set(['location_known']);
+
+function isKlantEvent(ev){ return KLANT_EVENTS.has(ev.type); }
+function isDmEvent(ev)   { return DM_EVENTS.has(ev.type); }
+function getUserType(){ return document.querySelector('input[name="usertype"]:checked')?.value || 'all'; }
 
 // ── helpers ─────────────────────────────────────────────
 const $ = id => document.getElementById(id);
@@ -435,6 +473,8 @@ function setStatus(txt, state){
 let ALL_EVENTS = [];
 let codeToClient   = {};
 let codeToLocation = {};
+let codeToBuilding = {};
+let globalKeyColor = {}; // dagkaart-kleuren hergebruikt in uurdiagram
 let selectedDay    = null; // voor uurdiagram: null = vandaag, anders 'YYYY-MM-DD'
 
 // ── fetch ────────────────────────────────────────────────
@@ -460,6 +500,8 @@ function getFiltered(){
   const to        = $('fTo').value   ? new Date($('fTo').value).setHours(23,59,59,999) : null;
   const typeQuery = ($('fEventType')?.value || '').trim().toLowerCase();
 
+  const userType = getUserType();
+
   let events = ALL_EVENTS.filter(ev => {
     const env = readEnv(ev);
     if(envMode === 'prod' && env !== 'prod') return false;
@@ -467,6 +509,8 @@ function getFiltered(){
     const ts = ev.ts||0;
     if(from && ts < from) return false;
     if(to   && ts > to)   return false;
+    if(userType === 'klant' && !isKlantEvent(ev)) return false;
+    if(userType === 'dm'    && !isDmEvent(ev))    return false;
     return true;
   });
 
@@ -489,45 +533,64 @@ function render(){
 
   $('filter-count').textContent = `${events.length} events`;
 
-  // ── KPIs
-  const todayScans = scans.filter(e=>fmt.dayKey(e.ts)===today).length;
-  const nlCount = scans.filter(e=>(e.lang||'nl')==='nl').length;
-  const frCount = scans.filter(e=>e.lang==='fr').length;
-  const prodCount = events.filter(e=>readEnv(e)==='prod').length;
-  const testCount = events.filter(e=>readEnv(e)==='test').length;
+  // ── KPIs — gebruik altijd volledige events-set (env-gefilterd, geen usertype-filter)
+  const allEnvEvents = ALL_EVENTS.filter(e => {
+    const env = readEnv(e);
+    const envMode = getEnvMode();
+    if(envMode==='prod' && env!=='prod') return false;
+    if(envMode==='test' && env!=='test' && env!=='unknown') return false;
+    return true;
+  });
+  const klantScans = allEnvEvents.filter(isKlantEvent);
+  const dmLoads    = allEnvEvents.filter(e=>e.type==='dm_load');
 
-  const uniqueLocs = new Set(scans.map(e=>e.code||e.id)).size;
+  const todayScans = klantScans.filter(e=>fmt.dayKey(e.ts)===today).length;
+  const prodCount  = events.filter(e=>readEnv(e)==='prod').length;
+  const testCount  = events.filter(e=>readEnv(e)==='test').length;
+  const uniqueLocs = new Set(klantScans.map(e=>e.code||e.id)).size;
+  const uniqueDMs  = new Set(dmLoads.map(e=>e.email||'')).size;
 
-  animNum('k-scans', scans.length);
-  animNum('k-locs', uniqueLocs);
+  animNum('k-scans', klantScans.length);
+  animNum('k-locs',  uniqueLocs);
   animNum('k-today', todayScans);
-  $('k-scans-sub').textContent = `van ${events.length} events (laatste 300)`;
-  $('k-locs-sub').textContent = `unieke QR-codes`;
-  $('k-lang').textContent = scans.length ? `${Math.round(nlCount/scans.length*100)}% / ${Math.round(frCount/scans.length*100)}%` : '—';
-  $('k-lang-sub').textContent = `${nlCount} NL · ${frCount} FR`;
+  animNum('k-dm',    dmLoads.length);
+  $('k-scans-sub').textContent = `van ${events.length} gefilterde events`;
+  $('k-locs-sub').textContent  = `unieke QR-codes`;
+  $('k-dm-sub').textContent    = `${uniqueDMs} DM-gebruikers`;
   $('k-env').textContent = events.length ? `${Math.round(prodCount/events.length*100)}% / ${Math.round(testCount/events.length*100)}%` : '—';
   $('k-env-sub').textContent = `${prodCount} prod · ${testCount} test`;
 
   // ── Locations
   // Bouw lookup-tabellen voor alle functies
-  codeToClient = {};
+  codeToClient   = {};
   codeToLocation = {};
+  codeToBuilding = {};
   for(const ev of ALL_EVENTS){
     const c = ev.code||ev.id||'';
     if(c && ev.clientName)   codeToClient[c]   = ev.clientName;
     if(c && ev.locationName) codeToLocation[c] = ev.locationName;
+    if(c && ev.buildingName) codeToBuilding[c] = ev.buildingName;
   }
 
   renderChart(events);
+  // keyColor wordt ingesteld door renderChart — daarna uurdiagram met zelfde kleuren
   renderHourChart(events);
 
+  // ── DM-weergave ──────────────────────────────────────────
+  if(getUserType() === 'dm'){
+    renderDmView(events);
+    return;
+  }
+
+  // Locatielijst: altijd alleen klant-events (url_load/visit) — DM-events nooit tonen hier
   const locMap = new Map();
   for(const ev of events){
+    if(!isKlantEvent(ev)) continue;  // ← DM-events uitsluiten
     const code = ev.code||ev.id||'?';
     if(!locMap.has(code)) locMap.set(code,{code,scans:0,events:[],env:'unknown',type:'unknown',lang:{nl:0,fr:0},lastTs:0});
     const loc = locMap.get(code);
     loc.events.push(ev);
-    if(ev.type==='url_load'||ev.type==='visit') loc.scans++;
+    loc.scans++;
     if(ev.ts>loc.lastTs){ loc.lastTs=ev.ts; loc.env=readEnv(ev); loc.type=getType(ev); }
     if(ev.lang==='fr') loc.lang.fr++; else loc.lang.nl++;
   }
@@ -536,8 +599,8 @@ function render(){
   let locs = [...locMap.values()].sort((a,b)=>b.scans-a.scans);
   if(selectedClient){
     locs = locs.filter(loc=>{
-      const ev = [...loc.events].reverse().find(e=>e.clientName);
-      return (ev?.clientName||'Onbekend') === selectedClient;
+      const ev = [...loc.events].reverse().find(e=>e.code||e.id);
+      return ev ? siteKey(ev) === selectedClient : false;
     });
   }
   $('loc-count').textContent = locs.length;
@@ -552,12 +615,15 @@ function render(){
   // Groepeer locaties per klant
   const clientMap = new Map();
   for(const loc of locs){
-    const locName    = [...loc.events].reverse().find(e=>e.locationName)?.locationName || '';
-    const clientName = [...loc.events].reverse().find(e=>e.clientName)?.clientName || 'Onbekend';
+    const ev         = [...loc.events].reverse().find(e=>e.clientName||e.buildingName);
+    const locName    = ev?.locationName  || codeToLocation[loc.code] || '';
+    const clientName = ev?.clientName    || codeToClient[loc.code]   || 'Onbekend';
+    const bldName    = ev?.buildingName  || codeToBuilding[loc.code] || '';
     loc._locName    = locName;
     loc._clientName = clientName;
-    if(!clientMap.has(clientName)) clientMap.set(clientName,{name:clientName,locs:[],total:0});
-    const cg = clientMap.get(clientName);
+    const groupKey  = bldName ? `${clientName} — ${bldName}` : clientName;
+    if(!clientMap.has(groupKey)) clientMap.set(groupKey,{name:groupKey,locs:[],total:0});
+    const cg = clientMap.get(groupKey);
     cg.locs.push(loc);
     cg.total += loc.scans;
   }
@@ -591,7 +657,7 @@ function render(){
 
     return `<div class="client-group">
       <div class="client-header">
-        <div class="client-name">${cg.name}</div>
+        <div class="client-name" title="${cg.name}">${cg.name}</div>
         <div style="text-align:right">
           <div class="client-total">${cg.total}</div>
           <div class="client-total-label">scans</div>
@@ -644,32 +710,63 @@ function renderChart(events){
   const wrap = $('chart-wrap');
   if(!wrap) return;
 
-  const COLORS = ['#e8a030','#34d399','#60a5fa','#f472b6','#a78bfa','#fb923c','#f87171','#4ade80'];
+  const COLORS    = ['#e8a030','#34d399','#60a5fa','#f472b6','#fb923c','#4ade80','#38bdf8','#fbbf24'];
+  const DM_COLORS = COLORS; // DM gebruikt dezelfde kleuren — zelfde complex = zelfde kleur
+
+  // Één consistente kleur per sitenaam — zelfde kleur in ALLE, KLANTEN én DM
+  function hashColor(name) {
+    let h = 0;
+    for(const c of String(name)) h = (h * 31 + c.charCodeAt(0)) >>> 0;
+    return COLORS[h % COLORS.length];
+  }
+  const getColor = key => hashColor(key);
   const DAYS = 30;
   const today = todayKey();
   const days = [];
   for(let i=DAYS-1;i>=0;i--){ const d=new Date(); d.setDate(d.getDate()-i); days.push(fmt.dayKey(d.getTime())); }
 
-  const scans = events.filter(e=>e.type==='url_load'||e.type==='visit');
+  // Grafiek: DM→site-selecties | Alle→klant+DM gecombineerd | Klanten→enkel klant-scans
+  const utype = getUserType();
+  const scans = utype === 'dm'
+    ? events.filter(e=>e.type==='dm_complex_selected')
+    : utype === 'alle' || utype === 'all'
+      ? events.filter(e=>isKlantEvent(e)||e.type==='dm_complex_selected')
+      : events.filter(e=>isKlantEvent(e));
 
   // Lookup: code → clientName (vanuit álle events, niet alleen url_load)
   // codeToClient/codeToLocation worden bijgewerkt in render() voor globale toegang
 
-  // Groepeersleutel: per klant (niveau 1) of per ruimte (niveau 2)
-  const getKey = ev => selectedClient
-    ? (ev.code||ev.id||'?')
-    : (codeToClient[ev.code||ev.id||''] || ev.clientName || 'Onbekend');
-  const getName = (key, ev) => selectedClient
-    ? (codeToLocation[key] || ev?.locationName || key)
-    : key;
+  // Groepeer op "Klant — Complex" (analoog aan DM-weergave)
+  const siteKey = ev => {
+    const code  = ev.code||ev.id||'';
+    const cli   = codeToClient[code]   || ev.clientName   || 'Onbekend';
+    const bld   = codeToBuilding[code] || ev.buildingName || '';
+    return bld ? `${cli} — ${bld}` : cli;
+  };
+
+  // Groepeersleutel: per site (niveau 1) of per QR-code (niveau 2 na drill-down)
+  const getKey = ev => {
+    const ut = getUserType();
+    if(ut === 'dm')            return ev.siteName || ev.complexId || '(onbekend)';
+    if(isDmEvent(ev))          return ev.siteName || ev.complexId || '(onbekend)'; // DM in ALLE-modus
+    if(selectedClient)         return ev.code||ev.id||'?';
+    return siteKey(ev);
+  };
+  const getName = (key, ev) => {
+    if(getUserType()==='dm') return key;
+    if(selectedClient) return codeToLocation[key] || ev?.locationName || key;
+    return key;
+  };
 
   const allKeys = [...new Set(scans.map(getKey))];
-  const keyColor = Object.fromEntries(allKeys.map((k,i)=>[k, COLORS[i%COLORS.length]]));
+  const keyColor = Object.fromEntries(allKeys.map(k=>[k, getColor(k)]));
+  globalKeyColor = keyColor; // beschikbaar voor uurdiagram
 
   // Buckets: dag → { key → count }
   const buckets = Object.fromEntries(days.map(d=>[d,{}]));
   for(const ev of scans){
-    if(selectedClient && (ev.clientName||'Onbekend') !== selectedClient) continue;
+    // scans is al pre-gefilterd op type; enkel selectedClient-filter nog nodig
+    if(selectedClient && getKey(ev) !== selectedClient) continue;
     const dk = fmt.dayKey(ev.ts);
     if(!(dk in buckets)) continue;
     const key = getKey(ev);
@@ -677,6 +774,10 @@ function renderChart(events){
   }
   const vals = days.map(d=>Object.values(buckets[d]).reduce((a,b)=>a+b,0));
   const maxV = Math.max(1,...vals);
+
+  // Grafiektitel afhankelijk van modus
+  const titleEl = $('chart-title');
+  if(titleEl) titleEl.textContent = getUserType()==='dm' ? 'DM site-selecties per dag' : 'Scans per dag';
 
   // Broodkruimel
   const crumb = $('chart-crumb');
@@ -769,7 +870,12 @@ function renderHourChart(events){
   const wrap = $('hour-wrap');
   if(!wrap) return;
   const day = selectedDay || todayKey();
-  const scans = events.filter(e=>(e.type==='url_load'||e.type==='visit') && fmt.dayKey(e.ts)===day);
+  const ut3 = getUserType();
+  const scans = events.filter(e => fmt.dayKey(e.ts)===day && (
+    ut3==='dm' ? e.type==='dm_complex_selected'
+    : ut3==='all'||ut3==='alle' ? (isKlantEvent(e)||e.type==='dm_complex_selected')
+    : isKlantEvent(e)
+  ));
   const hours = Array(24).fill(0);
   for(const ev of scans) hours[new Date(ev.ts).getHours()]++;
   const maxV = Math.max(1,...hours);
@@ -780,13 +886,17 @@ function renderHourChart(events){
   const lbl = $('hour-day-label');
   if(lbl) lbl.textContent = isToday ? 'vandaag' : new Intl.DateTimeFormat('nl-BE',{day:'numeric',month:'short'}).format(new Date(day+'T12:00:00'));
 
+  // Gebruik de eerste kleur uit globalKeyColor voor consistentie met dagdiagram
+  const hourColor = Object.values(globalKeyColor)[0] || 'var(--acc)';
+
   wrap.innerHTML = hours.map((cnt,h)=>{
     const height = cnt ? Math.max(4, Math.round(cnt/maxV*60)) : 0;
     const isNow = isToday && h === nowH;
     const label = String(h).padStart(2,'0');
+    const barStyle = `height:${height}px;background:${cnt>0?hourColor:'var(--b1)'}`;
     return `<div class="chart-col" title="${label}u: ${cnt} scan${cnt!==1?'s':''}">
       <div class="chart-tooltip">${cnt} scan${cnt!==1?'s':''}<br>${label}:00</div>
-      <div class="chart-bar${isNow?' today':cnt===0?' empty-day':''}" style="height:${height}px"></div>
+      <div class="chart-bar${isNow?' today':cnt===0?' empty-day':''}" style="${barStyle}${isNow?';box-shadow:0 0 8px '+hourColor:''}"></div>
       <div class="chart-day${isNow?' today':''}" style="font-size:8px">${h%6===0?label:'·'}</div>
     </div>`;
   }).join('');
@@ -807,10 +917,75 @@ function animNum(id,target){
   requestAnimationFrame(step);
 }
 
+// ── DM-weergave ─────────────────────────────────────────
+function renderDmView(events){
+  // Stap 1: bouw email-lookup via dm_auth (bevat altijd email + employeeId)
+  const authBySession = new Map(); // href-prefix → email (benadering op basis van gelijktijdige events)
+  const knownEmails   = new Set();
+  for(const ev of events){
+    if(ev.type==='dm_auth' && ev.email) knownEmails.add(ev.email);
+  }
+
+  // Stap 2: groepeer alle DM-events per email
+  // dm_load heeft geen email (vóór login) → wijs toe aan de enige bekende email als er maar 1 is
+  const dmMap = new Map();
+  const addEvent = (email, ev) => {
+    if(!dmMap.has(email)) dmMap.set(email,{ email, sessions:0, complexes: new Set(), events:[], lastTs:0 });
+    const dm = dmMap.get(email);
+    dm.events.push(ev);
+    if(ev.type==='dm_load')             dm.sessions++;
+    if(ev.type==='dm_complex_selected') dm.complexes.add(ev.complexId||'');
+    if(ev.ts>dm.lastTs)                 dm.lastTs=ev.ts;
+  };
+
+  for(const ev of events){
+    const email = ev.email
+      || (knownEmails.size===1 ? [...knownEmails][0] : null) // 1 bekende gebruiker → koppel
+      || '(onbekend)';
+    addEvent(email, ev);
+  }
+
+  const dms = [...dmMap.values()].sort((a,b)=>b.sessions-a.sessions);
+  $('loc-count').textContent = dms.length;
+
+  if(!dms.length){
+    $('locs-list').innerHTML = '<div class="empty"><big>🏢</big>Geen DM-activiteit gevonden</div>';
+    return;
+  }
+
+  const rows = dms.map(dm=>{
+    const complexList = [...dm.complexes].filter(Boolean).join(', ') || '—';
+    const counters    = dm.events.filter(e=>e.type==='dm_counter_clicked').length;
+    const switches    = dm.events.filter(e=>e.type==='dm_site_switched').length;
+    return `<tr>
+      <td><span class="dm-email">${dm.email}</span></td>
+      <td style="font-size:11px;color:var(--muted);font-family:'JetBrains Mono',monospace">${complexList}</td>
+      <td style="text-align:center;font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--acc)">${counters}</td>
+      <td style="text-align:center;font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--muted)">${switches}</td>
+      <td style="font-size:10px;color:var(--muted);font-family:'JetBrains Mono',monospace;text-align:right">${dm.lastTs?fmt.datetime(dm.lastTs):'—'}</td>
+      <td class="dm-count">${dm.sessions}</td>
+    </tr>`;
+  }).join('');
+
+  $('locs-list').innerHTML = `
+    <table class="dm-table">
+      <thead><tr>
+        <th>DM-gebruiker</th>
+        <th>Bekeken complexen</th>
+        <th style="text-align:center">Teller-kliks</th>
+        <th style="text-align:center">Site-wisselingen</th>
+        <th style="text-align:right">Laatste activiteit</th>
+        <th style="text-align:right">Sessies</th>
+      </tr></thead>
+      <tbody>${rows}</tbody>
+    </table>`;
+}
+
 // ── events ───────────────────────────────────────────────
 $('btnRefresh').onclick = loadAndRefresh;
 $('btnExport').onclick = exportCSV;
 document.querySelectorAll('input[name="env"]').forEach(r=>r.addEventListener('change',render));
+document.querySelectorAll('input[name="usertype"]').forEach(r=>r.addEventListener('change',render));
 ['fFrom','fTo'].forEach(id=>$(id).addEventListener('change',render));
 $('fEventType').addEventListener('input', render);
 $('feedSearch').addEventListener('input', render);
