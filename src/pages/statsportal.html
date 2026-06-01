@@ -347,7 +347,7 @@ label.chk input{accent-color:var(--acc);width:13px;height:13px;cursor:pointer}
       <div class="kpi-sub">scans vandaag</div>
     </div>
     <div class="kpi" style="border-color:rgba(192,132,252,.3)">
-      <div class="kpi-label" style="color:var(--dm)">DM sessies</div>
+      <div class="kpi-label" style="color:var(--dm)">DM acties</div>
       <div class="kpi-val" id="k-dm" style="color:var(--dm)">—</div>
       <div class="kpi-sub" id="k-dm-sub"></div>
     </div>
@@ -552,7 +552,8 @@ function render(){
   });
   const klantScans      = allEnvEvents.filter(isKlantEvent);
   const klantScansToday = klantScans.filter(e=>fmt.dayKey(e.ts)===today);
-  const dmLoads         = allEnvEvents.filter(e=>e.type==='dm_load');
+  // dm_load is onbetrouwbaar (sendBeacon timing) → gebruik dm_space_visited als sessie-indicator
+  const dmLoads         = allEnvEvents.filter(e=>['dm_space_visited','dm_complex_selected'].includes(e.type));
   const dmLoadsToday    = dmLoads.filter(e=>fmt.dayKey(e.ts)===today);
 
   const todayScans  = klantScansToday.length;
@@ -567,7 +568,7 @@ function render(){
   animNum('k-dm',    dmLoadsToday.length);
   $('k-scans-sub').textContent = `vandaag · ${klantScans.length} totaal`;
   $('k-locs-sub').textContent  = `actief vandaag`;
-  $('k-dm-sub').textContent    = `${uniqueDMs} DM's actief vandaag`;
+  $('k-dm-sub').textContent    = `${uniqueDMs} DM${uniqueDMs!==1?'s':''} actief vandaag`;
   $('k-env').textContent = events.length ? `${Math.round(prodCount/events.length*100)}% / ${Math.round(testCount/events.length*100)}%` : '—';
   $('k-env-sub').textContent = `${prodCount} prod · ${testCount} test`;
 
