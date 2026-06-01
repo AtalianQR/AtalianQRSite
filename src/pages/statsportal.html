@@ -550,22 +550,24 @@ function render(){
     if(envMode==='test' && env!=='test' && env!=='unknown') return false;
     return true;
   });
-  const klantScans = allEnvEvents.filter(isKlantEvent);
-  const dmLoads    = allEnvEvents.filter(e=>e.type==='dm_load');
+  const klantScans      = allEnvEvents.filter(isKlantEvent);
+  const klantScansToday = klantScans.filter(e=>fmt.dayKey(e.ts)===today);
+  const dmLoads         = allEnvEvents.filter(e=>e.type==='dm_load');
+  const dmLoadsToday    = dmLoads.filter(e=>fmt.dayKey(e.ts)===today);
 
-  const todayScans = klantScans.filter(e=>fmt.dayKey(e.ts)===today).length;
-  const prodCount  = events.filter(e=>readEnv(e)==='prod').length;
-  const testCount  = events.filter(e=>readEnv(e)==='test').length;
-  const uniqueLocs = new Set(klantScans.map(e=>e.code||e.id)).size;
-  const uniqueDMs  = new Set(dmLoads.map(e=>e.email||'')).size;
+  const todayScans  = klantScansToday.length;
+  const prodCount   = events.filter(e=>readEnv(e)==='prod').length;
+  const testCount   = events.filter(e=>readEnv(e)==='test').length;
+  const uniqueLocs  = new Set(klantScansToday.map(e=>e.code||e.id||siteKey(e))).size;
+  const uniqueDMs   = new Set(dmLoadsToday.map(e=>e.email||'')).size;
 
-  animNum('k-scans', klantScans.length);
+  animNum('k-scans', todayScans);
   animNum('k-locs',  uniqueLocs);
   animNum('k-today', todayScans);
-  animNum('k-dm',    dmLoads.length);
-  $('k-scans-sub').textContent = `van ${events.length} gefilterde events`;
-  $('k-locs-sub').textContent  = `unieke QR-codes`;
-  $('k-dm-sub').textContent    = `${uniqueDMs} DM-gebruikers`;
+  animNum('k-dm',    dmLoadsToday.length);
+  $('k-scans-sub').textContent = `vandaag · ${klantScans.length} totaal`;
+  $('k-locs-sub').textContent  = `actief vandaag`;
+  $('k-dm-sub').textContent    = `${uniqueDMs} DM's actief vandaag`;
   $('k-env').textContent = events.length ? `${Math.round(prodCount/events.length*100)}% / ${Math.round(testCount/events.length*100)}%` : '—';
   $('k-env-sub').textContent = `${prodCount} prod · ${testCount} test`;
 
@@ -1047,16 +1049,24 @@ function renderDmSpaces(events, anchorId){
 
   const locRows = [...siteMap.entries()].map(([site, evs])=>{
     const col = hashColor(site);
-    const spaceRows = evs.map(ev=>{
-      const space = [ev.spaceDesc, ev.spaceRoom ? `(${ev.spaceRoom})` : ''].filter(Boolean).join(' ') || ev.jobId || '—';
-      return `<div class="loc-card-small">
-        <div class="loc-code-sm">${ev.jobId||'—'}</div>
+    // Groepeer per ruimtenaam (analoog aan klant-locatiekaarten)
+    const spaceMap = new Map();
+    for(const ev of evs){
+      const name = [ev.spaceDesc, ev.spaceRoom?`(${ev.spaceRoom})`:''].filter(Boolean).join(' ') || ev.jobId || '—';
+      if(!spaceMap.has(name)) spaceMap.set(name, { name, count:0, lastTs:0 });
+      const sp = spaceMap.get(name);
+      sp.count++;
+      if(ev.ts > sp.lastTs) sp.lastTs = ev.ts;
+    }
+    const spaceRows = [...spaceMap.values()].sort((a,b)=>b.count-a.count).map(sp=>`
+      <div class="loc-card-small">
+        <div class="loc-code-sm" style="font-size:11px">—</div>
         <div class="loc-info">
-          <div class="loc-name-sm">${space}</div>
-          <div class="loc-meta-sm"><span class="badge sp">SPACE</span><span style="font-size:10px;color:var(--muted);margin-left:6px">${ev.ts?fmt.date(ev.ts):''}</span></div>
+          <div class="loc-name-sm">${sp.name}</div>
+          <div class="loc-meta-sm"><span class="badge sp">SPACE</span><span style="font-size:10px;color:var(--muted);margin-left:6px">${sp.lastTs?fmt.date(sp.lastTs):''}</span></div>
         </div>
-      </div>`;
-    }).join('');
+        <div style="text-align:right"><div class="loc-count-sm">${sp.count}</div><div style="font-size:10px;color:var(--muted)">bezoeken</div></div>
+      </div>`).join('');
 
     return `<div class="client-group">
       <div class="client-header">
