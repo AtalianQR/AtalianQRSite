@@ -1166,7 +1166,7 @@ async function exportCSV(){
 
   try {
     // Haal alle events op (hogere limiet voor export)
-    const r = await fetch(`${API}?limit=2000`, {cache:'no-store'});
+    const r = await fetch(`${API}?limit=50000`, {cache:'no-store'});
     const d = await r.json();
     const items = Array.isArray(d.items) ? d.items : [];
 
