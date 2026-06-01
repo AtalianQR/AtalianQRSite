@@ -652,10 +652,12 @@ function render(){
     }
   }
 
-  // Locatielijst: altijd alleen klant-events (url_load/visit) — DM-events nooit tonen hier
+  // Locatielijst: klant-events van de gekozen dag
+  const vdLoc = viewDateKey();
   const locMap = new Map();
   for(const ev of events){
-    if(!isKlantEvent(ev)) continue;  // ← DM-events uitsluiten
+    if(!isKlantEvent(ev)) continue;
+    if(fmt.dayKey(ev.ts) !== vdLoc) continue; // enkel gekozen dag
     const code = ev.code||ev.id||'?';
     if(!locMap.has(code)) locMap.set(code,{code,scans:0,events:[],env:'unknown',type:'unknown',lang:{nl:0,fr:0},lastTs:0});
     const loc = locMap.get(code);
@@ -725,11 +727,12 @@ function render(){
       </div>`;
     }).join('');
 
+    const cgColor = hashColor(cg.name);
     return `<div class="client-group">
-      <div class="client-header">
-        <div class="client-name" title="${cg.name}">${cg.name}</div>
+      <div class="client-header" style="border-bottom-color:${cgColor}">
+        <div class="client-name" style="color:${cgColor}" title="${cg.name}">${cg.name}</div>
         <div style="text-align:right">
-          <div class="client-total">${cg.total}</div>
+          <div class="client-total" style="color:${cgColor}">${cg.total}</div>
           <div class="client-total-label">scans</div>
         </div>
       </div>
@@ -940,7 +943,7 @@ function renderChart(events){
 function renderHourChart(events){
   const wrap = $('hour-wrap');
   if(!wrap) return;
-  const day = selectedDay || todayKey();
+  const day = selectedDay || viewDateKey();
   const ut3 = getUserType();
   const scans = events.filter(e => fmt.dayKey(e.ts)===day && (
     ut3==='dm'              ? ['dm_complex_selected','dm_space_visited','dm_job_opened'].includes(e.type)
@@ -955,7 +958,8 @@ function renderHourChart(events){
 
   // Label boven de grafiek
   const lbl = $('hour-day-label');
-  if(lbl) lbl.textContent = isToday ? 'vandaag' : new Intl.DateTimeFormat('nl-BE',{day:'numeric',month:'short'}).format(new Date(day+'T12:00:00'));
+  const isViewToday = day === todayKey();
+  if(lbl) lbl.textContent = isViewToday ? 'vandaag' : new Intl.DateTimeFormat('nl-BE',{day:'numeric',month:'short'}).format(new Date(day+'T12:00:00'));
 
   // Groepeer per uur én per site (zelfde logica als dagdiagram)
   const keyFn = globalGetKey || (ev => ev.siteName || ev.clientName || '?');
