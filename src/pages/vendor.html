@@ -942,6 +942,7 @@ async function requireGpsIfPortalSelf({ botui, Telemetry, isFr, cameFromPortalSe
       const sp = job.Space || {};
       const siteParts = [job.CustomerName, job.ComplexName].filter(Boolean);
       Telemetry.send('dm_space_visited', {
+        email:      sessionEmail,
         spaceDesc:  (sp.Description  || '').trim(),
         spaceRoom:  (sp.RoomNumber   || '').trim(),
         siteName:   siteParts.join(' — '),
@@ -2588,12 +2589,27 @@ function guessMimeByName(name){
 		  } catch {}
 
 		  // vendor_job_load ook sturen voor klachten (vóór redirect naar vendor-issues)
+		  const spKlacht = job.Space || {};
+		  const spaceDescKlacht = [
+			(spKlacht.Description || '').trim(),
+			spKlacht.RoomNumber ? `(${spKlacht.RoomNumber})` : ''
+		  ].filter(Boolean).join(' ');
 		  Telemetry.send('vendor_job_load', {
-			clientName:   job.CustomerName || '',
-			locationName: job.ComplexName  || '',
-			buildingName: job.ComplexName  || '',
-			jobId:        job.Id           || '',
+			clientName:   job.CustomerName    || '',
+			locationName: spaceDescKlacht || job.ComplexName || '',
+			buildingName: job.ComplexName     || '',
+			jobId:        job.Id              || '',
 		  });
+		  // dm_space_visited voor DM's ook bij klachten
+		  if (sessionEmail && sessionEmail.endsWith('@atalianworld.com')) {
+			Telemetry.send('dm_space_visited', {
+			  email:     sessionEmail,
+			  spaceDesc: (spKlacht.Description || '').trim(),
+			  spaceRoom: (spKlacht.RoomNumber  || '').trim(),
+			  siteName:  [job.CustomerName, job.ComplexName].filter(Boolean).join(' — '),
+			  jobId:     job.Id || '',
+			});
+		  }
 		  Telemetry.send('redirect_vendor_issues_kwisid_002', { kwisId });
 		  redirectToVendorIssuesSameExt();
 		  return;
