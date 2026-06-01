@@ -743,12 +743,13 @@ function renderChart(events){
   const days = [];
   for(let i=DAYS-1;i>=0;i--){ const d=new Date(); d.setDate(d.getDate()-i); days.push(fmt.dayKey(d.getTime())); }
 
-  // Grafiek: DM→site-selecties | Alle→klant+DM gecombineerd | Klanten→enkel klant-scans
+  // Grafiek: DM→alle DM-activiteit (selectie + jobs + ruimtes) | Alle→klant+DM | Klanten→enkel klant
   const utype = getUserType();
+  const isDmChartEvent = e => ['dm_complex_selected','dm_space_visited','dm_job_opened'].includes(e.type);
   const scans = utype === 'dm'
-    ? events.filter(e=>e.type==='dm_complex_selected')
+    ? events.filter(isDmChartEvent)
     : utype === 'alle' || utype === 'all'
-      ? events.filter(e=>isKlantEvent(e)||e.type==='dm_complex_selected')
+      ? events.filter(e=>isKlantEvent(e)||isDmChartEvent(e))
       : events.filter(e=>isKlantEvent(e));
 
   // Lookup: code → clientName (vanuit álle events, niet alleen url_load)
@@ -891,8 +892,8 @@ function renderHourChart(events){
   const day = selectedDay || todayKey();
   const ut3 = getUserType();
   const scans = events.filter(e => fmt.dayKey(e.ts)===day && (
-    ut3==='dm' ? e.type==='dm_complex_selected'
-    : ut3==='all'||ut3==='alle' ? (isKlantEvent(e)||e.type==='dm_complex_selected')
+    ut3==='dm'              ? ['dm_complex_selected','dm_space_visited','dm_job_opened'].includes(e.type)
+    : ut3==='all'||ut3==='alle' ? (isKlantEvent(e)||['dm_complex_selected','dm_space_visited','dm_job_opened'].includes(e.type))
     : isKlantEvent(e)
   ));
   const hours = Array(24).fill(0);
