@@ -2587,6 +2587,13 @@ function guessMimeByName(name){
 			sessionStorage.setItem('vendor_session_ts', String(Date.now()));
 		  } catch {}
 
+		  // vendor_job_load ook sturen voor klachten (vóór redirect naar vendor-issues)
+		  Telemetry.send('vendor_job_load', {
+			clientName:   job.CustomerName || '',
+			locationName: job.ComplexName  || '',
+			buildingName: job.ComplexName  || '',
+			jobId:        job.Id           || '',
+		  });
 		  Telemetry.send('redirect_vendor_issues_kwisid_002', { kwisId });
 		  redirectToVendorIssuesSameExt();
 		  return;
