@@ -930,11 +930,19 @@ async function requireGpsIfPortalSelf({ botui, Telemetry, isFr, cameFromPortalSe
     renderJobHeader(job);
 
     // Stuur vendor_job_load MET klantinfo — dit event telt als klant-activiteit in statsportal
+    const sp2 = job.Space || {};
+    const spaceDesc2 = [
+      (sp2.Description || '').trim(),
+      sp2.RoomNumber ? `(${sp2.RoomNumber})` : ''
+    ].filter(Boolean).join(' ');
+    // id = ruimte- of equipment-ID zodat meerdere jobs voor dezelfde asset optellen
+    const assetId2 = sp2.Id || job.Equipment?.Id || job.Id || '';
     Telemetry.send('vendor_job_load', {
-      clientName:   job.CustomerName || '',
-      locationName: job.ComplexName  || '',
-      buildingName: job.ComplexName  || '',
-      jobId:        job.Id           || '',
+      id:           assetId2,
+      clientName:   job.CustomerName    || '',
+      locationName: spaceDesc2 || job.ComplexName || '',
+      buildingName: job.ComplexName     || '',
+      jobId:        job.Id              || '',
     });
 
     // DM-telemetrie: ruimte bijhouden wanneer een DM een job opent
@@ -2594,7 +2602,9 @@ function guessMimeByName(name){
 			(spKlacht.Description || '').trim(),
 			spKlacht.RoomNumber ? `(${spKlacht.RoomNumber})` : ''
 		  ].filter(Boolean).join(' ');
+		  const assetIdKlacht = spKlacht.Id || job.Equipment?.Id || job.Id || '';
 		  Telemetry.send('vendor_job_load', {
+			id:           assetIdKlacht,
 			clientName:   job.CustomerName    || '',
 			locationName: spaceDescKlacht || job.ComplexName || '',
 			buildingName: job.ComplexName     || '',

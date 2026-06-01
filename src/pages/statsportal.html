@@ -315,6 +315,11 @@ label.chk input{accent-color:var(--acc);width:13px;height:13px;cursor:pointer}
         <input type="radio" name="usertype" value="dm" style="accent-color:var(--dm);cursor:pointer">
         <span style="font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;font-family:'JetBrains Mono',monospace;color:var(--dm)">DM</span>
       </label>
+      <div style="width:1px;background:var(--b2)"></div>
+      <label style="cursor:pointer;display:flex;align-items:center;gap:6px;padding:5px 12px;transition:background .15s">
+        <input type="radio" name="usertype" value="vendor" style="accent-color:var(--eq);cursor:pointer">
+        <span style="font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;font-family:'JetBrains Mono',monospace;color:var(--eq)">VENDOR</span>
+      </label>
     </div>
     <div class="filter-sep"></div>
     <span class="filter-label">Periode</span>
@@ -347,7 +352,7 @@ label.chk input{accent-color:var(--acc);width:13px;height:13px;cursor:pointer}
       <div class="kpi-sub">scans vandaag</div>
     </div>
     <div class="kpi" style="border-color:rgba(192,132,252,.3)">
-      <div class="kpi-label" style="color:var(--dm)">DM acties</div>
+      <div class="kpi-label" style="color:var(--dm)">DM sessies</div>
       <div class="kpi-val" id="k-dm" style="color:var(--dm)">—</div>
       <div class="kpi-sub" id="k-dm-sub"></div>
     </div>
@@ -412,12 +417,14 @@ const TZ  = 'Europe/Brussels';
 
 // ── event-classificatie ──────────────────────────────────
 const DM_EVENTS    = new Set(['dm_load','dm_pagehide','dm_auth','dm_complex_selected','dm_counter_clicked','dm_jobs_viewed','dm_site_switched','dm_job_opened','dm_space_visited']);
-const KLANT_EVENTS = new Set(['url_load','visit','vendor_html_load','vendor_job_load']);
+const KLANT_EVENTS  = new Set(['url_load','visit']);
+const VENDOR_EVENTS = new Set(['vendor_job_load','vendor_html_load','vendorklacht_html_load']);
 // location_known: niet als scan tellen, maar wél voor clientName/locationName lookup
 const META_EVENTS  = new Set(['location_known']);
 
-function isKlantEvent(ev){ return KLANT_EVENTS.has(ev.type); }
-function isDmEvent(ev)   { return DM_EVENTS.has(ev.type); }
+function isKlantEvent(ev) { return KLANT_EVENTS.has(ev.type); }
+function isDmEvent(ev)    { return DM_EVENTS.has(ev.type); }
+function isVendorEvent(ev){ return VENDOR_EVENTS.has(ev.type) && !isDmEvent(ev); }
 function getUserType(){ return document.querySelector('input[name="usertype"]:checked')?.value || 'all'; }
 
 // ── helpers ─────────────────────────────────────────────
@@ -518,8 +525,9 @@ function getFiltered(){
     const ts = ev.ts||0;
     if(from && ts < from) return false;
     if(to   && ts > to)   return false;
-    if(userType === 'klant' && !isKlantEvent(ev)) return false;
-    if(userType === 'dm'    && !isDmEvent(ev))    return false;
+    if(userType === 'klant'  && !isKlantEvent(ev))  return false;
+    if(userType === 'dm'     && !isDmEvent(ev))     return false;
+    if(userType === 'vendor' && !isVendorEvent(ev)) return false;
     return true;
   });
 
@@ -552,8 +560,8 @@ function render(){
   });
   const klantScans      = allEnvEvents.filter(isKlantEvent);
   const klantScansToday = klantScans.filter(e=>fmt.dayKey(e.ts)===today);
-  // dm_load is onbetrouwbaar (sendBeacon timing) → gebruik dm_space_visited als sessie-indicator
-  const dmLoads         = allEnvEvents.filter(e=>['dm_space_visited','dm_complex_selected'].includes(e.type));
+  // Sessie = app geopend + minstens 1 knop gedrukt = dm_complex_selected
+  const dmLoads         = allEnvEvents.filter(e=>e.type==='dm_complex_selected');
   const dmLoadsToday    = dmLoads.filter(e=>fmt.dayKey(e.ts)===today);
 
   const todayScans  = klantScansToday.length;
@@ -596,6 +604,10 @@ function render(){
     renderDmView(events);
     renderFeed(events);
     return;
+  }
+  if(getUserType() === 'vendor'){
+    renderFeed(events);
+    // vendor gebruikt gewone locatielijst (via locMap hieronder)
   }
   // In ALLE-modus: DM-sectie toevoegen na klant-locaties (met scheidingslijn)
   if(getUserType() === 'all' || getUserType() === 'alle'){
@@ -751,9 +763,11 @@ function renderChart(events){
   const isDmChartEvent = e => ['dm_complex_selected','dm_space_visited','dm_job_opened'].includes(e.type);
   const scans = utype === 'dm'
     ? events.filter(isDmChartEvent)
-    : utype === 'alle' || utype === 'all'
-      ? events.filter(e=>isKlantEvent(e)||isDmChartEvent(e))
-      : events.filter(e=>isKlantEvent(e));
+    : utype === 'vendor'
+      ? events.filter(e=>e.type==='vendor_job_load')
+      : utype === 'alle' || utype === 'all'
+        ? events.filter(e=>isKlantEvent(e)||isDmChartEvent(e))
+        : events.filter(e=>isKlantEvent(e));
 
   // Lookup: code → clientName (vanuit álle events, niet alleen url_load)
   // codeToClient/codeToLocation worden bijgewerkt in render() voor globale toegang
@@ -770,7 +784,8 @@ function renderChart(events){
   const getKey = ev => {
     const ut = getUserType();
     if(ut === 'dm')            return ev.siteName || ev.complexId || '(onbekend)';
-    if(isDmEvent(ev))          return ev.siteName || ev.complexId || '(onbekend)'; // DM in ALLE-modus
+    if(ut === 'vendor')        return siteKey(ev);
+    if(isDmEvent(ev))          return ev.siteName || ev.complexId || '(onbekend)';
     if(selectedClient)         return ev.code||ev.id||'?';
     return siteKey(ev);
   };
@@ -971,7 +986,8 @@ function buildComplexMap(events) {
 
 function dmTableHtml(events, targetEl) {
   const knownEmails = new Set();
-  for(const ev of events){ if(ev.type==='dm_auth' && ev.email) knownEmails.add(ev.email); }
+  // Bouw bekende emails uit alle DM-events die email bevatten
+  for(const ev of events){ if(ev.email && ev.email !== '(onbekend)') knownEmails.add(ev.email); }
   const complexMap = buildComplexMap(events);
 
   const dmMap = new Map();
