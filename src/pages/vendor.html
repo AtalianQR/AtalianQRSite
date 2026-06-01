@@ -929,6 +929,20 @@ async function requireGpsIfPortalSelf({ botui, Telemetry, isFr, cameFromPortalSe
   async function showJobTextsThenAskTranslate(job){
     renderJobHeader(job);
 
+    // Complex- en klantinfo beschikbaar stellen voor statsportal (analoog aan portal.html)
+    const siteParts = [job.CustomerName, job.ComplexName].filter(Boolean);
+    Telemetry.setExtra({
+      clientName:   job.CustomerName || '',
+      locationName: job.ComplexName  || '',
+      buildingName: job.ComplexName  || '',
+    });
+    Telemetry.send('location_known', {
+      clientName:   job.CustomerName || '',
+      locationName: job.ComplexName  || '',
+      buildingName: job.ComplexName  || '',
+      jobId:        job.Id           || '',
+    });
+
     // DM-telemetrie: ruimte bijhouden wanneer een DM een job opent
     if (sessionEmail && sessionEmail.endsWith('@atalianworld.com')) {
       const sp = job.Space || {};
