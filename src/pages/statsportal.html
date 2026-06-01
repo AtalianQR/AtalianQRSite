@@ -985,21 +985,26 @@ function buildComplexMap(events) {
 }
 
 function dmTableHtml(events, targetEl) {
+  // Enkel vandaag tonen
+  const tod = todayKey();
+  const todayEvents = events.filter(e=>fmt.dayKey(e.ts)===tod);
+
   const knownEmails = new Set();
-  // Bouw bekende emails uit alle DM-events die email bevatten
-  for(const ev of events){ if(ev.email && ev.email !== '(onbekend)') knownEmails.add(ev.email); }
-  const complexMap = buildComplexMap(events);
+  for(const ev of todayEvents){ if(ev.email && ev.email !== '(onbekend)') knownEmails.add(ev.email); }
+  const complexMap = buildComplexMap(todayEvents);
 
   const dmMap = new Map();
   const addEvent = (email, ev) => {
     if(!dmMap.has(email)) dmMap.set(email,{ email, sessions:0, complexes: new Set(), events:[], lastTs:0 });
     const dm = dmMap.get(email);
     dm.events.push(ev);
-    if(ev.type==='dm_load')             dm.sessions++;
-    if(ev.type==='dm_complex_selected') dm.complexes.add(ev.complexId||'');
-    if(ev.ts>dm.lastTs)                 dm.lastTs=ev.ts;
+    // Sessie = dm_complex_selected (geopend + knop gedrukt)
+    if(ev.type==='dm_complex_selected') { dm.sessions++; dm.complexes.add(ev.complexId||''); }
+    if(ev.type==='dm_space_visited' && ev.siteName) dm.complexes.add(ev.siteName||'');
+    if(ev.ts>dm.lastTs) dm.lastTs=ev.ts;
   };
-  for(const ev of events){
+  // Gebruik todayEvents (enkel vandaag)
+  for(const ev of todayEvents){
     const email = ev.email || (knownEmails.size===1?[...knownEmails][0]:null) || '(onbekend)';
     addEvent(email, ev);
   }
@@ -1053,47 +1058,58 @@ function renderDmSpaces(events, anchorId){
   const old = document.getElementById('dm-spaces-block');
   if(old) old.remove();
 
-  const spaceEvents = events.filter(e=>e.type==='dm_space_visited' && e.siteName);
+  // Enkel vandaag, gegroepeerd per DM dan per ruimte
+  const tod2 = todayKey();
+  const spaceEvents = events.filter(e=>e.type==='dm_space_visited' && e.siteName && fmt.dayKey(e.ts)===tod2);
   if(!spaceEvents.length) return;
 
-  // Groepeer per site
-  const siteMap = new Map();
+  // Groepeer per DM-email, dan per site
+  const dmSpaceMap = new Map();
   for(const ev of spaceEvents){
-    const site = ev.siteName || '?';
+    const email = ev.email || '(onbekend)';
+    const site  = ev.siteName || '?';
+    if(!dmSpaceMap.has(email)) dmSpaceMap.set(email, new Map());
+    const siteMap = dmSpaceMap.get(email);
     if(!siteMap.has(site)) siteMap.set(site, []);
     siteMap.get(site).push(ev);
   }
 
-  const locRows = [...siteMap.entries()].map(([site, evs])=>{
-    const col = hashColor(site);
-    // Groepeer per ruimtenaam (analoog aan klant-locatiekaarten)
-    const spaceMap = new Map();
-    for(const ev of evs){
-      const name = [ev.spaceDesc, ev.spaceRoom?`(${ev.spaceRoom})`:''].filter(Boolean).join(' ') || ev.jobId || '—';
-      if(!spaceMap.has(name)) spaceMap.set(name, { name, count:0, lastTs:0 });
-      const sp = spaceMap.get(name);
-      sp.count++;
-      if(ev.ts > sp.lastTs) sp.lastTs = ev.ts;
-    }
-    const spaceRows = [...spaceMap.values()].sort((a,b)=>b.count-a.count).map(sp=>`
-      <div class="loc-card-small">
-        <div class="loc-code-sm" style="font-size:11px">—</div>
-        <div class="loc-info">
-          <div class="loc-name-sm">${sp.name}</div>
-          <div class="loc-meta-sm"><span class="badge sp">SPACE</span><span style="font-size:10px;color:var(--muted);margin-left:6px">${sp.lastTs?fmt.date(sp.lastTs):''}</span></div>
+  const locRows = [...dmSpaceMap.entries()].map(([dmEmail, siteMap])=>{
+    const dmLabel = dmEmail === '(onbekend)' ? dmEmail
+      : `<span style="color:var(--dm);font-weight:700;font-size:12px">${dmEmail}</span>`;
+    const evs = [...siteMap.values()].flat();
+    // Per site, groepeer per ruimtenaam
+    const siteRows = [...siteMap.entries()].map(([site, siteEvs])=>{
+      const col = hashColor(site);
+      const roomMap = new Map();
+      for(const ev of siteEvs){
+        const name = [ev.spaceDesc, ev.spaceRoom?`(${ev.spaceRoom})`:''].filter(Boolean).join(' ') || '—';
+        if(!roomMap.has(name)) roomMap.set(name, { name, count:0, lastTs:0 });
+        const rm = roomMap.get(name);
+        rm.count++;
+        if(ev.ts > rm.lastTs) rm.lastTs = ev.ts;
+      }
+      const roomRows = [...roomMap.values()].sort((a,b)=>b.count-a.count).map(rm=>`
+        <div class="loc-card-small">
+          <div class="loc-code-sm" style="font-size:11px">—</div>
+          <div class="loc-info">
+            <div class="loc-name-sm">${rm.name}</div>
+            <div class="loc-meta-sm"><span class="badge sp">SPACE</span><span style="font-size:10px;color:var(--muted);margin-left:6px">${rm.lastTs?fmt.date(rm.lastTs):''}</span></div>
+          </div>
+          <div style="text-align:right"><div class="loc-count-sm">${rm.count}</div><div style="font-size:10px;color:var(--muted)">bezoeken</div></div>
+        </div>`).join('');
+      return `<div class="client-group" style="margin-bottom:4px">
+        <div class="client-header">
+          <div class="client-name" style="color:${col}">${site}</div>
+          <div style="text-align:right"><div class="client-total" style="color:${col}">${siteEvs.length}</div><div class="client-total-label">bezoeken</div></div>
         </div>
-        <div style="text-align:right"><div class="loc-count-sm">${sp.count}</div><div style="font-size:10px;color:var(--muted)">bezoeken</div></div>
-      </div>`).join('');
+        <div class="client-locs">${roomRows}</div>
+      </div>`;
+    }).join('');
 
-    return `<div class="client-group">
-      <div class="client-header">
-        <div class="client-name" style="color:${col}">${site}</div>
-        <div style="text-align:right">
-          <div class="client-total" style="color:${col}">${evs.length}</div>
-          <div class="client-total-label">bezoeken</div>
-        </div>
-      </div>
-      <div class="client-locs">${spaceRows}</div>
+    return `<div style="margin-bottom:12px">
+      <div style="padding:8px 12px;background:rgba(192,132,252,.08);border-left:3px solid var(--dm);font-size:11px;font-family:'JetBrains Mono',monospace">${dmLabel}</div>
+      ${siteRows}
     </div>`;
   }).join('');
 
