@@ -560,9 +560,9 @@ function render(){
   });
   const klantScans      = allEnvEvents.filter(isKlantEvent);
   const klantScansToday = klantScans.filter(e=>fmt.dayKey(e.ts)===today);
-  // Sessie = app geopend + minstens 1 knop gedrukt = dm_complex_selected
-  const dmLoads         = allEnvEvents.filter(e=>e.type==='dm_complex_selected');
-  const dmLoadsToday    = dmLoads.filter(e=>fmt.dayKey(e.ts)===today);
+  // Sessie = dm_complex_selected (dm-assistent) OF dm_space_visited (vendor) — beide = werken
+  const dmLoads      = allEnvEvents.filter(e=>['dm_complex_selected','dm_space_visited'].includes(e.type));
+  const dmLoadsToday = dmLoads.filter(e=>fmt.dayKey(e.ts)===today);
 
   const todayScans  = klantScansToday.length;
   const prodCount   = events.filter(e=>readEnv(e)==='prod').length;
@@ -998,8 +998,9 @@ function dmTableHtml(events, targetEl) {
     if(!dmMap.has(email)) dmMap.set(email,{ email, sessions:0, complexes: new Set(), events:[], lastTs:0 });
     const dm = dmMap.get(email);
     dm.events.push(ev);
-    // Sessie = dm_complex_selected (geopend + knop gedrukt)
-    if(ev.type==='dm_complex_selected') { dm.sessions++; dm.complexes.add(ev.complexId||''); }
+    // Sessie = elk werkmoment (complex geselecteerd of job geopend via vendor)
+    if(ev.type==='dm_complex_selected' || ev.type==='dm_space_visited') dm.sessions++;
+    if(ev.type==='dm_complex_selected') dm.complexes.add(ev.complexId||'');
     if(ev.type==='dm_space_visited' && ev.siteName) dm.complexes.add(ev.siteName||'');
     if(ev.ts>dm.lastTs) dm.lastTs=ev.ts;
   };
@@ -1084,14 +1085,15 @@ function renderDmSpaces(events, anchorId){
       const roomMap = new Map();
       for(const ev of siteEvs){
         const name = [ev.spaceDesc, ev.spaceRoom?`(${ev.spaceRoom})`:''].filter(Boolean).join(' ') || '—';
-        if(!roomMap.has(name)) roomMap.set(name, { name, count:0, lastTs:0 });
+        if(!roomMap.has(name)) roomMap.set(name, { name, spaceId: ev.spaceId||'', count:0, lastTs:0 });
         const rm = roomMap.get(name);
         rm.count++;
+        if(!rm.spaceId && ev.spaceId) rm.spaceId = ev.spaceId;
         if(ev.ts > rm.lastTs) rm.lastTs = ev.ts;
       }
       const roomRows = [...roomMap.values()].sort((a,b)=>b.count-a.count).map(rm=>`
         <div class="loc-card-small">
-          <div class="loc-code-sm" style="font-size:11px">—</div>
+          <div class="loc-code-sm">${rm.spaceId||'—'}<div style="font-size:9px;color:var(--dim)">${rm.spaceId||''}</div></div>
           <div class="loc-info">
             <div class="loc-name-sm">${rm.name}</div>
             <div class="loc-meta-sm"><span class="badge sp">SPACE</span><span style="font-size:10px;color:var(--muted);margin-left:6px">${rm.lastTs?fmt.date(rm.lastTs):''}</span></div>

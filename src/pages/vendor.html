@@ -951,6 +951,7 @@ async function requireGpsIfPortalSelf({ botui, Telemetry, isFr, cameFromPortalSe
       const siteParts = [job.CustomerName, job.ComplexName].filter(Boolean);
       Telemetry.send('dm_space_visited', {
         email:      sessionEmail,
+        spaceId:    (sp.Id           || '').trim(),
         spaceDesc:  (sp.Description  || '').trim(),
         spaceRoom:  (sp.RoomNumber   || '').trim(),
         siteName:   siteParts.join(' — '),
@@ -2614,6 +2615,7 @@ function guessMimeByName(name){
 		  if (sessionEmail && sessionEmail.endsWith('@atalianworld.com')) {
 			Telemetry.send('dm_space_visited', {
 			  email:     sessionEmail,
+			  spaceId:   (spKlacht.Id          || '').trim(),
 			  spaceDesc: (spKlacht.Description || '').trim(),
 			  spaceRoom: (spKlacht.RoomNumber  || '').trim(),
 			  siteName:  [job.CustomerName, job.ComplexName].filter(Boolean).join(' — '),
