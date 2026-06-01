@@ -1538,18 +1538,6 @@ async function preloadContextAndShow() {
   /* ======================================================================
      IDLE DETECTIE + SCROLL
   ====================================================================== */
-  let lastActivity = Date.now();
-  ['click','keydown','touchstart'].forEach(ev =>
-    document.addEventListener(ev, () => { lastActivity = Date.now(); }, {passive:true})
-  );
-  const IDLE_MS = 45000;
-  setInterval(() => {
-    const inactive = Date.now()-lastActivity;
-    if (inactive > IDLE_MS){
-      Telemetry.send('idle', { inactiveMs: inactive });
-      lastActivity = Date.now();
-    }
-  }, 5000);
 
   window.addEventListener('load', () => {
     const it = setInterval(() => {

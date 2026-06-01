@@ -2735,9 +2735,6 @@ function guessMimeByName(name){
 	}
 
 
-  // Idle ping
-  let lastActivity=Date.now(); ['click','keydown','touchstart'].forEach(ev=>document.addEventListener(ev,()=>lastActivity=Date.now(),{passive:true}));
-  setInterval(()=>{ const ms=Date.now()-lastActivity; if(ms>45000){ Telemetry.send('idle',{inactiveMs:ms}); lastActivity=Date.now() } },5000);
   addEventListener('pagehide',()=>Telemetry.send('pagehide'));
 
   startFlow();
