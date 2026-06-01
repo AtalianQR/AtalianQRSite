@@ -334,6 +334,13 @@ label.chk input{accent-color:var(--acc);width:13px;height:13px;cursor:pointer}
     <span id="filter-count" style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--muted)"></span>
   </div>
 
+  <!-- DAG-NAVIGATOR -->
+  <div style="display:flex;align-items:center;gap:10px;justify-content:center;padding:6px 0">
+    <button id="date-nav-prev" class="btn" onclick="shiftViewDate(-1)" title="Vorige dag" style="padding:5px 12px;font-size:14px">←</button>
+    <span id="date-nav-label" style="font-family:'JetBrains Mono',monospace;font-size:13px;font-weight:700;color:var(--acc);min-width:160px;text-align:center">Vandaag</span>
+    <button id="date-nav-next" class="btn" onclick="shiftViewDate(1)" title="Volgende dag" style="padding:5px 12px;font-size:14px" disabled>→</button>
+  </div>
+
   <!-- KPI STRIP -->
   <div class="kpi-strip">
     <div class="kpi kpi-acc">
@@ -395,9 +402,9 @@ label.chk input{accent-color:var(--acc);width:13px;height:13px;cursor:pointer}
     </div>
 
     <!-- FEED -->
-    <div style="display:flex;flex-direction:column;min-height:0;overflow:hidden">
+    <div style="display:flex;flex-direction:column;min-height:0;overflow:hidden;position:sticky;top:20px;max-height:calc(100vh - 120px)">
       <div class="sec-head">Recente activiteit <em id="feed-count"></em></div>
-      <div class="feed-panel" style="flex:1;min-height:0">
+      <div class="feed-panel" style="flex:1;min-height:0;overflow:hidden">
         <input type="text" id="feedSearch" placeholder="url_load, poets_info_viewed…"
           style="width:100%;background:var(--bg);color:var(--text);border:1px solid var(--b1);border-radius:6px;
                  padding:6px 10px;font-size:12px;font-family:'JetBrains Mono',monospace;margin-bottom:8px;outline:none">
@@ -492,6 +499,31 @@ function hashColor(name) {
   return SITE_COLORS[h % SITE_COLORS.length];
 }
 let selectedDay    = null; // voor uurdiagram: null = vandaag, anders 'YYYY-MM-DD'
+let viewDate       = null; // dag-navigator: null = vandaag, anders 'YYYY-MM-DD'
+
+function viewDateKey() { return viewDate || todayKey(); }
+function viewDateLabel(dk) {
+  const d = new Date(dk + 'T12:00:00');
+  const isToday = dk === todayKey();
+  if(isToday) return 'Vandaag';
+  return new Intl.DateTimeFormat('nl-BE',{weekday:'short',day:'numeric',month:'short'}).format(d);
+}
+function shiftViewDate(delta) {
+  const cur = new Date((viewDate || todayKey()) + 'T12:00:00');
+  cur.setDate(cur.getDate() + delta);
+  const next = fmt.dayKey(cur.getTime());
+  const today = todayKey();
+  viewDate = (next >= today) ? null : next; // null = vandaag
+  updateDateNav();
+  render();
+}
+function updateDateNav() {
+  const dk = viewDateKey();
+  const nav = document.getElementById('date-nav-label');
+  const btnNext = document.getElementById('date-nav-next');
+  if(nav) nav.textContent = viewDateLabel(dk);
+  if(btnNext) btnNext.disabled = !viewDate; // geen vooruit voorbij vandaag
+}
 
 // ── fetch ────────────────────────────────────────────────
 async function fetchData(){
@@ -558,11 +590,11 @@ function render(){
     if(envMode==='test' && env!=='test' && env!=='unknown') return false;
     return true;
   });
+  const vd              = viewDateKey(); // gekozen dag (vandaag of historisch)
   const klantScans      = allEnvEvents.filter(isKlantEvent);
-  const klantScansToday = klantScans.filter(e=>fmt.dayKey(e.ts)===today);
-  // Sessie = dm_complex_selected (dm-assistent) OF dm_space_visited (vendor) — beide = werken
-  const dmLoads      = allEnvEvents.filter(e=>['dm_complex_selected','dm_space_visited'].includes(e.type));
-  const dmLoadsToday = dmLoads.filter(e=>fmt.dayKey(e.ts)===today);
+  const klantScansToday = klantScans.filter(e=>fmt.dayKey(e.ts)===vd);
+  const dmLoads         = allEnvEvents.filter(e=>['dm_complex_selected','dm_space_visited'].includes(e.type));
+  const dmLoadsToday    = dmLoads.filter(e=>fmt.dayKey(e.ts)===vd);
 
   const todayScans  = klantScansToday.length;
   const prodCount   = events.filter(e=>readEnv(e)==='prod').length;
@@ -574,9 +606,10 @@ function render(){
   animNum('k-locs',  uniqueLocs);
   animNum('k-today', todayScans);
   animNum('k-dm',    dmLoadsToday.length);
-  $('k-scans-sub').textContent = `vandaag · ${klantScans.length} totaal`;
-  $('k-locs-sub').textContent  = `actief vandaag`;
-  $('k-dm-sub').textContent    = `${uniqueDMs} DM${uniqueDMs!==1?'s':''} actief vandaag`;
+  const vdLabel = viewDate ? viewDateLabel(vd) : 'vandaag';
+  $('k-scans-sub').textContent = `${vdLabel} · ${klantScans.length} totaal`;
+  $('k-locs-sub').textContent  = `actief ${vdLabel}`;
+  $('k-dm-sub').textContent    = `${uniqueDMs} DM${uniqueDMs!==1?'s':''} actief ${vdLabel}`;
   $('k-env').textContent = events.length ? `${Math.round(prodCount/events.length*100)}% / ${Math.round(testCount/events.length*100)}%` : '—';
   $('k-env-sub').textContent = `${prodCount} prod · ${testCount} test`;
 
@@ -985,8 +1018,8 @@ function buildComplexMap(events) {
 }
 
 function dmTableHtml(events, targetEl) {
-  // Enkel vandaag tonen
-  const tod = todayKey();
+  // Gekozen dag (navigator)
+  const tod = viewDateKey();
   const todayEvents = events.filter(e=>fmt.dayKey(e.ts)===tod);
 
   const knownEmails = new Set();
@@ -1059,9 +1092,8 @@ function renderDmSpaces(events, anchorId){
   const old = document.getElementById('dm-spaces-block');
   if(old) old.remove();
 
-  // Enkel vandaag, gegroepeerd per DM dan per ruimte
-  const tod2 = todayKey();
-  const spaceEvents = events.filter(e=>e.type==='dm_space_visited' && e.siteName && fmt.dayKey(e.ts)===tod2);
+  // Gekozen dag (navigator)
+  const spaceEvents = events.filter(e=>e.type==='dm_space_visited' && e.siteName && fmt.dayKey(e.ts)===viewDateKey());
   if(!spaceEvents.length) return;
 
   // Groepeer per DM-email, dan per site
@@ -1154,6 +1186,7 @@ $('btnRefresh').onclick = loadAndRefresh;
 $('btnExport').onclick = exportCSV;
 document.querySelectorAll('input[name="env"]').forEach(r=>r.addEventListener('change',render));
 document.querySelectorAll('input[name="usertype"]').forEach(r=>r.addEventListener('change',render));
+updateDateNav();
 ['fFrom','fTo'].forEach(id=>$(id).addEventListener('change',render));
 $('fEventType').addEventListener('input', render);
 $('feedSearch').addEventListener('input', render);
