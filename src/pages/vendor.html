@@ -930,11 +930,6 @@ async function requireGpsIfPortalSelf({ botui, Telemetry, isFr, cameFromPortalSe
     renderJobHeader(job);
 
     // Stuur vendor_job_load MET klantinfo — dit event telt als klant-activiteit in statsportal
-    Telemetry.setExtra({
-      clientName:   job.CustomerName || '',
-      locationName: job.ComplexName  || '',
-      buildingName: job.ComplexName  || '',
-    });
     Telemetry.send('vendor_job_load', {
       clientName:   job.CustomerName || '',
       locationName: job.ComplexName  || '',
