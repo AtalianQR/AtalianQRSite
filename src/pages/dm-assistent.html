@@ -526,19 +526,8 @@
 
     // ── tellers berekenen ──────────────────────────────────────────
     function isAcceptable(j) {
-      const status = String(j.Status           || '').trim();
-      const prs    = String(j.ProgressStatusId || '').trim();
-      const sdrt   = String(j.SdrtId          || '').trim();
-      const wot    = String(j.WotId           || '').trim();
-      // WFL retourneert '1' als geaccepteerd (via <Choose>), '0' als niet
-      const accepted = String(j.JobAccepted || '0').trim() === '1';
-      const hasStmt  = String(j.HasAcceptStmt || '0').trim() === '1';
-      return status === '16'
-          && prs    !== '1030'
-          && sdrt   !== '528'
-          && wot    !== '009'
-          && hasStmt
-          && !accepted;
+      // WFL bepaalt volledig of een job acceptatie vereist (aparte query met alle filters)
+      return String(j.IsAcceptanceJob || '0').trim() === '1';
     }
 
     function calcCounters(jobs, requiresAcceptance = false) {
