@@ -316,7 +316,7 @@
           if (msg.includes('403')) {
             await botui.message.add({ content: '⚠️ Dit e-mailadres is niet gekend als district manager. Controleer of je e-mailadres correct is.' });
           } else if (msg.includes('503')) {
-            await botui.message.add({ content: '⚙️ De DM-configuratie wordt bijgewerkt. Probeer over enkele minuten opnieuw.' });
+            await botui.message.add({ content: '⚙️ De DM-configuratie wordt gesynchroniseerd. Probeer over 30 seconden opnieuw (dit is eenmalig na een update).' });
           } else {
             await botui.message.add({ content: '❌ Verbindingsfout. Probeer opnieuw.' });
           }
