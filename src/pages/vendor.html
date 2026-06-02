@@ -484,8 +484,9 @@ async function requireGpsIfPortalSelf({ botui, Telemetry, isFr, cameFromPortalSe
   if (isFr) document.body.style.backgroundImage = "url('/afmeldentaak_fr.png')";
 
   /* ==================== 2. Telemetrie ==================== */
-  const Telemetry = (()=>{ 
-    const base = { jobId: String(jobId), lang, env: isTest ? 'test' : 'prod', cameFromPortalSelf };
+  const isUltimoCall = qs.get('QRVendor') === 'True';
+  const Telemetry = (()=>{
+    const base = { jobId: String(jobId), lang, env: isTest ? 'test' : 'prod', cameFromPortalSelf, ...(isUltimoCall ? { email: 'Ultimo' } : {}) };
     async function send(type, extra={}){
       const json = JSON.stringify({ type, ts: Date.now(), href: location.href, ...base, ...extra });
       try{
