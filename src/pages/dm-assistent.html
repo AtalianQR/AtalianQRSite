@@ -163,6 +163,61 @@
     const endpoint = '/.netlify/functions/dmassistent';
     const botui    = new BotUI('botui-app');
 
+    // ── Taal (NL/FR) ──────────────────────────────────────────────
+    const _qs  = new URLSearchParams(location.search);
+    const lang = _qs.get('lang') || ((navigator.language||'').startsWith('fr') ? 'fr' : 'nl');
+    const isFr = lang === 'fr';
+
+    // ── Vertalingen ───────────────────────────────────────────────
+    const T = {
+      loginPrompt:    isFr ? '📧 Entrez votre adresse e-mail Atalian pour vous connecter :'
+                           : '📧 Geef je Atalian e-mailadres in om aan te melden:',
+      placeholder:    isFr ? 'prenom.nom@atalianworld.com' : 'voornaam.naam@atalianworld.com',
+      invalidEmail:   isFr ? '⚠️ Format d\'e-mail invalide.' : '⚠️ Ongeldig e-mailformaat.',
+      notAtalian:     isFr ? '⛔ Seules les adresses @atalianworld.com sont autorisées.'
+                           : '⛔ Enkel @atalianworld.com e-mailadressen zijn toegelaten.',
+      notDm:          isFr ? '⚠️ Cette adresse e-mail n\'est pas reconnue comme gestionnaire de district. Vérifiez votre adresse.'
+                           : '⚠️ Dit e-mailadres is niet gekend als district manager. Controleer of je e-mailadres correct is.',
+      syncBusy:       isFr ? '⚙️ La configuration DM est en cours de synchronisation. Réessayez dans 30 secondes (uniquement après une mise à jour).'
+                           : '⚙️ De DM-configuratie wordt gesynchroniseerd. Probeer over 30 seconden opnieuw (dit is eenmalig na een update).',
+      connError:      isFr ? '❌ Erreur de connexion. Réessayez.' : '❌ Verbindingsfout. Probeer opnieuw.',
+      noComplexes:    isFr ? '⚠️ Aucun complexe trouvé. Vérifiez vos paramètres dans Ultimo.'
+                           : '⚠️ Geen complexen gevonden. Controleer je instellingen in Ultimo.',
+      loadingCounters:isFr ? '⏳ Chargement des compteurs…' : '⏳ Tellers laden…',
+      loadError:    m => isFr ? `❌ Erreur : ${m}` : `❌ Fout: ${m}`,
+      switcherInfo:   isFr ? '💡 Via le bouton <strong>🏢 Changer de site</strong> en bas à droite, vous pouvez naviguer vers un autre site à tout moment.'
+                           : '💡 Via de knop <strong>🏢 Wissel van site</strong> onderaan rechts kun je steeds naar een andere site navigeren.',
+      selectCounter:  isFr ? '👆 Appuyez sur un compteur pour afficher les tâches correspondantes :'
+                           : '👆 Druk op een teller om de bijbehorende jobs te bekijken:',
+      greeting: () => {
+        const h = new Date().getHours();
+        if (isFr) { if(h<12) return 'Bonjour'; if(h<18) return 'Bon après-midi'; return 'Bonsoir'; }
+        if(h<12) return 'Goedemorgen'; if(h<18) return 'Goedemiddag'; return 'Goedenavond';
+      },
+      welcome: fname => isFr
+        ? `${T.greeting()}, <strong>${esc(fname)}</strong> ! 👋 Je suis votre assistant de district. Quel site souhaitez-vous consulter ?`
+        : `${T.greeting()}, <strong>${esc(fname)}</strong>! 👋 Ik ben je DM-assistent. Naar welke site wil je kijken?`,
+      switcherBtn:    isFr ? 'Changer de site' : 'Wissel van site',
+      backToCounters: isFr ? '↩️ Retour aux compteurs' : '↩️ Terug naar tellers',
+      maxAttempts:    isFr ? '🔒 Nombre maximum de tentatives atteint. Rechargez la page.'
+                           : '🔒 Maximaal aantal pogingen bereikt. Herlaad de pagina.',
+      unexpectedErr: m => isFr ? `❌ Erreur inattendue : ${m}` : `❌ Onverwachte fout: ${m}`,
+      searching:      isFr ? '🔍 Rechercher…' : '🔍 Zoeken…',
+      items:        n => isFr ? `${n} élément${n!==1?'s':''}` : `${n} item${n!==1?'s':''}`,
+      noItems:        isFr ? '✅ Aucun élément dans cette catégorie.' : '✅ Geen items in deze categorie.',
+      filterHint:     isFr ? 'Utilisez la barre de recherche pour filtrer par titre, description ou ID.'
+                           : 'Gebruik de zoekbalk om te filteren op titel, omschrijving of job-ID.',
+      labels: {
+        klachten:   isFr ? 'Réclamations en cours'  : 'Lopende klachten',
+        spoc:       isFr ? 'À approuver (SPOC)'      : 'Goed te keuren (SPOC)',
+        jobsdm:     isFr ? 'Jobs ouverts DM'          : 'Openstaande jobs DM',
+        accepteren: isFr ? 'À accepter'               : 'Nog te accepteren',
+      },
+    };
+    // Statische HTML-teksten vertalen
+    const _swsLbl = document.querySelector('.sws-lbl');
+    if(_swsLbl) _swsLbl.textContent = T.switcherBtn;
+
     // ── Telemetrie (zelfde patroon als portal.html → formlog) ──────
     const Telemetry = (() => {
       const base = {
@@ -242,12 +297,7 @@
       return part.charAt(0).toUpperCase() + part.slice(1);
     }
 
-    function greeting() {
-      const h = new Date().getHours();
-      if (h < 12) return 'Goedemorgen';
-      if (h < 18) return 'Goedemiddag';
-      return 'Goedenavond';
-    }
+    function greeting() { return T.greeting(); }
 
     // ── session ────────────────────────────────────────────────────
     function getDmSession(maxMin = 120) {
@@ -295,17 +345,17 @@
         return cached;
       }
 
-      await botui.message.add({ content: '📧 Geef je Atalian e-mailadres in om aan te melden:' });
+      await botui.message.add({ content: T.loginPrompt });
 
       for (let i = 0; i < 3; i++) {
-        const a     = await botui.action.text({ action: { placeholder: 'voornaam.naam@atalianworld.com' } });
+        const a     = await botui.action.text({ action: { placeholder: T.placeholder } });
         const email = String(a.value || '').trim().toLowerCase();
 
         if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-          await botui.message.add({ content: '⚠️ Ongeldig e-mailformaat.' }); continue;
+          await botui.message.add({ content: T.invalidEmail }); continue;
         }
         if (!email.endsWith('@atalianworld.com')) {
-          await botui.message.add({ content: '⛔ Enkel @atalianworld.com e-mailadressen zijn toegelaten.' }); continue;
+          await botui.message.add({ content: T.notAtalian }); continue;
         }
 
         let auth;
@@ -314,11 +364,11 @@
         } catch (e) {
           const msg = String(e.message);
           if (msg.includes('403')) {
-            await botui.message.add({ content: '⚠️ Dit e-mailadres is niet gekend als district manager. Controleer of je e-mailadres correct is.' });
+            await botui.message.add({ content: T.notDm });
           } else if (msg.includes('503')) {
-            await botui.message.add({ content: '⚙️ De DM-configuratie wordt gesynchroniseerd. Probeer over 30 seconden opnieuw (dit is eenmalig na een update).' });
+            await botui.message.add({ content: T.syncBusy });
           } else {
-            await botui.message.add({ content: '❌ Verbindingsfout. Probeer opnieuw.' });
+            await botui.message.add({ content: T.connError });
           }
           continue;
         }
@@ -364,7 +414,7 @@
       const base = kwis === '002' ? '/vendor-issues.html' : '/vendor.html';
       const u    = new URL(base, location.origin);
       u.searchParams.set('job', id);
-      u.searchParams.set('lang', 'nl');
+      u.searchParams.set('lang', lang);
       u.searchParams.set('src', location.href);
       if (isTest) u.searchParams.set('test', '1');
       return u.toString();
@@ -439,11 +489,11 @@
     function jobListHtml(jobs) {
       if (!jobs.length) return `<div class='muted' style='text-align:center;padding:1rem'>Geen items gevonden.</div>`;
       return `
-        <input type='search' id='dm-job-filter' placeholder='🔍 Zoeken…'
+        <input type='search' id='dm-job-filter' placeholder='${T.searching}'
           style='width:100%;padding:.45rem .7rem;border:1.5px solid #e5e7eb;border-radius:8px;font-size:.88rem;font-family:inherit;margin-bottom:.6rem;outline:none'
           oninput='window._dmFilterJobs(this.value)'>
         <div id='dm-job-list'>${jobs.map(jobCard).join('')}</div>
-        <div id='dm-job-count' class='muted' style='font-size:.8rem;margin-top:.4rem;text-align:right'>${jobs.length} item${jobs.length!==1?'s':''}</div>`;
+        <div id='dm-job-count' class='muted' style='font-size:.8rem;margin-top:.4rem;text-align:right'>${T.items(jobs.length)}</div>`;
     }
 
     window._dmFilterJobs = (q) => {
@@ -461,6 +511,21 @@
     };
 
     // ── tellers berekenen ──────────────────────────────────────────
+    function isAcceptable(j) {
+      const status = String(j.Status      || '').trim();
+      const prs    = String(j.ProgressStatusId || '').trim();
+      const sdrt   = String(j.SdrtId      || '').trim();
+      const wot    = String(j.WotId       || '').trim();
+      const stmt   = String(j.AcceptanceStatement || '').trim();
+      const acc    = String(j.JobAccepted || '').trim();
+      return status === '16'
+          && prs    !== '1030'
+          && sdrt   !== '528'
+          && wot    !== '009'
+          && stmt   !== ''
+          && (acc === '0' || acc === 'false' || acc === '');
+    }
+
     function calcCounters(jobs) {
       let lopendKlachten = 0, goedTeKeurenSPOC = 0, openJobsDM = 0, nogTeAccepteren = 0;
       for (const j of jobs) {
@@ -471,7 +536,7 @@
         if (kwis === '002' && prs === '1008' && status === '4')              lopendKlachten++;
         if (kwis === '002' && prs === '1016')                                goedTeKeurenSPOC++;
         if (vendor === '000016' && kwis !== '002' && ['2','4','64'].includes(status)) openJobsDM++;
-        if (status === '16')                                                  nogTeAccepteren++;
+        if (isAcceptable(j))                                                  nogTeAccepteren++;
       }
       return { lopendKlachten, goedTeKeurenSPOC, openJobsDM, nogTeAccepteren };
     }
@@ -485,7 +550,7 @@
         if (type === 'klachten')  return kwis === '002' && prs === '1008' && status === '4';
         if (type === 'spoc')      return kwis === '002' && prs === '1016';
         if (type === 'jobsdm')    return vendor === '000016' && kwis !== '002' && ['2','4','64'].includes(status);
-        if (type === 'accepteren')return status === '16';
+        if (type === 'accepteren') return isAcceptable(j);
         return false;
       });
     }
@@ -532,7 +597,7 @@
 
     async function pickComplex(email, complexIds) {
       if (!complexIds.length) {
-        await botui.message.add({ content: '⚠️ Geen complexen gevonden. Controleer je instellingen in Ultimo.' });
+        await botui.message.add({ content: T.noComplexes });
         return;
       }
       if (complexIds.length === 1) {
@@ -585,12 +650,12 @@
     async function loadComplex(email, complexId, complexIds) {
       let cached = complexCache[complexId];
       if (!cached) {
-        await botui.message.add({ content: '⏳ Tellers laden…' });
+        await botui.message.add({ content: T.loadingCounters });
         try {
           const data = await apiGet({ action: 'LIST_JOBS', email, complexId });
           cached = { complexName: data.complexName || '', customerName: data.customerName || '', jobs: data.jobs || [] };
           complexCache[complexId] = cached;
-        } catch (e) { await botui.message.add({ content: `❌ Fout: ${e.message}` }); return; }
+        } catch (e) { await botui.message.add({ content: T.loadError(e.message) }); return; }
       }
 
       // Zwevende knop tonen + info-bericht (enkel bij meerdere complexen)
@@ -607,7 +672,7 @@
           markSwitcherInfoShown();
           await botui.message.add({
             type: 'html',
-            content: `💡 Via de knop <strong>🏢 Wissel van site</strong> onderaan rechts kun je steeds naar een andere site navigeren.`
+            content: T.switcherInfo
           });
         }
       }
@@ -619,10 +684,13 @@
 
     // ── teller-knoppen tonen en afhandelen ────────────────────────
     async function showCounterButtons(email, complexId, complexIds, jobs, counters) {
+      await botui.message.add({ content: T.selectCounter });
+
       const actions = [
-        { text: `🔴 ${counters.lopendKlachten} Lopende klachten`,        value: 'klachten' },
-        { text: `🔵 ${counters.goedTeKeurenSPOC} Goed te keuren (SPOC)`, value: 'spoc'     },
-        { text: `🟢 ${counters.openJobsDM} Openstaande jobs DM`,          value: 'jobsdm'   },
+        { text: `🔴 ${counters.lopendKlachten} ${T.labels.klachten}`,   value: 'klachten' },
+        { text: `🔵 ${counters.goedTeKeurenSPOC} ${T.labels.spoc}`,     value: 'spoc'     },
+        { text: `🟢 ${counters.openJobsDM} ${T.labels.jobsdm}`,          value: 'jobsdm'   },
+        { text: `🟡 ${counters.nogTeAccepteren} ${T.labels.accepteren}`, value: 'accepteren' },
       ];
 
       const pick = await botui.action.button({ action: actions });
@@ -631,34 +699,23 @@
       Telemetry.send('dm_counter_clicked', { complexId, counter: type });
 
       let filtered = filterJobs(jobs, type);
-      // Klachten: oudste bovenaan (meeste dagen open eerst)
       if (type === 'klachten') {
         filtered = [...filtered].sort((a, b) => (daysOpen(a.Date) ?? 0) > (daysOpen(b.Date) ?? 0) ? -1 : 1);
       }
-      const label = {
-        klachten:  'Lopende klachten',
-        spoc:      'Goed te keuren (SPOC)',
-        jobsdm:    'Openstaande jobs DM',
-        accepteren:'Nog te accepteren',
-      }[type] || type;
+      const label = T.labels[type] || type;
 
       Telemetry.send('dm_jobs_viewed', { complexId, counter: type, count: filtered.length });
-      await botui.message.add({ type: 'html', content: `📂 <strong>${esc(label)}</strong> (${filtered.length})<br><span style='font-size:.78rem;color:#6b7280'>Gebruik de zoekbalk om te filteren op titel, omschrijving of job-ID.</span>` });
+      await botui.message.add({ type: 'html', content: `📂 <strong>${esc(label)}</strong> (${filtered.length})<br><span style='font-size:.78rem;color:#6b7280'>${T.filterHint}</span>` });
 
       await botui.message.add({
         type: 'html',
         content: filtered.length
           ? jobListHtml(filtered)
-          : `<div class='muted' style='text-align:center;padding:1rem'>✅ Geen items in deze categorie.</div>`
+          : `<div class='muted' style='text-align:center;padding:1rem'>${T.noItems}</div>`
       });
 
-      const navBtns = [
-        { text: '↩️ Terug naar tellers', value: 'back' },
-      ];
-      const navPick = await botui.action.button({ action: navBtns });
-      const nav     = navPick.value ?? navPick;
-
-      if (nav === 'back') {
+      const navPick = await botui.action.button({ action: [{ text: T.backToCounters, value: 'back' }] });
+      if ((navPick.value ?? navPick) === 'back') {
         showSiteSwitcher(complexCache[complexId]?.customerName || complexCache[complexId]?.complexName || '', complexIds.length > 1);
         await showCounterButtons(email, complexId, complexIds, jobs, counters);
       }
@@ -678,10 +735,7 @@
         return;
       }
 
-      await botui.message.add({
-        type:    'html',
-        content: `${greeting()}, <strong>${esc(fname)}</strong>! 👋 Ik ben je DM-assistent. Naar welke site wil je kijken?`
-      });
+      await botui.message.add({ type: 'html', content: T.welcome(fname) });
 
       await pickComplex(session.email, session.complexIds);
     }
@@ -689,9 +743,9 @@
     start().catch(async e => {
       console.error(e);
       if (e.message === 'max-login-attempts')
-        await botui.message.add({ content: '🔒 Maximaal aantal pogingen bereikt. Herlaad de pagina.' });
+        await botui.message.add({ content: T.maxAttempts });
       else
-        await botui.message.add({ content: `❌ Onverwachte fout: ${e.message}` });
+        await botui.message.add({ content: T.unexpectedErr(e.message) });
     });
   </script>
 </body>
