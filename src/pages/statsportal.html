@@ -818,9 +818,17 @@ function renderChart(events){
     return bld ? `${cli} — ${bld}` : cli;
   };
 
+  // Lookup complexId → siteName vanuit dm_complex_selected events (ook historische)
+  const cplxToSite = {};
+  for(const ev of scans){
+    if(ev.type === 'dm_complex_selected' && ev.complexId && ev.siteName)
+      cplxToSite[ev.complexId] = ev.siteName;
+  }
+
   // Groepeersleutel: per site (niveau 1) of per QR-code (niveau 2 na drill-down)
   const dmSiteKey = ev => {
     if(ev.siteName) return ev.siteName;
+    if(ev.complexId && cplxToSite[ev.complexId]) return cplxToSite[ev.complexId];
     if(ev.customerName && ev.complexName) return `${ev.customerName} — ${ev.complexName}`;
     return ev.complexName || ev.complexId || '(onbekend)';
   };
