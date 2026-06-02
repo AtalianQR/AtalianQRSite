@@ -213,6 +213,8 @@ label.chk input{accent-color:var(--acc);width:13px;height:13px;cursor:pointer}
 .chart-bar:hover{opacity:.8}
 .chart-day{font-size:9px;color:var(--dim);font-family:'JetBrains Mono',monospace;white-space:nowrap;overflow:hidden;text-align:center}
 .chart-day.today{color:var(--acc)}
+.chart-col.view-day{outline:1px solid rgba(232,160,48,.45);background:rgba(232,160,48,.06);border-radius:4px}
+.chart-day.nav-day{color:var(--acc)}
 .chart-tooltip{
   position:absolute;bottom:calc(100% + 6px);left:50%;transform:translateX(-50%);
   background:var(--s2);border:1px solid var(--b2);border-radius:6px;
@@ -902,18 +904,19 @@ function renderChart(events){
     const h = total ? Math.max(4, Math.round(total/maxV*80)) : 0;
     const isToday = dk===today;
     const isSelected = dk===selectedDay;
+    const isNavDay = dk===viewDateKey() && !isToday;
     const dateStr = new Intl.DateTimeFormat('nl-BE',{day:'numeric',month:'short'}).format(new Date(dk+'T12:00:00'));
     const entries = Object.entries(buckets[dk]).sort((a,b)=>a[0].localeCompare(b[0]));
     const segments = entries.map(([key,cnt],j)=>{
       const sh = Math.max(2, Math.round(cnt/maxV*80));
       return `<div style="height:${sh}px;width:100%;background:${keyColor[key]||'var(--acc)'};border-radius:${j===entries.length-1?'3px 3px 0 0':'0'}"></div>`;
     }).join('');
-    return `<div class="chart-col" data-day="${dk}" style="cursor:${total>0?'pointer':'default'}" title="${dateStr}: klik voor uurverdeling">
+    return `<div class="chart-col${isNavDay?' view-day':''}" data-day="${dk}" style="cursor:${total>0?'pointer':'default'}" title="${dateStr}: klik voor uurverdeling">
       <div class="chart-tooltip">${total} scan${total!==1?'s':''}<br>${dateStr}</div>
       <div class="chart-bar ${isToday?'today':isSelected?'today':total===0?'empty-day':''}" style="height:${h}px;overflow:hidden;display:flex;flex-direction:column-reverse;${isSelected?'box-shadow:0 0 0 2px var(--acc)':''}">
         ${total>0?segments:''}
       </div>
-      <div class="chart-day ${isToday?'today':isSelected?'today':''}">${isToday?'▲':dk.slice(8)}</div>
+      <div class="chart-day ${isToday?'today':isSelected?'today':isNavDay?'nav-day':''}">${isToday?'▲':isNavDay?'◆':dk.slice(8)}</div>
     </div>`;
   }).join('');
 
