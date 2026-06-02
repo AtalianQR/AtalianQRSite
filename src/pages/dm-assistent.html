@@ -530,15 +530,15 @@
       const prs    = String(j.ProgressStatusId || '').trim();
       const sdrt   = String(j.SdrtId          || '').trim();
       const wot    = String(j.WotId           || '').trim();
-      const acc    = String(j.JobAccepted     || '').trim().toLowerCase();
-      // acc: Ultimo retourneert C# bool als 'True'/'False' of '1'/'0'
-      const hasStmt = String(j.HasAcceptStmt || '0').trim() === '1';
+      // WFL retourneert '1' als geaccepteerd (via <Choose>), '0' als niet
+      const accepted = String(j.JobAccepted || '0').trim() === '1';
+      const hasStmt  = String(j.HasAcceptStmt || '0').trim() === '1';
       return status === '16'
           && prs    !== '1030'
           && sdrt   !== '528'
           && wot    !== '009'
           && hasStmt
-          && acc    !== 'true' && acc !== '1';
+          && !accepted;
     }
 
     function calcCounters(jobs, requiresAcceptance = false) {
