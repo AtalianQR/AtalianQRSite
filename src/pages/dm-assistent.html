@@ -512,18 +512,20 @@
 
     // ── tellers berekenen ──────────────────────────────────────────
     function isAcceptable(j) {
-      const status = String(j.Status      || '').trim();
-      const prs    = String(j.ProgressStatusId || '').trim();
-      const sdrt   = String(j.SdrtId      || '').trim();
-      const wot    = String(j.WotId       || '').trim();
-      const stmt   = String(j.AcceptanceStatement || '').trim();
-      const acc    = String(j.JobAccepted || '').trim();
+      const status = String(j.Status             || '').trim();
+      const prs    = String(j.ProgressStatusId   || '').trim();
+      const sdrt   = String(j.SdrtId             || '').trim();
+      const wot    = String(j.WotId              || '').trim();
+      const stmt   = String(j.AcceptanceStatement|| '').trim();
+      const acc    = String(j.JobAccepted        || '').trim().toLowerCase();
+      // acc: Ultimo retourneert C# bool als 'True'/'False' of '1'/'0'
+      const notYetAccepted = acc !== 'true' && acc !== '1';
       return status === '16'
           && prs    !== '1030'
           && sdrt   !== '528'
           && wot    !== '009'
           && stmt   !== ''
-          && (acc === '0' || acc === 'false' || acc === '');
+          && notYetAccepted;
     }
 
     function calcCounters(jobs) {
