@@ -125,7 +125,10 @@
       <img src="/AtalianLogo.png" alt="Atalian Logo" class="logo" />
       <div id="hdr" class="ruimte-label">
         <div>DM-assistent — Mijn complexen</div>
-        <div id="hdr-sub" class="sub"></div>
+        <div style="display:flex;align-items:center;justify-content:center;gap:.6rem">
+          <div id="hdr-sub" class="sub"></div>
+          <button id="btn-logout" onclick="window._dmLogout()" style="display:none;background:none;border:1px solid #EE7E00;border-radius:999px;color:#EE7E00;font-size:.72rem;font-weight:700;padding:.15rem .55rem;cursor:pointer;font-family:inherit;letter-spacing:.03em" title="Uitloggen">✕</button>
+        </div>
       </div>
     </div>
   </header>
@@ -290,7 +293,15 @@
     function setHeaderSub(txt) {
       const el = document.getElementById('hdr-sub');
       if (el) el.textContent = txt || '';
+      const btn = document.getElementById('btn-logout');
+      if (btn) btn.style.display = txt ? 'inline-block' : 'none';
     }
+
+    window._dmLogout = () => {
+      ['dm_session_email','dm_session_ts','dm_session_complexIds','dm_session_firstname',
+       'dm_return_complex','dm_switcher_info_shown'].forEach(k => sessionStorage.removeItem(k));
+      location.reload();
+    };
 
     function firstName(email) {
       const part = String(email || '').split('@')[0].split('.')[0];
