@@ -526,8 +526,11 @@
 
     // ── tellers berekenen ──────────────────────────────────────────
     function isAcceptable(j) {
-      // WFL bepaalt volledig of een job acceptatie vereist (aparte query met alle filters)
-      return String(j.IsAcceptanceJob || '0').trim() === '1';
+      if (String(j.IsAcceptanceJob || '0').trim() !== '1') return false;
+      if (String(j.HasAcceptStmt   || '0').trim() !== '1') return false;
+      if (String(j.ProgressStatusId || '').trim() === '1030') return false;
+      if (String(j.SdrtId           || '').trim() === '528')  return false;
+      return true;
     }
 
     function calcCounters(jobs, requiresAcceptance = false) {
