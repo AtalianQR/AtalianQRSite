@@ -615,7 +615,7 @@
         await Promise.all(toLoad.map(async id => {
           try {
             const data = await apiGet({ action: 'LIST_JOBS', email, complexId: id });
-            complexCache[id] = { complexName: data.complexName || '', customerName: data.customerName || '', jobs: data.jobs || [] };
+            complexCache[id] = { complexName: data.complexName || '', customerName: data.customerName || '', jobs: data.jobs || [], requiresAcceptance: !!data.requiresCustomerAcceptance };
           } catch { complexCache[id] = { complexName: '', customerName: '', jobs: [] }; }
         }));
       }
