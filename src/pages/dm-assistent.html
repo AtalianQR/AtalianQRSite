@@ -519,15 +519,13 @@
       const prs    = String(j.ProgressStatusId || '').trim();
       const sdrt   = String(j.SdrtId          || '').trim();
       const wot    = String(j.WotId           || '').trim();
-      const pmj    = String(j.PmjId           || '').trim();
       const acc    = String(j.JobAccepted     || '').trim().toLowerCase();
       // acc: Ultimo retourneert C# bool als 'True'/'False' of '1'/'0'
       return status === '16'
-          && prs   !== '1030'
-          && sdrt  !== '528'
-          && wot   !== '009'
-          && pmj   === ''
-          && acc   !== 'true' && acc !== '1';
+          && prs  !== '1030'
+          && sdrt !== '528'
+          && wot  !== '009'
+          && acc  !== 'true' && acc !== '1';
     }
 
     function calcCounters(jobs) {
