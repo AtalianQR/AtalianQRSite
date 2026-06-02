@@ -473,12 +473,15 @@
       return `<div class='card' style='border-left-color:${borderColor}' data-search='${esc((j.Description||'') + ' ' + stripHtml(j.ReportText||'') + ' ' + (j.Id||'')).toLowerCase()}'>
         <div style='display:flex;justify-content:space-between;align-items:flex-start;gap:.5rem'>
           <div style='flex:1;min-width:0'>
-            ${isComp && days !== null ? `<div style='margin-bottom:.3rem'>${daysBadge(days)}<span style='font-size:.78rem;color:#6b7280;margin-left:.3rem'>gemeld op ${esc(datePart)}</span></div>` : ''}
-            <div style='font-weight:700;font-size:.92rem;color:#1a202c;margin-bottom:.25rem'>${esc(j.Description || '(zonder omschrijving)')}</div>
-            <span class='badge ${kw.cls}'>${kw.txt}</span>
-            ${vendorBadge(j.VendorId)}
-            <span class='badge badge-status'>${esc(statusLabel(j.ProgressStatusId))}</span>
-            ${!isComp ? `<div class='muted' style='margin-top:.3rem'>${esc(datePart)}</div>` : ''}
+            <div style='display:flex;align-items:center;gap:.5rem;margin-bottom:.2rem;flex-wrap:wrap'>
+              <span style='font-family:"JetBrains Mono",monospace;font-size:.78rem;font-weight:700;color:#EE7E00;background:#FFF3E0;border:1px solid #F5C07A;border-radius:4px;padding:.05rem .4rem'>#${esc(j.Id||'')}</span>
+              <span class='badge ${kw.cls}'>${kw.txt}</span>
+              ${vendorBadge(j.VendorId)}
+              <span class='badge badge-status'>${esc(statusLabel(j.ProgressStatusId))}</span>
+              ${isComp && days !== null ? daysBadge(days) : ''}
+            </div>
+            <div style='font-weight:700;font-size:.92rem;color:#1a202c;margin-bottom:.2rem'>${esc(j.Description || '(zonder omschrijving)')}</div>
+            <div class='muted' style='margin-top:.15rem'>${esc(datePart)}</div>
             ${preview ? `<div class='report-preview' style='margin-top:.2rem'>${esc(preview)}</div>` : ''}
           </div>
           <button style='flex-shrink:0;margin-top:0;background:#fff;border:2px solid #EE7E00;border-radius:999px;padding:.35rem .75rem;font-weight:800;font-size:1rem;cursor:pointer;color:#EE7E00;box-shadow:0 4px 10px rgba(238,126,0,.3);transition:background .12s,box-shadow .12s' onmouseover="this.style.background='#FEF0DC';this.style.boxShadow='0 6px 16px rgba(238,126,0,.45)'" onmouseout="this.style.background='#fff';this.style.boxShadow='0 4px 10px rgba(238,126,0,.3)'" onclick='window._dmOpenJob("${esc(url)}","${esc(activeComplexId)}")'>➜</button>
@@ -512,20 +515,19 @@
 
     // ── tellers berekenen ──────────────────────────────────────────
     function isAcceptable(j) {
-      const status = String(j.Status             || '').trim();
-      const prs    = String(j.ProgressStatusId   || '').trim();
-      const sdrt   = String(j.SdrtId             || '').trim();
-      const wot    = String(j.WotId              || '').trim();
-      const stmt   = String(j.AcceptanceStatement|| '').trim();
-      const acc    = String(j.JobAccepted        || '').trim().toLowerCase();
+      const status = String(j.Status           || '').trim();
+      const prs    = String(j.ProgressStatusId || '').trim();
+      const sdrt   = String(j.SdrtId          || '').trim();
+      const wot    = String(j.WotId           || '').trim();
+      const pmj    = String(j.PmjId           || '').trim();
+      const acc    = String(j.JobAccepted     || '').trim().toLowerCase();
       // acc: Ultimo retourneert C# bool als 'True'/'False' of '1'/'0'
-      const notYetAccepted = acc !== 'true' && acc !== '1';
       return status === '16'
-          && prs    !== '1030'
-          && sdrt   !== '528'
-          && wot    !== '009'
-          && stmt   !== ''
-          && notYetAccepted;
+          && prs   !== '1030'
+          && sdrt  !== '528'
+          && wot   !== '009'
+          && pmj   === ''
+          && acc   !== 'true' && acc !== '1';
     }
 
     function calcCounters(jobs) {
