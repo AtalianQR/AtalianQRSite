@@ -819,11 +819,16 @@ function renderChart(events){
   };
 
   // Groepeersleutel: per site (niveau 1) of per QR-code (niveau 2 na drill-down)
+  const dmSiteKey = ev => {
+    if(ev.siteName) return ev.siteName;
+    if(ev.customerName && ev.complexName) return `${ev.customerName} — ${ev.complexName}`;
+    return ev.complexName || ev.complexId || '(onbekend)';
+  };
   const getKey = ev => {
     const ut = getUserType();
-    if(ut === 'dm')            return ev.siteName || ev.complexId || '(onbekend)';
+    if(ut === 'dm')            return dmSiteKey(ev);
     if(ut === 'vendor')        return siteKey(ev);
-    if(isDmEvent(ev))          return ev.siteName || ev.complexId || '(onbekend)';
+    if(isDmEvent(ev))          return dmSiteKey(ev);
     if(selectedClient)         return ev.code||ev.id||'?';
     return siteKey(ev);
   };
@@ -1025,40 +1030,56 @@ function buildComplexMap(events) {
 }
 
 function dmTableHtml(events, targetEl) {
-  // Gekozen dag (navigator)
   const tod = viewDateKey();
   const todayEvents = events.filter(e=>fmt.dayKey(e.ts)===tod);
 
   const knownEmails = new Set();
   for(const ev of todayEvents){ if(ev.email && ev.email !== '(onbekend)') knownEmails.add(ev.email); }
-  const complexMap = buildComplexMap(todayEvents);
+
+  // Pas 1: bouw complexId → siteName (vanuit dm_complex_selected, die heeft siteName al correct)
+  const complexIdToSite = {};
+  for(const ev of todayEvents){
+    if(ev.type==='dm_complex_selected' && ev.complexId && ev.siteName)
+      complexIdToSite[ev.complexId] = ev.siteName;
+  }
 
   const dmMap = new Map();
-  const addEvent = (email, ev) => {
-    if(!dmMap.has(email)) dmMap.set(email,{ email, sessions:0, complexes: new Set(), events:[], lastTs:0 });
-    const dm = dmMap.get(email);
-    dm.events.push(ev);
-    // Sessie = elk werkmoment (complex geselecteerd of job geopend via vendor)
-    if(ev.type==='dm_complex_selected' || ev.type==='dm_space_visited') dm.sessions++;
-    if(ev.type==='dm_complex_selected') dm.complexes.add(ev.complexId||'');
-    if(ev.type==='dm_space_visited' && ev.siteName) dm.complexes.add(ev.siteName||'');
-    if(ev.ts>dm.lastTs) dm.lastTs=ev.ts;
+  const ensure = email => {
+    if(!dmMap.has(email)) dmMap.set(email,{
+      email, sessions:0,
+      dmSites:     new Set(), // grijs — waar DM-assistent gebruikt werd
+      vendorSites: new Set(), // kleur — waar vendor opgeroepen werd
+      events:[], lastTs:0
+    });
+    return dmMap.get(email);
   };
-  // Gebruik todayEvents (enkel vandaag)
+
   for(const ev of todayEvents){
     const email = ev.email || (knownEmails.size===1?[...knownEmails][0]:null) || '(onbekend)';
-    addEvent(email, ev);
+    const dm = ensure(email);
+    dm.events.push(ev);
+    if(ev.ts > dm.lastTs) dm.lastTs = ev.ts;
+
+    if(ev.type==='dm_complex_selected' || ev.type==='dm_space_visited') dm.sessions++;
+
+    if(ev.type==='dm_complex_selected' && ev.siteName)
+      dm.dmSites.add(ev.siteName);
+
+    // Vendor bezocht: dm_space_visited (vanuit vendor.html) of dm_job_opened (fallback via complexId)
+    if(ev.type==='dm_space_visited' && ev.siteName)
+      dm.vendorSites.add(ev.siteName);
+    if(ev.type==='dm_job_opened'){
+      const sn = ev.siteName || complexIdToSite[ev.complexId] || ev.complexId;
+      if(sn) dm.vendorSites.add(sn);
+    }
   }
 
   const dms = [...dmMap.values()].sort((a,b)=>b.sessions-a.sessions);
   if(!dms.length){ targetEl.innerHTML = '<div class="empty"><big>🏢</big>Geen DM-activiteit gevonden</div>'; return; }
 
-  const complexTags = (complexSet) => [...complexSet].filter(Boolean).map(cid=>{
-    const info = complexMap[cid];
-    const name = info?.siteName || cid;
-    const col  = info?.color    || '#888';
-    return `<span style="display:inline-block;margin:1px 2px;padding:1px 6px;border-radius:4px;font-size:10px;font-weight:700;background:${col}22;border:1px solid ${col};color:${col};font-family:'JetBrains Mono',monospace" title="${cid}">${name}</span>`;
-  }).join('') || '—';
+  const greyTag   = name => `<span style="display:inline-block;margin:1px 2px;padding:1px 6px;border-radius:4px;font-size:10px;font-weight:700;background:#88888815;border:1px solid #666;color:#888;font-family:'JetBrains Mono',monospace">${name}</span>`;
+  const colorTag  = name => { const c=hashColor(name); return `<span style="display:inline-block;margin:1px 2px;padding:1px 6px;border-radius:4px;font-size:10px;font-weight:700;background:${c}22;border:1px solid ${c};color:${c};font-family:'JetBrains Mono',monospace">${name}</span>`; };
+  const siteTags  = dm  => ([...dm.dmSites].filter(Boolean).map(greyTag).join('') + [...dm.vendorSites].filter(Boolean).map(colorTag).join('')) || '—';
 
   const rows = dms.map(dm=>{
     const counters  = dm.events.filter(e=>e.type==='dm_counter_clicked').length;
@@ -1066,7 +1087,7 @@ function dmTableHtml(events, targetEl) {
     const jobOpened = dm.events.filter(e=>e.type==='dm_job_opened').length;
     return `<tr>
       <td><span class="dm-email">${dm.email}</span></td>
-      <td>${complexTags(dm.complexes)}</td>
+      <td>${siteTags(dm)}</td>
       <td style="text-align:center;font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--acc)">${counters}</td>
       <td style="text-align:center;font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--prod)">${jobOpened}</td>
       <td style="text-align:center;font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--muted)">${switches}</td>
