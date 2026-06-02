@@ -480,15 +480,18 @@
       const days     = isComp ? daysOpen(j.Date) : null;
       const borderColor = isComp ? urgencyColor(days) : '#EE7E00';
 
-      return `<div class='card' style='border-left-color:${borderColor};padding:.55em .75em;cursor:pointer' data-search='${esc((j.Description||'') + ' ' + (j.Id||'')).toLowerCase()}' onclick='window._dmOpenJob("${esc(url)}","${esc(activeComplexId)}")'>
-        <div style='font-weight:700;font-size:.92rem;color:#1a202c;margin-bottom:.3rem;line-height:1.3'>${esc(j.Description || '(zonder omschrijving)')}</div>
-        <div style='display:flex;align-items:center;gap:.4rem;flex-wrap:wrap'>
-          <span style='font-family:"JetBrains Mono",monospace;font-size:.75rem;font-weight:700;color:#EE7E00;background:#FFF3E0;border:1px solid #F5C07A;border-radius:4px;padding:.05rem .35rem'>#${esc(j.Id||'')}</span>
-          <span class='badge ${kw.cls}'>${kw.txt}</span>
-          <span style='color:#6b7280;font-size:.8rem'>${esc(datePart)}</span>
-          <span class='badge badge-status'>${esc(statusLabel(j.ProgressStatusId))}</span>
-          ${isComp && days !== null ? daysBadge(days) : ''}
+      return `<div class='card' style='border-left-color:${borderColor};padding:.55em .75em;cursor:pointer;display:flex;align-items:center;gap:.6rem' data-search='${esc((j.Description||'') + ' ' + (j.Id||'')).toLowerCase()}' onclick='window._dmOpenJob("${esc(url)}","${esc(activeComplexId)}")'>
+        <div style='flex:1;min-width:0'>
+          <div style='font-weight:700;font-size:.92rem;color:#1a202c;margin-bottom:.3rem;line-height:1.3'>${esc(j.Description || '(zonder omschrijving)')}</div>
+          <div style='display:flex;align-items:center;gap:.4rem;flex-wrap:wrap'>
+            <span style='font-family:"JetBrains Mono",monospace;font-size:.75rem;font-weight:700;color:#EE7E00;background:#FFF3E0;border:1px solid #F5C07A;border-radius:4px;padding:.05rem .35rem'>#${esc(j.Id||'')}</span>
+            <span class='badge ${kw.cls}'>${kw.txt}</span>
+            <span style='color:#6b7280;font-size:.8rem'>${esc(datePart)}</span>
+            <span class='badge badge-status'>${esc(statusLabel(j.ProgressStatusId))}</span>
+            ${isComp && days !== null ? daysBadge(days) : ''}
+          </div>
         </div>
+        <div style='flex-shrink:0;width:2rem;height:2rem;border-radius:50%;background:#EE7E00;display:flex;align-items:center;justify-content:center;color:#fff;font-size:1rem;font-weight:800'>➜</div>
       </div>`;
     }
 
@@ -518,11 +521,7 @@
 
     // ── tellers berekenen ──────────────────────────────────────────
     function isAcceptable(j) {
-      if (String(j.IsAcceptanceJob || '0').trim() !== '1') return false;
-      if (String(j.HasAcceptStmt   || '0').trim() !== '1') return false;
-      if (String(j.ProgressStatusId || '').trim() === '1030') return false;
-      if (String(j.SdrtId           || '').trim() === '528')  return false;
-      return true;
+      return String(j.IsAcceptanceJob || '0').trim() === '1';
     }
 
     function calcCounters(jobs, requiresAcceptance = false) {
