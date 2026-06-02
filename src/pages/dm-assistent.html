@@ -532,14 +532,16 @@
       const wot    = String(j.WotId           || '').trim();
       const acc    = String(j.JobAccepted     || '').trim().toLowerCase();
       // acc: Ultimo retourneert C# bool als 'True'/'False' of '1'/'0'
+      const hasStmt = String(j.HasAcceptStmt || '0').trim() === '1';
       return status === '16'
-          && prs  !== '1030'
-          && sdrt !== '528'
-          && wot  !== '009'
-          && acc  !== 'true' && acc !== '1';
+          && prs    !== '1030'
+          && sdrt   !== '528'
+          && wot    !== '009'
+          && hasStmt
+          && acc    !== 'true' && acc !== '1';
     }
 
-    function calcCounters(jobs) {
+    function calcCounters(jobs, requiresAcceptance = false) {
       let lopendKlachten = 0, goedTeKeurenSPOC = 0, openJobsDM = 0, nogTeAccepteren = 0;
       for (const j of jobs) {
         const kwis   = String(j.KwisId          || '').trim();
@@ -549,7 +551,7 @@
         if (kwis === '002' && prs === '1008' && status === '4')              lopendKlachten++;
         if (kwis === '002' && prs === '1016')                                goedTeKeurenSPOC++;
         if (vendor === '000016' && kwis !== '002' && ['2','4','64'].includes(status)) openJobsDM++;
-        if (isAcceptable(j))                                                  nogTeAccepteren++;
+        if (requiresAcceptance && isAcceptable(j))                           nogTeAccepteren++;
       }
       return { lopendKlachten, goedTeKeurenSPOC, openJobsDM, nogTeAccepteren };
     }
@@ -666,7 +668,7 @@
         await botui.message.add({ content: T.loadingCounters });
         try {
           const data = await apiGet({ action: 'LIST_JOBS', email, complexId });
-          cached = { complexName: data.complexName || '', customerName: data.customerName || '', jobs: data.jobs || [] };
+          cached = { complexName: data.complexName || '', customerName: data.customerName || '', jobs: data.jobs || [], requiresAcceptance: !!data.requiresCustomerAcceptance };
           complexCache[complexId] = cached;
         } catch (e) { await botui.message.add({ content: T.loadError(e.message) }); return; }
       }
@@ -691,7 +693,7 @@
       }
 
       const jobs     = cached.jobs;
-      const counters = calcCounters(jobs);
+      const counters = calcCounters(jobs, cached.requiresAcceptance);
       await showCounterButtons(email, complexId, complexIds, jobs, counters);
     }
 
