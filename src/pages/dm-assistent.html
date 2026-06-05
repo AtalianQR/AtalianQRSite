@@ -190,8 +190,8 @@
       loadError:    m => isFr ? `❌ Erreur : ${m}` : `❌ Fout: ${m}`,
       switcherInfo:   isFr ? '💡 Via le bouton <strong>🏢 Changer de site</strong> en bas à droite, vous pouvez naviguer vers un autre site à tout moment.'
                            : '💡 Via de knop <strong>🏢 Wissel van site</strong> onderaan rechts kun je steeds naar een andere site navigeren.',
-      selectCounter:  isFr ? '👆 Appuyez sur un compteur pour afficher les tâches correspondantes :'
-                           : '👆 Druk op een teller om de bijbehorende jobs te bekijken:',
+      selectCounter:  isFr ? '👇 Appuyez sur un compteur pour afficher les tâches correspondantes :'
+                           : '👇 Druk op een teller om de bijbehorende jobs te bekijken:',
       greeting: () => {
         const h = new Date().getHours();
         if (isFr) { if(h<12) return 'Bonjour'; if(h<18) return 'Bon après-midi'; return 'Bonsoir'; }
