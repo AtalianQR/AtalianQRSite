@@ -185,8 +185,13 @@
   }
 
   /* ✅ editor-styles */
+  .botui-message-content:has(.summary-editor){
+    max-width: 100% !important;
+    width: 100% !important;
+  }
   .summary-editor{
-    background:#f5f8fc;border-radius:10px;padding:.9em 1em;margin:.7em 0;border-left:4px solid #EE7E00
+    background:#f5f8fc;border-radius:10px;padding:.9em 1em;margin:.7em 0;border-left:4px solid #EE7E00;
+    width:100%;box-sizing:border-box;
   }
   .summary-editor h4{margin:.1rem 0 .7rem 0;font-size:1rem}
   .se-row{margin:.6rem 0}
@@ -276,6 +281,7 @@
 
   const sourceUrl = safeSameOriginUrl(srcRaw);
   const cameFromPortalSelf = !!sourceUrl && /portalself/i.test(sourceUrl);
+  const cameFromDmAssistent = !!sourceUrl && /dm-assistent/i.test(sourceUrl);
 
   function goBackAfterVendor(){
     if (sourceUrl) window.location.href = sourceUrl;
@@ -360,6 +366,17 @@
 
 	function canEditVendorIssues(job){
 	  return getProgressStatusId(job) === '1008';
+	}
+
+	function getSdrtId(job){
+	  const raw = job?.SdrtId ?? job?.ServiceDeskReportType?.Id ?? job?.ServiceDeskReportTypeId ?? '';
+	  return String(raw ?? '').trim();
+	}
+
+	// DM-validatie: klacht staat op 'afgehandeld door Vendor' (1016) met SDRT 611
+	// → DM beslist of de afhandeling klopt (→1017, volledig afgesloten) of niet (→1008, terug naar Vendor)
+	function isDmAcceptanceJob(job){
+	  return getProgressStatusId(job) === '1016' && getSdrtId(job) === '611';
 	}
 
 
@@ -1566,7 +1583,7 @@ async function complaintFlow(job){
 	  });
 
 	  closeDocPanel();
-	  if (cameFromPortalSelf) return goBackAfterVendor();
+	  if (cameFromPortalSelf || cameFromDmAssistent) return goBackAfterVendor();
 
 	  await botui.message.add({
 		content: isFr ? '🔚 Vous pouvez fermer cette fenêtre.' : '🔚 Je mag dit venster sluiten.'
@@ -1603,7 +1620,7 @@ async function complaintFlow(job){
 	  });
 
 	  closeDocPanel();
-	  if (cameFromPortalSelf) return goBackAfterVendor();
+	  if (cameFromPortalSelf || cameFromDmAssistent) return goBackAfterVendor();
 
 	  await botui.message.add({
 		content: isFr ? '🔚 Vous pouvez fermer cette fenêtre.' : '🔚 Je mag dit venster sluiten.'
@@ -1646,7 +1663,7 @@ async function complaintFlow(job){
 	  });
 
 	  closeDocPanel();
-	  if (cameFromPortalSelf) return goBackAfterVendor();
+	  if (cameFromPortalSelf || cameFromDmAssistent) return goBackAfterVendor();
 
 	  await botui.message.add({
 		content: isFr ? '🔚 Vous pouvez fermer cette fenêtre.' : '🔚 Je mag dit venster sluiten.'
@@ -1658,6 +1675,107 @@ async function complaintFlow(job){
 
 	}
 
+
+  async function dmAcceptanceFlow(job){
+	await botui.message.add({
+	  content: isFr
+		? '🧾 Cette plainte a été traitée. Voici le compte-rendu :'
+		: '🧾 Deze klacht werd afgehandeld. Hieronder de afhandeling:'
+	});
+
+	const rootCause         = cleanField(job?.RootCause ?? job?.rootCause ?? job?.CPLRoot ?? job?._CPLRoot);
+	const correction        = cleanField(job?.Correction ?? job?.correction ?? job?.CPLCorrection ?? job?._CPLCorrection);
+	const correctiveMeasure = cleanField(job?.CorrectiveMeasure ?? job?.correctiveMeasure ?? job?.CPLCorMeasure ?? job?._CPLCorMeasure);
+	const effectiveness     = cleanField(job?.Effectiveness ?? job?.effectiveness ?? job?.CPLEffectiveness ?? job?._CPLEffectiveness);
+
+	const esc = (s='') =>
+	  String(s)
+		.replace(/&/g,'&amp;')
+		.replace(/</g,'&lt;')
+		.replace(/>/g,'&gt;')
+		.replace(/"/g,'&quot;')
+		.replace(/'/g,'&#039;');
+
+	await botui.message.add({
+	  type: 'html',
+	  content: `
+		<div class="summary-editor">
+		  <h4>${isFr ? 'Résumé du traitement' : 'Samenvatting afhandeling'}</h4>
+
+		  <div class="se-row">
+			<label>Root cause</label>
+			<textarea readonly>${esc(rootCause)}</textarea>
+		  </div>
+
+		  <div class="se-row">
+			<label>Correction</label>
+			<textarea readonly>${esc(correction)}</textarea>
+		  </div>
+
+		  <div class="se-row">
+			<label>Corrective measure</label>
+			<textarea readonly>${esc(correctiveMeasure)}</textarea>
+		  </div>
+
+		  <div class="se-row">
+			<label>Effectiveness</label>
+			<textarea readonly>${esc(effectiveness)}</textarea>
+		  </div>
+
+		  <div class="se-hint">${isFr ? 'Lecture seule.' : 'Alleen-lezen.'}</div>
+		</div>
+	  `
+	});
+
+	await botui.message.add({
+	  content: isFr
+		? 'Veuillez valider ou refuser ce traitement.'
+		: 'Gelieve deze afhandeling te valideren of te weigeren.'
+	});
+
+	const conf = await botui.action.button({
+	  action: [
+		{ text: isFr ? '✅ Traitement validé' : '✅ Afhandeling gevalideerd', value: 'validate' },
+		{ text: isFr ? '❌ Traitement refusé' : '❌ Afhandeling geweigerd', value: 'refuse' }
+	  ]
+	});
+
+	if (conf.value === 'validate') {
+	  Telemetry.send('dm_acceptance_validated');
+
+	  await botui.message.add({
+		content: isFr ? '✅ Validation…' : '✅ Valideren…'
+	  });
+
+	  await setProgressStatus({ jobId: job.Id, newProgressStatusId: '1017' });
+
+	  await botui.message.add({
+		content: isFr
+		  ? '✅ Traitement validé. La plainte est complètement clôturée.'
+		  : '✅ Afhandeling gevalideerd. De klacht is volledig afgesloten.'
+	  });
+	} else {
+	  Telemetry.send('dm_acceptance_refused');
+
+	  await botui.message.add({
+		content: isFr ? '❌ Refus en cours…' : '❌ Weigeren…'
+	  });
+
+	  await setProgressStatus({ jobId: job.Id, newProgressStatusId: '1008' });
+
+	  await botui.message.add({
+		content: isFr
+		  ? '↩️ Traitement refusé. La plainte retourne chez le fournisseur.'
+		  : '↩️ Afhandeling geweigerd. De klacht gaat terug naar de leverancier.'
+	  });
+	}
+
+	if (cameFromPortalSelf || cameFromDmAssistent) return goBackAfterVendor();
+
+	await botui.message.add({
+	  content: isFr ? '🔚 Vous pouvez fermer cette fenêtre.' : '🔚 Je mag dit venster sluiten.'
+	});
+  }
 
   async function startFlow(){
     try{
@@ -1728,7 +1846,12 @@ async function complaintFlow(job){
 
       if (hasJobDocuments) revealFab();
 
-      await complaintFlow(job);
+      if (isDmAcceptanceJob(job)) {
+        Telemetry.send('dm_acceptance_flow_shown');
+        await dmAcceptanceFlow(job);
+      } else {
+        await complaintFlow(job);
+      }
 
     }catch(e){
       const errorDetail=String(e.message||e);
