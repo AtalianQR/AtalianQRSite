@@ -443,8 +443,6 @@
     }
     return { send };
   })();
-  Telemetry.send('vendorklacht_html_load');
-
   const botui = new BotUI('botui-app');
   const elInfo = document.getElementById('job-info');
   document.getElementById('switch-nl').onclick = ()=>{const u=new URL(location.href);u.searchParams.set('lang','nl');location.href=u;};
@@ -604,9 +602,6 @@
 	  const rememberedEmail = getVendorSessionEmail({ maxAgeMinutes: 120 });
 	  if (rememberedEmail) {
 		sessionEmail = rememberedEmail;
-		Telemetry.send('login_skip_sessionstorage', {
-		  emailMasked: rememberedEmail.replace(/(.).+(@.*)/,'$1***$2')
-		});
 		return true; // 👈 geen prompts, meteen door
 	  }
 
@@ -1863,7 +1858,6 @@ async function complaintFlow(job){
     }
   }
 
-  addEventListener('pagehide',()=>Telemetry.send('pagehide'));
 
   startFlow();
   </script>

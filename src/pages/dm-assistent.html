@@ -249,8 +249,7 @@
       function setExtra(extra) { Object.assign(base, extra); }
       return { send, setExtra };
     })();
-    Telemetry.send('dm_load');
-    addEventListener('pagehide', () => Telemetry.send('dm_pagehide'), { capture: true });
+
 
     // Gebruiker-bubbels oranje stylen — zelfde als portal.html
     // Bubbels met interactieve elementen (zoekbalk, joblijst) nooit overschrijven
@@ -717,15 +716,11 @@
       const pick = await botui.action.button({ action: actions });
       const type = pick.value ?? pick;
       hideSiteSwitcher();
-      Telemetry.send('dm_counter_clicked', { complexId, counter: type });
-
       let filtered = filterJobs(jobs, type);
       if (type === 'klachten') {
         filtered = [...filtered].sort((a, b) => (daysOpen(a.Date) ?? 0) > (daysOpen(b.Date) ?? 0) ? -1 : 1);
       }
       const label = T.labels[type] || type;
-
-      Telemetry.send('dm_jobs_viewed', { complexId, counter: type, count: filtered.length });
       await botui.message.add({ type: 'html', content: `📂 <strong>${esc(label)}</strong> (${filtered.length})<br><span style='font-size:.78rem;color:#6b7280'>${T.filterHint}</span>` });
 
       await botui.message.add({

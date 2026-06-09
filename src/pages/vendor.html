@@ -499,8 +499,6 @@ async function requireGpsIfPortalSelf({ botui, Telemetry, isFr, cameFromPortalSe
     }
     return { send };
   })();
-  Telemetry.send('vendor_html_load');
-
   /* ==================== 3. UI/DOM ==================== */
   const botui = new BotUI('botui-app');
   const elInfo = document.getElementById('job-info');
@@ -1245,7 +1243,6 @@ async function requireGpsIfPortalSelf({ botui, Telemetry, isFr, cameFromPortalSe
       return `\nPortalSelf GPS: unavailable (${geo.reason}${geo.message ? `: ${geo.message}` : ''})`;
     }
 
-    Telemetry.send('vendor_gps_ok', { acc: geo.acc });
     return `\nPortalSelf GPS: lat=${geo.lat}; lon=${geo.lon}; acc=${geo.acc}m; ts=${new Date(geo.ts).toISOString()}`;
   }
 
@@ -2746,7 +2743,6 @@ function guessMimeByName(name){
 	}
 
 
-  addEventListener('pagehide',()=>Telemetry.send('pagehide'));
 
   startFlow();
   </script>
