@@ -617,8 +617,19 @@
         }));
       }
 
+      // Alleen sites tonen met minstens 1 actieve teller
+      const activeIds = complexIds.filter(id => {
+        const info = complexCache[id] || {};
+        const c = calcCounters(info.jobs || [], info.requiresAcceptance || false);
+        return c.lopendKlachten + c.goedTeKeurenSPOC + c.openJobsDM + c.nogTeAccepteren > 0;
+      });
+      const idsToShow = activeIds.length ? activeIds : complexIds; // fallback: toon alles als overal 0
+      if (!activeIds.length) {
+        await botui.message.add({ content: '✅ Geen openstaande acties op al je sites.' });
+      }
+
       // BotUI action-knoppen — exact portal-stijl
-      const actions = complexIds.map(id => {
+      const actions = idsToShow.map(id => {
         const info = complexCache[id] || {};
         const name = info.customerName || info.complexName || `Complex ${id}`;
         const site = info.customerName && info.complexName ? ` — ${info.complexName}` : '';
