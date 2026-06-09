@@ -638,7 +638,7 @@
 
       hideSiteSwitcher();
       const pick = await botui.action.button({ action: actions });
-      await loadComplex(email, pick.value, complexIds);
+      await loadComplex(email, pick.value, complexIds, idsToShow.length > 1);
     }
 
     // ── zwevende site-wisselknop ───────────────────────────────────
@@ -659,7 +659,7 @@
     };
 
     // ── complex laden → tellers tonen ─────────────────────────────
-    async function loadComplex(email, complexId, complexIds) {
+    async function loadComplex(email, complexId, complexIds, hasChoice = complexIds.length > 1) {
       let cached = complexCache[complexId];
       if (!cached) {
         await botui.message.add({ content: T.loadingCounters });
@@ -678,7 +678,7 @@
 
       // Sitenaam altijd tonen als bot-bericht (ook bij terugkeer zonder klik)
       await botui.message.add({ type: 'html', content: `📍 <strong>${esc(siteName)}</strong>` });
-      if (complexIds.length > 1) {
+      if (hasChoice) {
         showSiteSwitcher(siteName, true);
         if (!switcherInfoShown()) {
           markSwitcherInfoShown();
