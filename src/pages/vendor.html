@@ -2361,7 +2361,8 @@ async function askDeliveredQtyInline({ label, defaultQty }) {
 
 	  closeDocPanel();
 
-	  if (cameFromPortalSelf) return goBackAfterVendor();
+	  if (cameFromPortalSelf || cameFromDmAssistent) return goBackAfterVendor();
+	  if (sessionEmail && sessionEmail.endsWith('@atalianworld.com')) return goBackAfterVendor();
 	  return;
 	}
 
@@ -2673,6 +2674,8 @@ function guessMimeByName(name){
 		  });
 
 		  Telemetry.send('job_closed', { status: getProgressStatusId(job) });
+		  if (cameFromPortalSelf || cameFromDmAssistent) return goBackAfterVendor();
+		  if (sessionEmail && sessionEmail.endsWith('@atalianworld.com')) return goBackAfterVendor();
 		  return;
 		}
 
