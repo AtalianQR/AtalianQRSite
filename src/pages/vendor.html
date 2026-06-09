@@ -354,8 +354,10 @@
   function goBackAfterVendor(){
     if (sourceUrl) {
       window.location.href = sourceUrl;
+    } else if (sessionEmail && sessionEmail.endsWith('@atalianworld.com')) {
+      // DM opende link rechtstreeks (bv. vanuit e-mail) → stuur terug naar DM-assistent
+      window.location.href = '/dm-assistent/' + (isTest ? '?test=1' : '');
     } else {
-      // fallback: zet hier je "basis QR" startpagina als je die hebt
       window.location.href = '/';
     }
   }
