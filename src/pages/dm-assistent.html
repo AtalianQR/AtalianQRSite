@@ -413,9 +413,10 @@
     }
     function statusLabel(ps) {
       const s = String(ps || '').trim();
+      if (s === '1004') return 'Analyse SD';
       if (s === '1008') return 'Actief';
       if (s === '1012') return 'Gepland';
-      if (s === '1016') return 'Gesloten vendor';
+      if (s === '1016') return 'Gesloten';
       return s;
     }
     function buildJobUrl(job) {
