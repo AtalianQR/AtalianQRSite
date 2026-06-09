@@ -688,12 +688,16 @@
       await botui.message.add({ content: T.selectCounter });
 
       const actions = [
-        { text: `🔴 ${counters.lopendKlachten} ${T.labels.klachten}`,   value: 'klachten' },
-        { text: `🔵 ${counters.goedTeKeurenSPOC} ${T.labels.spoc}`,     value: 'spoc'     },
-        { text: `🟢 ${counters.openJobsDM} ${T.labels.jobsdm}`,          value: 'jobsdm'   },
-        { text: `🟡 ${counters.nogTeAccepteren} ${T.labels.accepteren}`, value: 'accepteren' },
-      ];
+        { text: `🔴 ${counters.lopendKlachten} ${T.labels.klachten}`,   value: 'klachten',   num: counters.lopendKlachten   },
+        { text: `🔵 ${counters.goedTeKeurenSPOC} ${T.labels.spoc}`,     value: 'spoc',       num: counters.goedTeKeurenSPOC },
+        { text: `🟢 ${counters.openJobsDM} ${T.labels.jobsdm}`,          value: 'jobsdm',     num: counters.openJobsDM       },
+        { text: `🟡 ${counters.nogTeAccepteren} ${T.labels.accepteren}`, value: 'accepteren', num: counters.nogTeAccepteren  },
+      ].filter(a => a.num > 0);
 
+      if (!actions.length) {
+        await botui.message.add({ content: '✅ Geen openstaande acties voor deze site.' });
+        return;
+      }
       const pick = await botui.action.button({ action: actions });
       const type = pick.value ?? pick;
       hideSiteSwitcher();
