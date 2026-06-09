@@ -349,6 +349,7 @@
 
   const sourceUrl = safeSameOriginUrl(srcRaw);
   const cameFromPortalSelf = !!sourceUrl && /portalself/i.test(sourceUrl);
+  const cameFromDmAssistent = !!sourceUrl && /dm-assistent/i.test(sourceUrl);
 
   function goBackAfterVendor(){
     if (sourceUrl) {
@@ -1970,14 +1971,13 @@ async function askDeliveredQtyInline({ label, defaultQty }) {
 	  `
 	});
 
-	await botui.action.button({
+	const pickClient1 = await botui.action.button({
 	  action: [
-		{
-		  text: isFr ? '✅ Continuer avec le client' : '✅ Verdergaan met de klant',
-		  value: 'yes'
-		}
+		{ text: isFr ? '✅ Continuer avec le client' : '✅ Verdergaan met de klant', value: 'yes' },
+		...(cameFromDmAssistent ? [{ text: isFr ? '↩️ Retour à l\'assistant DM' : '↩️ Terug naar DM-assistent', value: 'back' }] : []),
 	  ]
 	});
+	if ((pickClient1.value ?? pickClient1) === 'back') return goBackAfterVendor();
 
 	// BLOK 3 — Acceptatieverklaring
 	await botui.message.add({
@@ -2704,14 +2704,13 @@ function guessMimeByName(name){
 			`
 		  });
 
-		  await botui.action.button({
+		  const pickClient2 = await botui.action.button({
 			action: [
-			  {
-				text: isFr ? '✅ Continuer avec le client' : '✅ Verdergaan met de klant',
-				value: 'ok'
-			  }
+			  { text: isFr ? '✅ Continuer avec le client' : '✅ Verdergaan met de klant', value: 'ok' },
+			  ...(cameFromDmAssistent ? [{ text: isFr ? '↩️ Retour à l\'assistant DM' : '↩️ Terug naar DM-assistent', value: 'back' }] : []),
 			]
 		  });
+		  if ((pickClient2.value ?? pickClient2) === 'back') return goBackAfterVendor();
 
 		  await runCustomerAcceptanceOnly(job);
 		  return;
