@@ -556,6 +556,7 @@
     // ── tellers als knoppen ────────────────────────────────────────
     function counterBtnsHtml(c) {
       const btn = (num, lbl, cls, type, disabled = false) => {
+        if (num === 0) return '';
         const dis     = disabled ? 'disabled' : '';
         const onclick = disabled ? '' : `onclick="window._dmCounter('${type}')"`;
         return `<button class='counter-btn ${cls} ${dis}' ${onclick}>
@@ -563,13 +564,15 @@
           <div class='lbl'>${lbl}</div>
         </button>`;
       };
+      const btns = [
+        btn(c.lopendKlachten,   'Lopende klachten',      'red',   'klachten'),
+        btn(c.goedTeKeurenSPOC,'Goed te keuren (SPOC)', 'blue',  'spoc'    ),
+        btn(c.openJobsDM,       'Openstaande jobs DM',   'green', 'jobsdm'  ),
+        btn(c.nogTeAccepteren,  'Nog te accepteren',     'amber', 'accepteren', true),
+      ].filter(Boolean).join('');
+      if (!btns) return `<div class='muted' style='margin:.4rem 0 .3rem;font-size:.82rem'>✅ Geen openstaande acties voor deze site.</div>`;
       return `<div class='muted' style='margin:.4rem 0 .3rem;font-size:.82rem'>Druk op een teller om de bijbehorende jobs te bekijken:</div>
-      <div class='counter-btns'>
-        ${btn(c.lopendKlachten,   'Lopende klachten',      'red',   'klachten')}
-        ${btn(c.goedTeKeurenSPOC,'Goed te keuren (SPOC)', 'blue',  'spoc'    )}
-        ${btn(c.openJobsDM,       'Openstaande jobs DM',   'green', 'jobsdm'  )}
-        ${btn(c.nogTeAccepteren,  'Nog te accepteren',     'amber', 'accepteren', true)}
-      </div>`;
+      <div class='counter-btns'>${btns}</div>`;
     }
 
     // ── complex picker ─────────────────────────────────────────────
