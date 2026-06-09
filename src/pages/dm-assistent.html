@@ -696,6 +696,11 @@
 
       if (!actions.length) {
         await botui.message.add({ content: '✅ Geen openstaande acties voor deze site.' });
+        const backPick = await botui.action.button({ action: [{ text: T.backToCounters, value: 'back' }] });
+        if ((backPick.value ?? backPick) === 'back') {
+          showSiteSwitcher(complexCache[complexId]?.customerName || complexCache[complexId]?.complexName || '', complexIds.length > 1);
+          await showCounterButtons(email, complexId, complexIds, jobs, counters);
+        }
         return;
       }
       const pick = await botui.action.button({ action: actions });
