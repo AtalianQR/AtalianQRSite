@@ -624,13 +624,13 @@
         const c = calcCounters(info.jobs || [], info.requiresAcceptance || false);
         return c.lopendKlachten + c.goedTeKeurenSPOC + c.openJobsDM + c.nogTeAccepteren > 0;
       });
-      const idsToShow = activeIds.length ? activeIds : complexIds; // fallback: toon alles als overal 0
       if (!activeIds.length) {
         await botui.message.add({ content: '✅ Geen openstaande acties op al je sites.' });
+        return;
       }
 
       // BotUI action-knoppen — exact portal-stijl
-      const actions = idsToShow.map(id => {
+      const actions = activeIds.map(id => {
         const info = complexCache[id] || {};
         const name = info.customerName || info.complexName || `Complex ${id}`;
         const site = info.customerName && info.complexName ? ` — ${info.complexName}` : '';
@@ -639,7 +639,7 @@
 
       hideSiteSwitcher();
       const pick = await botui.action.button({ action: actions });
-      await loadComplex(email, pick.value, complexIds, idsToShow.length > 1);
+      await loadComplex(email, pick.value, complexIds, activeIds.length > 1);
     }
 
     // ── zwevende site-wisselknop ───────────────────────────────────
@@ -708,10 +708,9 @@
 
       if (!actions.length) {
         await botui.message.add({ content: '✅ Geen openstaande acties voor deze site.' });
-        const backPick = await botui.action.button({ action: [{ text: T.backToCounters, value: 'back' }] });
-        if ((backPick.value ?? backPick) === 'back') {
-          showSiteSwitcher(complexCache[complexId]?.customerName || complexCache[complexId]?.complexName || '', complexIds.length > 1);
-          await showCounterButtons(email, complexId, complexIds, jobs, counters);
+        if (complexIds.length > 1) {
+          const backPick = await botui.action.button({ action: [{ text: isFr ? '↩️ Retour aux sites' : '↩️ Terug naar sites', value: 'back' }] });
+          if ((backPick.value ?? backPick) === 'back') await pickComplex(email, complexIds);
         }
         return;
       }
