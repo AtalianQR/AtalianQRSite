@@ -1,4 +1,6 @@
 // netlify/functions/read_logs.js — Netlify Functions v2
+// NETLIFY_BLOBS_CONTEXT wordt automatisch geïnjecteerd in v2 functies.
+
 import { getStore } from '@netlify/blobs';
 
 const cors = {
@@ -25,7 +27,12 @@ export default async (req) => {
   if (req.method === 'OPTIONS') return new Response(null, { status: 204, headers: cors });
 
   const url   = new URL(req.url);
-  const limit = Math.min(1000, Math.max(10, parseInt(url.searchParams.get('limit') ?? '500', 10)));
+  // Max 200 records ophalen — elke key = 1 API-call, te veel = timeout
+  const limit = Math.min(400, Math.max(10, parseInt(url.searchParams.get('limit') ?? '300', 10)));
+
+  if (url.searchParams.get('debug') === '1') {
+    return respond({ hasCtx: !!process.env.NETLIFY_BLOBS_CONTEXT, ctxLen: (process.env.NETLIFY_BLOBS_CONTEXT || '').length });
+  }
 
   let store;
   try {
@@ -34,7 +41,7 @@ export default async (req) => {
     return respond({ items: [], error: 'getStore failed', detail: String(err) });
   }
 
-  // Stap 1: alle keys ophalen (past in één call, geen paginering nodig)
+  // Stap 1: keys verzamelen
   const allKeys = [];
   try {
     let cursor;
@@ -51,12 +58,12 @@ export default async (req) => {
 
   if (!allKeys.length) return respond({ items: [], total: 0 });
 
-  // Stap 2: sorteer nieuwste eerst, beperk tot limit
+  // Stap 2: sorteer en beperk
   allKeys.sort((a, b) => tsFromKey(b) - tsFromKey(a));
   const topKeys = allKeys.slice(0, limit);
 
-  // Stap 3: records ophalen in batches van 30 parallel
-  const BATCH = 30;
+  // Stap 3: records ophalen in batches
+  const BATCH = 20;
   const items = [];
   for (let i = 0; i < topKeys.length; i += BATCH) {
     const results = await Promise.all(
