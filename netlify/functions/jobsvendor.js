@@ -640,6 +640,8 @@ if (action === "ACCEPTED") {
 		Action: "ADD_ACCEPTANCE_HOURS",
 		Email: email,
 		PerformedHours: performedHours,
+		AppendNewLine: String(body.AppendNewLine ?? body.appendNewLine ?? '').trim() === 'true' ? 'true' : 'false',
+		LineDescription: String(body.LineDescription ?? body.lineDescription ?? '').trim(),
 		StatusText: buildStatusTextStamp({ email, channel, gps })
 	  };
 
@@ -716,7 +718,77 @@ if (action === "ACCEPTED") {
 		result: out
 	  });
 	}
-	
+
+	if (action === "GET_ACCEPTANCE_CURRENT") {
+	  const ultPayload = {
+		JobId: String(jobId),
+		Action: "GET_ACCEPTANCE_CURRENT",
+		Email: email,
+		StatusText: buildStatusTextStamp({ email, channel, gps })
+	  };
+
+	  console.log("[jobsvendor] WF PAYLOAD (GET_ACCEPTANCE_CURRENT) =>", JSON.stringify(ultPayload));
+
+	  const r = await callUltimo(cfg, ultPayload);
+	  const out = getOutputObject(r.json);
+
+	  return respond(200, {
+		ok: true,
+		jobId,
+		action: "GET_ACCEPTANCE_CURRENT",
+		CurrentHours: String(out?.CurrentHours ?? '0'),
+		Products: Array.isArray(out?.Products) ? out.Products : [],
+		ComplexArticles: Array.isArray(out?.ComplexArticles) ? out.ComplexArticles : [],
+		Lines: Array.isArray(out?.Lines) ? out.Lines : [],
+		result: out
+	  });
+	}
+
+	if (action === "UPDATE_ACCEPTANCE_LINE") {
+	  const lineId = String(
+		body.LineId ||
+		body.lineId ||
+		""
+	  ).trim();
+
+	  const newQuantity = String(
+		body.NewQuantity ||
+		body.newQuantity ||
+		""
+	  ).trim();
+
+	  if (!lineId) {
+		return respond(400, { error: "LineId ontbreekt." });
+	  }
+
+	  if (!newQuantity) {
+		return respond(400, { error: "NewQuantity ontbreekt." });
+	  }
+
+	  const ultPayload = {
+		JobId: String(jobId),
+		Action: "UPDATE_ACCEPTANCE_LINE",
+		Email: email,
+		LineId: lineId,
+		NewQuantity: newQuantity,
+		StatusText: buildStatusTextStamp({ email, channel, gps })
+	  };
+
+	  console.log("[jobsvendor] WF PAYLOAD (UPDATE_ACCEPTANCE_LINE) =>", JSON.stringify(ultPayload));
+
+	  const r = await callUltimo(cfg, ultPayload);
+	  const out = getOutputObject(r.json);
+
+	  return respond(200, {
+		ok: true,
+		jobId,
+		action: "UPDATE_ACCEPTANCE_LINE",
+		Result: out?.Result,
+		Message: out?.Message,
+		result: out
+	  });
+	}
+
 	if (action === "ADD_ACCEPTANCE_PRODUCT") {
 	  const productLineId = String(
 		body.ProductLineId ||
@@ -760,6 +832,8 @@ if (action === "ACCEPTED") {
 		ArticleId: articleId,
 		ProductDescription: productDescription,
 		DeliveredQuantity: deliveredQuantity,
+		AppendNewLine: String(body.AppendNewLine ?? body.appendNewLine ?? '').trim() === 'true' ? 'true' : 'false',
+		LineDescription: String(body.LineDescription ?? body.lineDescription ?? '').trim(),
 		StatusText: buildStatusTextStamp({ email, channel, gps })
 	  };
 
@@ -774,8 +848,82 @@ if (action === "ACCEPTED") {
 		action: "ADD_ACCEPTANCE_PRODUCT",
 		result: out
 	  });
-	}	
-	
+	}
+
+	if (action === "ADD_PURCHASE_REQUEST_LINE") {
+	  const complexArticleId = String(body.ComplexArticleId || body.complexArticleId || "").trim();
+	  const quantity = String(body.Quantity || body.quantity || "").trim();
+
+	  if (!complexArticleId) {
+		return respond(400, { error: "ComplexArticleId ontbreekt." });
+	  }
+
+	  if (!quantity) {
+		return respond(400, { error: "Quantity ontbreekt." });
+	  }
+
+	  const ultPayload = {
+		JobId: String(jobId),
+		Action: "ADD_PURCHASE_REQUEST_LINE",
+		Email: email,
+		ComplexArticleId: complexArticleId,
+		Quantity: quantity,
+		StatusText: buildStatusTextStamp({ email, channel, gps })
+	  };
+
+	  console.log("[jobsvendor] WF PAYLOAD (ADD_PURCHASE_REQUEST_LINE) =>", JSON.stringify(ultPayload));
+
+	  const r2 = await callUltimo(cfg, ultPayload);
+	  const out2 = getOutputObject(r2.json);
+
+	  return respond(200, {
+		ok: true,
+		jobId,
+		action: "ADD_PURCHASE_REQUEST_LINE",
+		result: out2
+	  });
+	}
+
+	if (action === "ADD_CUSTOM_PRODUCT_LINE") {
+	  const description = String(body.Description || body.description || "").trim();
+	  const quantity = String(body.Quantity || body.quantity || "").trim();
+	  const price = String(body.Price || body.price || "").trim();
+
+	  if (!description) {
+		return respond(400, { error: "Description ontbreekt." });
+	  }
+
+	  if (!quantity) {
+		return respond(400, { error: "Quantity ontbreekt." });
+	  }
+
+	  if (!price) {
+		return respond(400, { error: "Price ontbreekt." });
+	  }
+
+	  const ultPayload = {
+		JobId: String(jobId),
+		Action: "ADD_CUSTOM_PRODUCT_LINE",
+		Email: email,
+		Description: description,
+		Quantity: quantity,
+		Price: price,
+		StatusText: buildStatusTextStamp({ email, channel, gps })
+	  };
+
+	  console.log("[jobsvendor] WF PAYLOAD (ADD_CUSTOM_PRODUCT_LINE) =>", JSON.stringify(ultPayload));
+
+	  const r3 = await callUltimo(cfg, ultPayload);
+	  const out3 = getOutputObject(r3.json);
+
+	  return respond(200, {
+		ok: true,
+		jobId,
+		action: "ADD_CUSTOM_PRODUCT_LINE",
+		result: out3
+	  });
+	}
+
 		if (action === "ADD_ACCEPTANCE_REMARK") {
 		  const acceptanceRemarkText = String(
 			body.AcceptanceRemarkText ||

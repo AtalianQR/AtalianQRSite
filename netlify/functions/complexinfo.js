@@ -35,7 +35,7 @@ function getOutputObject(raw) {
 }
 
 
-exports.handler = async function (event) {
+export const handler = async function (event) {
   try {
     // ============================================================
     // 1. METHOD CHECK

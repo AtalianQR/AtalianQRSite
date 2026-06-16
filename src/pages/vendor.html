@@ -93,7 +93,66 @@
 	  .qty-ok-btn {
 		grid-column: 1 / -1;
 	  }
-	}	
+	}
+
+	.article-search-row {
+	  display: flex;
+	  gap: .5rem;
+	  margin-bottom: .5rem;
+	}
+
+	.article-search-input {
+	  flex: 1;
+	  width: 100%;
+	  border: 1px solid #d1d5db;
+	  border-radius: 6px;
+	  padding: .5rem .6rem;
+	  font-size: 1rem;
+	  box-sizing: border-box;
+	}
+
+	.article-search-cancel-btn {
+	  border: none;
+	  border-radius: 8px;
+	  padding: .5rem .75rem;
+	  background: #6b7280;
+	  color: #fff;
+	  font-weight: 700;
+	  cursor: pointer;
+	  white-space: nowrap;
+	}
+
+	.article-search-cancel-btn:active {
+	  background: #4b5563;
+	}
+
+	.article-search-list {
+	  max-height: 400px;
+	  overflow-y: auto;
+	  display: flex;
+	  flex-direction: column;
+	  gap: .35rem;
+	}
+
+	.article-search-item {
+	  border: 1px solid #EE7E00;
+	  border-radius: 8px;
+	  padding: .45rem .6rem;
+	  background: #fff;
+	  text-align: left;
+	  font-weight: 600;
+	  cursor: pointer;
+	}
+
+	.article-search-item:active {
+	  background: #fff3e6;
+	}
+
+	.article-search-empty {
+	  color: #6b7280;
+	  font-size: .9rem;
+	  padding: .35rem .1rem;
+	}
 	
 	.signature-wrapper {
 	  width: 100%;
@@ -1129,6 +1188,126 @@ async function requireGpsIfPortalSelf({ botui, Telemetry, isFr, cameFromPortalSe
 	  return Array.isArray(res?.Products) ? res.Products : [];
 	}
 
+	async function fetchAcceptanceCurrent(job) {
+	  const res = await submitUpdate({
+		action: 'GET_ACCEPTANCE_CURRENT',
+		jobId: job.Id,
+		email: sessionEmail
+	  }, null);
+
+	  const productList = Array.isArray(res?.Products) ? res.Products : [];
+	  const complexArticleList = Array.isArray(res?.ComplexArticles) ? res.ComplexArticles : [];
+
+	  const products = {};
+	  for (const p of productList) {
+		products[String(p.Id || '').trim()] = String(p.CurrentDeliveredQuantity || '0').trim();
+	  }
+
+	  return {
+		hours: String(res?.CurrentHours || '0').trim(),
+		products,
+		productList,
+		complexArticleList,
+		lines: Array.isArray(res?.Lines) ? res.Lines : []
+	  };
+	}
+
+	function buildAcceptanceStatementFromCurrent(current) {
+	  const rawLines = Array.isArray(current?.lines) ? current.lines : [];
+
+	  const toNum = (val) => parseFloat(String(val == null ? '' : val).replace(',', '.')) || 0;
+	  const toDisplay = (val) => String(val == null ? '' : val).trim().replace('.', ',');
+
+	  // Gepresteerde uren: som van alle 0012-lijnen in Diversen (basis + extra uren).
+	  const hourLines = rawLines.filter(l => String(l.External).trim() === '0012');
+	  let performedHours = String(current?.hours || '0').trim();
+	  if (hourLines.length) {
+		const totalHours = hourLines.reduce((sum, l) => sum + toNum(l.Quantity), 0);
+		performedHours = toDisplay(totalHours);
+	  }
+
+	  // Geleverde producten: som van alle 0014-lijnen in Diversen, gegroepeerd per artikel.
+	  const productLines = rawLines.filter(l => String(l.External).trim() === '0014');
+	  const productGroups = new Map(); // articleId -> { label, total }
+
+	  for (const l of productLines) {
+		let desc = String(l.Description || '').replace(/^🔳\s*/, '').trim();
+		const stripped = desc.replace(/^(Extra product|Extra artikel|Produit suppl[ée]mentaire|Article suppl[ée]mentaire)\s*\([^)]*\)\s*:\s*/, '');
+		const dashIdx = stripped.indexOf(' - ');
+		const articleId = (dashIdx >= 0 ? stripped.slice(0, dashIdx) : stripped).trim();
+
+		if (!productGroups.has(articleId)) {
+		  productGroups.set(articleId, { label: stripped, total: 0 });
+		}
+		productGroups.get(articleId).total += toNum(l.Quantity);
+	  }
+
+	  const deliveredProductLines = [];
+	  for (const { label, total } of productGroups.values()) {
+		if (total > 0) {
+		  deliveredProductLines.push(
+			`• ${label} - ${toDisplay(total)} ${isFr ? 'pc.' : 'st.'}`
+		  );
+		}
+	  }
+
+	  const deliveredProductsText = deliveredProductLines.join('<br>');
+
+	  const acceptanceStatementLines = [];
+
+	  acceptanceStatementLines.push(
+		`<b>${isFr ? 'Heures prestées' : 'Gepresteerde uren'}:</b> ${performedHours}`
+	  );
+
+	  if (deliveredProductsText) {
+		acceptanceStatementLines.push(
+		  `<b>${isFr ? 'Produits livrés' : 'Geleverde producten'}:</b><br>${deliveredProductsText}`
+		);
+	  } else {
+		acceptanceStatementLines.push(
+		  `<b>${isFr ? 'Produits livrés' : 'Geleverde producten'}:</b><br>${isFr ? 'Aucun produit lié à cette prestation.' : 'Geen producten gekoppeld aan deze prestatie.'}`
+		);
+	  }
+
+	  if (sessionEmail) {
+		acceptanceStatementLines.push(
+		  `<b>${isFr ? 'Collaborateur Atalian' : 'Atalian medewerker'}:</b> ${sessionEmail}`
+		);
+	  }
+
+	  return acceptanceStatementLines.join('<br>');
+	}
+
+	async function regenerateAcceptanceStatement(job) {
+	  const current = await fetchAcceptanceCurrent(job);
+	  const acceptanceStatement = buildAcceptanceStatementFromCurrent(current);
+
+	  if (!acceptanceStatement.trim()) {
+		return;
+	  }
+
+	  await submitUpdate({
+		action: 'SAVE_ACCEPTANCE_STATEMENT',
+		jobId: job.Id,
+		email: sessionEmail,
+		AcceptanceStatement: acceptanceStatement
+	  }, null);
+
+	  // Houd het lokale job-object in sync, anders blijft showCustomerAcceptanceRequiredScreen
+	  // de oude (stale) verklaring tonen.
+	  job.AcceptanceStatement = acceptanceStatement;
+	  job.AcceptanceText = acceptanceStatement;
+	  job.AcceptanceRemarkText = acceptanceStatement;
+	  job.AcceptanceRemarks = acceptanceStatement;
+	  job.EdtAcceptanceStatement = acceptanceStatement;
+	  job.EdtAcceptanceRemarkText = acceptanceStatement;
+	}
+
+	function formatAcceptanceTimestamp(date = new Date()) {
+	  const pad = (n) => String(n).padStart(2, '0');
+	  return `${pad(date.getDate())}/${pad(date.getMonth() + 1)}/${date.getFullYear()} ${pad(date.getHours())}:${pad(date.getMinutes())}`;
+	}
+
 	function formatAcceptanceProductLine(product) {
 	  const articleId = String(product.ArticleId || '').trim();
 	  const articleDescription = String(product.ArticleDescription || '').trim();
@@ -1579,8 +1758,212 @@ async function askDeliveredQtyInline({ label, defaultQty }) {
     });
   });
 }
-  
-	async function runAcceptanceSignature(job) {
+
+async function askPerformedHoursInline({ defaultHours }) {
+  return new Promise(async (resolve) => {
+    const id = `hours-${Date.now()}-${Math.floor(Math.random() * 10000)}`;
+
+    await botui.message.add({
+      type: 'html',
+      content: `
+        <div class="job-description-box product-inline-box">
+          <div class="product-inline-title">
+            <b>${isFr ? 'Heures prestées' : 'Gepresteerde uren'}</b>
+          </div>
+
+          <div class="product-inline-row">
+            <div class="qty-edit">
+              <span>${isFr ? 'Heures' : 'Uren'}</span>
+              <input id="${id}" type="text" value="${defaultHours}" inputmode="decimal" />
+            </div>
+
+            <button type="button" id="${id}-ok" class="qty-ok-btn">
+              ✅ ${isFr ? 'OK' : 'OK'}
+            </button>
+          </div>
+        </div>
+      `
+    });
+
+    const input = document.getElementById(id);
+    const button = document.getElementById(`${id}-ok`);
+
+    setTimeout(() => {
+      input?.focus();
+      input?.select();
+    }, 100);
+
+    button.onclick = () => {
+      resolve(String(input?.value || '').trim());
+    };
+
+    input.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        resolve(String(input?.value || '').trim());
+      }
+    });
+  });
+}
+
+async function askLineQuantityInline({ label, defaultQty, fieldLabel, inputMode }) {
+  return new Promise(async (resolve) => {
+    const id = `lineqty-${Date.now()}-${Math.floor(Math.random() * 10000)}`;
+    const resolvedFieldLabel = fieldLabel ?? (isFr ? 'Quantité' : 'Aantal');
+    const resolvedInputMode = inputMode ?? 'decimal';
+
+    await botui.message.add({
+      type: 'html',
+      content: `
+        <div class="job-description-box product-inline-box">
+          <div class="product-inline-title">
+            <b>${label}</b>
+          </div>
+
+          <div class="product-inline-row">
+            <div class="qty-edit">
+              <span>${resolvedFieldLabel}</span>
+              <input id="${id}" type="text" value="${defaultQty}" inputmode="${resolvedInputMode}" />
+            </div>
+
+            <button type="button" id="${id}-ok" class="qty-ok-btn">
+              ✅ ${isFr ? 'OK' : 'OK'}
+            </button>
+          </div>
+        </div>
+      `
+    });
+
+    const input = document.getElementById(id);
+    const button = document.getElementById(`${id}-ok`);
+
+    setTimeout(() => {
+      input?.focus();
+      input?.select();
+    }, 100);
+
+    button.onclick = () => {
+      resolve(String(input?.value || '').trim());
+    };
+
+    input.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        resolve(String(input?.value || '').trim());
+      }
+    });
+  });
+}
+
+async function askArticleSearchInline(buttons, label) {
+  return new Promise(async (resolve) => {
+    const id = `artsearch-${Date.now()}-${Math.floor(Math.random() * 10000)}`;
+
+    const renderList = (items) => {
+      if (!items.length) {
+        return `<div class="article-search-empty">${isFr ? 'Aucun article trouvé.' : 'Geen artikelen gevonden.'}</div>`;
+      }
+      return items.map((btn, i) => `<button type="button" class="article-search-item" data-idx="${i}">${btn.text}</button>`).join('');
+    };
+
+    let currentItems = buttons;
+
+    await botui.message.add({
+      type: 'html',
+      content: `
+        <div class="job-description-box product-inline-box">
+          ${label ? `<div class="product-inline-title"><b>${label}</b></div>` : ''}
+          <div class="article-search-row">
+            <input id="${id}-input" type="text" class="article-search-input" autocomplete="off" placeholder="${isFr ? 'Rechercher un article...' : 'Artikel zoeken...'}" />
+            <button type="button" id="${id}-cancel" class="article-search-cancel-btn">
+              ${isFr ? '❌ Annuler' : '❌ Annuleren'}
+            </button>
+          </div>
+          <div id="${id}-list" class="article-search-list">
+            ${renderList(currentItems)}
+          </div>
+        </div>
+      `
+    });
+
+    const input = document.getElementById(`${id}-input`);
+    const listEl = document.getElementById(`${id}-list`);
+    const cancelButton = document.getElementById(`${id}-cancel`);
+
+    const attachClickHandlers = () => {
+      listEl.querySelectorAll('.article-search-item').forEach((el) => {
+        el.onclick = () => {
+          const idx = Number(el.getAttribute('data-idx'));
+          resolve(currentItems[idx].value);
+        };
+      });
+    };
+
+    attachClickHandlers();
+
+    cancelButton.onclick = async () => {
+      await botui.message.add({
+        content: isFr
+          ? 'Voulez-vous ajouter un article qui ne figure pas dans la liste ?'
+          : 'Wilt u een artikel toevoegen dat niet in de lijst staat?'
+      });
+
+      const confirmChoice = await botui.action.button({
+        action: [
+          { text: isFr ? '✅ Oui, ajouter cet article' : '✅ Ja, artikel toevoegen', value: 'confirm' },
+          { text: isFr ? '↩️ Non, continuer' : '↩️ Nee, verdergaan', value: 'back' }
+        ]
+      });
+      const confirmValue = confirmChoice.value ?? confirmChoice;
+
+      if (confirmValue === 'confirm') {
+        resolve('__cancel__');
+      } else {
+        resolve('__abort__');
+      }
+    };
+
+    setTimeout(() => {
+      input?.focus();
+    }, 100);
+
+    input.addEventListener('input', () => {
+      const term = String(input.value || '').trim().toLowerCase();
+      currentItems = term
+        ? buttons.filter(b => b.text.toLowerCase().includes(term))
+        : buttons;
+      listEl.innerHTML = renderList(currentItems);
+      attachClickHandlers();
+    });
+  });
+}
+
+function normalizeQuantityInput(raw) {
+  let cleaned = String(raw || '')
+    .trim()
+    .replace(/\s+/g, '')
+    .replace(/[^0-9.,]/g, '')
+    .replace(',', '.');
+
+  if (cleaned.startsWith('.')) {
+    cleaned = '0' + cleaned;
+  }
+  if (cleaned.endsWith('.')) {
+    cleaned = cleaned.slice(0, -1);
+  }
+
+  if (!cleaned || !/^\d+(\.\d{1,3})?$/.test(cleaned)) {
+    return { ok: false };
+  }
+
+  return {
+    ok: true,
+    forUltimo: cleaned,
+    display: cleaned.replace('.', ',')
+  };
+}
+
+	async function collectAndSaveAcceptancePreparation(job, defaults) {
 
 	  // BLOK 1 — Prestatieverklaring
 	  await botui.message.add({
@@ -1598,6 +1981,7 @@ async function askDeliveredQtyInline({ label, defaultQty }) {
 	  });
 
 	  let performedHours = '';
+	  let performedHoursForUltimo = '';
 
 	  while (true) {
 		await botui.message.add({
@@ -1614,14 +1998,9 @@ async function askDeliveredQtyInline({ label, defaultQty }) {
 		  `
 		});
 
-		const hoursAnswer = await botui.action.text({
-		  action: {
-			placeholder: isFr ? 'Heures réellement prestées' : 'Effectief gepresteerde uren',
-			maxLength: 20
-		  }
-		});
+		const rawHoursAnswer = await askPerformedHoursInline({ defaultHours: defaults.hours });
 
-		const rawHours = String(hoursAnswer?.value || '').trim();
+		const rawHours = String(rawHoursAnswer || '').trim();
 
 		if (!rawHours) {
 		  await botui.message.add({
@@ -1644,6 +2023,7 @@ async function askDeliveredQtyInline({ label, defaultQty }) {
 		}
 
 		performedHours = normalizedHours.replace('.', ',');
+		performedHoursForUltimo = normalizedHours;
 
 		await botui.message.add({
 		  type: 'html',
@@ -1656,31 +2036,16 @@ async function askDeliveredQtyInline({ label, defaultQty }) {
 		  `
 		});
 
-		const confirmHours = await botui.action.button({
-		  action: [
-			{
-			  text: isFr ? '✅ Confirmer les heures' : '✅ Uren bevestigen',
-			  value: 'yes'
-			},
-			{
-			  text: isFr ? '✏️ Corriger' : '✏️ Corrigeren',
-			  value: 'no'
-			}
-		  ]
-		});
-
-		if (confirmHours.value === 'yes') {
-		  break;
-		}
+		break;
 	  }
 
-	  // Pas na bevestiging de uren als kost boeken in Ultimo
-	  if (Number(performedHours.replace(',', '.')) > 0) {
+	  // Uren als kost boeken in Ultimo
+	  if (Number(performedHoursForUltimo) > 0) {
 		await submitUpdate({
 		  action: 'ADD_ACCEPTANCE_HOURS',
 		  jobId: job.Id,
 		  email: sessionEmail,
-		  PerformedHours: performedHours
+		  PerformedHours: performedHoursForUltimo
 		}, isFr ? '✅ Heures ajoutées aux coûts.' : '✅ Uren toegevoegd aan de kosten.');
 	  } else {
 		await botui.message.add({
@@ -1729,7 +2094,7 @@ async function askDeliveredQtyInline({ label, defaultQty }) {
 			''
 		  ).trim();
 
-		  const defaultQty = requestedQty || '0';
+		  const defaultQty = defaults.products[String(product.Id || '').trim()] ?? (requestedQty || '0');
 
 		  const label = [
 			articleId,
@@ -1954,6 +2319,13 @@ async function askDeliveredQtyInline({ label, defaultQty }) {
 		email: sessionEmail,
 		AcceptanceStatement: acceptanceStatement
 	  }, isFr ? '✅ Déclaration de prestation enregistrée.' : '✅ Prestatieverklaring bewaard.');
+
+	  return { acceptanceStatement, performedHours, deliveredProductsText };
+	}
+
+	async function runAcceptanceSignature(job) {
+	  const defaults = { hours: '0', products: {} };
+	  const { acceptanceStatement } = await collectAndSaveAcceptancePreparation(job, defaults);
 
 	// BLOK 2 — Overgang naar klantacceptatie
 	await botui.message.add({
@@ -2188,8 +2560,714 @@ async function askDeliveredQtyInline({ label, defaultQty }) {
 		  </div>
 		`
 	  });
-	} 
+	}
 	 
+	  async function manageAcceptanceLines(job) {
+		const handledLineIds = new Set();
+
+		outerLoop:
+		while (true) {
+		  const current = await fetchAcceptanceCurrent(job);
+
+		  for (const line of current.lines) {
+			const lineId = String(line.Id || '').trim();
+
+			if (handledLineIds.has(lineId)) {
+			  continue;
+			}
+
+			const lineDescription = String(line.Description || '').trim();
+			const currentQty = String(line.Quantity || '0').trim();
+
+			await botui.message.add({
+			  type: 'html',
+			  content: `
+				<div class="acceptance-section-box">
+				  <b>${lineDescription}</b><br>
+				  ${isFr ? 'Quantité actuelle' : 'Huidig aantal'}: <b>${currentQty}</b>
+				</div>
+			  `
+			});
+
+			const lineChoice = await botui.action.button({
+			  action: [
+				{ text: isFr ? '✏️ Modifier' : '✏️ Bewerken', value: 'edit' },
+				{ text: isFr ? '⏭️ Passer' : '⏭️ Overslaan', value: 'skip' }
+			  ]
+			});
+			const lineChoiceValue = lineChoice.value ?? lineChoice;
+
+			if (lineChoiceValue === 'skip') {
+			  handledLineIds.add(lineId);
+			  continue;
+			}
+
+			let newQty = '';
+
+			while (true) {
+			  const rawAnswer = await askLineQuantityInline({
+				label: lineDescription,
+				defaultQty: currentQty
+			  });
+
+			  const rawValue = String(rawAnswer || '').trim();
+
+			  if (!rawValue) {
+				await botui.message.add({
+				  content: isFr
+					? '⚠️ Une quantité est obligatoire. Introduisez 0 si rien ne doit être facturé.'
+					: '⚠️ Een aantal is verplicht. Geef 0 in als er niets aangerekend moet worden.'
+				});
+				continue;
+			  }
+
+			  const normalized = normalizeQuantityInput(rawValue);
+
+			  if (!normalized.ok) {
+				await botui.message.add({
+				  content: isFr
+					? '⚠️ Introduisez une quantité valable, par exemple 0, 1 ou 2,5.'
+					: '⚠️ Geef een geldig aantal in, bijvoorbeeld 0, 1 of 2,5.'
+				});
+				continue;
+			  }
+
+			  newQty = normalized.forUltimo;
+			  break;
+			}
+
+			if (newQty === currentQty) {
+			  handledLineIds.add(lineId);
+			  continue;
+			}
+
+			const isBaseHoursLine =
+			  String(line.External).trim() === '0012' &&
+			  !/Extra uren|Heures supplémentaires/.test(lineDescription);
+
+			if (isBaseHoursLine) {
+			  while (true) {
+				const rawRemark = await askLineQuantityInline({
+				  label: isFr ? 'Remarque (obligatoire)' : 'Opmerking (verplicht)',
+				  defaultQty: '',
+				  fieldLabel: isFr ? 'Remarque' : 'Opmerking',
+				  inputMode: 'text'
+				});
+
+				const remark = String(rawRemark || '').trim();
+
+				if (!remark) {
+				  await botui.message.add({
+					content: isFr
+					  ? '⚠️ Une remarque est obligatoire.'
+					  : '⚠️ Een opmerking is verplicht.'
+				  });
+				  continue;
+				}
+
+				break;
+			  }
+			}
+
+			try {
+			  const data = await submitUpdate({
+				action: 'UPDATE_ACCEPTANCE_LINE',
+				jobId: job.Id,
+				email: sessionEmail,
+				LineId: lineId,
+				NewQuantity: newQty
+			  });
+
+			  if (data?.Result === false) {
+				await botui.message.add({
+				  content: data?.Message
+					? String(data.Message)
+					: (isFr ? '❌ La ligne n’a pas pu être mise à jour.' : '❌ De lijn kon niet bijgewerkt worden.')
+				});
+				continue outerLoop;
+			  }
+
+			  await botui.message.add({
+				content: isFr ? '✅ Ligne mise à jour.' : '✅ Lijn bijgewerkt.'
+			  });
+
+			  await regenerateAcceptanceStatement(job);
+
+			  handledLineIds.add(lineId);
+			} catch (err) {
+			  await botui.message.add({
+				content: isFr
+				  ? '❌ Une erreur s’est produite, veuillez réessayer.'
+				  : '❌ Er ging iets mis, probeer opnieuw.'
+			  });
+			  continue outerLoop;
+			}
+
+			continue outerLoop;
+		  }
+
+		  await botui.message.add({
+			type: 'html',
+			content: `
+			  <div class="acceptance-section-box">
+				<b>${isFr ? 'Coûts supplémentaires' : 'Extra kosten'}</b>
+			  </div>
+			`
+		  });
+
+		  const mainChoice = await botui.action.button({
+			action: [
+			  { text: isFr ? '➕ Ajouter des coûts supplémentaires' : '➕ Extra kosten toevoegen', value: 'add_extra' },
+			  { text: isFr ? '✅ Terminé' : '✅ Klaar', value: 'done' }
+			]
+		  });
+		  const mainChoiceValue = mainChoice.value ?? mainChoice;
+
+		  if (mainChoiceValue === 'done') {
+			break;
+		  }
+
+		  const extraChoice = await botui.action.button({
+			action: [
+			  { text: isFr ? '➕ Heures supplémentaires' : '➕ Extra uren', value: 'extra_hours' },
+			  { text: isFr ? '➕ Article supplémentaire' : '➕ Extra artikel', value: 'extra_product' }
+			]
+		  });
+		  const extraChoiceValue = extraChoice.value ?? extraChoice;
+
+		  if (extraChoiceValue === 'extra_hours') {
+			let extraHoursForUltimo = '';
+
+			while (true) {
+			  const rawHoursAnswer = await askPerformedHoursInline({ defaultHours: '0' });
+			  const rawHours = String(rawHoursAnswer || '').trim();
+
+			  if (!rawHours) {
+				await botui.message.add({
+				  content: isFr
+					? '⚠️ Le nombre d’heures est obligatoire. Introduisez 0 si aucune heure ne doit être ajoutée.'
+					: '⚠️ Het aantal uren is verplicht. Geef 0 in als er geen uren toegevoegd moeten worden.'
+				});
+				continue;
+			  }
+
+			  const normalizedHours = normalizeQuantityInput(rawHours);
+
+			  if (!normalizedHours.ok) {
+				await botui.message.add({
+				  content: isFr
+					? '⚠️ Introduisez une quantité valable, par exemple 0, 1 ou 2,5.'
+					: '⚠️ Geef een geldig aantal in, bijvoorbeeld 0, 1 of 2,5.'
+				});
+				continue;
+			  }
+
+			  extraHoursForUltimo = normalizedHours.forUltimo;
+			  break;
+			}
+
+			if (Number(extraHoursForUltimo) === 0) {
+			  await botui.message.add({
+				content: isFr ? 'Rien n’a été ajouté.' : 'Er werd niets toegevoegd.'
+			  });
+			  continue;
+			}
+
+			let remark = '';
+			let remarkCancelled = false;
+
+			while (true) {
+			  const rawRemark = await askLineQuantityInline({
+				label: isFr ? 'Remarque (obligatoire)' : 'Opmerking (verplicht)',
+				defaultQty: '',
+				fieldLabel: isFr ? 'Remarque' : 'Opmerking',
+				inputMode: 'text'
+			  });
+
+			  remark = String(rawRemark || '').trim();
+
+			  if (!remark) {
+				const cancelChoice = await botui.action.button({
+				  action: [
+					{ text: isFr ? '✏️ Réessayer' : '✏️ Opnieuw proberen', value: 'retry' },
+					{ text: isFr ? '❌ Annuler' : '❌ Annuleren', value: 'cancel' }
+				  ]
+				});
+				const cancelChoiceValue = cancelChoice.value ?? cancelChoice;
+
+				if (cancelChoiceValue === 'cancel') {
+				  remarkCancelled = true;
+				  break;
+				}
+
+				await botui.message.add({
+				  content: isFr
+					? '⚠️ Une remarque est obligatoire.'
+					: '⚠️ Een opmerking is verplicht.'
+				});
+				continue;
+			  }
+
+			  break;
+			}
+
+			if (remarkCancelled) {
+			  await botui.message.add({
+				content: isFr ? 'Ajout annulé.' : 'Toevoeging geannuleerd.'
+			  });
+			  continue;
+			}
+
+			const lineDescription = `🔳 ${isFr ? 'Heures supplémentaires' : 'Extra uren'} (${formatAcceptanceTimestamp()}): ${remark}`;
+
+			try {
+			  const data = await submitUpdate({
+				action: 'ADD_ACCEPTANCE_HOURS',
+				jobId: job.Id,
+				email: sessionEmail,
+				PerformedHours: extraHoursForUltimo,
+				AppendNewLine: 'true',
+				LineDescription: lineDescription
+			  });
+
+			  if (data?.Result === false) {
+				await botui.message.add({
+				  content: data?.Message
+					? String(data.Message)
+					: (isFr ? '❌ Les heures n’ont pas pu être ajoutées.' : '❌ De uren konden niet toegevoegd worden.')
+				});
+				continue;
+			  }
+
+			  await botui.message.add({
+				content: isFr ? '✅ Heures ajoutées aux coûts.' : '✅ Uren toegevoegd aan de kosten.'
+			  });
+
+			  await regenerateAcceptanceStatement(job);
+			} catch (err) {
+			  await botui.message.add({
+				content: isFr
+				  ? '❌ Une erreur s’est produite, veuillez réessayer.'
+				  : '❌ Er ging iets mis, probeer opnieuw.'
+			  });
+			}
+
+			continue;
+		  }
+
+		  if (extraChoiceValue === 'extra_product') {
+			const acceptanceProducts = current.productList || [];
+			const complexArticles = current.complexArticleList || [];
+
+			if (!acceptanceProducts.length && !complexArticles.length) {
+			  await botui.message.add({
+				content: isFr
+				  ? 'Aucun article disponible.'
+				  : 'Geen artikelen beschikbaar.'
+			  });
+			  continue;
+			}
+
+			const combinedButtons = [];
+
+			acceptanceProducts.forEach((product, idx) => {
+			  const articleId = String(product.ArticleId || '').trim();
+			  const articleDescription = String(
+				product.ArticleDescription ||
+				product.LineDescription ||
+				''
+			  ).trim();
+
+			  combinedButtons.push({
+				text: `📦 ${[articleId, articleDescription].filter(Boolean).join(' - ')}`,
+				value: `existing:${idx}`
+			  });
+			});
+
+			complexArticles.forEach((ca, idx) => {
+			  const articleId = String(ca.ArticleId || '').trim();
+			  const articleDescription = String(ca.ArticleDescription || '').trim();
+
+			  combinedButtons.push({
+				text: `🆕 ${[articleId, articleDescription].filter(Boolean).join(' - ')}`,
+				value: `new:${idx}`
+			  });
+			});
+
+			const productChoiceValue = await askArticleSearchInline(combinedButtons);
+
+			if (productChoiceValue === '__abort__') {
+			  continue;
+			}
+
+			if (productChoiceValue === '__cancel__') {
+			  let customDescription = '';
+
+			  while (true) {
+				const rawDescription = await askLineQuantityInline({
+				  label: isFr ? 'Description de l\'article' : 'Omschrijving van het artikel',
+				  defaultQty: '',
+				  fieldLabel: isFr ? 'Description' : 'Omschrijving',
+				  inputMode: 'text'
+				});
+
+				const value = String(rawDescription || '').trim();
+
+				if (!value) {
+				  await botui.message.add({
+					content: isFr
+					  ? '⚠️ Une description est obligatoire.'
+					  : '⚠️ Een omschrijving is verplicht.'
+				  });
+				  continue;
+				}
+
+				customDescription = value;
+				break;
+			  }
+
+			  let customQty = '';
+
+			  while (true) {
+				const rawQty = await askLineQuantityInline({
+				  label: customDescription,
+				  defaultQty: '',
+				  fieldLabel: isFr ? 'Quantité' : 'Aantal',
+				  inputMode: 'decimal'
+				});
+
+				const rawValue = String(rawQty || '').trim();
+
+				if (!rawValue) {
+				  await botui.message.add({
+					content: isFr
+					  ? '⚠️ Une quantité est obligatoire.'
+					  : '⚠️ Een aantal is verplicht.'
+				  });
+				  continue;
+				}
+
+				const normalizedQty = normalizeQuantityInput(rawValue);
+
+				if (!normalizedQty.ok || Number(normalizedQty.forUltimo) <= 0) {
+				  await botui.message.add({
+					content: isFr
+					  ? '⚠️ Introduisez une quantité valable, par exemple 1 ou 2,5.'
+					  : '⚠️ Geef een geldig aantal in, bijvoorbeeld 1 of 2,5.'
+				  });
+				  continue;
+				}
+
+				customQty = normalizedQty.forUltimo;
+				break;
+			  }
+
+			  let customPrice = '';
+
+			  while (true) {
+				const rawPrice = await askLineQuantityInline({
+				  label: customDescription,
+				  defaultQty: '',
+				  fieldLabel: isFr ? 'Prix de vente' : 'Verkoopprijs',
+				  inputMode: 'decimal'
+				});
+
+				const rawValue = String(rawPrice || '').trim();
+
+				if (!rawValue) {
+				  await botui.message.add({
+					content: isFr
+					  ? '⚠️ Un prix de vente est obligatoire.'
+					  : '⚠️ Een verkoopprijs is verplicht.'
+				  });
+				  continue;
+				}
+
+				const normalizedPrice = normalizeQuantityInput(rawValue);
+
+				if (!normalizedPrice.ok || Number(normalizedPrice.forUltimo) < 0) {
+				  await botui.message.add({
+					content: isFr
+					  ? '⚠️ Introduisez un prix valable, par exemple 5 ou 5,07.'
+					  : '⚠️ Geef een geldige prijs in, bijvoorbeeld 5 of 5,07.'
+				  });
+				  continue;
+				}
+
+				customPrice = normalizedPrice.forUltimo;
+				break;
+			  }
+
+			  try {
+				const data = await submitUpdate({
+				  action: 'ADD_CUSTOM_PRODUCT_LINE',
+				  jobId: job.Id,
+				  email: sessionEmail,
+				  Description: customDescription,
+				  Quantity: customQty,
+				  Price: customPrice
+				});
+
+				if (data?.Result === false) {
+				  await botui.message.add({
+					content: data?.Message
+					  ? String(data.Message)
+					  : (isFr ? '❌ L’article n’a pas pu être ajouté.' : '❌ Het artikel kon niet toegevoegd worden.')
+				  });
+				  continue;
+				}
+
+				await botui.message.add({
+				  content: isFr ? '✅ Article ajouté aux coûts.' : '✅ Artikel toegevoegd aan de kosten.'
+				});
+
+				await regenerateAcceptanceStatement(job);
+			  } catch (err) {
+				await botui.message.add({
+				  content: isFr
+					? '❌ Une erreur s’est produite, veuillez réessayer.'
+					: '❌ Er ging iets mis, probeer opnieuw.'
+				});
+			  }
+
+			  continue;
+			}
+
+			const [kind, idxStr] = String(productChoiceValue).split(':');
+			const idx = Number(idxStr);
+
+			if (kind === 'existing') {
+			  const product = acceptanceProducts[idx];
+
+			  const articleId = String(product.ArticleId || '').trim();
+			  const articleDescription = String(
+				product.ArticleDescription ||
+				product.LineDescription ||
+				''
+			  ).trim();
+			  const label = [articleId, articleDescription].filter(Boolean).join(' - ');
+
+			  let extraQty = '';
+
+			  while (true) {
+				const rawQty = await askLineQuantityInline({
+				  label,
+				  defaultQty: ''
+				});
+
+				const rawValue = String(rawQty || '').trim();
+
+				if (!rawValue) {
+				  await botui.message.add({
+					content: isFr
+					  ? '⚠️ Une quantité est obligatoire. Introduisez 0 si rien ne doit être ajouté.'
+					  : '⚠️ Een aantal is verplicht. Geef 0 in als er niets toegevoegd moet worden.'
+				  });
+				  continue;
+				}
+
+				const normalizedQty = normalizeQuantityInput(rawValue);
+
+				if (!normalizedQty.ok) {
+				  await botui.message.add({
+					content: isFr
+					  ? '⚠️ Introduisez une quantité valable, par exemple 0, 1 ou 2,5.'
+					  : '⚠️ Geef een geldig aantal in, bijvoorbeeld 0, 1 of 2,5.'
+				  });
+				  continue;
+				}
+
+				extraQty = normalizedQty.forUltimo;
+				break;
+			  }
+
+			  if (Number(extraQty) === 0) {
+				await botui.message.add({
+				  content: isFr ? 'Rien n’a été ajouté.' : 'Er werd niets toegevoegd.'
+				});
+				continue;
+			  }
+
+			  const lineDescription = `🔳 ${isFr ? 'Article supplémentaire' : 'Extra artikel'} (${formatAcceptanceTimestamp()}): ${label}`;
+
+			  try {
+				const data = await submitUpdate({
+				  action: 'ADD_ACCEPTANCE_PRODUCT',
+				  jobId: job.Id,
+				  email: sessionEmail,
+				  ProductLineId: String(product.Id || '').trim(),
+				  ArticleId: articleId,
+				  ProductDescription: label,
+				  DeliveredQuantity: extraQty,
+				  AppendNewLine: 'true',
+				  LineDescription: lineDescription
+				});
+
+				if (data?.Result === false) {
+				  await botui.message.add({
+					content: data?.Message
+					  ? String(data.Message)
+					  : (isFr ? '❌ Le produit n’a pas pu être ajouté.' : '❌ Het product kon niet toegevoegd worden.')
+				  });
+				  continue;
+				}
+
+				await botui.message.add({
+				  content: isFr ? '✅ Produit ajouté aux coûts.' : '✅ Product toegevoegd aan de kosten.'
+				});
+
+				await regenerateAcceptanceStatement(job);
+			  } catch (err) {
+				await botui.message.add({
+				  content: isFr
+					? '❌ Une erreur s’est produite, veuillez réessayer.'
+					: '❌ Er ging iets mis, probeer opnieuw.'
+				});
+			  }
+
+			  continue;
+			}
+
+			if (kind === 'new') {
+			  const ca = complexArticles[idx];
+
+			  const articleId = String(ca.ArticleId || '').trim();
+			  const articleDescription = String(ca.ArticleDescription || '').trim();
+			  const label = [articleId, articleDescription].filter(Boolean).join(' - ');
+
+			  let newQty = '';
+
+			  while (true) {
+				const rawQty = await askLineQuantityInline({
+				  label,
+				  defaultQty: ''
+				});
+
+				const rawValue = String(rawQty || '').trim();
+
+				if (!rawValue) {
+				  await botui.message.add({
+					content: isFr
+					  ? '⚠️ Une quantité est obligatoire. Introduisez 0 si rien ne doit être ajouté.'
+					  : '⚠️ Een aantal is verplicht. Geef 0 in als er niets aangevraagd moet worden.'
+				  });
+				  continue;
+				}
+
+				const normalizedQty = normalizeQuantityInput(rawValue);
+
+				if (!normalizedQty.ok) {
+				  await botui.message.add({
+					content: isFr
+					  ? '⚠️ Introduisez une quantité valable, par exemple 0, 1 ou 2,5.'
+					  : '⚠️ Geef een geldig aantal in, bijvoorbeeld 0, 1 of 2,5.'
+				  });
+				  continue;
+				}
+
+				newQty = normalizedQty.forUltimo;
+				break;
+			  }
+
+			  if (Number(newQty) === 0) {
+				await botui.message.add({
+				  content: isFr ? 'Rien n’a été demandé.' : 'Er werd niets aangevraagd.'
+				});
+				continue;
+			  }
+
+			  try {
+				const data = await submitUpdate({
+				  action: 'ADD_PURCHASE_REQUEST_LINE',
+				  jobId: job.Id,
+				  email: sessionEmail,
+				  ComplexArticleId: String(ca.ComplexArticleId || '').trim(),
+				  Quantity: newQty
+				});
+
+				if (data?.Result === false) {
+				  await botui.message.add({
+					content: data?.Message
+					  ? String(data.Message)
+					  : (isFr ? '❌ L’article n’a pas pu être demandé.' : '❌ Het artikel kon niet aangevraagd worden.')
+				  });
+				  continue;
+				}
+
+				await botui.message.add({
+				  content: isFr ? '✅ Article demandé.' : '✅ Artikel aangevraagd.'
+				});
+			  } catch (err) {
+				await botui.message.add({
+				  content: isFr
+					? '❌ Une erreur s’est produite, veuillez réessayer.'
+					: '❌ Er ging iets mis, probeer opnieuw.'
+				});
+			  }
+
+			  continue;
+			}
+		  }
+		}
+
+		return await showCustomerAcceptanceRequiredScreen(job);
+	  }
+
+	  async function showCustomerAcceptanceRequiredScreen(job) {
+		try {
+		  await regenerateAcceptanceStatement(job);
+		} catch (e) {
+		  console.warn('regenerateAcceptanceStatement failed', e);
+		}
+
+		await botui.message.add({
+		  type: 'html',
+		  content: `
+			<div class="acceptance-section-box">
+			  <b>${isFr ? 'Acceptation client requise' : 'Klantacceptatie vereist'}</b><br>
+			  ${
+				isFr
+				  ? 'La déclaration de prestation est déjà préparée. Présentez maintenant le résumé au client pour contrôle et acceptation.'
+				  : 'De prestatieverklaring is al voorbereid. Toon nu de samenvatting aan de klant voor controle en acceptatie.'
+			  }
+			</div>
+		  `
+		});
+
+		await showExistingAcceptanceIfAny(job);
+
+		await botui.message.add({
+		  type: 'html',
+		  content: `
+			<div class="acceptance-check-box">
+			  ${
+				isFr
+				  ? 'Passez maintenant vers le client. Il pourra ensuite ajouter une remarque, indiquer son nom et signer.'
+				  : 'Ga nu naar de klant. Daarna kan de klant eventueel een opmerking toevoegen, zijn naam invullen en ondertekenen.'
+			  }
+			</div>
+		  `
+		});
+
+		const pickClient2 = await botui.action.button({
+		  action: [
+			{ text: isFr ? '✅ Continuer avec le client' : '✅ Verdergaan met de klant', value: 'ok' },
+			{ text: isFr ? '🔧 Adapter la préparation' : '🔧 Voorbereiding aanpassen', value: 'edit_prep' },
+			...(cameFromDmAssistent ? [{ text: isFr ? '↩️ Retour à l\'assistant DM' : '↩️ Terug naar DM-assistent', value: 'back' }] : []),
+		  ]
+		});
+		const pickClient2Value = pickClient2.value ?? pickClient2;
+
+		if (pickClient2Value === 'back') return goBackAfterVendor();
+
+		if (pickClient2Value === 'edit_prep') {
+		  return await manageAcceptanceLines(job);
+		}
+
+		await runCustomerAcceptanceOnly(job);
+		return;
+	  }
+
 	 async function runCustomerAcceptanceOnly(job) {
 
 
@@ -2681,45 +3759,7 @@ function guessMimeByName(name){
 		}
 
 		if (needsCustomerAcceptanceOnly(job)) {
-		  await botui.message.add({
-			type: 'html',
-			content: `
-			  <div class="acceptance-section-box">
-				<b>${isFr ? 'Acceptation client requise' : 'Klantacceptatie vereist'}</b><br>
-				${
-				  isFr
-					? 'La déclaration de prestation est déjà préparée. Présentez maintenant le résumé au client pour contrôle et acceptation.'
-					: 'De prestatieverklaring is al voorbereid. Toon nu de samenvatting aan de klant voor controle en acceptatie.'
-				}
-			  </div>
-			`
-		  });
-
-		  await showExistingAcceptanceIfAny(job);
-
-		  await botui.message.add({
-			type: 'html',
-			content: `
-			  <div class="acceptance-check-box">
-				${
-				  isFr
-					? 'Passez maintenant vers le client. Il pourra ensuite ajouter une remarque, indiquer son nom et signer.'
-					: 'Ga nu naar de klant. Daarna kan de klant eventueel een opmerking toevoegen, zijn naam invullen en ondertekenen.'
-				}
-			  </div>
-			`
-		  });
-
-		  const pickClient2 = await botui.action.button({
-			action: [
-			  { text: isFr ? '✅ Continuer avec le client' : '✅ Verdergaan met de klant', value: 'ok' },
-			  ...(cameFromDmAssistent ? [{ text: isFr ? '↩️ Retour à l\'assistant DM' : '↩️ Terug naar DM-assistent', value: 'back' }] : []),
-			]
-		  });
-		  if ((pickClient2.value ?? pickClient2) === 'back') return goBackAfterVendor();
-
-		  await runCustomerAcceptanceOnly(job);
-		  return;
+		  return await showCustomerAcceptanceRequiredScreen(job);
 		}
 
 		await menu(job);

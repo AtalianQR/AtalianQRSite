@@ -5,7 +5,7 @@
  * - Lazy require van node-fetch binnen handler
  * - Altijd JSON response { items: [], error?: any }
  */
-exports.handler = async function(event, context) {
+export const handler = async function(event, context) {
   // CORS headers
   var CORS = {
     'Access-Control-Allow-Origin': '*',
@@ -39,8 +39,7 @@ exports.handler = async function(event, context) {
     var _fetch = (typeof fetch !== 'undefined') ? fetch : null;
     if (!_fetch) {
       try {
-        _fetch = require('node-fetch');
-        if (_fetch && _fetch.default) _fetch = _fetch.default; // ESM default interop
+        _fetch = (await import('node-fetch')).default;
       } catch (e) {
         var err = { ok:false, proxy:'node-fetch-missing', error:String(e && e.message ? e.message : e) };
         return { statusCode: 200, headers: CORS, body: JSON.stringify({ items: [], error: err }) };
