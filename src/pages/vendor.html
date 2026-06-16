@@ -887,7 +887,6 @@ async function requireGpsIfPortalSelf({ botui, Telemetry, isFr, cameFromPortalSe
 				? '❌ Maximum d\'essais atteint. Le flux de travail est terminé.'
 				: '❌ Maximum aantal pogingen bereikt. De workflow is beëindigd.'
 			});
-			Telemetry.send('login_max_attempts', { err: String(e?.message || e) });
 			return false;
 		  }
 
@@ -1005,20 +1004,6 @@ async function requireGpsIfPortalSelf({ botui, Telemetry, isFr, cameFromPortalSe
       buildingName: job.ComplexName     || '',
       jobId:        job.Id              || '',
     });
-
-    // DM-telemetrie: ruimte bijhouden wanneer een DM een job opent
-    if (sessionEmail && sessionEmail.endsWith('@atalianworld.com')) {
-      const sp = job.Space || {};
-      const siteParts = [job.CustomerName, job.ComplexName].filter(Boolean);
-      Telemetry.send('dm_space_visited', {
-        email:      sessionEmail,
-        spaceId:    (sp.Id           || '').trim(),
-        spaceDesc:  (sp.Description  || '').trim(),
-        spaceRoom:  (sp.RoomNumber   || '').trim(),
-        siteName:   siteParts.join(' — '),
-        jobId:      job.Id || '',
-      });
-    }
 
     const rawDesc     = job.Description   || '';
     const rawReport   = job.Report || job.JobReportText || '';
@@ -1430,7 +1415,6 @@ async function requireGpsIfPortalSelf({ botui, Telemetry, isFr, cameFromPortalSe
     // We stoppen hier NIET de flow: in vendor is dit enkel extra bewijs in voortgang.
     // (Portalself zelf blokkeert al op GPS; vendor is "status/voortgang".)
     if (!geo.ok) {
-      Telemetry.send('vendor_gps_unavailable', { reason: geo.reason, message: geo.message || '' });
       return `\nPortalSelf GPS: unavailable (${geo.reason}${geo.message ? `: ${geo.message}` : ''})`;
     }
 
@@ -3558,8 +3542,6 @@ function normalizeQuantityInput(raw) {
 	  }
 
 	  if (ans.value === 'exit') {
-		Telemetry.send('session_exit', { cameFromPortalSelf });
-
 		await botui.message.add({
 		  content: isFr
 			? '🔚 Session terminée. Retour au portail…'
@@ -3659,7 +3641,6 @@ function guessMimeByName(name){
 	  try{
 		if(!jobId){
 		  await botui.message.add({ type:'html', content:'<span style="color:red;font-weight:bold">Geen geldige Job ID.</span>' });
-		  Telemetry.send('invalid_job_id');
 		  return;
 		}
 
@@ -3700,18 +3681,6 @@ function guessMimeByName(name){
 			buildingName: job.ComplexName     || '',
 			jobId:        job.Id              || '',
 		  });
-		  // dm_space_visited voor DM's ook bij klachten
-		  if (sessionEmail && sessionEmail.endsWith('@atalianworld.com')) {
-			Telemetry.send('dm_space_visited', {
-			  email:     sessionEmail,
-			  spaceId:   (spKlacht.Id          || '').trim(),
-			  spaceDesc: (spKlacht.Description || '').trim(),
-			  spaceRoom: (spKlacht.RoomNumber  || '').trim(),
-			  siteName:  [job.CustomerName, job.ComplexName].filter(Boolean).join(' — '),
-			  jobId:     job.Id || '',
-			});
-		  }
-		  Telemetry.send('redirect_vendor_issues_kwisid_002', { kwisId });
 		  redirectToVendorIssuesSameExt();
 		  return;
 		}
@@ -3758,7 +3727,6 @@ function guessMimeByName(name){
 			  : '✅ Deze taak is al afgesloten. Er is geen verdere actie meer mogelijk.'
 		  });
 
-		  Telemetry.send('job_closed', { status: getProgressStatusId(job) });
 		  if (cameFromPortalSelf || cameFromDmAssistent || (sessionEmail && sessionEmail.endsWith('@atalianworld.com'))) {
 			await botui.action.button({ action: [{ text: isFr ? '↩️ Retour' : '↩️ Terug', value: 'back' }] });
 			return goBackAfterVendor();
@@ -3786,7 +3754,6 @@ function guessMimeByName(name){
 		}
 
 		await botui.message.add({ content:userMessage, type:'html', cssClass:'error-message' });
-		Telemetry.send('fatal_error', { err: errorDetail });
 	  }
 	}
 
