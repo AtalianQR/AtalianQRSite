@@ -27,8 +27,7 @@ export default async (req) => {
   if (req.method === 'OPTIONS') return new Response(null, { status: 204, headers: cors });
 
   const url   = new URL(req.url);
-  // Max 200 records ophalen — elke key = 1 API-call, te veel = timeout
-  const limit = Math.min(400, Math.max(10, parseInt(url.searchParams.get('limit') ?? '300', 10)));
+  const limit = Math.min(1000, Math.max(10, parseInt(url.searchParams.get('limit') ?? '500', 10)));
 
   if (url.searchParams.get('debug') === '1') {
     return respond({ hasCtx: !!process.env.NETLIFY_BLOBS_CONTEXT, ctxLen: (process.env.NETLIFY_BLOBS_CONTEXT || '').length });
@@ -63,7 +62,7 @@ export default async (req) => {
   const topKeys = allKeys.slice(0, limit);
 
   // Stap 3: records ophalen in batches
-  const BATCH = 20;
+  const BATCH = 40;
   const items = [];
   for (let i = 0; i < topKeys.length; i += BATCH) {
     const results = await Promise.all(
