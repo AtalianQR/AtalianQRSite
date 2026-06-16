@@ -8,9 +8,9 @@ const cors = {
   'Cache-Control': 'no-store'
 };
 
-function respond(obj) {
+function respond(obj, status = 200) {
   return new Response(JSON.stringify(obj), {
-    status: 200,
+    status,
     headers: { ...cors, 'Content-Type': 'application/json' }
   });
 }
@@ -21,31 +21,12 @@ function tsFromKey(key) {
   return isNaN(n) ? 0 : n;
 }
 
-// Haal alle keys op voor één dag-prefix
-async function listDayKeys(store, prefix) {
-  const keys = [];
-  try {
-    let cursor;
-    while (true) {
-      const page = await store.list(cursor ? { cursor, prefix } : { prefix });
-      const blobs = Array.isArray(page?.blobs) ? page.blobs : [];
-      for (const b of blobs) { if (b?.key) keys.push(b.key); }
-      cursor = page?.cursor ?? null;
-      if (!cursor) break;
-    }
-  } catch {}
-  return keys;
-}
-
 export default async (req) => {
   if (req.method === 'OPTIONS') return new Response(null, { status: 204, headers: cors });
 
   const url   = new URL(req.url);
   const limit = Math.min(1000, Math.max(10, parseInt(url.searchParams.get('limit') ?? '500', 10)));
-
-  if (url.searchParams.get('debug') === '1') {
-    return respond({ hasCtx: !!process.env.NETLIFY_BLOBS_CONTEXT, ctxLen: (process.env.NETLIFY_BLOBS_CONTEXT || '').length });
-  }
+  const debug = url.searchParams.get('debug');
 
   let store;
   try {
@@ -54,21 +35,41 @@ export default async (req) => {
     return respond({ items: [], error: 'getStore failed', detail: String(err) });
   }
 
-  // Stap 1: genereer dag-prefixes voor afgelopen 90 dagen en vraag ze parallel op
-  const dayPrefixes = [];
-  for (let i = 0; i < 90; i++) {
-    const d = new Date(Date.now() - i * 86400000);
-    dayPrefixes.push(`unknown/${d.toISOString().slice(0, 10)}/`);
+  // Debug mode: toon eerste pagina en key-formaat zonder alles op te halen
+  if (debug === '1') {
+    try {
+      const page = await store.list({});
+      const blobs = page?.blobs ?? [];
+      return respond({
+        hasCtx: !!process.env.NETLIFY_BLOBS_CONTEXT,
+        totalOnFirstPage: blobs.length,
+        hasCursor: !!page?.cursor,
+        sampleKeys: blobs.slice(0, 5).map(b => b?.key),
+      });
+    } catch (err) {
+      return respond({ error: 'list failed', detail: String(err) });
+    }
   }
 
-  // Lijst in batches van 10 dagen parallel
+  // Stap 1: keys ophalen via dag-prefixes (sequentieel, meest recent eerst)
   const allKeys = [];
-  const DAY_BATCH = 10;
-  for (let i = 0; i < dayPrefixes.length; i += DAY_BATCH) {
-    const batch = dayPrefixes.slice(i, i + DAY_BATCH);
-    const results = await Promise.all(batch.map(prefix => listDayKeys(store, prefix)));
-    for (const keys of results) allKeys.push(...keys);
-    if (allKeys.length >= limit * 3) break;
+  const MAX_DAYS = 90;
+  try {
+    for (let i = 0; i < MAX_DAYS && allKeys.length < limit * 2; i++) {
+      const d = new Date(Date.now() - i * 86400000);
+      const prefix = `unknown/${d.toISOString().slice(0, 10)}/`;
+      let cursor;
+      while (true) {
+        const page = await store.list(cursor ? { cursor, prefix } : { prefix });
+        const blobs = Array.isArray(page?.blobs) ? page.blobs : [];
+        for (const b of blobs) { if (b?.key) allKeys.push(b.key); }
+        cursor = page?.cursor ?? null;
+        if (!cursor) break;
+      }
+    }
+  } catch (err) {
+    // Fallback: geef terug wat we tot nu toe hebben
+    if (!allKeys.length) return respond({ items: [], error: 'list failed', detail: String(err) });
   }
 
   if (!allKeys.length) return respond({ items: [], total: 0 });
@@ -77,8 +78,8 @@ export default async (req) => {
   allKeys.sort((a, b) => tsFromKey(b) - tsFromKey(a));
   const topKeys = allKeys.slice(0, limit);
 
-  // Stap 3: records ophalen in batches van 40 parallel
-  const BATCH = 40;
+  // Stap 3: records ophalen in batches van 30 parallel
+  const BATCH = 30;
   const items = [];
   for (let i = 0; i < topKeys.length; i += BATCH) {
     const results = await Promise.all(
