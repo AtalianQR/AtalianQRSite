@@ -23,6 +23,14 @@ function tsFromKey(key) {
   return isNaN(n) ? 0 : n;
 }
 
+// Genereer YYYY-MM string voor N maanden terug
+function monthPrefix(monthsBack) {
+  const d = new Date();
+  d.setDate(1);
+  d.setMonth(d.getMonth() - monthsBack);
+  return `unknown/${d.toISOString().slice(0, 7)}`;
+}
+
 export default async (req) => {
   if (req.method === 'OPTIONS') return new Response(null, { status: 204, headers: cors });
 
@@ -40,16 +48,20 @@ export default async (req) => {
     return respond({ items: [], error: 'getStore failed', detail: String(err) });
   }
 
-  // Stap 1: keys verzamelen
+  // Stap 1: keys verzamelen — maand per maand achterwaarts, stop zodra we genoeg hebben
   const allKeys = [];
+  const MAX_MONTHS = 12;
   try {
-    let cursor;
-    while (true) {
-      const page = await store.list(cursor ? { cursor } : {});
-      const blobs = Array.isArray(page?.blobs) ? page.blobs : [];
-      for (const b of blobs) { if (b?.key) allKeys.push(b.key); }
-      cursor = page?.cursor ?? null;
-      if (!cursor) break;
+    for (let m = 0; m < MAX_MONTHS && allKeys.length < limit * 3; m++) {
+      const prefix = monthPrefix(m);
+      let cursor;
+      while (true) {
+        const page = await store.list(cursor ? { cursor, prefix } : { prefix });
+        const blobs = Array.isArray(page?.blobs) ? page.blobs : [];
+        for (const b of blobs) { if (b?.key) allKeys.push(b.key); }
+        cursor = page?.cursor ?? null;
+        if (!cursor) break;
+      }
     }
   } catch (err) {
     return respond({ items: [], error: 'list failed', detail: String(err), keysFound: allKeys.length });
@@ -57,11 +69,11 @@ export default async (req) => {
 
   if (!allKeys.length) return respond({ items: [], total: 0 });
 
-  // Stap 2: sorteer en beperk
+  // Stap 2: sorteer nieuwste eerst en beperk
   allKeys.sort((a, b) => tsFromKey(b) - tsFromKey(a));
   const topKeys = allKeys.slice(0, limit);
 
-  // Stap 3: records ophalen in batches
+  // Stap 3: records ophalen in batches van 40 parallel
   const BATCH = 40;
   const items = [];
   for (let i = 0; i < topKeys.length; i += BATCH) {
