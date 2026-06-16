@@ -739,6 +739,7 @@ if (action === "ACCEPTED") {
 		CurrentHours: String(out?.CurrentHours ?? '0'),
 		Products: Array.isArray(out?.Products) ? out.Products : [],
 		ComplexArticles: Array.isArray(out?.ComplexArticles) ? out.ComplexArticles : [],
+		Articles: Array.isArray(out?.Articles) ? out.Articles : [],
 		Lines: Array.isArray(out?.Lines) ? out.Lines : [],
 		result: out
 	  });

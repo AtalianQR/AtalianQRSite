@@ -1196,7 +1196,19 @@ async function requireGpsIfPortalSelf({ botui, Telemetry, isFr, cameFromPortalSe
 	  }, null);
 
 	  const productList = Array.isArray(res?.Products) ? res.Products : [];
-	  const complexArticleList = Array.isArray(res?.ComplexArticles) ? res.ComplexArticles : [];
+	  const rawComplexArticles = Array.isArray(res?.ComplexArticles) ? res.ComplexArticles : [];
+	  const articleArray = Array.isArray(res?.Articles) ? res.Articles : [];
+
+	  const articleDescMap = new Map();
+	  for (const a of articleArray) {
+		const id = String(a.ArtId || '').trim();
+		if (id) articleDescMap.set(id, String(a.ArtDescription || '').trim());
+	  }
+
+	  const complexArticleList = rawComplexArticles.map(ca => ({
+		...ca,
+		ArticleDescription: articleDescMap.get(String(ca.ArticleId || '').trim()) || ''
+	  }));
 
 	  const products = {};
 	  for (const p of productList) {
