@@ -8,9 +8,9 @@ const cors = {
   'Cache-Control': 'no-store'
 };
 
-function respond(obj, status = 200) {
+function respond(obj) {
   return new Response(JSON.stringify(obj), {
-    status,
+    status: 200,
     headers: { ...cors, 'Content-Type': 'application/json' }
   });
 }
@@ -26,7 +26,6 @@ export default async (req) => {
 
   const url   = new URL(req.url);
   const limit = Math.min(1000, Math.max(10, parseInt(url.searchParams.get('limit') ?? '500', 10)));
-  const debug = url.searchParams.get('debug');
 
   let store;
   try {
@@ -35,46 +34,24 @@ export default async (req) => {
     return respond({ items: [], error: 'getStore failed', detail: String(err) });
   }
 
-  // Debug mode: toon eerste pagina en key-formaat zonder alles op te halen
-  if (debug === '1') {
-    try {
-      const page = await store.list({});
-      const blobs = page?.blobs ?? [];
-      return respond({
-        hasCtx: !!process.env.NETLIFY_BLOBS_CONTEXT,
-        totalOnFirstPage: blobs.length,
-        hasCursor: !!page?.cursor,
-        sampleKeys: blobs.slice(0, 5).map(b => b?.key),
-      });
-    } catch (err) {
-      return respond({ error: 'list failed', detail: String(err) });
-    }
-  }
-
-  // Stap 1: keys ophalen via dag-prefixes (sequentieel, meest recent eerst)
+  // Stap 1: alle keys ophalen (past in één call, geen paginering nodig)
   const allKeys = [];
-  const MAX_DAYS = 90;
   try {
-    for (let i = 0; i < MAX_DAYS && allKeys.length < limit * 2; i++) {
-      const d = new Date(Date.now() - i * 86400000);
-      const prefix = `unknown/${d.toISOString().slice(0, 10)}/`;
-      let cursor;
-      while (true) {
-        const page = await store.list(cursor ? { cursor, prefix } : { prefix });
-        const blobs = Array.isArray(page?.blobs) ? page.blobs : [];
-        for (const b of blobs) { if (b?.key) allKeys.push(b.key); }
-        cursor = page?.cursor ?? null;
-        if (!cursor) break;
-      }
+    let cursor;
+    while (true) {
+      const page = await store.list(cursor ? { cursor } : {});
+      const blobs = Array.isArray(page?.blobs) ? page.blobs : [];
+      for (const b of blobs) { if (b?.key) allKeys.push(b.key); }
+      cursor = page?.cursor ?? null;
+      if (!cursor) break;
     }
   } catch (err) {
-    // Fallback: geef terug wat we tot nu toe hebben
-    if (!allKeys.length) return respond({ items: [], error: 'list failed', detail: String(err) });
+    return respond({ items: [], error: 'list failed', detail: String(err), keysFound: allKeys.length });
   }
 
   if (!allKeys.length) return respond({ items: [], total: 0 });
 
-  // Stap 2: sorteer nieuwste eerst en beperk
+  // Stap 2: sorteer nieuwste eerst, beperk tot limit
   allKeys.sort((a, b) => tsFromKey(b) - tsFromKey(a));
   const topKeys = allKeys.slice(0, limit);
 
