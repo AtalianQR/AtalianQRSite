@@ -2562,7 +2562,7 @@ function normalizeQuantityInput(raw) {
 	  });
 	}
 	 
-	  async function manageAcceptanceLines(job) {
+	  async function manageAcceptanceLines(job, opts = {}) {
 		// Fetch eenmalig — alle wijzigingen worden lokaal bijgehouden
 		const current = await fetchAcceptanceCurrent(job);
 
@@ -3196,6 +3196,11 @@ function normalizeQuantityInput(raw) {
 		  }
 		}
 
+		if (opts.inProgress) {
+		  const jobPayload = await fetchJobDetails();
+		  return menu(jobPayload.Job, { silent: true });
+		}
+
 		return await showCustomerAcceptanceRequiredScreen(job);
 	  }
 
@@ -3483,6 +3488,7 @@ function normalizeQuantityInput(raw) {
 	} else {
 	  menuActions = [
 		{ text: isFr ? '➕ Ajouter un commentaire' : '➕ Info toevoegen', value: 'info' },
+		...(needsAcceptance ? [{ text: isFr ? '💰 Ajouter des coûts' : '💰 Kosten toevoegen', value: 'costs' }] : []),
 		{ text: doneText, value: 'done' },
 		{ text: isFr ? '🛑 Quitter la session' : '🛑 Sessie verlaten', value: 'exit', cssClass: 'secondary-button' }
 	  ];
@@ -3499,6 +3505,10 @@ function normalizeQuantityInput(raw) {
 		  return menu(jobPayload.Job, { silent: true });
 		}
 		return;
+	  }
+
+	  if (ans.value === 'costs') {
+		return await manageAcceptanceLines(job, { inProgress: true });
 	  }
 
 	  if (ans.value === 'done') {
