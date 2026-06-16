@@ -1,6 +1,4 @@
 // netlify/functions/read_logs.js — Netlify Functions v2
-// NETLIFY_BLOBS_CONTEXT wordt automatisch geïnjecteerd in v2 functies.
-
 import { getStore } from '@netlify/blobs';
 
 const cors = {
@@ -23,12 +21,20 @@ function tsFromKey(key) {
   return isNaN(n) ? 0 : n;
 }
 
-// Genereer YYYY-MM string voor N maanden terug
-function monthPrefix(monthsBack) {
-  const d = new Date();
-  d.setDate(1);
-  d.setMonth(d.getMonth() - monthsBack);
-  return `unknown/${d.toISOString().slice(0, 7)}`;
+// Haal alle keys op voor één dag-prefix
+async function listDayKeys(store, prefix) {
+  const keys = [];
+  try {
+    let cursor;
+    while (true) {
+      const page = await store.list(cursor ? { cursor, prefix } : { prefix });
+      const blobs = Array.isArray(page?.blobs) ? page.blobs : [];
+      for (const b of blobs) { if (b?.key) keys.push(b.key); }
+      cursor = page?.cursor ?? null;
+      if (!cursor) break;
+    }
+  } catch {}
+  return keys;
 }
 
 export default async (req) => {
@@ -48,23 +54,21 @@ export default async (req) => {
     return respond({ items: [], error: 'getStore failed', detail: String(err) });
   }
 
-  // Stap 1: keys verzamelen — maand per maand achterwaarts, stop zodra we genoeg hebben
+  // Stap 1: genereer dag-prefixes voor afgelopen 90 dagen en vraag ze parallel op
+  const dayPrefixes = [];
+  for (let i = 0; i < 90; i++) {
+    const d = new Date(Date.now() - i * 86400000);
+    dayPrefixes.push(`unknown/${d.toISOString().slice(0, 10)}/`);
+  }
+
+  // Lijst in batches van 10 dagen parallel
   const allKeys = [];
-  const MAX_MONTHS = 12;
-  try {
-    for (let m = 0; m < MAX_MONTHS && allKeys.length < limit * 3; m++) {
-      const prefix = monthPrefix(m);
-      let cursor;
-      while (true) {
-        const page = await store.list(cursor ? { cursor, prefix } : { prefix });
-        const blobs = Array.isArray(page?.blobs) ? page.blobs : [];
-        for (const b of blobs) { if (b?.key) allKeys.push(b.key); }
-        cursor = page?.cursor ?? null;
-        if (!cursor) break;
-      }
-    }
-  } catch (err) {
-    return respond({ items: [], error: 'list failed', detail: String(err), keysFound: allKeys.length });
+  const DAY_BATCH = 10;
+  for (let i = 0; i < dayPrefixes.length; i += DAY_BATCH) {
+    const batch = dayPrefixes.slice(i, i + DAY_BATCH);
+    const results = await Promise.all(batch.map(prefix => listDayKeys(store, prefix)));
+    for (const keys of results) allKeys.push(...keys);
+    if (allKeys.length >= limit * 3) break;
   }
 
   if (!allKeys.length) return respond({ items: [], total: 0 });
