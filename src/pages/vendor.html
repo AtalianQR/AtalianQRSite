@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="nl">
 <head>
   <meta charset="UTF-8" />
@@ -2563,21 +2563,16 @@ function normalizeQuantityInput(raw) {
 	}
 	 
 	  async function manageAcceptanceLines(job) {
-		const handledLineIds = new Set();
+		// Fetch eenmalig — alle wijzigingen worden lokaal bijgehouden
+		const current = await fetchAcceptanceCurrent(job);
 
-		outerLoop:
-		while (true) {
-		  const current = await fetchAcceptanceCurrent(job);
+		// Bestaande regels één voor één tonen en eventueel bewerken
+		for (const line of current.lines) {
+		  const lineId = String(line.Id || '').trim();
+		  const lineDescription = String(line.Description || '').trim();
+		  let currentQty = String(line.Quantity || '0').trim();
 
-		  for (const line of current.lines) {
-			const lineId = String(line.Id || '').trim();
-
-			if (handledLineIds.has(lineId)) {
-			  continue;
-			}
-
-			const lineDescription = String(line.Description || '').trim();
-			const currentQty = String(line.Quantity || '0').trim();
+		  {
 
 			await botui.message.add({
 			  type: 'html',
@@ -2598,7 +2593,6 @@ function normalizeQuantityInput(raw) {
 			const lineChoiceValue = lineChoice.value ?? lineChoice;
 
 			if (lineChoiceValue === 'skip') {
-			  handledLineIds.add(lineId);
 			  continue;
 			}
 
@@ -2637,7 +2631,6 @@ function normalizeQuantityInput(raw) {
 			}
 
 			if (newQty === currentQty) {
-			  handledLineIds.add(lineId);
 			  continue;
 			}
 
@@ -2684,28 +2677,24 @@ function normalizeQuantityInput(raw) {
 					? String(data.Message)
 					: (isFr ? '❌ La ligne n’a pas pu être mise à jour.' : '❌ De lijn kon niet bijgewerkt worden.')
 				});
-				continue outerLoop;
-			  }
-
+			  } else {
 			  await botui.message.add({
 				content: isFr ? '✅ Ligne mise à jour.' : '✅ Lijn bijgewerkt.'
 			  });
-
-			  await regenerateAcceptanceStatement(job);
-
-			  handledLineIds.add(lineId);
+			  currentQty = newQty;
+			  }
 			} catch (err) {
 			  await botui.message.add({
 				content: isFr
 				  ? '❌ Une erreur s’est produite, veuillez réessayer.'
 				  : '❌ Er ging iets mis, probeer opnieuw.'
 			  });
-			  continue outerLoop;
 			}
-
-			continue outerLoop;
 		  }
+		}
 
+		// Extra kosten menu
+		while (true) {
 		  await botui.message.add({
 			type: 'html',
 			content: `
@@ -2843,7 +2832,6 @@ function normalizeQuantityInput(raw) {
 				content: isFr ? '✅ Heures ajoutées aux coûts.' : '✅ Uren toegevoegd aan de kosten.'
 			  });
 
-			  await regenerateAcceptanceStatement(job);
 			} catch (err) {
 			  await botui.message.add({
 				content: isFr
@@ -3021,7 +3009,6 @@ function normalizeQuantityInput(raw) {
 				  content: isFr ? '✅ Article ajouté aux coûts.' : '✅ Artikel toegevoegd aan de kosten.'
 				});
 
-				await regenerateAcceptanceStatement(job);
 			  } catch (err) {
 				await botui.message.add({
 				  content: isFr
@@ -3116,7 +3103,6 @@ function normalizeQuantityInput(raw) {
 				  content: isFr ? '✅ Produit ajouté aux coûts.' : '✅ Product toegevoegd aan de kosten.'
 				});
 
-				await regenerateAcceptanceStatement(job);
 			  } catch (err) {
 				await botui.message.add({
 				  content: isFr
