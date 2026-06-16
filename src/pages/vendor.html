@@ -3488,7 +3488,7 @@ function normalizeQuantityInput(raw) {
 	} else {
 	  menuActions = [
 		{ text: isFr ? '➕ Ajouter un commentaire' : '➕ Info toevoegen', value: 'info' },
-		...(needsAcceptance ? [{ text: isFr ? '💰 Ajouter des coûts' : '💰 Kosten toevoegen', value: 'costs' }] : []),
+		...(needsAcceptance ? [{ text: isFr ? '➕ Ajouter des coûts' : '➕ Kosten toevoegen', value: 'costs' }] : []),
 		{ text: doneText, value: 'done' },
 		{ text: isFr ? '🛑 Quitter la session' : '🛑 Sessie verlaten', value: 'exit', cssClass: 'secondary-button' }
 	  ];
