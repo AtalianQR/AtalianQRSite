@@ -20,12 +20,16 @@ const APP_CREATE = process.env.APP_ELEMENT_OneAtalianJob;
 const ACTION_QUERY  = '_rest_QueryAtalianJobs';
 const ACTION_CREATE = process.env.ULTIMO_ACTION_CREATE_JOB || '_REST_OneAtalianJob';
 
-// Tijdens ontwikkeling vast tegen Ultimo TEST: de nieuwe actie GET_EQUIPMENT_BY_SERIAL
-// staat enkel in TEST. Zet SOUNDSENSING_SYNC_ENV=prod in Netlify zodra productie ook
-// de _rest_QueryAtalianJobs-wijziging heeft (zie plan-document).
-const USE_TEST = (process.env.SOUNDSENSING_SYNC_ENV || 'test').toLowerCase() !== 'prod';
-const ULTIMO_BASE = USE_TEST ? ULTIMO_BASE_TEST : ULTIMO_BASE_PROD;
-const ULTIMO_ENV_LABEL = USE_TEST ? 'TEST' : 'PROD';
+// Omgevingsdetectie - zelfde patroon als equipment.js/jobs.js/melding.js elders in deze repo:
+// standaard PRODUCTIE, enkel TEST bij expliciete ?env=test (handig voor manueel testen, een
+// cron-trigger geeft nooit queryStringParameters mee en valt dus altijd op PROD terug).
+function detectEnvironment(event = {}) {
+  const qs = event.queryStringParameters || {};
+  const isTest = qs.test === '1' || qs.test === 'true' || qs.env === 'test';
+  const base = isTest ? ULTIMO_BASE_TEST : ULTIMO_BASE_PROD;
+  const label = isTest ? 'TEST' : 'PROD';
+  return { base, label };
+}
 
 const BLOBS_STORE = 'soundsensing-config';
 const STATE_KEY = 'state';
@@ -102,8 +106,8 @@ function parseActionOutput(raw) {
   try { return JSON.parse(trimmed); } catch { return null; }
 }
 
-async function findEquipmentBySerial(deviceId) {
-  const url = `${ULTIMO_BASE}/action/${ACTION_QUERY}`;
+async function findEquipmentBySerial(ultimoBase, deviceId) {
+  const url = `${ultimoBase}/action/${ACTION_QUERY}`;
   const res = await fetch(url, {
     method: 'POST',
     headers: {
@@ -142,8 +146,8 @@ function alarmTypeLabel(alarmType) {
   return '⚠️ Andere afwijking';
 }
 
-async function createUltimoJob(equipmentId, description, alarmType) {
-  const url = `${ULTIMO_BASE}/action/${ACTION_CREATE}`;
+async function createUltimoJob(ultimoBase, equipmentId, description, alarmType) {
+  const url = `${ultimoBase}/action/${ACTION_CREATE}`;
   const externalId = `ss-${Date.now()}-${Math.random().toString(36).slice(2)}`.slice(0, 48);
   const titlePrefix = alarmTypeLabel(alarmType);
   const jobDescr = `${titlePrefix} - ${String(description || 'Soundsensing alarm').trim()}`;
@@ -387,8 +391,8 @@ async function buildProbabilityChartPng(pointsIn, alarmTimestampUnix, title) {
   return Buffer.from(buffer).toString('base64');
 }
 
-async function attachJobDocument(jobId, base64Png, fileName, description) {
-  const url = `${ULTIMO_BASE}/action/${ACTION_QUERY}`;
+async function attachJobDocument(ultimoBase, jobId, base64Png, fileName, description) {
+  const url = `${ultimoBase}/action/${ACTION_QUERY}`;
   const res = await fetch(url, {
     method: 'POST',
     headers: {
@@ -414,6 +418,7 @@ async function attachJobDocument(jobId, base64Png, fileName, description) {
 
 // === Handler =========================================================
 export async function handler(event) {
+  const { base: ULTIMO_BASE, label: ULTIMO_ENV_LABEL } = detectEnvironment(event);
   console.log(`[soundsensing-sync] Gestart - Ultimo env=${ULTIMO_ENV_LABEL}`);
 
   if (!SOUNDSENSING_API_KEY || !ULTIMO_API_KEY || !APP_QUERY || !APP_CREATE || !ULTIMO_BASE) {
@@ -451,7 +456,7 @@ export async function handler(event) {
     }
 
     try {
-      const equipment = await findEquipmentBySerial(alarm.device_id);
+      const equipment = await findEquipmentBySerial(ULTIMO_BASE, alarm.device_id);
       if (!equipment || !equipment.EquipmentId) {
         console.log(`[soundsensing-sync] Geen Ultimo-koppeling voor device_id=${alarm.device_id} (alarm ${alarm.id})`);
         skippedNoMatch++;
@@ -459,7 +464,7 @@ export async function handler(event) {
         continue; // niet als verwerkt markeren: opnieuw proberen zodra de koppeling in Ultimo staat
       }
 
-      const { jobId } = await createUltimoJob(equipment.EquipmentId, alarm.description, alarm.alarm_type);
+      const { jobId } = await createUltimoJob(ULTIMO_BASE, equipment.EquipmentId, alarm.description, alarm.alarm_type);
       console.log(`[soundsensing-sync] Job aangemaakt voor EquipmentId=${equipment.EquipmentId} (alarm ${alarm.id}, jobId=${jobId})`);
       created++;
       newlyProcessed.push({ id: alarm.id, date: new Date().toISOString() });
@@ -477,7 +482,7 @@ export async function handler(event) {
 
           const vibrationPng = await buildVibrationChartPng(vibration, alarmTimestamp, `${titleBase} - vibratiehistoriek (${alarmTypeLabel(alarm.alarm_type)})`);
           if (vibrationPng) {
-            await attachJobDocument(jobId, vibrationPng, 'vibratiehistoriek.png', `Vibratiehistoriek (${windowLabel}) rond het alarm - Soundsensing`);
+            await attachJobDocument(ULTIMO_BASE, jobId, vibrationPng, 'vibratiehistoriek.png', `Vibratiehistoriek (${windowLabel}) rond het alarm - Soundsensing`);
             console.log(`[soundsensing-sync] Vibratiegrafiek bijgevoegd aan job ${jobId} (${vibration.length} datapunten, venster=${lookbackHours}u)`);
           } else {
             console.log(`[soundsensing-sync] Geen vibratiedata gevonden voor device_id=${alarm.device_id}`);
@@ -490,7 +495,7 @@ export async function handler(event) {
           const probabilityWindowLabel = `laatste ${CHART_LOOKBACK_HOURS_PROBABILITY} uur`;
           const probabilityPng = await buildProbabilityChartPng(probabilityWindowPoints, alarmTimestamp, `${titleBase} - anomaliekans (${alarmTypeLabel(alarm.alarm_type)})`);
           if (probabilityPng) {
-            await attachJobDocument(jobId, probabilityPng, 'anomaliekans.png', `Anomaliekans (${probabilityWindowLabel}) rond het alarm - vroege-waarschuwingsindicator van het model - Soundsensing`);
+            await attachJobDocument(ULTIMO_BASE, jobId, probabilityPng, 'anomaliekans.png', `Anomaliekans (${probabilityWindowLabel}) rond het alarm - vroege-waarschuwingsindicator van het model - Soundsensing`);
             console.log(`[soundsensing-sync] Kansgrafiek bijgevoegd aan job ${jobId}`);
           }
         } catch (chartErr) {
