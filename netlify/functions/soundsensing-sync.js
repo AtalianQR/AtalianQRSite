@@ -425,13 +425,7 @@ export async function handler(event) {
   const state = await readState();
   const nowUnix = Math.floor(Date.now() / 1000);
 
-  // TEMP TEST OVERRIDE - verwijderen na het testen van het 'job aanmaken'-pad.
-  // Voorbeeld: /.netlify/functions/soundsensing-sync?since=2026-06-15
-  const sinceOverride = event?.queryStringParameters?.since;
-  const overrideUnix = sinceOverride ? Math.floor(new Date(sinceOverride).getTime() / 1000) : null;
-
-  const startTime = overrideUnix || (state.lastCheck > 0 ? state.lastCheck : nowUnix - LOOKBACK_SECONDS_FIRST_RUN);
-  if (overrideUnix) console.log(`[soundsensing-sync] TEMP TEST OVERRIDE actief: since=${sinceOverride}`);
+  const startTime = state.lastCheck > 0 ? state.lastCheck : nowUnix - LOOKBACK_SECONDS_FIRST_RUN;
 
   let alarms = [];
   try {
