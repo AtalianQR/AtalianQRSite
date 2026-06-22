@@ -708,10 +708,14 @@ function render(){
   for(const ev of events){
     if(!isKlantEvent(ev)) continue;
     if(fmt.dayKey(ev.ts) !== vdLoc) continue; // enkel gekozen dag
-    // Groeperen op de gedecodeerde locatie-id (ev.id, bv. "000947"), niet op
-    // de ruwe QR-code: dezelfde locatie kan via licht verschillende ruwe codes
-    // gescand worden (enkel laatste cijfer anders) en moet toch samen tellen.
-    const locId = ev.id || ev.code || '?';
+    // Groeperen op spaceId/equipmentId (ev.id, bv. "000947"), niet op de ruwe
+    // QR-code: parseUltimoQR gebruikt enkel de even cijfers voor de id, de
+    // oneven cijfers (incl. het laatste indicator-cijfer) zijn willekeurige
+    // opvulling tegen QR-spam — dus dezelfde locatie kan via licht
+    // verschillende ruwe codes gescand worden en moet toch samen tellen.
+    // sp_/eq_-prefix voorkomt dat een ruimte en installatie met toevallig
+    // hetzelfde numerieke id-patroon samengevoegd worden.
+    const locId = `${ev.isEquipment ? 'eq' : 'sp'}_${ev.id || ev.code || '?'}`;
     if(!locMap.has(locId)) locMap.set(locId,{code:ev.code||locId,scans:0,events:[],env:'unknown',type:'unknown',lang:{nl:0,fr:0},lastTs:0});
     const loc = locMap.get(locId);
     loc.events.push(ev);
