@@ -48,13 +48,14 @@ export default async (req) => {
   const maxLimit = typeFilter ? 3000 : 400;
   const limit = Math.min(maxLimit, Math.max(10, parseInt(url.searchParams.get('limit') ?? '300', 10)));
   // Bovengrens op het aantal blobs dat we ECHT downloaden (legacy keys zonder
-  // type-in-naam). Keys mét type-in-naam die niet matchen kosten geen download
-  // (zie hieronder), dus zolang vrijwel alle data gemigreerd is blijft dit
-  // budget vooral een vangnet voor toekomstige uitzonderingen.
-  // (Lokaal voegt `netlify dev` een diagnostische x-nf-fetch-timing-header toe
-  // met één regel per download — bij honderden downloads ineens viel de proxy
-  // om ("Could not proxy request"); vandaar dit voorzichtige getal.)
-  const scanCap = typeFilter ? Math.min(limit, 300) : limit;
+  // type-in-naam, of matches). Keys mét type-in-naam die niet matchen kosten
+  // geen download. `netlify dev` voegt lokaal een diagnostische
+  // x-nf-fetch-timing-header toe (één regel per download) die de lokale proxy
+  // laat omvallen voorbij ~300-600 downloads — dat bestaat niet in productie
+  // (echte Netlify Functions hebben een gewone 10-26s timeout, geen header-
+  // instrumentatie), dus daar mag dit veel hoger.
+  const isLocalDev = process.env.NETLIFY_DEV === 'true';
+  const scanCap = typeFilter ? Math.min(limit, isLocalDev ? 300 : 2500) : limit;
 
   if (url.searchParams.get('debug') === '1') {
     return respond({ hasCtx: !!process.env.NETLIFY_BLOBS_CONTEXT, ctxLen: (process.env.NETLIFY_BLOBS_CONTEXT || '').length });
@@ -95,7 +96,7 @@ export default async (req) => {
   // dat heel veel downloads betekenen — daarom ook een hard tijdsbudget,
   // zodat we altijd netjes teruggeven wat we al vonden i.p.v. te timeouten.
   const BATCH = 40;
-  const SCAN_TIME_BUDGET_MS = 1500;
+  const SCAN_TIME_BUDGET_MS = isLocalDev ? 1500 : 8000;
   const startedAt = Date.now();
   const items = [];
   let scanned = 0;
