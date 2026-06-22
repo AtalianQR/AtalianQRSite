@@ -1,0 +1,667 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>MSIG Europe Ruimteportaal</title>
+
+  <link rel="icon" href="/AtalianFavicon.png" />
+
+  <style>
+    html, body {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      font-family: 'Segoe UI', Arial, sans-serif;
+      background: #f4f6fa;
+      min-height: 100vh;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      background-image: url('/msigportal.svg');
+      background-size: cover;
+      background-repeat: no-repeat;
+      background-position: center;
+      background-attachment: fixed;
+      color: #111827;
+    }
+
+    .test-banner {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      background-color: #28a745;
+      color: white;
+      text-align: center;
+      padding: 5px 0;
+      font-weight: bold;
+      z-index: 1000;
+      font-size: 14px;
+      text-transform: uppercase;
+      opacity: 0.92;
+    }
+
+    body.is-test { padding-top: 30px; }
+
+    header {
+      padding: .75rem 1rem 0;
+    }
+
+    .lang-switch {
+      text-align: right;
+      max-width: 760px;
+      margin: 0 auto .5rem;
+      text-shadow: 0 1px 8px rgba(255,255,255,.75);
+    }
+
+    .lang-switch a {
+      margin: 0 .25rem;
+      text-decoration: none;
+      font-size: 1.05rem;
+      color: #111827;
+      font-weight: 700;
+    }
+
+    .header-flex {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      max-width: 760px;
+      margin: 0 auto;
+    }
+
+    img.logo {
+      max-height: 58px;
+      background: rgba(255,255,255,0.72);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      padding: .12rem;
+      border-radius: 14px;
+      box-shadow: 0 8px 28px rgba(17,24,39,.18);
+    }
+
+    main {
+      padding: 0 1rem 2rem;
+    }
+
+    .page-card {
+      max-width: 760px;
+      margin: 1rem auto 2rem;
+      padding: 1.35rem 1.55rem 1.55rem;
+
+      background: rgba(255, 255, 255, 0.58);
+      backdrop-filter: blur(16px) saturate(135%);
+      -webkit-backdrop-filter: blur(16px) saturate(135%);
+
+      border: 1px solid rgba(255, 255, 255, 0.50);
+      border-top: 1px solid rgba(255, 255, 255, 0.72);
+      border-radius: 24px;
+
+      box-shadow:
+        0 18px 45px rgba(17, 24, 39, 0.24),
+        0 2px 10px rgba(255, 255, 255, 0.25) inset;
+    }
+
+    .page-card h1 {
+      margin: 0 0 .45rem;
+      font-size: 1.55rem;
+      line-height: 1.2;
+      color: #050505;
+      text-shadow: 0 1px 0 rgba(255,255,255,.45);
+    }
+
+    .page-card p {
+      margin: 0 0 1rem;
+      color: #374151;
+      font-size: .96rem;
+      line-height: 1.45;
+    }
+
+    .step-title {
+      display: block;
+      font-weight: 800;
+      margin: 1rem 0 .4rem;
+      color: #111827;
+    }
+
+    .form-block {
+      margin-top: 1rem;
+      padding-top: 1rem;
+      border-top: 1px solid rgba(17, 24, 39, 0.10);
+    }
+
+    label {
+      display: block;
+      font-weight: 800;
+      margin-bottom: .28rem;
+      color: #111827;
+    }
+
+    select, input[type="text"] {
+      width: 100%;
+      padding: .58rem .72rem;
+      border-radius: 13px;
+      border: 1px solid rgba(17, 24, 39, 0.16);
+      font-size: .96rem;
+      background: rgba(255,255,255,0.68);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+      box-shadow: inset 0 1px 2px rgba(0,0,0,.04), 0 4px 12px rgba(17,24,39,.05);
+      color: #111827;
+    }
+
+    select:focus, input[type="text"]:focus {
+      outline: none;
+      border-color: rgba(0,86,179,.88);
+      box-shadow: 0 0 0 3px rgba(0,86,179,.18), inset 0 1px 2px rgba(0,0,0,.04);
+    }
+
+    select:disabled, input:disabled {
+      opacity: .58;
+      cursor: not-allowed;
+      background: rgba(243,244,246,.70);
+    }
+
+    .hint {
+      margin-top: .35rem;
+      font-size: .86rem;
+      color: #4b5563;
+    }
+
+    .status {
+      margin-top: .65rem;
+      font-size: .91rem;
+      color: #4b5563;
+      min-height: 1.25rem;
+    }
+
+    .status.error { color: #b91c1c; }
+
+    .actions {
+      margin-top: 1.25rem;
+      display: flex;
+      justify-content: flex-end;
+      gap: .75rem;
+      flex-wrap: wrap;
+    }
+
+    .btn {
+      border-radius: 999px;
+      padding: .68rem 1.4rem;
+      border: 1px solid rgba(255,255,255,.35);
+      font-weight: 800;
+      cursor: pointer;
+      font-size: .95rem;
+      transition: transform .12s ease, box-shadow .12s ease, opacity .12s ease;
+    }
+
+    .btn:hover {
+      transform: translateY(-1px);
+    }
+
+    .btn-primary {
+      background: rgba(0,86,179,.94);
+      color: #fff;
+      box-shadow: 0 10px 22px rgba(0,86,179,.34);
+    }
+
+    .btn-primary:active { background: #00468f; }
+
+    .btn-secondary {
+      background: rgba(255,255,255,.54);
+      color: #111827;
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+      box-shadow: 0 8px 18px rgba(17,24,39,.10);
+    }
+
+    @media (max-width: 560px) {
+      .page-card {
+        max-width: 96%;
+        padding: 1.05rem 1rem 1.2rem;
+        background: rgba(255,255,255,.66);
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <div id="test-indicator" style="display:none" class="test-banner">
+    ⚠️ TEST OMGEVING ACTIEF
+  </div>
+
+  <header>
+    <div class="lang-switch">
+      <a href="#" id="switch-nl">🇳🇱 NL</a> |
+      <a href="#" id="switch-fr">🇫🇷 FR</a>
+    </div>
+    <div class="header-flex">
+      <img src="/AtalianLogo.png" alt="Atalian Logo" class="logo" />
+    </div>
+  </header>
+
+  <main>
+    <section class="page-card">
+      <h1 id="title-text">Waar wil je een melding aanmaken?</h1>
+      <p id="intro-text">
+        Kies eerst het complex. Daarna tonen we meteen de ruimtes waarvoor je een melding kan aanmaken.
+      </p>
+
+      <div class="form-block" id="block-select">
+        <div class="hint" id="building-hint">De complexen worden geladen…</div>
+
+        <div style="margin-top:.85rem;">
+          <label id="label-building" for="select-building">Kies complex</label>
+          <select id="select-building" disabled>
+            <option value="">-- complexen worden geladen --</option>
+          </select>
+        </div>
+
+        <div style="margin-top:.85rem;">
+          <label id="label-space" for="select-space">Kies ruimte</label>
+          <select id="select-space" disabled>
+            <option value="">-- kies eerst een complex --</option>
+          </select>
+        </div>
+
+        <div id="qr-block" style="display:none;margin-top:1rem;text-align:center;">
+          <div style="font-weight:800;margin-bottom:.4rem;">QR-code voor deze ruimte</div>
+          <canvas id="space-qr"></canvas>
+        </div>
+
+        <div id="status" class="status"></div>
+
+        <div class="actions">
+          <button type="button" class="btn btn-secondary" id="btn-reset">⬅️ Terug</button>
+          <button type="button" class="btn btn-primary" id="btn-go">➡️ Ga naar meldingsportaal</button>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <script src="https://cdn.jsdelivr.net/npm/qrcode/build/qrcode.min.js"></script>
+
+  <script>
+    console.log('MSIG Europe space portal loaded ✅');
+
+    /* ============================================================
+       CONFIG
+    ============================================================ */
+    const CUSTOMER_DEPARTMENT_ID = '000740';
+    const LIST_ENDPOINT = '/.netlify/functions/complexinfo';
+
+    /* ============================================================
+       TAAL EN OMGEVING
+    ============================================================ */
+    const qs = new URLSearchParams(window.location.search);
+    let lang = qs.get('lang') || ((navigator.language || '').startsWith('fr') ? 'fr' : 'nl');
+    const host = location.host || '';
+    const isTestEnv = qs.has('test') || qs.get('env') === 'test' || /test|staging/i.test(host);
+    const envPrefix = isTestEnv ? 'test' : 'prod';
+
+    /* ============================================================
+       ELEMENTS
+    ============================================================ */
+    const selectSpace = document.getElementById('select-space');
+    const statusEl = document.getElementById('status');
+    const btnGo = document.getElementById('btn-go');
+    const btnReset = document.getElementById('btn-reset');
+    const selectBuilding = document.getElementById('select-building');
+    const qrBlock = document.getElementById('qr-block');
+    const qrCanvas = document.getElementById('space-qr');
+
+    /* ============================================================
+       STATE
+    ============================================================ */
+    let selectedBuildingKey = '';
+    let allBuildings = [];
+    let spacesForSelectedBuilding = [];
+
+    function updateSpaceQr() {
+      const spaceId = selectSpace.value;
+
+      if (!spaceId) {
+        qrBlock.style.display = 'none';
+        return;
+      }
+
+      const code = buildCodeForPortal('space', spaceId);
+      const url = new URL('/portal.html', window.location.origin);
+      url.searchParams.set('code', code);
+      url.searchParams.set('lang', lang);
+      url.searchParams.set('env', envPrefix);
+      url.searchParams.set('src', window.location.pathname + window.location.search);
+
+      const qrText = url.toString();
+
+      qrBlock.style.display = 'block';
+
+      if (!window.QRCode || !QRCode.toCanvas) {
+        console.error('QRCode library niet geladen');
+        return;
+      }
+
+      QRCode.toCanvas(qrCanvas, qrText, {
+        width: 220,
+        margin: 2
+      }, function (error) {
+        if (error) console.error('QR render fout:', error);
+      });
+    }
+
+    function initEnvBanner() {
+      if (isTestEnv) {
+        document.getElementById('test-indicator').style.display = 'block';
+        document.body.classList.add('is-test');
+      }
+    }
+
+    function setStatus(msg, isError = false) {
+      statusEl.textContent = msg || '';
+      statusEl.classList.toggle('error', !!isError);
+    }
+
+    function escHtml(s) {
+      return String(s ?? '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
+    }
+
+    function ellipsize(s, max = 70) {
+      s = String(s || '').trim();
+      return s.length > max ? s.slice(0, max - 1) + '…' : s;
+    }
+
+    function valueOf(item, ...keys) {
+      for (const key of keys) {
+        const value = item?.[key];
+        if (value !== undefined && value !== null && String(value).trim() !== '') return String(value).trim();
+      }
+      return '';
+    }
+
+    function applyLanguage() {
+      const isFr = lang === 'fr';
+      document.documentElement.lang = isFr ? 'fr' : 'nl';
+
+      document.getElementById('label-building').textContent = isFr ? 'Choisissez un complexe' : 'Kies complex';
+
+      document.getElementById('title-text').textContent = isFr
+        ? 'Où voulez-vous créer un signalement ?'
+        : 'Waar wil je een melding aanmaken?';
+
+      document.getElementById('intro-text').textContent = isFr
+        ? "Choisissez d'abord le complexe. Ensuite, nous affichons directement les espaces pour lesquels vous pouvez créer un signalement."
+        : 'Kies eerst het complex. Daarna tonen we meteen de ruimtes waarvoor je een melding kan aanmaken.';
+
+      document.getElementById('building-hint').textContent = isFr
+        ? 'Les complexes sont en cours de chargement…'
+        : 'De complexen worden geladen…';
+      document.getElementById('label-space').textContent = isFr ? 'Choisissez un espace' : 'Kies ruimte';
+      btnReset.textContent = isFr ? '⬅️ Retour' : '⬅️ Terug';
+      btnGo.textContent = isFr ? '➡️ Aller au portail de ticket' : '➡️ Ga naar meldingsportaal';
+    }
+
+    async function fetchBuildings() {
+      const isFr = lang === 'fr';
+      setStatus(isFr ? 'Chargement des complexes…' : 'Complexen worden geladen…', false);
+
+      const url = new URL(LIST_ENDPOINT, window.location.origin);
+      url.searchParams.set('action', 'LIST_BUILDINGS_BY_COUNTRY');
+      url.searchParams.set('CountryId', '00');
+      url.searchParams.set('countryId', '00');
+      url.searchParams.set('DepartmentId', CUSTOMER_DEPARTMENT_ID);
+      url.searchParams.set('departmentId', CUSTOMER_DEPARTMENT_ID);
+      url.searchParams.set('env', envPrefix);
+
+      let resp, txt, data;
+
+      try {
+        resp = await fetch(url.toString(), { cache: 'no-store' });
+        txt = await resp.text();
+      } catch (e) {
+        console.error('Fetch error', e);
+        setStatus(isFr ? 'Erreur réseau.' : 'Netwerkfout.', true);
+        return [];
+      }
+
+      try {
+        data = JSON.parse(txt);
+      } catch (e) {
+        console.error('JSON parse error', e, txt);
+        setStatus(isFr ? 'Réponse invalide du serveur.' : 'Ongeldige response van de server.', true);
+        return [];
+      }
+
+      if (!resp.ok || data.error) {
+        console.error('Backend error', data);
+        setStatus(data.error || (isFr ? 'Erreur lors du chargement.' : 'Fout bij het laden.'), true);
+        return [];
+      }
+
+      return Array.isArray(data.Items) ? data.Items : (Array.isArray(data.items) ? data.items : []);
+    }
+
+    function prepareBuildingDropdown() {
+      const isFr = lang === 'fr';
+
+      allBuildings = allBuildings.slice().sort((a, b) => {
+        const nameA = valueOf(a, 'Description');
+        const nameB = valueOf(b, 'Description');
+        return nameA.localeCompare(nameB, isFr ? 'fr' : 'nl', { numeric: true, sensitivity: 'base' });
+      });
+
+      selectBuilding.disabled = false;
+      selectBuilding.innerHTML = `<option value="">${isFr ? '-- choisissez un complexe --' : '-- kies een complex --'}</option>`;
+
+      allBuildings.forEach((b, index) => {
+        const label = valueOf(b, 'Description') || valueOf(b, 'Id');
+        selectBuilding.insertAdjacentHTML(
+          'beforeend',
+          `<option value="${index}">${escHtml(label)}</option>`
+        );
+      });
+
+      selectSpace.disabled = true;
+      selectSpace.innerHTML = `<option value="">${isFr ? "-- choisissez d'abord un complexe --" : '-- kies eerst een complex --'}</option>`;
+
+      setStatus(isFr
+        ? `✅ ${allBuildings.length} complexe(s) trouvé(s).`
+        : `✅ ${allBuildings.length} complex(en) gevonden.`, false);
+
+      if (allBuildings.length === 1) {
+        selectBuilding.value = '0';
+        selectBuilding.dispatchEvent(new Event('change'));
+      }
+    }
+
+    function selectBuildingSpaces() {
+      const isFr = lang === 'fr';
+      selectedBuildingKey = selectBuilding.value;
+
+      if (selectedBuildingKey === '') {
+        qrBlock.style.display = 'none';
+        spacesForSelectedBuilding = [];
+        selectSpace.disabled = true;
+        selectSpace.innerHTML = `<option value="">${isFr ? "-- choisissez d'abord un complexe --" : '-- kies eerst een complex --'}</option>`;
+        return;
+      }
+
+      const building = allBuildings[Number(selectedBuildingKey)];
+      spacesForSelectedBuilding = Array.isArray(building?.Spaces) ? building.Spaces : [];
+
+      qrBlock.style.display = 'none';
+      selectSpace.disabled = spacesForSelectedBuilding.length === 0;
+
+      renderSpaceOptions();
+
+      if (spacesForSelectedBuilding.length === 1) {
+        selectSpace.value = valueOf(spacesForSelectedBuilding[0], 'Id');
+        updateSpaceQr();
+      }
+    }
+
+    function renderSpaceOptions() {
+      const isFr = lang === 'fr';
+      const filtered = [...spacesForSelectedBuilding];
+
+      filtered.sort((a, b) => {
+        const descA = valueOf(a, 'Description', 'RoomNumber', 'Id');
+        const descB = valueOf(b, 'Description', 'RoomNumber', 'Id');
+
+        return descA.localeCompare(descB, isFr ? 'fr' : 'nl', {
+          numeric: true,
+          sensitivity: 'base'
+        });
+      });
+
+      selectSpace.innerHTML = `<option value="">${isFr ? '-- choisissez un espace --' : '-- kies een ruimte --'}</option>`;
+
+      if (!filtered.length) {
+        qrBlock.style.display = 'none';
+        setStatus(isFr ? 'Aucun espace trouvé.' : 'Geen ruimtes gevonden.', true);
+        return;
+      }
+
+      filtered.forEach(sp => {
+        const id = valueOf(sp, 'Id');
+        const roomNumber = valueOf(sp, 'RoomNumber');
+        const desc = ellipsize(valueOf(sp, 'Description') || roomNumber || id, 55);
+
+        let label = desc;
+
+        if (roomNumber && roomNumber !== desc) {
+          label += ` (${roomNumber})`;
+        }
+
+        selectSpace.insertAdjacentHTML(
+          'beforeend',
+          `<option value="${escHtml(id)}">${escHtml(label)}</option>`
+        );
+      });
+
+      setStatus(isFr ? `✅ ${filtered.length} espace(s) trouvé(s).` : `✅ ${filtered.length} ruimte(s) gevonden.`, false);
+    }
+
+    async function loadBuildings() {
+      const isFr = lang === 'fr';
+
+      qrBlock.style.display = 'none';
+
+      selectedBuildingKey = '';
+      spacesForSelectedBuilding = [];
+
+      selectBuilding.disabled = true;
+      selectBuilding.innerHTML = `<option value="">${isFr ? '-- chargement des complexes --' : '-- complexen worden geladen --'}</option>`;
+      selectSpace.disabled = true;
+      selectSpace.innerHTML = `<option value="">${isFr ? '-- chargement --' : '-- laden --'}</option>`;
+
+      const items = await fetchBuildings();
+      allBuildings = items;
+
+      if (!items.length) {
+        selectBuilding.innerHTML = `<option value="">${isFr ? '-- aucun complexe disponible --' : '-- geen complexen beschikbaar --'}</option>`;
+        selectSpace.innerHTML = `<option value="">${isFr ? '-- aucun espace disponible --' : '-- geen ruimtes beschikbaar --'}</option>`;
+        setStatus(isFr ? 'Geen complexen gevonden.' : 'Geen complexen gevonden.', true);
+        return;
+      }
+
+      prepareBuildingDropdown();
+    }
+
+    function buildCodeForPortal(type, id) {
+      const nummer = Number(id);
+      if (!Number.isFinite(nummer)) return String(id);
+
+      const orgId = String(Math.trunc(nummer)).padStart(6, '0');
+      const mult3 = Math.trunc(nummer * 3);
+      const last6 = String(mult3).padStart(6, '0');
+
+      let resultaat = '';
+      for (let i = 0; i < 6; i++) resultaat += orgId[i] + last6[i];
+
+      // Space: eindcijfer 0-8. Equipment blijft 9 in je bestaande logica.
+      resultaat += String(Math.floor(Math.random() * 9));
+      return resultaat;
+    }
+
+    function goToPortal() {
+      const isFr = lang === 'fr';
+
+      if (!selectedBuildingKey) {
+        alert(isFr ? "Choisissez d'abord un complexe." : 'Kies eerst een complex.');
+        return;
+      }
+
+      const spaceId = selectSpace.value;
+      if (!spaceId) {
+        alert(isFr ? 'Choisissez un espace.' : 'Kies een ruimte.');
+        return;
+      }
+
+      const code = buildCodeForPortal('space', spaceId);
+      const url = new URL('/portal.html', window.location.origin);
+      url.searchParams.set('code', code);
+      url.searchParams.set('lang', lang);
+      url.searchParams.set('env', envPrefix);
+      url.searchParams.set('src', window.location.pathname + window.location.search);
+      window.location.href = url.toString();
+    }
+
+    function resetPortal() {
+      const isFr = lang === 'fr';
+
+      selectSpace.value = '';
+      selectBuilding.value = '';
+      selectedBuildingKey = '';
+      spacesForSelectedBuilding = [];
+
+      selectSpace.disabled = true;
+      selectSpace.innerHTML = `<option value="">${isFr ? "-- choisissez d'abord un complexe --" : '-- kies eerst een complex --'}</option>`;
+
+      setStatus('', false);
+      qrBlock.style.display = 'none';
+    }
+
+    /* ============================================================
+       EVENTS
+    ============================================================ */
+    document.getElementById('switch-nl').onclick = (e) => {
+      e.preventDefault();
+      const u = new URL(window.location.href);
+      u.searchParams.set('lang', 'nl');
+      window.location.href = u.toString();
+    };
+
+    document.getElementById('switch-fr').onclick = (e) => {
+      e.preventDefault();
+      const u = new URL(window.location.href);
+      u.searchParams.set('lang', 'fr');
+      window.location.href = u.toString();
+    };
+
+    btnGo.addEventListener('click', goToPortal);
+    btnReset.addEventListener('click', resetPortal);
+
+    selectBuilding.addEventListener('change', selectBuildingSpaces);
+    selectSpace.addEventListener('change', updateSpaceQr);
+
+    /* ============================================================
+       INIT
+    ============================================================ */
+    (function init() {
+      initEnvBanner();
+      applyLanguage();
+      loadBuildings().catch(err => {
+        console.error(err);
+        setStatus('Fout bij het laden van de complexen.', true);
+      });
+    })();
+  </script>
+</body>
+</html>

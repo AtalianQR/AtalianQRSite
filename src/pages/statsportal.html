@@ -430,6 +430,16 @@ const KLANT_EVENTS  = new Set(['url_load','visit']);
 const VENDOR_EVENTS = new Set(['vendor_job_load','vendor_html_load','vendorklacht_html_load']);
 // location_known: niet als scan tellen, maar wél voor clientName/locationName lookup
 const META_EVENTS  = new Set(['location_known']);
+// poets_info_viewed: voor het 🧹-badge bij locaties
+const EXTRA_EVENTS = new Set(['poets_info_viewed']);
+
+// Types die we écht nodig hebben voor stats/charts/CSV — alle losse stap-events
+// (step, desc_entered, email_*, submit_attempt, language_switch, …) horen hier
+// bewust niet bij: die overspoelden anders het 400-record-venster van read_logs
+// en verdrongen de url_load-geschiedenis (zie 2026-06-22).
+const STATS_TYPES = [
+  ...KLANT_EVENTS, ...DM_EVENTS, ...VENDOR_EVENTS, ...META_EVENTS, ...EXTRA_EVENTS
+].join(',');
 
 function isKlantEvent(ev) { return KLANT_EVENTS.has(ev.type); }
 function isDmEvent(ev)    { return DM_EVENTS.has(ev.type); }
@@ -487,6 +497,7 @@ function setStatus(txt, state){
 
 // ── state ────────────────────────────────────────────────
 let ALL_EVENTS = [];
+let RAW_EVENTS = []; // laatste ruwe events (alle types) — enkel voor de "Recente activiteit"-feed
 let codeToClient   = {};
 let codeToLocation = {};
 let codeToBuilding = {};
@@ -528,13 +539,26 @@ function updateDateNav() {
 }
 
 // ── fetch ────────────────────────────────────────────────
+// Hoofddataset (lange, opgeschoonde geschiedenis voor stats/charts/CSV) +
+// een korte ruwe feed (alle types, enkel voor "Recente activiteit").
+async function fetchEventSources(){
+  const [r1, r2] = await Promise.all([
+    fetch(`${API}?limit=3000&types=${encodeURIComponent(STATS_TYPES)}`, {cache:'no-store'}),
+    fetch(`${API}?limit=100`, {cache:'no-store'})
+  ]);
+  if(!r1.ok) throw new Error(`HTTP ${r1.status}`);
+  const d1 = await r1.json();
+  ALL_EVENTS = Array.isArray(d1.items) ? d1.items : [];
+  if(r2.ok){
+    const d2 = await r2.json();
+    RAW_EVENTS = Array.isArray(d2.items) ? d2.items : [];
+  }
+}
+
 async function fetchData(){
   setStatus('Laden…','loading');
   try {
-    const r = await fetch(`${API}?limit=5000`, {cache:'no-store'});
-    if(!r.ok) throw new Error(`HTTP ${r.status}`);
-    const d = await r.json();
-    ALL_EVENTS = Array.isArray(d.items) ? d.items : [];
+    await fetchEventSources();
     setStatus(`${ALL_EVENTS.length} events · ${new Date().toLocaleTimeString('nl-BE')}`, 'ok');
     render();
   } catch(e){
@@ -544,7 +568,7 @@ async function fetchData(){
 
 // ── filter ───────────────────────────────────────────────
 function getEnvMode(){ return document.querySelector('input[name="env"]:checked')?.value || 'prod'; }
-function getFiltered(){
+function getFiltered(source){
   const envMode   = getEnvMode();
   const from      = $('fFrom').value ? new Date($('fFrom').value).setHours(0,0,0,0) : null;
   const to        = $('fTo').value   ? new Date($('fTo').value).setHours(23,59,59,999) : null;
@@ -552,7 +576,7 @@ function getFiltered(){
 
   const userType = getUserType();
 
-  let events = ALL_EVENTS.filter(ev => {
+  let events = (source || ALL_EVENTS).filter(ev => {
     const env = readEnv(ev);
     if(envMode === 'prod' && env !== 'prod') return false;
     if(envMode === 'test' && env !== 'test' && env !== 'unknown') return false;
@@ -579,6 +603,9 @@ function getFiltered(){
 // ── render ───────────────────────────────────────────────
 function render(){
   const events = getFiltered();
+  // Feed gebruikt de ruwe (ongefilterde) recente events, niet de stats-set,
+  // anders verdwijnen step/location_known/pagehide uit "Recente activiteit".
+  const feedSource = getFiltered(RAW_EVENTS);
   const scans  = events.filter(e=>e.type==='url_load'||e.type==='visit');
   const today  = todayKey();
 
@@ -637,11 +664,11 @@ function render(){
 
   if(getUserType() === 'dm'){
     renderDmView(events);
-    renderFeed(events);
+    renderFeed(feedSource);
     return;
   }
   if(getUserType() === 'vendor'){
-    renderFeed(events);
+    renderFeed(feedSource);
     // vendor gebruikt gewone locatielijst (via locMap hieronder)
   }
   // In ALLE-modus: DM-sectie toevoegen na klant-locaties (met scheidingslijn)
@@ -745,7 +772,7 @@ function render(){
   $('locs-list').innerHTML = locsHtml;
 
   // ── Feed (last 60 events)
-  renderFeed(events);
+  renderFeed(feedSource);
 }
 
 function renderFeed(events){
@@ -1234,8 +1261,9 @@ async function exportCSV(){
   btn.disabled = true;
 
   try {
-    // Haal alle events op (hogere limiet voor export)
-    const r = await fetch(`${API}?limit=50000`, {cache:'no-store'});
+    // Haal de stats-set op (gefilterd op type, dus tot 3000 i.p.v. de oude
+    // ongefilterde 400-cap — zie STATS_TYPES hierboven).
+    const r = await fetch(`${API}?limit=3000&types=${encodeURIComponent(STATS_TYPES)}`, {cache:'no-store'});
     const d = await r.json();
     const items = Array.isArray(d.items) ? d.items : [];
 
@@ -1304,10 +1332,7 @@ function startRefreshTimer(){
 async function loadAndRefresh(){
   setStatus('Laden…','loading');
   try {
-    const r = await fetch(`${API}?limit=5000`, {cache:'no-store'});
-    if(!r.ok) throw new Error('HTTP '+r.status);
-    const d = await r.json();
-    ALL_EVENTS = Array.isArray(d.items) ? d.items : [];
+    await fetchEventSources();
     setStatus(`${ALL_EVENTS.length} events · ${new Date().toLocaleTimeString('nl-BE')}`, 'ok');
     render();
   } catch(e){

@@ -219,7 +219,8 @@
   <header>
     <div class="lang-switch">
       <a href="#" id="switch-nl">🇳🇱 NL</a> |
-      <a href="#" id="switch-fr">🇫🇷 FR</a>
+      <a href="#" id="switch-fr">🇫🇷 FR</a> |
+      <a href="#" id="switch-en">🇬🇧 EN</a>
     </div>
     <div class="header-flex">
       <img src="/AtalianLogo.png" alt="Atalian Logo" class="logo" />
@@ -325,15 +326,17 @@
 		isComplaint = false;
 
 		await botui.message.add({
-		  content: isFr
-			? "Pour une installation, vous pouvez uniquement signaler un problème."
-			: "Voor een installatie kun je alleen een probleem melden."
+		  content: tr(
+			"Voor een installatie kun je alleen een probleem melden.",
+			"Pour une installation, vous pouvez uniquement signaler un problème.",
+			"For an installation, you can only report a problem."
+		  )
 		});
 
 		await botui.action.button({
 		  action: [
 			{
-			  text: isFr ? '🔧 Signaler un problème' : '🔧 Probleem melden',
+			  text: tr('🔧 Probleem melden', '🔧 Signaler un problème', '🔧 Report a problem'),
 			  value: 'problem'
 			}
 		  ]
@@ -344,19 +347,21 @@
 
 	  // Voor ruimtes: probleem of klacht
 	  await botui.message.add({
-		content: isFr
-		  ? "S’agit-il d’un problème ou d’une plainte ?"
-		  : "Gaat het om een probleem of om een klacht?"
+		content: tr(
+		  "Gaat het om een probleem of om een klacht?",
+		  "S’agit-il d’un problème ou d’une plainte ?",
+		  "Is it a problem or a complaint?"
+		)
 	  });
 
 	  const res = await botui.action.button({
 		action: [
 		  {
-			text: isFr ? '🔧 Signaler un problème' : '🔧 Probleem melden',
+			text: tr('🔧 Probleem melden', '🔧 Signaler un problème', '🔧 Report a problem'),
 			value: 'problem'
 		  },
 		  {
-			text: isFr ? '⚠️ Introduire une plainte' : '⚠️ Klacht indienen',
+			text: tr('⚠️ Klacht indienen', '⚠️ Introduire une plainte', '⚠️ File a complaint'),
 			value: 'complaint'
 		  }
 		]
@@ -370,19 +375,21 @@
 	  setCleaningBackground();
 
 	  await botui.message.add({
-		content: isFr
-		  ? "S’agit-il d’un problème de nettoyage ou d’une plainte ?"
-		  : "Gaat het om een schoonmaakprobleem of een klacht?"
+		content: tr(
+		  "Gaat het om een schoonmaakprobleem of een klacht?",
+		  "S’agit-il d’un problème de nettoyage ou d’une plainte ?",
+		  "Is it a cleaning problem or a complaint?"
+		)
 	  });
 
 	  const res = await botui.action.button({
 		action: [
 		  {
-			text: isFr ? '🧹 Demander un nettoyage' : '🧹 Schoonmaak vragen',
+			text: tr('🧹 Schoonmaak vragen', '🧹 Demander un nettoyage', '🧹 Request cleaning'),
 			value: 'cleaning_problem'
 		  },
 		  {
-			text: isFr ? '⚠️ Plainte concernant le nettoyage' : '⚠️ Klacht over schoonmaak',
+			text: tr('⚠️ Klacht over schoonmaak', '⚠️ Plainte concernant le nettoyage', '⚠️ Complaint about cleaning'),
 			value: 'cleaning_complaint'
 		  }
 		]
@@ -422,9 +429,14 @@
   let   lang = qs.get('lang') ?? '';
   if (!lang) {
     const b = navigator.language || '';
-    lang = b.startsWith('fr') ? 'fr' : 'nl';
+    lang = b.startsWith('fr') ? 'fr' : (b.startsWith('en') ? 'en' : 'nl');
   }
   const isFr = lang === 'fr';
+  function tr(nl, fr, en) {
+    if (lang === 'fr') return fr;
+    if (lang === 'en') return en;
+    return nl;
+  }
   const host = location.host || '';
 
   const isTestEnv =
@@ -504,9 +516,11 @@ async function preloadContextAndShow() {
     if (cachedJobs.length) {
       await botui.message.add({
         type: 'html',
-        content: isFr
-          ? '⚠️ Il y a déjà des signalements en cours dans cet espace :'
-          : '⚠️ Er zijn al openstaande meldingen in deze ruimte:'
+        content: tr(
+          '⚠️ Er zijn al openstaande meldingen in deze ruimte:',
+          '⚠️ Il y a déjà des signalements en cours dans cet espace :',
+          '⚠️ There are already open reports for this space:'
+        )
       });
 
       const complaints = cachedJobs.filter(j => j.IsComplaint);
@@ -518,9 +532,11 @@ async function preloadContextAndShow() {
       if (complaints.length > 0) {
         rows.push(
           `📝️ ${esc(
-            isFr
-              ? 'Une plainte a déjà été enregistrée'
-              : 'Er werd reeds een klacht geregistreerd'
+            tr(
+              'Er werd reeds een klacht geregistreerd',
+              'Une plainte a déjà été enregistrée',
+              'A complaint has already been registered'
+            )
           )}`
         );
       }
@@ -536,6 +552,7 @@ async function preloadContextAndShow() {
           const text = isFr
             ? (j.DisplayDescriptionFr || j.DisplayDescription || j.Description || '')
             : (j.DisplayDescription || j.Description || '');
+          // Geen Engelse DisplayDescription-bron beschikbaar; valt terug op NL-tekst.
 
           return `✅ ${idPart}${esc(text)}`;
         })
@@ -547,9 +564,11 @@ async function preloadContextAndShow() {
       });
     } else {
       await botui.message.add({
-        content: isFr
-          ? 'ℹ️ Aucun signalement en cours trouvé.'
-          : 'ℹ️ Geen openstaande meldingen gevonden.'
+        content: tr(
+          'ℹ️ Geen openstaande meldingen gevonden.',
+          'ℹ️ Aucun signalement en cours trouvé.',
+          'ℹ️ No open reports found.'
+        )
       });
     }
 
@@ -557,10 +576,11 @@ async function preloadContextAndShow() {
     console.error('preload error', e);
     await botui.message.add({
       type: 'html',
-      content: (isFr
-        ? '❌ Erreur lors du chargement du contexte (jobs / services).'
-        : '❌ Fout bij laden van context (jobs/ServiceWO’s).')
-        + `<br><small>${esc(String(e.message)).slice(0,400)}</small>`
+      content: tr(
+        '❌ Fout bij laden van context (jobs/ServiceWO’s).',
+        '❌ Erreur lors du chargement du contexte (jobs / services).',
+        '❌ Error loading context (jobs/ServiceWOs).'
+      ) + `<br><small>${esc(String(e.message)).slice(0,400)}</small>`
     });
   }
 }
@@ -585,8 +605,8 @@ async function preloadContextAndShow() {
 	  <div class="type">
 		${
 		  isEquipment
-			? (isFr ? '🔧 Installatie' : '🔧 Installatie')
-			: (isFr ? '🏢 Espace'      : '🏢 Ruimte')
+			? tr('🔧 Installatie', '🔧 Installation', '🔧 Installation')
+			: tr('🏢 Ruimte',      '🏢 Espace',       '🏢 Space')
 		}
 	  </div>
 	`;
@@ -657,7 +677,7 @@ async function preloadContextAndShow() {
     const $file = document.getElementById('portal-photo');
     if (!$file) {
       await botui.message.add({
-        content: isFr ? '❌ Entrée fichier manquante.' : '❌ Bestand-input ontbreekt.'
+        content: tr('❌ Bestand-input ontbreekt.', '❌ Entrée fichier manquante.', '❌ File input missing.')
       });
       return { status: 'cancel' };
     }
@@ -696,7 +716,7 @@ async function preloadContextAndShow() {
       });
     } else {
       await botui.message.add({
-        content: (isFr ? 'Fichier sélectionné: ' : 'Bestand geselecteerd: ') + esc(name)
+        content: tr('Bestand geselecteerd: ', 'Fichier sélectionné: ', 'File selected: ') + esc(name)
       });
     }
 
@@ -707,9 +727,8 @@ async function preloadContextAndShow() {
     while (true) {
       const add = await botui.action.button({
         action: [
-          { text: isFr ? '📎 Ajouter une photo ou document'
-                       : '📎 Foto of document toevoegen', value: 'add' },
-          { text: isFr ? '➡️ Continuer' : '➡️ Doorgaan', value: 'next' }
+          { text: tr('📎 Foto of document toevoegen', '📎 Ajouter une photo ou document', '📎 Add a photo or document'), value: 'add' },
+          { text: tr('➡️ Doorgaan', '➡️ Continuer', '➡️ Continue'), value: 'next' }
         ]
       });
       if (add.value === 'next') break;
@@ -719,25 +738,19 @@ async function preloadContextAndShow() {
 
       const { file: f, kind, name, previewUrl } = result;
 
-      const remarkPrompt = isFr
-        ? (kind === 'image'
-            ? 'Votre remarque pour cette photo (max 200):'
-            : 'Votre remarque pour ce document (max 200):')
-        : (kind === 'image'
-            ? 'Jouw opmerking bij deze foto (max 200):'
-            : 'Jouw opmerking bij dit document (max 200):');
+      const remarkPrompt = kind === 'image'
+        ? tr('Jouw opmerking bij deze foto (max 200):', 'Votre remarque pour cette photo (max 200):', 'Your remark for this photo (max 200):')
+        : tr('Jouw opmerking bij dit document (max 200):', 'Votre remarque pour ce document (max 200):', 'Your remark for this document (max 200):');
 
-      const t = await botui.action.text({
+      const textRes = await botui.action.text({
         addMessage: { content: remarkPrompt },
         action: {
-          placeholder: isFr
-            ? 'Décrivez la photo/le document…'
-            : 'Beschrijf de foto/het document…',
+          placeholder: tr('Beschrijf de foto/het document…', 'Décrivez la photo/le document…', 'Describe the photo/document…'),
           maxLength: 200
         }
       });
 
-      const remark = (t?.value || '').trim().slice(0, 200);
+      const remark = (textRes?.value || '').trim().slice(0, 200);
 
       pickedFiles.push({
         file: f,
@@ -759,7 +772,7 @@ async function preloadContextAndShow() {
 
     if (base64.length > 6_000_000) {
       throw new Error(
-        (isFr ? 'Fichier trop volumineux' : 'Bestand te groot') + ' (~>4.5MB).'
+        tr('Bestand te groot', 'Fichier trop volumineux', 'File too large') + ' (~>4.5MB).'
       );
     }
 
@@ -844,6 +857,13 @@ async function preloadContextAndShow() {
     u.searchParams.set('lang','fr');
     window.location.href = u;
   };
+  const btnEn = document.getElementById('switch-en');
+  btnEn.onclick = () => {
+    Telemetry.send('language_switch', {to:'en'});
+    const u = new URL(window.location.href);
+    u.searchParams.set('lang','en');
+    window.location.href = u;
+  };
 
   const phoneLink = '<a href="tel:+3278152300">📞 +32 78 152 300</a>';
   let   omschrijving = '';
@@ -890,7 +910,7 @@ async function preloadContextAndShow() {
     if (!code) {
       await botui.message.add({
         type:'html',
-        content: isFr ? '❌ Code QR manquante.' : '❌ QR-code ontbreekt.'
+        content: tr('❌ QR-code ontbreekt.', '❌ Code QR manquante.', '❌ Missing QR code.')
       });
       Telemetry.send('missing_code');
       return;
@@ -919,9 +939,11 @@ async function preloadContextAndShow() {
 
 	  await botui.message.add({
 		type: 'html',
-		content: isFr
-		  ? 'Bonjour, je suis votre assistant <span style="color:#EE7E00;font-weight:bold;">ATALIAN</span>.<br>Je recherche pour vous les <b>signalements en cours</b>…'
-		  : 'Hallo, ik ben je <span style="color:#EE7E00;font-weight:bold;">ATALIAN</span>-assistent.<br>Ik haal even de <b>openstaande meldingen</b> voor je op…'
+		content: tr(
+		  'Hallo, ik ben je <span style="color:#EE7E00;font-weight:bold;">ATALIAN</span>-assistent.<br>Ik haal even de <b>openstaande meldingen</b> voor je op…',
+		  'Bonjour, je suis votre assistant <span style="color:#EE7E00;font-weight:bold;">ATALIAN</span>.<br>Je recherche pour vous les <b>signalements en cours</b>…',
+		  'Hello, I\'m your <span style="color:#EE7E00;font-weight:bold;">ATALIAN</span> assistant.<br>Let me look up your <b>open reports</b>…'
+		)
 	  });
 
 	  await preloadContextAndShow();
@@ -931,18 +953,18 @@ async function preloadContextAndShow() {
 
 		if (hasText(cleaningProgramText)) {
 		  actions.push({
-			text: isFr ? '📋 Programme de Nettoyage' : '📋 Poetsprogramma',
+			text: tr('📋 Poetsprogramma', '📋 Programme de Nettoyage', '📋 Cleaning Schedule'),
 			value: 'poets'
 		  });
 		}
 
 		actions.push({
-		  text: isFr ? '🧹 Signaler un Nettoyage' : '🧹 Schoonmaak Melding',
+		  text: tr('🧹 Schoonmaak Melding', '🧹 Signaler un Nettoyage', '🧹 Report Cleaning Issue'),
 		  value: 'cleaning_ticket'
 		});
 
 		actions.push({
-		  text: isFr ? '💡 Autre Problème' : '💡 Ander Probleem',
+		  text: tr('💡 Ander Probleem', '💡 Autre Problème', '💡 Other Problem'),
 		  value: 'other_problem'
 		});
 
@@ -963,8 +985,7 @@ async function preloadContextAndShow() {
 	  await botui.action.button({
 		action: [
 		  {
-			text: isFr ? '❗️ Je veux signaler un problème'
-					   : '❗️ Ik wil een probleem melden',
+			text: tr('❗️ Ik wil een probleem melden', '❗️ Je veux signaler un problème', '❗️ I want to report a problem'),
 			value: 'other_problem'
 		  }
 		]
@@ -978,35 +999,33 @@ async function preloadContextAndShow() {
 
 		  await botui.message.add({
 			type: 'html',
-			content: isFr
-			  ? `<b>Programme de nettoyage :</b><br>${cleaningProgramText}`
-			  : `<b>Poetsprogramma:</b><br>${cleaningProgramText}`
+			content: tr(
+			  `<b>Poetsprogramma:</b><br>${cleaningProgramText}`,
+			  `<b>Programme de nettoyage :</b><br>${cleaningProgramText}`,
+			  `<b>Cleaning schedule:</b><br>${cleaningProgramText}`
+			)
 		  });
 
 		  const actions = [
 			{
-			  text: isFr ? '🧹 Nouveau signalement Nettoyage'
-						 : '🧹 Schoonmaak Melding maken',
+			  text: tr('🧹 Schoonmaak Melding maken', '🧹 Nouveau signalement Nettoyage', '🧹 New cleaning report'),
 			  value: 'cleaning_ticket'
 			},
 			{
-			  text: isFr ? '💡 Autre Problème'
-						 : '💡 Ander Probleem',
+			  text: tr('💡 Ander Probleem', '💡 Autre Problème', '💡 Other Problem'),
 			  value: 'other_problem'
 			}
 		  ];
 
 		  if (sourceUrl) {
 			actions.push({
-			  text: isFr ? '🏢 Revenir à l’écran de choix'
-						 : '🏢 Terug naar keuzescherm',
+			  text: tr('🏢 Terug naar keuzescherm', '🏢 Revenir à l’écran de choix', '🏢 Back to selection screen'),
 			  value: 'back'
 			});
 		  }
 
 		  actions.push({
-			text: isFr ? "ℹ️ Plus d'info"
-					   : 'ℹ️ Meer info',
+			text: tr('ℹ️ Meer info', "ℹ️ Plus d'info", 'ℹ️ More info'),
 			value: 'info'
 		  });
 
@@ -1030,15 +1049,15 @@ async function preloadContextAndShow() {
 
 		  await botui.message.add({
 			type: 'html',
-			content: isFr
-			  ? 'Vous allez être redirigé vers notre site web externe.'
-			  : 'Je wordt nu doorverwezen naar onze externe website.'
+			content: tr(
+			  'Je wordt nu doorverwezen naar onze externe website.',
+			  'Vous allez être redirigé vers notre site web externe.',
+			  'You are being redirected to our external website.'
+			)
 		  });
 
 		  setTimeout(() => {
-			window.location.href = isFr
-			  ? 'https://www.atalian.be/?lang=fr'
-			  : 'https://www.atalian.be/?lang=nl';
+			window.location.href = `https://www.atalian.be/?lang=${lang}`;
 		  }, 2000);
 		}
 
@@ -1086,22 +1105,28 @@ async function preloadContextAndShow() {
 
     if (relevantSvcWOs.length === 0) {
       await botui.message.add({
-        content: isFr
-          ? 'Aucun programme de nettoyage actif n’a pu être trouvé pour cette zone.'
-          : 'Er kon geen actief schoonmaakprogramma voor deze zone gevonden worden.'
+        content: tr(
+          'Er kon geen actief schoonmaakprogramma voor deze zone gevonden worden.',
+          'Aucun programme de nettoyage actif n’a pu être trouvé pour cette zone.',
+          'No active cleaning schedule could be found for this zone.'
+        )
       });
       return await askDescription(isUrgent, true);
     }
 
     await botui.message.add({
-      content: isFr
-		  ? (isComplaint
-			  ? 'Pour quel service de nettoyage introduisez-vous une plainte ?'
-			  : 'Pour quel service de nettoyage signalez-vous un problème ?')
-		  : (isComplaint
-			  ? 'Voor welke schoonmaakservice dien je een klacht in?'
-			  : 'Voor welke schoonmaakservice wil je een melding maken?')
-			});
+      content: isComplaint
+        ? tr(
+            'Voor welke schoonmaakservice dien je een klacht in?',
+            'Pour quel service de nettoyage introduisez-vous une plainte ?',
+            'For which cleaning service are you filing a complaint?'
+          )
+        : tr(
+            'Voor welke schoonmaakservice wil je een melding maken?',
+            'Pour quel service de nettoyage signalez-vous un problème ?',
+            'For which cleaning service would you like to report an issue?'
+          )
+    });
 
     const actions = relevantSvcWOs.map(x => ({
       text: `📍 ${esc(x.Description)}`,
@@ -1128,13 +1153,17 @@ async function preloadContextAndShow() {
     }
 
     await botui.message.add({
-      content: isFr
-		  ? (isComplaint
-			  ? 'Pour quel service introduisez-vous une plainte ?'
-			  : 'Pour quel service signalez-vous un autre problème ?')
-		  : (isComplaint
-			  ? 'Voor welke dienst dien je een klacht in?'
-			  : 'Voor welke dienst wil je een ander probleem melden?')
+      content: isComplaint
+        ? tr(
+            'Voor welke dienst dien je een klacht in?',
+            'Pour quel service introduisez-vous une plainte ?',
+            'For which service are you filing a complaint?'
+          )
+        : tr(
+            'Voor welke dienst wil je een ander probleem melden?',
+            'Pour quel service signalez-vous un autre problème ?',
+            'For which service would you like to report another issue?'
+          )
     });
 
     const actions = relevantSvcWOs.map(x => ({
@@ -1143,7 +1172,7 @@ async function preloadContextAndShow() {
     }));
 
     actions.push({
-      text: isFr ? '➕ Autre' : '➕ Andere',
+      text: tr('➕ Andere', '➕ Autre', '➕ Other'),
       value: 'OTHER_GENERIC'
     });
 
@@ -1162,16 +1191,16 @@ async function preloadContextAndShow() {
 
 	async function askDescription(isUrgent, isCleaning) {
 	  await botui.message.add({
-		content: isFr
-		  ? (isComplaint ? 'Quelle est la plainte exactement ?' : 'Quel est le problème exactement ?')
-		  : (isComplaint ? 'Wat is de klacht precies?' : 'Wat is het probleem precies?')
+		content: isComplaint
+		  ? tr('Wat is de klacht precies?', 'Quelle est la plainte exactement ?', 'What exactly is the complaint?')
+		  : tr('Wat is het probleem precies?', 'Quel est le problème exactement ?', 'What exactly is the problem?')
 	  });
 
 	  let res = await botui.action.text({
 		action: {
-		  placeholder: isFr
-			? (isComplaint ? 'Décrivez votre plainte…' : 'Décrivez…')
-			: (isComplaint ? 'Beschrijf je klacht…' : 'Beschrijf…')
+		  placeholder: isComplaint
+			? tr('Beschrijf je klacht…', 'Décrivez votre plainte…', 'Describe your complaint…')
+			: tr('Beschrijf…', 'Décrivez…', 'Describe…')
 		}
 	  });
 
@@ -1179,18 +1208,18 @@ async function preloadContextAndShow() {
 
 	  if (!omschrijving) {
 		await botui.message.add({
-		  content: isFr
-			? '📝 Une petite description aide l’équipe.'
-			: '📝 Een korte beschrijving helpt het team.'
+		  content: tr(
+			'📝 Een korte beschrijving helpt het team.',
+			'📝 Une petite description aide l’équipe.',
+			'📝 A short description helps the team.'
+		  )
 		});
 
 		res = await botui.action.text({
 		  action: {
-			placeholder: isFr
-			  ? (isComplaint ? 'Ex.: nettoyage insuffisant au 2e étage'
-							 : 'Ex.: fuite au lavabo du 2e')
-			  : (isComplaint ? 'Bv.: schoonmaak niet goed uitgevoerd op verdieping 2'
-							 : 'Bv.: lekkende kraan in lokaal 2.12')
+			placeholder: isComplaint
+			  ? tr('Bv.: schoonmaak niet goed uitgevoerd op verdieping 2', 'Ex.: nettoyage insuffisant au 2e étage', 'E.g.: cleaning not properly done on floor 2')
+			  : tr('Bv.: lekkende kraan in lokaal 2.12', 'Ex.: fuite au lavabo du 2e', 'E.g.: leaking tap in room 2.12')
 		  }
 		});
 
@@ -1198,9 +1227,7 @@ async function preloadContextAndShow() {
 	  }
 
 	  await botui.message.add({
-		content: isFr
-		  ? 'Souhaitez-vous ajouter des photos ?'
-		  : 'Wil je foto’s toevoegen?'
+		content: tr('Wil je foto’s toevoegen?', 'Souhaitez-vous ajouter des photos ?', 'Would you like to add photos?')
 	  });
 
 	  await askPhotosLoop();
@@ -1238,7 +1265,7 @@ async function preloadContextAndShow() {
     }
 
     await botui.message.add({
-      content: isFr ? 'Quand souhaitez-vous l\'intervention ?' : 'Wanneer wenst u de interventie?'
+      content: tr('Wanneer wenst u de interventie?', "Quand souhaitez-vous l'intervention ?", 'When would you like the intervention?')
     });
 
     const getPriorityIcon = (p) => {
@@ -1252,10 +1279,10 @@ async function preloadContextAndShow() {
       return '🟢';
     };
     const getPriorityLabel = (p) => {
-      if (!isFr) return p.Description;
+      if (!isFr) return p.Description; // geen FR-vertaling van de prioriteit -> alleen NL/EN gebruiken brondata
       const qty = p.SchedStartTimeQty;
       const unit = p.SchedStartTimeUnitType;
-      if (!qty || !unit) return isFr ? 'À planifier' : p.Description;
+      if (!qty || !unit) return 'À planifier';
       if (unit === 'H') return `Dans les ${qty}h`;
       if (unit === 'D') {
         const weeks = qty / 7;
@@ -1291,9 +1318,7 @@ async function preloadContextAndShow() {
     Telemetry.send('step', { step:'ask_email', stepIndex, isCleaning });
 
     await botui.message.add({
-      content: isFr
-        ? 'Quelle est votre adresse e-mail ?'
-        : 'Wat is je e-mailadres?'
+      content: tr('Wat is je e-mailadres?', 'Quelle est votre adresse e-mail ?', 'What is your email address?')
     });
     const res = await botui.action.text({
       action: { placeholder: 'jouw@email.com' }
@@ -1301,9 +1326,7 @@ async function preloadContextAndShow() {
     const email = (res.value || '').trim();
     if (!isValidEmail(email)) {
       await botui.message.add({
-        content: isFr
-          ? 'Adresse e-mail invalide.'
-          : 'Ongeldig e-mailadres.'
+        content: tr('Ongeldig e-mailadres.', 'Adresse e-mail invalide.', 'Invalid email address.')
       });
       Telemetry.send('email_invalid');
       return askEmail(isUrgent, isCleaning);
@@ -1423,26 +1446,24 @@ async function preloadContextAndShow() {
 
 		if (!jobId) {
 		  await botui.message.add({
-			content: isFr
-			  ? '❌ Un problème est survenu. Votre signalement n\'a peut-être pas été soumis avec succès. Veuillez réessayer plus tard.'
-			  : '❌ Er is een probleem opgetreden. Je melding is mogelijk niet succesvol ingediend. Probeer het later opnieuw.'
+			content: tr(
+			  '❌ Er is een probleem opgetreden. Je melding is mogelijk niet succesvol ingediend. Probeer het later opnieuw.',
+			  "❌ Un problème est survenu. Votre signalement n'a peut-être pas été soumis avec succès. Veuillez réessayer plus tard.",
+			  '❌ A problem occurred. Your report may not have been submitted successfully. Please try again later.'
+			)
 		  });
         Telemetry.send('jobid_missing_fallback_fail');
         return;
       }
 
       await botui.message.add({
-        content: isFr
-          ? 'Merci ! Votre signalement a été envoyé.'
-          : 'Bedankt! Jouw melding is verzonden.'
+        content: tr('Bedankt! Jouw melding is verzonden.', 'Merci ! Votre signalement a été envoyé.', 'Thank you! Your report has been submitted.')
       });
       Telemetry.send('submit_success', { jobId });
 
       if (Array.isArray(pickedFiles) && pickedFiles.length) {
         await botui.message.add({
-          content: isFr
-            ? 'Téléversement des pièces…'
-            : 'Bestanden uploaden…'
+          content: tr('Bestanden uploaden…', 'Téléversement des pièces…', 'Uploading files…')
         });
 
         for (const it of pickedFiles) {
@@ -1459,11 +1480,11 @@ async function preloadContextAndShow() {
             });
 
             await botui.message.add({
-              content: '✅ ' + (isFr ? 'Ajouté: ' : 'Toegevoegd: ') + it.name
+              content: '✅ ' + tr('Toegevoegd: ', 'Ajouté: ', 'Added: ') + it.name
             });
           } catch (e) {
             await botui.message.add({
-              content: '❌ ' + (isFr ? 'Échec: ' : 'Mislukt: ')
+              content: '❌ ' + tr('Mislukt: ', 'Échec: ', 'Failed: ')
                      + it.name + ' — ' + (e.message || e)
             });
           }
@@ -1478,30 +1499,32 @@ async function preloadContextAndShow() {
       if (callRequired) {
         await botui.message.add({
           type: 'html',
-          content: isFr
-            ? `✅ Votre demande a été enregistrée${jobId ? ` (réf. <b>${jobId}</b>)` : ''}.<br>⚠️ <b>Urgence :</b> Appelez ${phoneLink}`
-            : `✅ Je melding is ingediend${jobId ? ` (ref. <b>${jobId}</b>)` : ''}.<br>⚠️ <b>Dringend probleem:</b> Bel onmiddellijk ${phoneLink}`
+          content: tr(
+            `✅ Je melding is ingediend${jobId ? ` (ref. <b>${jobId}</b>)` : ''}.<br>⚠️ <b>Dringend probleem:</b> Bel onmiddellijk ${phoneLink}`,
+            `✅ Votre demande a été enregistrée${jobId ? ` (réf. <b>${jobId}</b>)` : ''}.<br>⚠️ <b>Urgence :</b> Appelez ${phoneLink}`,
+            `✅ Your report has been submitted${jobId ? ` (ref. <b>${jobId}</b>)` : ''}.<br>⚠️ <b>Urgent problem:</b> Call immediately ${phoneLink}`
+          )
         });
         return;
       }
 
 	await botui.message.add({
-	  content: isFr ? 'Que voulez-vous faire maintenant?' : 'Wat wil je nu doen?'
+	  content: tr('Wat wil je nu doen?', 'Que voulez-vous faire maintenant?', 'What would you like to do now?')
 	});
 
 	const actions = [
-	  { text: isFr ? '🔄 Nouveau signalement' : '🔄 Nieuwe melding', value: 'restart' }
+	  { text: tr('🔄 Nieuwe melding', '🔄 Nouveau signalement', '🔄 New report'), value: 'restart' }
 	];
 
 	if (sourceUrl) {
 	  actions.push({
-		text: isFr ? '🏢 Revenir à l’écran de choix' : '🏢 Naar keuzescherm gaan',
+		text: tr('🏢 Naar keuzescherm gaan', '🏢 Revenir à l’écran de choix', '🏢 Go to selection screen'),
 		value: 'back'
 	  });
 	}
 
 	actions.push({
-	  text: isFr ? "ℹ️ Plus d'info" : 'ℹ️ Meer info',
+	  text: tr('ℹ️ Meer info', "ℹ️ Plus d'info", 'ℹ️ More info'),
 	  value: 'info'
 	});
 
@@ -1515,9 +1538,7 @@ async function preloadContextAndShow() {
 	  window.location.reload();
 	} else {
 	  Telemetry.send('external_info');
-	  window.location.href = isFr
-		? 'https://www.atalian.be/?lang=fr'
-		: 'https://www.atalian.be/?lang=nl';
+	  window.location.href = `https://www.atalian.be/?lang=${lang}`;
 	}
 
 
@@ -1525,9 +1546,7 @@ async function preloadContextAndShow() {
     } catch (e) {
       console.error(e);
       await botui.message.add({
-        content: isFr
-          ? 'Erreur lors de l’envoi.'
-          : 'Fout bij verzenden.'
+        content: tr('Fout bij verzenden.', 'Erreur lors de l’envoi.', 'Error while submitting.')
       });
       Telemetry.send('submit_error', {
         message: String((e && e.message) || e)

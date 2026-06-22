@@ -39,7 +39,10 @@ export default async (req) => {
       const store = getStore('formlog');
       const day  = now.toISOString().slice(0, 10);
       const rand = Math.random().toString(36).slice(2, 8);
-      const key  = `${code}/${day}/${ts}-${rand}.json`;
+      // Type in de key opnemen zodat read_logs.js op type kan filteren zonder
+      // elke blob te moeten downloaden (anders verdrinkt url_load in de stap-events).
+      const type = String(data.type ?? 'event').replace(/[^a-zA-Z0-9_]/g, '_').slice(0, 40) || 'event';
+      const key  = `${code}/${day}/${ts}-${type}-${rand}.json`;
       await store.set(key, JSON.stringify(payload), { contentType: 'application/json' });
     } catch (err) {
       console.error('Blobs write error:', err);

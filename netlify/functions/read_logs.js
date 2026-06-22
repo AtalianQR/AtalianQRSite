@@ -23,12 +23,38 @@ function tsFromKey(key) {
   return isNaN(n) ? 0 : n;
 }
 
+function typeFromKey(key) {
+  const f = (key.split('/').pop() || '').replace(/\.json$/i, '');
+  const parts = f.split('-');
+  // Nieuw formaat: <ts>-<type>-<rand> (3 delen). Ouder formaat (vóór deze fix)
+  // had geen type in de key: <ts>-<rand> (2 delen) -> niet filterbaar op type.
+  return parts.length >= 3 ? parts[1] : null;
+}
+
 export default async (req) => {
   if (req.method === 'OPTIONS') return new Response(null, { status: 204, headers: cors });
 
-  const url   = new URL(req.url);
-  // Max 200 records ophalen — elke key = 1 API-call, te veel = timeout
-  const limit = Math.min(400, Math.max(10, parseInt(url.searchParams.get('limit') ?? '300', 10)));
+  const url = new URL(req.url);
+
+  const typesParam = (url.searchParams.get('types') || '').trim();
+  const typeFilter = typesParam
+    ? new Set(typesParam.split(',').map(s => s.trim()).filter(Boolean))
+    : null;
+
+  // Bij type-filtering kunnen we keys mét type-in-naam (na deze fix geschreven)
+  // goedkoop uitsluiten zonder download. Oudere keys (vóór deze fix, zonder
+  // type in de naam) moeten we nog steeds downloaden om hun werkelijke type
+  // te kennen — vandaar een hogere limiet dan bij een ongefilterde query.
+  const maxLimit = typeFilter ? 3000 : 400;
+  const limit = Math.min(maxLimit, Math.max(10, parseInt(url.searchParams.get('limit') ?? '300', 10)));
+  // Bovengrens op het aantal blobs dat we ECHT downloaden (legacy keys zonder
+  // type-in-naam). Keys mét type-in-naam die niet matchen kosten geen download
+  // (zie hieronder), dus zolang vrijwel alle data gemigreerd is blijft dit
+  // budget vooral een vangnet voor toekomstige uitzonderingen.
+  // (Lokaal voegt `netlify dev` een diagnostische x-nf-fetch-timing-header toe
+  // met één regel per download — bij honderden downloads ineens viel de proxy
+  // om ("Could not proxy request"); vandaar dit voorzichtige getal.)
+  const scanCap = typeFilter ? Math.min(limit, 300) : limit;
 
   if (url.searchParams.get('debug') === '1') {
     return respond({ hasCtx: !!process.env.NETLIFY_BLOBS_CONTEXT, ctxLen: (process.env.NETLIFY_BLOBS_CONTEXT || '').length });
@@ -58,25 +84,48 @@ export default async (req) => {
 
   if (!allKeys.length) return respond({ items: [], total: 0 });
 
-  // Stap 2: sorteer en beperk
+  // Stap 2: sorteer nieuwste eerst
   allKeys.sort((a, b) => tsFromKey(b) - tsFromKey(a));
-  const topKeys = allKeys.slice(0, limit);
 
-  // Stap 3: records ophalen in batches
-  const BATCH = 20;
+  // Stap 3: records ophalen in batches, met vroegtijdig afbreken zodra we
+  // genoeg matches hebben. Keys mét type-in-naam die niet matchen worden
+  // overgeslagen zónder download (goedkoop). Keys zonder type-in-naam
+  // (oudere data) worden gedownload en daarna op hun echte `type` gefilterd.
+  // Zolang vrijwel alle bestaande blobs nog "legacy" (ongetypeerd) zijn, kan
+  // dat heel veel downloads betekenen — daarom ook een hard tijdsbudget,
+  // zodat we altijd netjes teruggeven wat we al vonden i.p.v. te timeouten.
+  const BATCH = 40;
+  const SCAN_TIME_BUDGET_MS = 1500;
+  const startedAt = Date.now();
   const items = [];
-  for (let i = 0; i < topKeys.length; i += BATCH) {
+  let scanned = 0;
+
+  for (let i = 0; i < allKeys.length && items.length < limit && scanned < scanCap; i += BATCH) {
+    if (Date.now() - startedAt > SCAN_TIME_BUDGET_MS) break;
+    const batch = allKeys.slice(i, i + BATCH).filter(k => {
+      if (!typeFilter) return true;
+      const t = typeFromKey(k);
+      return t ? typeFilter.has(t) : true; // onbekend type -> wel downloaden om te checken
+    });
+    if (!batch.length) continue;
+    scanned += batch.length;
+
     const results = await Promise.all(
-      topKeys.slice(i, i + BATCH).map(async (key) => {
+      batch.map(async (key) => {
         try {
           const val = await store.get(key);
           return val ? JSON.parse(val) : null;
         } catch { return null; }
       })
     );
-    items.push(...results.filter(Boolean));
+
+    for (const it of results) {
+      if (!it) continue;
+      if (typeFilter && !typeFilter.has(it.type)) continue;
+      items.push(it);
+    }
   }
 
   items.sort((a, b) => (b.ts || 0) - (a.ts || 0));
-  return respond({ items, total: allKeys.length });
+  return respond({ items: items.slice(0, limit), total: allKeys.length });
 };
