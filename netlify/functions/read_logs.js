@@ -47,15 +47,13 @@ export default async (req) => {
   // te kennen — vandaar een hogere limiet dan bij een ongefilterde query.
   const maxLimit = typeFilter ? 3000 : 400;
   const limit = Math.min(maxLimit, Math.max(10, parseInt(url.searchParams.get('limit') ?? '300', 10)));
-  // Bovengrens op het aantal blobs dat we ECHT downloaden (legacy keys zonder
-  // type-in-naam, of matches). Keys mét type-in-naam die niet matchen kosten
-  // geen download. `netlify dev` voegt lokaal een diagnostische
-  // x-nf-fetch-timing-header toe (één regel per download) die de lokale proxy
-  // laat omvallen voorbij ~300-600 downloads — dat bestaat niet in productie
-  // (echte Netlify Functions hebben een gewone 10-26s timeout, geen header-
-  // instrumentatie), dus daar mag dit veel hoger.
-  const isLocalDev = process.env.NETLIFY_DEV === 'true';
-  const scanCap = typeFilter ? Math.min(limit, isLocalDev ? 300 : 2500) : limit;
+  // Bovengrens op het aantal blobs dat we ECHT downloaden (= aantal matches,
+  // want keys mét type-in-naam die niet matchen kosten geen download).
+  // Empirisch getest, zowel lokaal als op productie: voorbij ~450-500
+  // downloads in één respons geeft Netlify een 502 (lijkt een harde limiet
+  // op het aantal onderliggende blob-calls, niet enkel een timeout). 400 is
+  // hier ruim binnen de veilige zone, op beide omgevingen bevestigd.
+  const scanCap = typeFilter ? Math.min(limit, 400) : limit;
 
   if (url.searchParams.get('debug') === '1') {
     return respond({ hasCtx: !!process.env.NETLIFY_BLOBS_CONTEXT, ctxLen: (process.env.NETLIFY_BLOBS_CONTEXT || '').length });
