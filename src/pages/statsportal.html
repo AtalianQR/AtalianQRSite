@@ -541,14 +541,35 @@ function updateDateNav() {
 // ── fetch ────────────────────────────────────────────────
 // Hoofddataset (lange, opgeschoonde geschiedenis voor stats/charts/CSV) +
 // een korte ruwe feed (alle types, enkel voor "Recente activiteit").
+// Eén read_logs-aanroep blijft beperkt tot ~400 downloads (anders 502 — zie
+// read_logs.js). Voor een diepe geschiedenis bladeren we daarom pagina per
+// pagina terug in de tijd (via `before`) en voegen we de resultaten samen.
+// Trager (meerdere round trips), maar dat mag — dit scherm is enkel raadplegen.
+async function fetchStatsTypesHistory(maxPages = 12){
+  let all = [];
+  let before = null;
+  for (let page = 0; page < maxPages; page++){
+    const u = new URL(API, location.origin);
+    u.searchParams.set('limit', '400');
+    u.searchParams.set('types', STATS_TYPES);
+    if (before) u.searchParams.set('before', String(before));
+    const r = await fetch(u, {cache:'no-store'});
+    if(!r.ok) break;
+    const d = await r.json();
+    const items = Array.isArray(d.items) ? d.items : [];
+    all = all.concat(items);
+    if (!d.hasMore || !items.length) break;
+    before = d.oldestTs;
+  }
+  return all;
+}
+
 async function fetchEventSources(){
-  const [r1, r2] = await Promise.all([
-    fetch(`${API}?limit=3000&types=${encodeURIComponent(STATS_TYPES)}`, {cache:'no-store'}),
+  const [all, r2] = await Promise.all([
+    fetchStatsTypesHistory(),
     fetch(`${API}?limit=100`, {cache:'no-store'})
   ]);
-  if(!r1.ok) throw new Error(`HTTP ${r1.status}`);
-  const d1 = await r1.json();
-  ALL_EVENTS = Array.isArray(d1.items) ? d1.items : [];
+  ALL_EVENTS = all;
   if(r2.ok){
     const d2 = await r2.json();
     RAW_EVENTS = Array.isArray(d2.items) ? d2.items : [];
@@ -1261,11 +1282,9 @@ async function exportCSV(){
   btn.disabled = true;
 
   try {
-    // Haal de stats-set op (gefilterd op type, dus tot 3000 i.p.v. de oude
-    // ongefilterde 400-cap — zie STATS_TYPES hierboven).
-    const r = await fetch(`${API}?limit=3000&types=${encodeURIComponent(STATS_TYPES)}`, {cache:'no-store'});
-    const d = await r.json();
-    const items = Array.isArray(d.items) ? d.items : [];
+    // Zelfde gepagineerde aanpak als fetchEventSources, voor de volledige
+    // geschiedenis i.p.v. enkel de eerste ~400.
+    const items = await fetchStatsTypesHistory(30);
 
     const cols = ['datum','tijdstip','type','klant','locatie','lokaal_id','type_lokaal','qr_code','taal','omgeving','href'];
     const esc = v => {

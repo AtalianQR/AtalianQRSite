@@ -41,6 +41,14 @@ export default async (req) => {
     ? new Set(typesParam.split(',').map(s => s.trim()).filter(Boolean))
     : null;
 
+  // Paginering voor diepe geschiedenis: client roept eerst zonder `before` aan,
+  // en daarna herhaaldelijk met `before=<oudste ts van vorige pagina>` om verder
+  // terug in de tijd te bladeren. Elke aanroep blijft zo binnen de veilige
+  // scanCap, maar samen kan de client wel een onbeperkt diepe geschiedenis
+  // opbouwen — trager (meerdere round trips), maar stabiel.
+  const before = parseInt(url.searchParams.get('before') ?? '', 10);
+  const beforeTs = Number.isFinite(before) ? before : null;
+
   // Bij type-filtering kunnen we keys mét type-in-naam (na deze fix geschreven)
   // goedkoop uitsluiten zonder download. Oudere keys (vóór deze fix, zonder
   // type in de naam) moeten we nog steeds downloaden om hun werkelijke type
@@ -83,8 +91,9 @@ export default async (req) => {
 
   if (!allKeys.length) return respond({ items: [], total: 0 });
 
-  // Stap 2: sorteer nieuwste eerst
+  // Stap 2: sorteer nieuwste eerst (en filter op `before` voor paginering)
   allKeys.sort((a, b) => tsFromKey(b) - tsFromKey(a));
+  const candidateKeys = beforeTs ? allKeys.filter(k => tsFromKey(k) < beforeTs) : allKeys;
 
   // Stap 3: records ophalen in batches, met vroegtijdig afbreken zodra we
   // genoeg matches hebben. Keys mét type-in-naam die niet matchen worden
@@ -94,14 +103,16 @@ export default async (req) => {
   // dat heel veel downloads betekenen — daarom ook een hard tijdsbudget,
   // zodat we altijd netjes teruggeven wat we al vonden i.p.v. te timeouten.
   const BATCH = 40;
-  const SCAN_TIME_BUDGET_MS = isLocalDev ? 1500 : 8000;
+  const SCAN_TIME_BUDGET_MS = 8000;
   const startedAt = Date.now();
   const items = [];
   let scanned = 0;
+  let lastIndex = 0;
 
-  for (let i = 0; i < allKeys.length && items.length < limit && scanned < scanCap; i += BATCH) {
+  for (let i = 0; i < candidateKeys.length && items.length < limit && scanned < scanCap; i += BATCH) {
+    lastIndex = i + BATCH;
     if (Date.now() - startedAt > SCAN_TIME_BUDGET_MS) break;
-    const batch = allKeys.slice(i, i + BATCH).filter(k => {
+    const batch = candidateKeys.slice(i, i + BATCH).filter(k => {
       if (!typeFilter) return true;
       const t = typeFromKey(k);
       return t ? typeFilter.has(t) : true; // onbekend type -> wel downloaden om te checken
@@ -126,5 +137,10 @@ export default async (req) => {
   }
 
   items.sort((a, b) => (b.ts || 0) - (a.ts || 0));
-  return respond({ items: items.slice(0, limit), total: allKeys.length });
+  const out = items.slice(0, limit);
+  const oldestTs = out.length ? out[out.length - 1].ts : null;
+  // hasMore: er staan nog ongescande kandidaat-keys verder terug in de tijd ->
+  // client kan opnieuw aanroepen met before=oldestTs voor de volgende "pagina".
+  const hasMore = lastIndex < candidateKeys.length;
+  return respond({ items: out, total: allKeys.length, oldestTs, hasMore });
 };
