@@ -17,6 +17,11 @@ function typeFromKey(key) {
 }
 
 export default async (req) => {
+  const url = new URL(req.url);
+  // Aantal te migreren keys per aanroep — ruim binnen de 10s functietimeout.
+  // Roep deze functie gewoon herhaaldelijk aan tot "remaining": 0.
+  const perCallLimit = Math.min(2000, Math.max(50, parseInt(url.searchParams.get('limit') ?? '400', 10)));
+
   const store = getStore('formlog');
 
   const allKeys = [];
@@ -29,8 +34,10 @@ export default async (req) => {
   }
 
   let migrated = 0, errors = 0;
-  const todo = allKeys.filter(k => !typeFromKey(k));
-  const skipped = allKeys.length - todo.length;
+  const allTodo = allKeys.filter(k => !typeFromKey(k));
+  const skipped = allKeys.length - allTodo.length;
+  const todo = allTodo.slice(0, perCallLimit);
+  const remaining = allTodo.length - todo.length;
 
   const BATCH = 30;
   for (let i = 0; i < todo.length; i += BATCH) {
@@ -62,7 +69,7 @@ export default async (req) => {
     }
   }
 
-  return new Response(JSON.stringify({ total: allKeys.length, migrated, skipped, errors }), {
+  return new Response(JSON.stringify({ total: allKeys.length, migrated, skipped, errors, remaining }), {
     status: 200,
     headers: { ...cors, 'Content-Type': 'application/json' }
   });
