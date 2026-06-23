@@ -1,6 +1,9 @@
 # Claude Code local settings
 .claude/
 
+# Git worktrees (scratch)
+.worktrees/
+
 # build output
 dist/
 
