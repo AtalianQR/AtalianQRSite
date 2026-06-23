@@ -493,27 +493,24 @@ export async function handler(event) {
 
     const { base, env } = detectEnvironment(event);
 
-    const url = `${base}/object/Space('${spaceId}')`;
-    const res = await fetch(url, {
-      headers: {
-        accept: 'application/json',
-        ApiKey: API_KEY
-      }
-    });
-
-    if (res.status === 404) {
-      return json(404, {
+    if (!APP_QUERY) {
+      return json(500, {
         description: '',
-        error: lang === 'fr'
-          ? `Local avec ID ${spaceId} introuvable.`
-          : `Ruimte met ID ${spaceId} niet gevonden.`,
-        env
+        error: 'Server misconfiguratie (APP_ELEMENT_QueryAtalianJobs ontbreekt).'
       });
     }
 
-    if (!res.ok) {
-      const txt = await res.text().catch(() => '');
-      return json(res.status, {
+    // Ruimte-info volledig via de actie-laag (GET_SPACE_INFO) - geen directe object-laag-call
+    // meer op /object/Space, zodat deze toegang individueel beheerbaar/afzetbaar blijft in Ultimo.
+    const wfRes = await fetch(`${base}/action/_rest_QueryAtalianJobs`, {
+      method: 'POST',
+      headers: { accept: 'application/json', 'Content-Type': 'application/json', ApiKey: API_KEY, ApplicationElementId: APP_QUERY },
+      body: JSON.stringify({ Action: 'GET_SPACE_INFO', SpaceId: spaceId })
+    });
+
+    if (!wfRes.ok) {
+      const txt = await wfRes.text().catch(() => '');
+      return json(wfRes.status, {
         description: '',
         error: lang === 'fr'
           ? 'Erreur lors du chargement du local.'
@@ -523,45 +520,33 @@ export async function handler(event) {
       });
     }
 
-    const data = await res.json().catch(() => ({}));
+    const wfRaw = await wfRes.json().catch(() => ({}));
+    const objStr = wfRaw?.properties?.Output?.object ?? wfRaw?.object ?? null;
+    const trimmed = objStr ? String(objStr).trim().replace(/^'(.*)'$/, '$1') : '';
+    const obj = trimmed && trimmed !== '{}' ? JSON.parse(trimmed) : null;
+
+    if (!obj) {
+      return json(404, {
+        description: '',
+        error: lang === 'fr'
+          ? `Local avec ID ${spaceId} introuvable.`
+          : `Ruimte met ID ${spaceId} niet gevonden.`,
+        env
+      });
+    }
 
     const beschrijving =
-      data?.Description ??
-      data?.description ??
-      data?.properties?.Description ??
-      data?.properties?.description ??
+      String(obj?.description ?? '').trim() ||
       (lang === 'fr' ? 'Aucune description trouvée.' : 'Geen beschrijving gevonden.');
 
-    const cleaningProgram =
-      data?._CleaningProgram ??
-      data?.properties?._CleaningProgram ??
-      '';
-
+    const cleaningProgram = String(obj?.cleaningProgram ?? '').trim();
     const cleaningProgramFormatted = cleaningProgram
-      ? formatCleaningProgram(String(cleaningProgram), lang)
+      ? formatCleaningProgram(cleaningProgram, lang)
       : '';
 
-    // Klantnaam ophalen via workflow GET_SPACE_INFO
-    let clientName   = '';
-    let clientId     = '';
-    let buildingName = '';
-    if (APP_QUERY && spaceId) {
-      try {
-        const wfRes = await fetch(`${base}/action/_rest_QueryAtalianJobs`, {
-          method: 'POST',
-          headers: { accept: 'application/json', 'Content-Type': 'application/json', ApiKey: API_KEY, ApplicationElementId: APP_QUERY },
-          body: JSON.stringify({ Action: 'GET_SPACE_INFO', SpaceId: spaceId })
-        });
-        if (wfRes.ok) {
-          const wfRaw = await wfRes.json().catch(() => ({}));
-          const objStr = wfRaw?.properties?.Output?.object ?? wfRaw?.object ?? null;
-          const obj = objStr ? JSON.parse(typeof objStr === 'string' ? objStr : JSON.stringify(objStr)) : {};
-          clientName   = String(obj?.clientName   ?? '').trim();
-          clientId     = String(obj?.clientId     ?? '').trim();
-          buildingName = String(obj?.buildingName ?? '').trim();
-        }
-      } catch (_) {}
-    }
+    const clientName   = String(obj?.clientName   ?? '').trim();
+    const clientId     = String(obj?.clientId     ?? '').trim();
+    const buildingName = String(obj?.buildingName ?? '').trim();
 
     return json(200, {
       description: String(beschrijving || '').trim(),
