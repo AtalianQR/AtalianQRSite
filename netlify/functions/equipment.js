@@ -59,11 +59,34 @@ export async function handler(event) {
     // Env
     const { base, env } = detectEnvironment(event);
 
-    // Ultimo call
-    const url = `${base}/object/Equipment('${equipmentId}')`;
-    const res = await fetch(url, { headers: { accept: 'application/json', ApiKey: API_KEY } });
+    if (!APP_QUERY) {
+      return json(500, { description: '', error: 'Server misconfiguratie (APP_ELEMENT_QueryAtalianJobs ontbreekt).' });
+    }
 
-    if (res.status === 404) {
+    // Installatie-info volledig via de actie-laag (GET_EQUIPMENT_INFO) - geen directe object-laag-call
+    // meer op /object/Equipment, zodat deze toegang individueel beheerbaar/afzetbaar blijft in Ultimo.
+    const wfRes = await fetch(`${base}/action/_rest_QueryAtalianJobs`, {
+      method: 'POST',
+      headers: { accept: 'application/json', 'Content-Type': 'application/json', ApiKey: API_KEY, ApplicationElementId: APP_QUERY },
+      body: JSON.stringify({ Action: 'GET_EQUIPMENT_INFO', EquipmentId: equipmentId })
+    });
+
+    if (!wfRes.ok) {
+      const txt = await wfRes.text().catch(() => '');
+      return json(wfRes.status, {
+        description: '',
+        error: (lang === 'fr') ? 'Erreur lors du chargement de l’installation.' : 'Fout bij ophalen van installatie.',
+        detail: txt.slice(0, 800),
+        env
+      });
+    }
+
+    const wfRaw = await wfRes.json().catch(() => ({}));
+    const objStr = wfRaw?.properties?.Output?.object ?? wfRaw?.object ?? null;
+    const trimmed = objStr ? String(objStr).trim().replace(/^'(.*)'$/, '$1') : '';
+    const obj = trimmed && trimmed !== '{}' ? JSON.parse(trimmed) : null;
+
+    if (!obj) {
       return json(404, {
         description: '',
         error: (lang === 'fr')
@@ -72,45 +95,15 @@ export async function handler(event) {
         env
       });
     }
-    if (!res.ok) {
-      const txt = await res.text().catch(() => '');
-      return json(res.status, {
-        description: '',
-        error: (lang === 'fr') ? 'Erreur lors du chargement de l’installation.' : 'Fout bij ophalen van installatie.',
-        detail: txt.slice(0, 800),
-        env
-      });
-    }
 
-    const data = await res.json().catch(() => ({}));
     const desc =
-      data?.Description ??
-      data?.description ??
-      data?.properties?.Description ??
-      data?.properties?.description ??
+      String(obj?.description ?? '').trim() ||
       ((lang === 'fr') ? 'Aucune description trouvée.' : 'Geen beschrijving gevonden.');
-
-    // Klantnaam via GET_EQUIPMENT_INFO workflow
-    let clientName = '', clientId = '';
-    if (APP_QUERY && equipmentId) {
-      try {
-        const wfRes = await fetch(`${base}/action/_rest_QueryAtalianJobs`, {
-          method: 'POST',
-          headers: { accept: 'application/json', 'Content-Type': 'application/json', ApiKey: API_KEY, ApplicationElementId: APP_QUERY },
-          body: JSON.stringify({ Action: 'GET_EQUIPMENT_INFO', EquipmentId: equipmentId })
-        });
-        if (wfRes.ok) {
-          const wfRaw = await wfRes.json().catch(() => ({}));
-          const objStr = wfRaw?.properties?.Output?.object ?? wfRaw?.object ?? null;
-          const obj = objStr ? JSON.parse(typeof objStr === 'string' ? objStr : JSON.stringify(objStr)) : {};
-          clientName = String(obj?.clientName ?? '').trim();
-          clientId   = String(obj?.clientId   ?? '').trim();
-        }
-      } catch (_) {}
-    }
+    const clientName = String(obj?.clientName ?? '').trim();
+    const clientId   = String(obj?.clientId   ?? '').trim();
 
     return json(200, {
-      description: String(desc || '').trim(),
+      description: desc,
       clientName,
       clientId,
       env

@@ -135,14 +135,16 @@ function pickDocuments(out) {
   return Array.isArray(out.Documents) ? out.Documents : [];
 }
 
-// === OData helper om Vendor.Id op te halen (voor override) ===
+// === Helper om Vendor.Id op te halen (voor override) - via de actie-laag (GET_JOB_VENDOR_ID),
+// geen directe object-laag-call meer op /object/Job ===
 async function fetchJobVendorId(cfg, jobId) {
-  const url = `${cfg.base}/object/Job('${String(jobId)}')`;
-  const res = await fetch(url, { headers: { accept: 'application/json', ApiKey: cfg.key } });
-  if (!res.ok) return '';
-  const data = await res.json().catch(() => ({}));
-  const v = data?.Vendor?.Id || data?.properties?.Vendor?.Id || data?.Vendor || data?.properties?.Vendor || '';
-  return String((typeof v === 'object' ? v?.Id : v) || '').trim();
+  try {
+    const r = await callUltimo(cfg, { Action: 'GET_JOB_VENDOR_ID', JobId: String(jobId) });
+    const out = getOutputObject(r.json);
+    return String(out?.VendorId || '').trim();
+  } catch {
+    return '';
+  }
 }
 
 /* ───────────── GET HANDLERS ───────────── */
