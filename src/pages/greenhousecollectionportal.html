@@ -222,17 +222,20 @@
           <option value="">-- eerst een verdieping kiezen --</option>
         </select>
 
-        <!-- EQUIPMENT: eerst type, dan installatie -->
-        <label id="label-equipmenttype" for="select-equipmenttype" style="display:none; margin-top:.75rem;">
-          Kies installatiesoort
-        </label>
-        <select id="select-equipmenttype" style="display:none;">
-          <option value="">-- eerst een installatiesoort kiezen --</option>
+        <!-- EQUIPMENT: eerst gebouwdeel/verdieping, dan vrij filteren op installatiesoort/naam/lokaal/tenant -->
+        <label id="label-part-equip" for="select-part-equip" style="display:none;">Kies gebouwdeel</label>
+        <select id="select-part-equip" style="display:none;">
+          <option value="">-- kies een gebouwdeel (optioneel) --</option>
+        </select>
+
+        <label id="label-floor-equip" for="select-floor-equip" style="display:none;">Kies verdieping</label>
+        <select id="select-floor-equip" style="display:none;">
+          <option value="">-- kies een verdieping (optioneel) --</option>
         </select>
 
         <div id="filter-block" style="margin-top:.5rem; display:none;">
           <label id="label-filter-installation" for="filter-installation">
-            Filter installaties (benaming, lokaal, tenant…)
+            Filter installaties (soort, benaming, lokaal, tenant…)
           </label>
           <input
             type="text"
@@ -353,8 +356,11 @@
 	  document.getElementById('label-floor').textContent =
 		isFr ? 'Choisissez un étage' : 'Kies verdieping';
 
-	  document.getElementById('label-equipmenttype').textContent =
-		isFr ? "Choisissez le type d'installation" : 'Kies installatiesoort';
+	  document.getElementById('label-part-equip').textContent =
+		isFr ? 'Choisissez une partie du bâtiment' : 'Kies gebouwdeel';
+
+	  document.getElementById('label-floor-equip').textContent =
+		isFr ? 'Choisissez un étage' : 'Kies verdieping';
 
 	  const labelSelect = document.getElementById('label-select');
 
@@ -375,8 +381,8 @@
 
 	  if (lblFilter) {
 		lblFilter.textContent = isFr
-		  ? 'Filtrer les installations (nom, local, locataire…)'
-		  : 'Filter installaties (benaming, lokaal, tenant…)';
+		  ? "Filtrer les installations (type, nom, local, locataire…)"
+		  : 'Filter installaties (soort, benaming, lokaal, tenant…)';
 	  }
 
 	  if (inpFilter) {
@@ -406,7 +412,9 @@
     const selectPart          = document.getElementById('select-part');
     const selectFloor         = document.getElementById('select-floor');
 
-    const selectEquipmentType = document.getElementById('select-equipmenttype');
+    const selectPartEquip      = document.getElementById('select-part-equip');
+    const selectFloorEquip     = document.getElementById('select-floor-equip');
+
     const selectTarget        = document.getElementById('select-target');
 
     const filterBlock         = document.getElementById('filter-block');
@@ -422,8 +430,8 @@
     let currentType        = null;   // 'equipment' of 'space'
     let allFloors          = [];
     let allInstallations   = [];     // Items[]
-    let allEquipmentTypes  = [];     // EquipmentTypes[]
-    let selectedEqType     = null;   // typeId of '__unknown__'
+	let selectedEquipPart   = '';     // BuildingPart (tekst) of '__unknown__'
+	let selectedEquipFloor  = '';     // BuildingFloor (niveau) of '__unknown__'
 	let allSpaces = []; // ruimtes van geselecteerde verdieping
 	
 	const filterSpace = document.getElementById('filter-space');
@@ -476,46 +484,6 @@
       return String(v ?? '').trim();
     }
 
-    function buildEquipmentTypeDropdown(types, items) {
-      const isFr = (lang === 'fr');
-
-      // detecteer onbekende types (lege EquipmentTypeId)
-      const hasUnknown = items.some(it => !normalizeId(it.EquipmentTypeId ?? it.equipmentTypeId));
-
-      // options
-      selectEquipmentType.innerHTML =
-        `<option value="">${isFr ? "-- choisissez d'abord un type --" : "-- kies eerst een installatiesoort --"}</option>`;
-
-      (types || []).forEach(t => {
-        const id   = normalizeId(t.Id ?? t.id);
-        const desc = String(t.Description ?? t.description ?? id).trim();
-        if (!id) return;
-        selectEquipmentType.insertAdjacentHTML(
-          'beforeend',
-          `<option value="${id.replace(/"/g,'&quot;')}">${desc.replace(/</g,'&lt;')}</option>`
-        );
-      });
-
-      if (hasUnknown) {
-        selectEquipmentType.insertAdjacentHTML(
-          'beforeend',
-          `<option value="__unknown__">${isFr ? "Autre / Inconnu" : "Andere / Onbekend"}</option>`
-        );
-      }
-
-      // auto-select als er exact 1 type is en geen unknown-only situatie
-      const optionCount = selectEquipmentType.querySelectorAll('option').length;
-      if (optionCount === 2 && !hasUnknown) {
-        // placeholder + 1 type
-        selectEquipmentType.selectedIndex = 1;
-        selectedEqType = selectEquipmentType.value;
-        renderEquipmentOptions();
-      } else {
-        selectedEqType = null;
-        selectTarget.innerHTML =
-          `<option value="">${isFr ? "-- choisissez d'abord un type --" : "-- kies eerst een installatiesoort --"}</option>`;
-      }
-    }
 	function updateSpaceFilterAvailability() {
 	  // Alleen relevant in SPACE-mode
 	  if (currentType !== 'space') {
@@ -545,11 +513,101 @@
 	}
 
 
-    function matchesType(item, typeId) {
-      const itemType = normalizeId(item.EquipmentTypeId ?? item.equipmentTypeId);
-      if (typeId === "__unknown__") return !itemType;
-      return itemType === normalizeId(typeId);
-    }
+	/* ============================================================
+	   EQUIPMENT: gebouwdeel / verdieping scoping (zelfde principe als ruimtes)
+	============================================================ */
+	function getEquipPartValue(it) {
+	  return String(it.BuildingPart ?? '').trim();
+	}
+	function getEquipFloorValue(it) {
+	  return String(it.BuildingFloor ?? '').trim();
+	}
+	function matchesEquipPart(it, partVal) {
+	  const p = getEquipPartValue(it);
+	  if (partVal === '__unknown__') return !p;
+	  return p === partVal;
+	}
+	function matchesEquipFloor(it, floorVal) {
+	  const f = getEquipFloorValue(it);
+	  if (floorVal === '__unknown__') return !f;
+	  return f === floorVal;
+	}
+	function getEquipScopedItems() {
+	  return allInstallations.filter(it => {
+		if (selectedEquipPart && !matchesEquipPart(it, selectedEquipPart)) return false;
+		if (selectedEquipFloor && !matchesEquipFloor(it, selectedEquipFloor)) return false;
+		return true;
+	  });
+	}
+
+	function buildEquipPartDropdown() {
+	  const isFr = (lang === 'fr');
+	  const partMap = new Map();
+	  let hasUnknown = false;
+
+	  allInstallations.forEach(it => {
+		const p = getEquipPartValue(it);
+		if (!p) { hasUnknown = true; return; }
+		if (!partMap.has(p)) partMap.set(p, p);
+	  });
+
+	  selectPartEquip.innerHTML =
+		`<option value="">${isFr ? '-- choisissez une partie (optionnel) --' : '-- kies een gebouwdeel (optioneel) --'}</option>`;
+
+	  Array.from(partMap.keys())
+		.sort((a, b) => a.localeCompare(b, 'nl', { sensitivity: 'base' }))
+		.forEach(p => {
+		  selectPartEquip.insertAdjacentHTML(
+			'beforeend',
+			`<option value="${p.replace(/"/g,'&quot;')}">${p.replace(/</g,'&lt;')}</option>`
+		  );
+		});
+
+	  if (hasUnknown) {
+		selectPartEquip.insertAdjacentHTML(
+		  'beforeend',
+		  `<option value="__unknown__">${isFr ? 'Autre / Inconnu' : 'Andere / Onbekend'}</option>`
+		);
+	  }
+
+	  selectedEquipPart = '';
+	  buildEquipFloorDropdown();
+	}
+
+	function buildEquipFloorDropdown() {
+	  const isFr = (lang === 'fr');
+	  const floorMap = new Map();
+	  let hasUnknown = false;
+
+	  allInstallations
+		.filter(it => !selectedEquipPart || matchesEquipPart(it, selectedEquipPart))
+		.forEach(it => {
+		  const f = getEquipFloorValue(it);
+		  if (!f) { hasUnknown = true; return; }
+		  if (!floorMap.has(f)) floorMap.set(f, f);
+		});
+
+	  selectFloorEquip.innerHTML =
+		`<option value="">${isFr ? '-- choisissez un étage (optionnel) --' : '-- kies een verdieping (optioneel) --'}</option>`;
+
+	  Array.from(floorMap.keys())
+		.sort((a, b) => floorToNumber(a) - floorToNumber(b))
+		.forEach(f => {
+		  selectFloorEquip.insertAdjacentHTML(
+			'beforeend',
+			`<option value="${f.replace(/"/g,'&quot;')}">${f.replace(/</g,'&lt;')}</option>`
+		  );
+		});
+
+	  if (hasUnknown) {
+		selectFloorEquip.insertAdjacentHTML(
+		  'beforeend',
+		  `<option value="__unknown__">${isFr ? 'Autre / Inconnu' : 'Andere / Onbekend'}</option>`
+		);
+	  }
+
+	  selectedEquipFloor = '';
+	}
 
 	function renderSpaceOptions() {
 	  const isFr = (lang === 'fr');
@@ -619,13 +677,14 @@
       const needle = q.toLowerCase().trim();
       if (!needle) return true;
 
-      const id   = String(item.Id ?? item.id ?? '').toLowerCase();
-      const desc = String(item.Description ?? item.description ?? '').toLowerCase();
+      const id     = String(item.Id ?? item.id ?? '').toLowerCase();
+      const desc   = String(item.Description ?? item.description ?? '').toLowerCase();
+      const type   = String(item.EquipmentType ?? '').toLowerCase();
+      const space  = String(item.SpaceDescription ?? '').toLowerCase();
+      const tenant = String(item.Tenant ?? '').toLowerCase();
 
-      // als je later extra velden meestuurt (SpaceDescription, Tenant, …) pakt dit ze automatisch mee
-      const extra = JSON.stringify(item).toLowerCase();
-
-      return id.includes(needle) || desc.includes(needle) || extra.includes(needle);
+      return id.includes(needle) || desc.includes(needle) || type.includes(needle)
+        || space.includes(needle) || tenant.includes(needle);
     }
 
 
@@ -647,14 +706,10 @@
 	function renderEquipmentOptions() {
 	  const isFr = (lang === 'fr');
 
-	  const typeId = String(selectEquipmentType.value || '').trim(); // kan leeg zijn
-	  selectedEqType = typeId || null;
-
 	  const q = String(filterInstall?.value || '');
 
-	  // ✅ geen type gekozen = toon ALLES
-	  const filtered = allInstallations
-		.filter(it => !selectedEqType || matchesType(it, selectedEqType))
+	  // ✅ geen filtertekst = toon ALLES (binnen gekozen gebouwdeel/verdieping)
+	  const filtered = getEquipScopedItems()
 		.filter(it => matchesText(it, q));
 
 	  selectTarget.innerHTML = '';
@@ -706,24 +761,6 @@
 
 	
 	
-	function buildTypesFromItems(items) {
-	  const map = new Map();
-
-	  (items || []).forEach(it => {
-		const id = String(it.EquipmentTypeId ?? '').trim();
-		const desc = String(it.EquipmentType ?? id).trim(); // trim is belangrijk (je hebt "Koffiemachine ")
-
-		if (!id) return;
-		if (!map.has(id)) map.set(id, desc);
-	  });
-
-	  return Array.from(map.entries())
-		.map(([Id, Description]) => ({ Id, Description }))
-		.sort((a, b) => String(a.Description).localeCompare(String(b.Description), 'nl', { sensitivity: 'base' }));
-	}
-
-
-	
 	async function fetchEquipmentsForComplex() {
 	  const isFr = (lang === 'fr');
 	  setStatus(isFr ? 'Chargement des installations…' : 'Installaties worden geladen…', false);
@@ -751,31 +788,21 @@
 	  }
 
 	  const items = Array.isArray(data.Items) ? data.Items : (Array.isArray(data.items) ? data.items : []);
-	  const types = buildTypesFromItems(items);
 
 	  console.log("Items geladen:", items.length);
-	  console.log("Types gevonden:", types);
 
-	  allInstallations  = items;
-	  allEquipmentTypes = types;
+	  allInstallations = items;
 
 	  if (!items.length) {
 		setStatus(isFr ? "Aucune installation trouvée." : "Geen installaties gevonden.", true);
-		selectEquipmentType.innerHTML = `<option value="">-- niets beschikbaar --</option>`;
-		selectTarget.innerHTML        = `<option value="">-- niets beschikbaar --</option>`;
+		selectTarget.innerHTML = `<option value="">-- niets beschikbaar --</option>`;
 		return;
 	  }
 
-	  if (!types.length) {
-		setStatus(isFr ? "Aucun type trouvé dans les données." : "Geen installatiesoorten gevonden in de data.", true);
-		selectEquipmentType.innerHTML = `<option value="">-- geen types --</option>`;
-		selectTarget.innerHTML        = `<option value="">-- kies eerst een installatiesoort --</option>`;
-		return;
-	  }
-
-	  // dropdown opbouwen
-	  buildEquipmentTypeDropdown(allEquipmentTypes, allInstallations);
-	  selectEquipmentType.value = '';
+	  // dropdowns opbouwen: eerst gebouwdeel/verdieping, dan vrij filteren op tekst
+	  buildEquipPartDropdown();
+	  selectPartEquip.value = '';
+	  selectFloorEquip.value = '';
 	  filterInstall.value = '';
 	  renderEquipmentOptions();
 
@@ -1051,8 +1078,10 @@
 		selectFloor.style.display                                = 'block';
 
 		// equipment-velden verbergen
-		document.getElementById('label-equipmenttype').style.display = 'none';
-		selectEquipmentType.style.display                             = 'none';
+		document.getElementById('label-part-equip').style.display  = 'none';
+		selectPartEquip.style.display                               = 'none';
+		document.getElementById('label-floor-equip').style.display = 'none';
+		selectFloorEquip.style.display                              = 'none';
 		filterBlock.style.display                                      = 'none';
 
 		// ✅ space-filter tonen (maar evt disabled)
@@ -1062,7 +1091,6 @@
 		document.getElementById('label-select').textContent = isFr ? 'Sélectionnez un espace' : 'Kies ruimte';
 
 		// resets
-		selectEquipmentType.innerHTML = `<option value="">${isFr ? "-- choisissez d'abord un type --" : "-- kies eerst een installatiesoort --"}</option>`;
 		filterInstall.value = '';
 
 		// dropdowns resetten
@@ -1083,8 +1111,10 @@
 	  } else {
 
 		// equipment-velden tonen
-		document.getElementById('label-equipmenttype').style.display = 'block';
-		selectEquipmentType.style.display                             = 'block';
+		document.getElementById('label-part-equip').style.display  = 'block';
+		selectPartEquip.style.display                               = 'block';
+		document.getElementById('label-floor-equip').style.display = 'block';
+		selectFloorEquip.style.display                              = 'block';
 		filterBlock.style.display                                      = 'block';
 
 		// space-velden verbergen
@@ -1101,14 +1131,16 @@
 		document.getElementById('label-select').textContent = isFr ? 'Sélectionnez une installation' : 'Kies installatie';
 
 		filterInstall.value = '';
-		selectTarget.innerHTML = `<option value="">${isFr ? "-- choisissez d'abord un type --" : "-- kies eerst een installatiesoort --"}</option>`;
-		selectEquipmentType.innerHTML = `<option value="">${isFr ? "-- chargement... --" : "-- laden... --"}</option>`;
+		selectedEquipPart  = '';
+		selectedEquipFloor = '';
+		selectTarget.innerHTML = `<option value="">${isFr ? "-- chargement... --" : "-- laden... --"}</option>`;
+		selectPartEquip.innerHTML  = `<option value="">${isFr ? "-- chargement... --" : "-- laden... --"}</option>`;
+		selectFloorEquip.innerHTML = `<option value="">${isFr ? "-- chargement... --" : "-- laden... --"}</option>`;
 
 		fetchEquipmentsForComplex().catch(err => {
 		  console.error(err);
 		  setStatus(isFr ? 'Erreur lors du chargement.' : 'Fout bij het laden.', true);
-		  selectEquipmentType.innerHTML = '<option value="">-- geen gegevens --</option>';
-		  selectTarget.innerHTML        = '<option value="">-- geen gegevens --</option>';
+		  selectTarget.innerHTML = '<option value="">-- geen gegevens --</option>';
 		});
 	  }
 	}
@@ -1204,8 +1236,12 @@
 	  selectFloor.innerHTML =
 		`<option value="">${isFr ? '-- choisissez d’abord un étage --' : '-- kies eerst een verdieping --'}</option>`;
 
-	  selectEquipmentType.innerHTML =
-		`<option value="">${isFr ? "-- choisissez d’abord un type d'installation --" : '-- kies eerst een installatiesoort --'}</option>`;
+	  selectedEquipPart  = '';
+	  selectedEquipFloor = '';
+	  selectPartEquip.innerHTML =
+		`<option value="">${isFr ? '-- choisissez une partie (optionnel) --' : '-- kies een gebouwdeel (optioneel) --'}</option>`;
+	  selectFloorEquip.innerHTML =
+		`<option value="">${isFr ? '-- choisissez un étage (optionnel) --' : '-- kies een verdieping (optioneel) --'}</option>`;
 
 	  selectTarget.innerHTML =
 		`<option value="">${isFr ? '-- faites d’abord un choix ci-dessus --' : '-- eerst een keuze maken hierboven --'}</option>`;
@@ -1268,13 +1304,20 @@
 	  });
 	}
 
-    // equipment: type change => installaties vullen
-    selectEquipmentType.addEventListener('change', () => {
-      filterInstall.value = '';
-      renderEquipmentOptions();
-    });
+    // equipment: gebouwdeel change => verdieping herberekenen + lijst herfilteren
+	selectPartEquip.addEventListener('change', () => {
+	  selectedEquipPart = selectPartEquip.value;
+	  buildEquipFloorDropdown();
+	  renderEquipmentOptions();
+	});
 
-    // equipment: filter text => opnieuw renderen (zelfde type)
+	// equipment: verdieping change => lijst herfilteren
+	selectFloorEquip.addEventListener('change', () => {
+	  selectedEquipFloor = selectFloorEquip.value;
+	  renderEquipmentOptions();
+	});
+
+    // equipment: filter text => opnieuw renderen
 	filterInstall.addEventListener('input', () => {
 	  if (currentType !== 'equipment') return;
 	  renderEquipmentOptions();
