@@ -28,7 +28,7 @@
   schedule = "*/4 * * * *"
 
 [functions."soundsensing-sync"]
-  schedule = "0 * * * *"
+  schedule = "*/30 * * * *"
 
 # =================================================================
 # 3. EDGE FUNCTIONS (specifieke routes)

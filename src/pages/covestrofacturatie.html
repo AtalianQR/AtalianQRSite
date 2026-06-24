@@ -1,0 +1,580 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Covestro Facturatie</title>
+
+  <link rel="icon" href="/AtalianFavicon.png" />
+
+  <style>
+    html, body {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      font-family: 'Segoe UI', sans-serif;
+      background-color: #f4f6fa;
+      min-height: 100vh;
+    }
+    * { box-sizing: border-box; }
+
+    .test-banner {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      background-color: #28a745;
+      color: white;
+      text-align: center;
+      padding: 5px 0;
+      font-weight: bold;
+      z-index: 1000;
+      font-size: 14px;
+      text-transform: uppercase;
+      opacity: 0.9;
+    }
+    body.is-test { padding-top: 30px; }
+
+    header { padding: 0.5rem 1rem 0; }
+    .header-flex {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      max-width: 900px;
+      margin: 0 auto;
+      gap: .5rem;
+    }
+    img.logo {
+      max-height: 60px;
+      background: rgba(255,255,255,0.85);
+      padding: .1rem;
+      border-radius: 12px;
+    }
+
+    .page-card {
+      max-width: 1400px;
+      margin: 1rem auto 2rem;
+      background: #fff;
+      border: 2px solid #EE7E00;
+      border-radius: 12px;
+      box-shadow: 0 6px 32px rgba(0,0,0,.12),0 1.5px 8px rgba(238,126,0,.10);
+      padding: 1.25rem 1.5rem 1.5rem;
+    }
+    .page-card h1 { margin: 0 0 .5rem; font-size: 1.4rem; }
+
+    input[type="password"], input[type="text"] {
+      padding: .5rem .6rem;
+      border-radius: 8px;
+      border: 1px solid #d1d5db;
+      font-size: .95rem;
+      width: 100%;
+      max-width: 280px;
+    }
+
+    .btn {
+      border-radius: 999px;
+      padding: .55rem 1.4rem;
+      border: none;
+      font-weight: 600;
+      cursor: pointer;
+      font-size: .95rem;
+    }
+    .btn-primary { background: #EE7E00; color: #fff; }
+    .btn-primary:active { background: #d86e00; }
+    .btn-primary:disabled { background: #e5e7eb; color: #9ca3af; cursor: not-allowed; }
+
+    .status { margin-top: .5rem; font-size: .9rem; color: #6b7280; }
+    .status.error { color: #b91c1c; }
+
+    table.building-table { width: 100%; border-collapse: collapse; margin-bottom: 1.5rem; table-layout: fixed; }
+    table.building-table td, table.building-table th { padding: .4rem .6rem; font-size: .9rem; text-align: left; overflow-wrap: break-word; }
+    tr.building-header { background: #6b7280; color: #fff; font-weight: 600; }
+    span.building-total { font-weight: 700; color: #fde047; }
+    tr.building-header.done { background: #9ca3af; }
+    tr.column-header-row th { background: #e5e7eb; font-weight: 700; }
+    tr.job-row { background: #fff; color: #000; }
+    tr.job-row.done { background: #e5e7eb; color: #6b7280; }
+    tr.job-row td.code-group-start { border-top: 1px solid #d1d5db; }
+    td.num-right, th.num-right { text-align: right; font-variant-numeric: tabular-nums; }
+    table.building-table td:nth-child(5) { white-space: nowrap; }
+    span.copy-part { cursor: pointer; padding: 0 .15rem; border-radius: 4px; background: #fff200; }
+    tr.job-row.done span.copy-part { cursor: default; background: #e5e7eb; }
+    span.copy-part.copied-flash { background: #22c55e !important; color: #fff; }
+    .vorderingsnummer-input { width: 140px; margin-right: .5rem; }
+    td.vordering-cell { white-space: nowrap; }
+    .job-error { color: #b91c1c; font-size: .8rem; }
+  </style>
+</head>
+
+<body>
+  <div id="test-indicator" style="display:none" class="test-banner">
+    ⚠️ TEST OMGEVING ACTIEF
+  </div>
+
+  <header>
+    <div class="header-flex">
+      <img src="/AtalianLogo.png" alt="Atalian Logo" class="logo" />
+    </div>
+  </header>
+
+  <main>
+    <section class="page-card" id="password-card">
+      <h1>Covestro facturatie</h1>
+      <p>Geef het wachtwoord in om verder te gaan.</p>
+      <input type="password" id="password-input" autocomplete="off" />
+      <button type="button" id="password-submit" class="btn btn-primary" style="margin-left:.5rem;">Inloggen</button>
+      <div class="status" id="password-status"></div>
+    </section>
+
+    <section class="page-card" id="main-card" style="display:none">
+      <h1>Covestro facturatie</h1>
+      <button type="button" id="btn-load" class="btn btn-primary">Lijst laden</button>
+      <div class="status" id="load-status"></div>
+      <div id="buildings-container"></div>
+    </section>
+  </main>
+
+  <script>
+    const qs = new URLSearchParams(window.location.search);
+    const host = location.host || '';
+    const isTestEnv = qs.has('test') || qs.get('env') === 'test' || /test|staging/i.test(host);
+    const FUNCTION_URL = '/.netlify/functions/covestro_vordering';
+
+    function initEnvBanner() {
+      if (isTestEnv) {
+        document.getElementById('test-indicator').style.display = 'block';
+        document.body.classList.add('is-test');
+      }
+    }
+
+    function getPortalPassword() {
+      return sessionStorage.getItem('covestroPw') || '';
+    }
+    function setPortalPassword(pw) {
+      sessionStorage.setItem('covestroPw', pw);
+    }
+    function clearPortalPassword() {
+      sessionStorage.removeItem('covestroPw');
+    }
+
+    async function apiFetch(action, { method = 'GET', body } = {}) {
+      const url = method === 'GET'
+        ? `${FUNCTION_URL}?action=${encodeURIComponent(action)}`
+        : FUNCTION_URL;
+
+      const res = await fetch(url, {
+        method,
+        headers: {
+          'X-Portal-Password': getPortalPassword(),
+          ...(body ? { 'Content-Type': 'application/json' } : {}),
+        },
+        body: body ? JSON.stringify({ action, ...body }) : undefined,
+      });
+
+      if (res.status === 401) {
+        clearPortalPassword();
+        showPasswordScreen('Wachtwoord verlopen of ongeldig. Log opnieuw in.');
+        throw new Error('UNAUTHORIZED');
+      }
+
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        throw new Error(data?.error || `HTTP ${res.status}`);
+      }
+      return data;
+    }
+
+    function showPasswordScreen(message) {
+      document.getElementById('password-card').style.display = 'block';
+      document.getElementById('main-card').style.display = 'none';
+      document.getElementById('password-status').textContent = message || '';
+      document.getElementById('password-status').classList.toggle('error', !!message);
+    }
+
+    function showMainScreen() {
+      document.getElementById('password-card').style.display = 'none';
+      document.getElementById('main-card').style.display = 'block';
+    }
+
+    async function trySubmitPassword() {
+      const pw = String(document.getElementById('password-input').value || '').trim();
+      if (!pw) return;
+
+      setPortalPassword(pw);
+      try {
+        await apiFetch('CHECK_PASSWORD');
+        showMainScreen();
+      } catch (err) {
+        clearPortalPassword();
+        document.getElementById('password-status').textContent = 'Fout wachtwoord.';
+        document.getElementById('password-status').classList.add('error');
+      }
+    }
+
+    document.getElementById('password-submit').onclick = trySubmitPassword;
+    document.getElementById('password-input').addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') trySubmitPassword();
+    });
+
+    async function initSession() {
+      initEnvBanner();
+      if (getPortalPassword()) {
+        try {
+          await apiFetch('CHECK_PASSWORD');
+          showMainScreen();
+        } catch (err) {
+          showPasswordScreen();
+        }
+      } else {
+        showPasswordScreen();
+      }
+    }
+
+    initSession();
+
+    let buildingGroups = []; // [{ building, externalId, gebouwnummer, codeGroups: Map<code, jobs[]> }]
+
+    function groupJobs(jobs) {
+      const byBuilding = new Map();
+
+      for (const job of jobs) {
+        const buildingKey = String(job.Building || '').trim() || '(onbekend gebouw)';
+        if (!byBuilding.has(buildingKey)) {
+          byBuilding.set(buildingKey, {
+            building: buildingKey,
+            externalId: String(job.ExternalId || '').trim(),
+            gebouwnummer: String(job.Gebouwnummer || '').trim(),
+            codeGroups: new Map(),
+            jobsById: new Map(),
+          });
+        }
+        const group = byBuilding.get(buildingKey);
+        const codeKey = String(job.Code || '').trim() || '(geen code)';
+        if (!group.codeGroups.has(codeKey)) {
+          group.codeGroups.set(codeKey, []);
+        }
+        group.codeGroups.get(codeKey).push(job);
+        group.jobsById.set(String(job.JobId || '').trim(), job);
+      }
+
+      return Array.from(byBuilding.values());
+    }
+
+    function escapeHtml(s) {
+      return String(s == null ? '' : s)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;');
+    }
+
+    function formatAantal(value) {
+      const num = parseFloat(String(value == null ? '' : value).replace(',', '.'));
+      return Number.isFinite(num) ? String(num).replace('.', ',') : String(value == null ? '' : value);
+    }
+
+    function getBeschrijving(code) {
+      if (String(code || '').trim() !== 'BL 2 - LA 2') return '';
+      const now = new Date();
+      const maand = String(now.getMonth() + 1).padStart(2, '0');
+      return `Materiaallevering incl handelingstoeslag Ultimo - Maand ${now.getFullYear()}/${maand}`;
+    }
+
+    function formatTotaalDisplay(value) {
+      return String(value || '').replace(/^EUR\s*/i, '€ ').trim();
+    }
+
+    function totaalCopyValue(value) {
+      return String(value || '').replace(/^EUR\s*/i, '').trim();
+    }
+
+    function parseTotaalNumber(value) {
+      const cleaned = String(value || '').replace(/^EUR\s*/i, '').trim();
+      const normalized = cleaned.replace(/\./g, '').replace(',', '.');
+      const num = parseFloat(normalized);
+      return Number.isFinite(num) ? num : 0;
+    }
+
+    function formatEuro(num) {
+      return '€ ' + num.toLocaleString('nl-BE', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    }
+
+    function calculateBuildingTotal(group) {
+      let sum = 0;
+      for (const jobsInCode of group.codeGroups.values()) {
+        for (const job of jobsInCode) {
+          sum += parseTotaalNumber(job.Totaal);
+        }
+      }
+      return formatEuro(sum);
+    }
+
+    function copyPart(displayText, copyValue) {
+      return `<span class="copy-part" data-copy-value="${escapeHtml(copyValue)}">${escapeHtml(displayText)}</span>`;
+    }
+
+    function renderCodeCell(code) {
+      const trimmed = String(code || '').trim();
+
+      const blLaMatch = trimmed.match(/^BL\s*(\d+)\s*-\s*LA\s*(\d+)$/i);
+      if (blLaMatch) {
+        return `BL ${copyPart(blLaMatch[1], blLaMatch[1])} - LA ${copyPart(blLaMatch[2], blLaMatch[2])}`;
+      }
+
+      const pMatch = trimmed.match(/^P\s+(.+)$/i);
+      if (pMatch) {
+        return `P ${copyPart(pMatch[1], pMatch[1])}`;
+      }
+
+      return trimmed ? copyPart(trimmed, trimmed) : '';
+    }
+
+    function renderBuildings() {
+      const container = document.getElementById('buildings-container');
+      container.innerHTML = '';
+
+      if (!buildingGroups.length) {
+        container.innerHTML = '<p>Geen jobs klaar om te factureren.</p>';
+        return;
+      }
+
+      const table = document.createElement('table');
+      table.className = 'building-table';
+      table.id = 'all-buildings-table';
+
+      let rowsHtml = `
+        <colgroup>
+          <col style="width:8%">
+          <col style="width:5%">
+          <col style="width:7%">
+          <col style="width:11%">
+          <col style="width:15%">
+          <col style="width:50%">
+          <col style="width:4%">
+        </colgroup>
+        <tbody>
+      `;
+
+      for (const group of buildingGroups) {
+        const groupId = `grp-${group.building.replace(/[^a-zA-Z0-9]/g, '_')}`;
+
+        rowsHtml += `
+          <tr class="building-header" id="${groupId}">
+            <td colspan="3">${escapeHtml(group.building)}</td>
+            <td class="num-right"><span class="building-total" data-total-for="${escapeHtml(group.building)}">${escapeHtml(calculateBuildingTotal(group))}</span></td>
+            <td>${escapeHtml(group.externalId)}</td>
+            <td colspan="2" class="vordering-cell">
+              <input type="text" class="vorderingsnummer-input" placeholder="00000" maxlength="5" inputmode="numeric" pattern="\d{5}" data-building="${escapeHtml(group.building)}" />
+              <button type="button" class="btn btn-primary btn-process" data-building="${escapeHtml(group.building)}" disabled>Verwerk</button>
+            </td>
+          </tr>
+          <tr class="column-header-row">
+            <th>ProjectNr</th><th>WO</th><th class="num-right">Aantal</th><th class="num-right">Totaal</th><th>Code</th><th>Beschrijving</th><th></th>
+          </tr>
+        `;
+
+        for (const [code, jobsInCode] of group.codeGroups.entries()) {
+          jobsInCode.forEach((job, idx) => {
+            const jobId = String(job.JobId || '').trim();
+            const isBl2La2 = String(code || '').trim() === 'BL 2 - LA 2';
+            rowsHtml += `
+              <tr class="job-row" data-jobid="${escapeHtml(jobId)}">
+                <td class="${idx === 0 ? 'code-group-start' : ''}">${escapeHtml(job.ProjectNr)}</td>
+                <td>${escapeHtml(job.WO)}</td>
+                <td class="num-right">${copyPart(formatAantal(job.Aantal), formatAantal(job.Aantal))}</td>
+                <td class="num-right">${isBl2La2 ? copyPart(formatTotaalDisplay(job.Totaal), totaalCopyValue(job.Totaal)) : escapeHtml(formatTotaalDisplay(job.Totaal))}</td>
+                <td>${renderCodeCell(code)}</td>
+                <td>${isBl2La2 ? copyPart(getBeschrijving(code), getBeschrijving(code)) : ''}</td>
+                <td>
+                  <input type="checkbox" class="job-checkbox" data-building="${escapeHtml(group.building)}" data-jobid="${escapeHtml(jobId)}" checked />
+                </td>
+              </tr>
+            `;
+          });
+        }
+      }
+
+      rowsHtml += `</tbody>`;
+      table.innerHTML = rowsHtml;
+      container.appendChild(table);
+
+      attachBuildingHandlers();
+    }
+
+    function attachBuildingHandlers() {
+      document.querySelectorAll('.vorderingsnummer-input, .job-checkbox').forEach((el) => {
+        el.addEventListener('input', updateProcessButtonState);
+        el.addEventListener('change', updateProcessButtonState);
+      });
+
+      document.querySelectorAll('.btn-process').forEach((btn) => {
+        btn.addEventListener('click', () => processBuilding(btn.getAttribute('data-building')));
+      });
+
+      document.querySelectorAll('span.copy-part').forEach((part) => {
+        part.addEventListener('click', () => copyValueToClipboard(part));
+      });
+    }
+
+    async function copyValueToClipboard(part) {
+      const text = part.getAttribute('data-copy-value') || '';
+      if (!text) return;
+
+      try {
+        await navigator.clipboard.writeText(text);
+      } catch (err) {
+        return;
+      }
+
+      part.classList.add('copied-flash');
+      setTimeout(() => part.classList.remove('copied-flash'), 400);
+    }
+
+    async function processBuilding(buildingKey) {
+      const group = buildingGroups.find(g => g.building === buildingKey);
+      if (!group) return;
+
+      const input = document.querySelector(`.vorderingsnummer-input[data-building="${cssEscape(buildingKey)}"]`);
+      const button = document.querySelector(`.btn-process[data-building="${cssEscape(buildingKey)}"]`);
+      const vorderingsnummer = String(input.value || '').trim();
+
+      // Alle jobs/lijnen van dit gebouw worden altijd samen verwerkt - de checkbox is enkel een
+      // visueel geheugensteuntje voor de gebruiker en heeft geen invloed hierop. Eén job kan
+      // meerdere lijnen/regels hebben; die mogen nooit los van elkaar verwerkt worden.
+      const allJobIds = [];
+      for (const jobsInCode of group.codeGroups.values()) {
+        for (const job of jobsInCode) {
+          const jid = String(job.JobId || '').trim();
+          if (jid && !allJobIds.includes(jid)) allJobIds.push(jid);
+        }
+      }
+
+      if (!allJobIds.length) return;
+
+      // Clear any previous per-job error rows for this building
+      document.querySelectorAll(`tr.job-error-row[data-building="${cssEscape(buildingKey)}"]`).forEach(el => el.remove());
+
+      if (!/^\d{5}$/.test(vorderingsnummer)) {
+        const headerRow = document.getElementById(tableIdFor(buildingKey));
+        if (headerRow) {
+          const errorRow = document.createElement('tr');
+          errorRow.className = 'job-error-row';
+          errorRow.setAttribute('data-building', buildingKey);
+          errorRow.innerHTML = `<td colspan="7" class="job-error">⚠️ Vorderingsnummer moet exact 5 cijfers zijn (bv. 00006).</td>`;
+          headerRow.after(errorRow);
+        }
+        return;
+      }
+
+      const confirmed = window.confirm(
+        `Vorderingsnummer ${vorderingsnummer} toekennen aan ALLE ${allJobIds.length} job(s) van gebouw "${buildingKey}"?`
+      );
+      if (!confirmed) return;
+
+      button.disabled = true;
+      button.textContent = 'Bezig...';
+
+      try {
+        const data = await apiFetch('SET_VORDERING', {
+          method: 'POST',
+          body: { jobIds: allJobIds, vorderingsnummer },
+        });
+
+        const results = data.Results || [];
+        const succeededIds = new Set(results.filter(r => r.Success).map(r => String(r.JobId)));
+        const failedResults = results.filter(r => !r.Success);
+
+        // Succeeded jobs are done: remove ALL their rows (a job can have multiple lines/codes)
+        succeededIds.forEach((jobId) => {
+          document.querySelectorAll(`tr.job-row[data-jobid="${cssEscape(jobId)}"]`).forEach((row) => row.remove());
+          for (const jobsInCode of group.codeGroups.values()) {
+            for (let i = jobsInCode.length - 1; i >= 0; i--) {
+              if (String(jobsInCode[i].JobId || '').trim() === jobId) jobsInCode.splice(i, 1);
+            }
+          }
+        });
+
+        const totalSpan = document.querySelector(`span.building-total[data-total-for="${cssEscape(buildingKey)}"]`);
+        if (totalSpan) totalSpan.textContent = calculateBuildingTotal(group);
+
+        // Show error message under each failed row, leave its checkbox as-is so it can be retried
+        failedResults.forEach(({ JobId, Message }) => {
+          const row = document.querySelector(`tr.job-row[data-jobid="${cssEscape(String(JobId))}"]`);
+          if (row) {
+            const errorRow = document.createElement('tr');
+            errorRow.className = 'job-error-row';
+            errorRow.setAttribute('data-building', buildingKey);
+            errorRow.innerHTML = `<td colspan="6" class="job-error">❌ ${escapeHtml(Message || 'Onbekende fout')}</td><td></td>`;
+            row.after(errorRow);
+          }
+        });
+
+        const remainingRows = document.querySelectorAll(`.job-checkbox[data-building="${cssEscape(buildingKey)}"]`).length;
+        if (remainingRows === 0) {
+          // Nothing left for this building: remove the whole group (header + column-header rows)
+          const headerRow = document.getElementById(tableIdFor(buildingKey));
+          const columnHeaderRow = headerRow ? headerRow.nextElementSibling : null;
+          if (columnHeaderRow && columnHeaderRow.classList.contains('column-header-row')) columnHeaderRow.remove();
+          if (headerRow) headerRow.remove();
+          buildingGroups = buildingGroups.filter(g => g.building !== buildingKey);
+          if (!buildingGroups.length) renderBuildings();
+          return;
+        }
+
+        button.textContent = 'Verwerk';
+      } catch (err) {
+        if (err.message === 'UNAUTHORIZED') return;
+        button.textContent = 'Verwerk';
+        const headerRow = document.getElementById(tableIdFor(buildingKey));
+        if (headerRow) {
+          const errorRow = document.createElement('tr');
+          errorRow.className = 'job-error-row';
+          errorRow.setAttribute('data-building', buildingKey);
+          errorRow.innerHTML = `<td colspan="7" class="job-error">Netwerkfout: ${escapeHtml(err.message)}</td>`;
+          headerRow.after(errorRow);
+        }
+      } finally {
+        updateProcessButtonState();
+      }
+    }
+
+    function tableIdFor(buildingKey) {
+      return `grp-${buildingKey.replace(/[^a-zA-Z0-9]/g, '_')}`;
+    }
+
+    function updateProcessButtonState() {
+      for (const group of buildingGroups) {
+        const input = document.querySelector(`.vorderingsnummer-input[data-building="${cssEscape(group.building)}"]`);
+        const button = document.querySelector(`.btn-process[data-building="${cssEscape(group.building)}"]`);
+        if (!input || !button) continue;
+
+        const hasNumber = String(input.value || '').trim().length > 0;
+
+        button.disabled = !hasNumber;
+      }
+    }
+
+    function cssEscape(s) {
+      return String(s).replace(/["\\]/g, '\\$&');
+    }
+
+    async function loadList() {
+      const status = document.getElementById('load-status');
+      status.textContent = 'Bezig met laden...';
+      status.classList.remove('error');
+
+      try {
+        const data = await apiFetch('LIST_TO_INVOICE');
+        buildingGroups = groupJobs(data.Jobs || []);
+        renderBuildings();
+        status.textContent = `${data.Jobs.length} job(s) geladen, ${buildingGroups.length} gebouw(en).`;
+      } catch (err) {
+        if (err.message === 'UNAUTHORIZED') return;
+        status.textContent = `Fout bij laden: ${err.message}`;
+        status.classList.add('error');
+      }
+    }
+
+    document.getElementById('btn-load').onclick = loadList;
+  </script>
+</body>
+</html>
