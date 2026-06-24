@@ -34,7 +34,15 @@ function detectEnvironment(event = {}) {
 const BLOBS_STORE = 'soundsensing-config';
 const STATE_KEY = 'state';
 const PROCESSED_MAX_AGE_DAYS = 90;
-const LOOKBACK_SECONDS_FIRST_RUN = 24 * 3600; // eerste run: enkel laatste 24u, niet de volledige historiek
+
+// Soundsensing publiceert alarmen met vertraging (tot enkele uren - eigen alarm-mail deed er ooit
+// ~4u over, zie plan-document). Een opschuivend venster op basis van "laatste check" liep daardoor
+// het risico een alarm te missen: het bestond nog niet op het moment van checken, en tegen de tijd
+// dat het wél verscheen, was de teller er al voorbij (incident 24/06/2026 - alarm 49d5bd06/021257
+// nooit verwerkt omdat lastCheck er ondertussen al overheen was geschoven).
+// Daarom: elke run kijkt altijd een vaste, ruime periode terug, los van de vorige check-tijd.
+// De enige bescherming tegen dubbele jobs is de alarm-ID-deduplicatie (processedAlarms hieronder).
+const LOOKBACK_SECONDS = 12 * 3600;
 
 // === Blobs helpers (zelfde patroon als dmassistent.js, met lokale fallback voor netlify dev) ====
 const LOCAL_FALLBACK_PATH = join(tmpdir(), 'soundsensing-sync-state.json');
@@ -430,7 +438,7 @@ export async function handler(event) {
   const state = await readState();
   const nowUnix = Math.floor(Date.now() / 1000);
 
-  const startTime = state.lastCheck > 0 ? state.lastCheck : nowUnix - LOOKBACK_SECONDS_FIRST_RUN;
+  const startTime = nowUnix - LOOKBACK_SECONDS;
 
   let alarms = [];
   try {
@@ -447,7 +455,6 @@ export async function handler(event) {
   let created = 0;
   let skippedDup = 0;
   let skippedNoMatch = 0;
-  let hadNoMatch = false;
 
   for (const alarm of alarms) {
     if (processedIds.has(alarm.id)) {
@@ -460,8 +467,7 @@ export async function handler(event) {
       if (!equipment || !equipment.EquipmentId) {
         console.log(`[soundsensing-sync] Geen Ultimo-koppeling voor device_id=${alarm.device_id} (alarm ${alarm.id})`);
         skippedNoMatch++;
-        hadNoMatch = true;
-        continue; // niet als verwerkt markeren: opnieuw proberen zodra de koppeling in Ultimo staat
+        continue; // niet als verwerkt markeren: opnieuw proberen zodra de koppeling in Ultimo staat (zit toch binnen het vaste terugblikvenster)
       }
 
       const { jobId } = await createUltimoJob(ULTIMO_BASE, equipment.EquipmentId, alarm.description, alarm.alarm_type);
@@ -504,7 +510,7 @@ export async function handler(event) {
       }
     } catch (err) {
       console.error(`[soundsensing-sync] Fout bij verwerken alarm ${alarm.id}:`, err.message);
-      hadNoMatch = true; // ook hier niet markeren als verwerkt, en venster niet opschuiven
+      // niet als verwerkt markeren: zit toch binnen het vaste terugblikvenster, dus volgende run opnieuw geprobeerd
     }
   }
 
@@ -512,10 +518,10 @@ export async function handler(event) {
   const cutoff = Date.now() - PROCESSED_MAX_AGE_DAYS * 24 * 3600 * 1000;
   const prunedProcessed = (state.processedAlarms || []).filter((p) => new Date(p.date).getTime() > cutoff);
 
-  // Venster enkel opschuiven als alles succesvol verwerkt is (anders bij volgende run
-  // dezelfde periode herbekijken zodat niet-gematchte/gefaalde alarmen niet stilletjes verdwijnen)
+  // lastCheck is enkel informatief (laatste run-tijdstip) - het venster zelf is altijd vast
+  // (LOOKBACK_SECONDS), dus dit stuurt niets meer aan.
   const newState = {
-    lastCheck: hadNoMatch ? state.lastCheck : nowUnix,
+    lastCheck: nowUnix,
     processedAlarms: [...prunedProcessed, ...newlyProcessed],
   };
   await writeState(newState);
