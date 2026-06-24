@@ -403,7 +403,7 @@
       if (k === '105') return { cls: 'badge-job',      txt: 'ONGEDIERTE' };
       if (k === '107') return { cls: 'badge-opdracht', txt: 'OPDRACHT'   };
       if (k === '005') return { cls: 'badge-opdracht', txt: 'OPDRACHT'   };
-      return                  { cls: 'badge-job',      txt: 'JOB'        };
+      return                  { cls: 'badge-opdracht', txt: 'OPDRACHT'   };
     }
     function vendorBadge(vid) {
       const v = String(vid || '').trim();
@@ -413,7 +413,7 @@
     function statusLabel(ps) {
       const s = String(ps || '').trim();
       if (s === '1004') return 'Analyse SD';
-      if (s === '1008') return 'Actief';
+      if (s === '1008') return 'Gepland';
       if (s === '1012') return 'Gepland';
       if (s === '1016') return 'Gesloten';
       return s;
