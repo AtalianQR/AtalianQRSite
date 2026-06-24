@@ -1173,6 +1173,101 @@ async function requireGpsIfPortalSelf({ botui, Telemetry, isFr, cameFromPortalSe
 	  return Array.isArray(res?.Products) ? res.Products : [];
 	}
 
+	function isCovestroJob(job) {
+	  const customer = String(job?.CustomerName || '').trim().toLowerCase();
+	  const complex = String(job?.ComplexName || '').trim().toLowerCase();
+	  return customer.includes('covestro') || complex.includes('covestro');
+	}
+
+	function formatArticleLabel(articleId, description, depRef, job) {
+	  const baseLabel = [articleId, description].filter(Boolean).join(' - ');
+
+	  if (!isCovestroJob(job)) {
+		return baseLabel;
+	  }
+
+	  const code = String(depRef || '').trim() || 'BL 2 - LA 2';
+	  return `${baseLabel} [${code}]`;
+	}
+
+	function plainArticleLabel(ca) {
+	  return [ca.ArticleId, ca.ArticleDescription].filter(Boolean).join(' - ');
+	}
+
+	function findBaseHourArticles(hourArticles) {
+	  return hourArticles.filter(ca => !String(ca.ProductCode || '').trim());
+	}
+
+	function findSupplementsForBase(hourArticles, baseCa) {
+	  const baseCode = String(baseCa.ArticleId || '').trim();
+	  return hourArticles.filter(ca => String(ca.ProductCode || '').trim() === baseCode);
+	}
+
+	async function bookHourLine(job, ca, qty) {
+	  await submitUpdate({
+		action: 'ADD_PURCHASE_REQUEST_LINE',
+		jobId: job.Id,
+		email: sessionEmail,
+		ComplexArticleId: String(ca.ComplexArticleId || '').trim(),
+		Quantity: qty
+	  }, isFr ? '✅ Heures ajoutées aux coûts.' : '✅ Uren toegevoegd aan de kosten.');
+	}
+
+	async function askHoursQuantityAndBook(job, ca, label) {
+	  let hoursQty = '';
+	  while (true) {
+		const rawQty = await askLineQuantityInline({
+		  label,
+		  defaultQty: '',
+		  fieldLabel: isFr ? 'Heures' : 'Uren',
+		  inputMode: 'decimal'
+		});
+
+		const normalized = normalizeQuantityInput(rawQty);
+
+		if (!normalized.ok || Number(normalized.forUltimo) <= 0) {
+		  await botui.message.add({
+			content: isFr
+			  ? '⚠️ Introduisez un nombre d’heures valable, par exemple 1 ou 7,5.'
+			  : '⚠️ Geef een geldig aantal uren in, bijvoorbeeld 1 of 7,5.'
+		  });
+		  continue;
+		}
+
+		hoursQty = normalized.forUltimo;
+		break;
+	  }
+
+	  await bookHourLine(job, ca, hoursQty);
+
+	  return hoursQty;
+	}
+
+	async function offerOptionalSupplement(job, hourArticles, baseCa, baseQty) {
+	  const supplementCandidates = findSupplementsForBase(hourArticles, baseCa);
+	  if (!supplementCandidates.length) return;
+
+	  const skipValue = '__skip_supplement__';
+	  const buttons = supplementCandidates.map((c, idx) => ({
+		text: isFr
+		  ? `➕ ${plainArticleLabel(c)} (${baseQty} h)`
+		  : `➕ ${plainArticleLabel(c)} (${baseQty} u)`,
+		value: String(idx)
+	  }));
+	  buttons.push({
+		text: isFr ? '❌ Pas de supplément' : '❌ Geen supplement',
+		value: skipValue
+	  });
+
+	  const choice = await botui.action.button({ action: buttons });
+	  const choiceValue = choice.value ?? choice;
+
+	  if (choiceValue === skipValue) return;
+
+	  const ca = supplementCandidates[Number(choiceValue)];
+	  await bookHourLine(job, ca, baseQty);
+	}
+
 	async function fetchAcceptanceCurrent(job) {
 	  const res = await submitUpdate({
 		action: 'GET_ACCEPTANCE_CURRENT',
@@ -1185,14 +1280,21 @@ async function requireGpsIfPortalSelf({ botui, Telemetry, isFr, cameFromPortalSe
 	  const articleArray = Array.isArray(res?.Articles) ? res.Articles : [];
 
 	  const articleDescMap = new Map();
+	  const articleProductCodeMap = new Map();
 	  for (const a of articleArray) {
 		const id = String(a.ArtId || '').trim();
-		if (id) articleDescMap.set(id, String(a.ArtDescription || '').trim());
+		if (id) {
+		  articleDescMap.set(id, String(a.ArtDescription || '').trim());
+		  articleProductCodeMap.set(id, String(a.ArtProductCode || '').trim());
+		}
 	  }
 
 	  const complexArticleList = rawComplexArticles.map(ca => ({
 		...ca,
-		ArticleDescription: articleDescMap.get(String(ca.ArticleId || '').trim()) || ''
+		ArticleDescription: articleDescMap.get(String(ca.ArticleId || '').trim()) || '',
+		ArticleGroup: String(ca.ArticleGroup || '').trim(),
+		DepRef: String(ca._DepRef || '').trim(),
+		ProductCode: articleProductCodeMap.get(String(ca.ArticleId || '').trim()) || ''
 	  }));
 
 	  const products = {};
@@ -1215,24 +1317,51 @@ async function requireGpsIfPortalSelf({ botui, Telemetry, isFr, cameFromPortalSe
 	  const toNum = (val) => parseFloat(String(val == null ? '' : val).replace(',', '.')) || 0;
 	  const toDisplay = (val) => String(val == null ? '' : val).trim().replace('.', ',');
 
-	  // Gepresteerde uren: som van alle 0012-lijnen in Diversen (basis + extra uren).
-	  const hourLines = rawLines.filter(l => String(l.External).trim() === '0012');
-	  let performedHours = String(current?.hours || '0').trim();
-	  if (hourLines.length) {
-		const totalHours = hourLines.reduce((sum, l) => sum + toNum(l.Quantity), 0);
-		performedHours = toDisplay(totalHours);
-	  }
-
-	  // Geleverde producten: som van alle 0014-lijnen in Diversen, gegroepeerd per artikel.
-	  const productLines = rawLines.filter(l => String(l.External).trim() === '0014');
-	  const productGroups = new Map(); // articleId -> { label, total }
-
-	  for (const l of productLines) {
+	  // Helper: parseert articleId + label uit een 0014-lijn Description, op dezelfde manier
+	  // als het bestaande productlijn-patroon (🔳-prefix strippen, "Extra product/artikel (...)"-
+	  // voorvoegsel strippen, deel vóór de eerste ' - ' als articleId nemen).
+	  const parseArticleLine = (l) => {
 		let desc = String(l.Description || '').replace(/^🔳\s*/, '').trim();
 		const stripped = desc.replace(/^(Extra product|Extra artikel|Produit suppl[ée]mentaire|Article suppl[ée]mentaire)\s*\([^)]*\)\s*:\s*/, '');
 		const dashIdx = stripped.indexOf(' - ');
 		const articleId = (dashIdx >= 0 ? stripped.slice(0, dashIdx) : stripped).trim();
+		return { articleId, label: stripped };
+	  };
 
+	  // 11-P-artikel-id's (ArtikelGroep 11-P) — deze identificeren de nieuwe uren-artikellijnen,
+	  // die net als gewone producten via ADD_PURCHASE_REQUEST_LINE als External='0014' geboekt
+	  // worden (zie WFL ADD_PURCHASE_REQUEST_LINE-handler). Ze moeten dus op articleId
+	  // onderscheiden worden van echte productlijnen, niet op External.
+	  const hourArticleIds = new Set(
+		(current?.complexArticleList || [])
+		  .filter(ca => ca.ArticleGroup === '11-P')
+		  .map(ca => String(ca.ArticleId || '').trim())
+	  );
+
+	  // Alle 0014-lijnen (producten én 11-P-uren-artikelen delen dit External-kenmerk) één keer
+	  // parsen, en dan splitsen op basis van lidmaatschap van hourArticleIds.
+	  const parsedZeroOneFourLines = rawLines
+		.filter(l => String(l.External).trim() === '0014')
+		.map(l => ({ line: l, parsed: parseArticleLine(l) }));
+
+	  const newHourLines = parsedZeroOneFourLines.filter(({ parsed }) => hourArticleIds.has(parsed.articleId));
+	  const productEntries = parsedZeroOneFourLines.filter(({ parsed }) => !hourArticleIds.has(parsed.articleId));
+
+	  // Gepresteerde uren (hybride tijdens overgang): som van de oude 0012-lijnen
+	  // (read-only, legacy External-mechanisme) plus de nieuwe ArtikelGroep 11-P-artikellijnen.
+	  const legacyHourLines = rawLines.filter(l => String(l.External).trim() === '0012');
+
+	  const totalHours =
+		legacyHourLines.reduce((sum, l) => sum + toNum(l.Quantity), 0) +
+		newHourLines.reduce((sum, { line }) => sum + toNum(line.Quantity), 0);
+
+	  let performedHours = toDisplay(totalHours);
+
+	  // Geleverde producten: som van alle 0014-lijnen in Diversen (met uitzondering van de
+	  // 11-P-uren-artikelen, die hierboven al bij de uren meegeteld zijn), gegroepeerd per artikel.
+	  const productGroups = new Map(); // articleId -> { label, total }
+
+	  for (const { line: l, parsed: { articleId, label: stripped } } of productEntries) {
 		if (!productGroups.has(articleId)) {
 		  productGroups.set(articleId, { label: stripped, total: 0 });
 		}
@@ -1976,80 +2105,76 @@ function normalizeQuantityInput(raw) {
 		`
 	  });
 
-	  let performedHours = '';
-	  let performedHoursForUltimo = '';
+	  await botui.message.add({
+		type: 'html',
+		content: `
+		  <div class="acceptance-check-box">
+			<b>${isFr ? 'Heures prestées' : 'Gepresteerde uren'}</b><br>
+			${
+			  isFr
+				? 'Sélectionnez au moins un article "Heures" et indiquez le nombre d’heures.'
+				: 'Kies minstens 1 "Uren"-artikel en geef het aantal uren in.'
+			}
+		  </div>
+		`
+	  });
+
+	  const hoursAcceptanceCurrent = await fetchAcceptanceCurrent(job);
+	  const hourArticles = (hoursAcceptanceCurrent.complexArticleList || [])
+		.filter(ca => ca.ArticleGroup === '11-P');
+	  const baseHourArticles = findBaseHourArticles(hourArticles);
+
+	  if (!baseHourArticles.length) {
+		throw new Error(isFr
+		  ? 'Aucun article "Heures" (11-P) disponible pour cette tâche. Contactez votre planificateur.'
+		  : 'Geen "Uren"-artikel (11-P) beschikbaar voor deze job. Contacteer je planner.');
+	  }
+
+	  let bookedAnyBaseHours = false;
+	  let performedHoursForUltimo = '0';
 
 	  while (true) {
-		await botui.message.add({
-		  type: 'html',
-		  content: `
-			<div class="acceptance-check-box">
-			  <b>${isFr ? 'Heures prestées' : 'Gepresteerde uren'}</b><br>
-			  ${
-				isFr
-				  ? 'Combien d’heures ont été réellement prestées pour cette tâche ?'
-				  : 'Hoeveel uren werden effectief gepresteerd voor deze taak?'
-			  }
-			</div>
-		  `
-		});
+		const hourButtons = baseHourArticles.map((ca, idx) => ({
+		  text: plainArticleLabel(ca),
+		  value: String(idx)
+		}));
 
-		const rawHoursAnswer = await askPerformedHoursInline({ defaultHours: defaults.hours });
+		const choiceValue = await askArticleSearchInline(
+		  hourButtons,
+		  isFr ? 'Kies het uren-artikel' : 'Kies het uren-artikel'
+		);
 
-		const rawHours = String(rawHoursAnswer || '').trim();
-
-		if (!rawHours) {
-		  await botui.message.add({
-			content: isFr
-			  ? '⚠️ Le nombre d’heures prestées est obligatoire. Introduisez 0 si aucune heure n’a été prestée.'
-			  : '⚠️ Het aantal gepresteerde uren is verplicht. Geef 0 in als er geen uren werden gepresteerd.'
-		  });
-		  continue;
+		if (choiceValue === '__abort__' || choiceValue === '__cancel__') {
+		  if (!bookedAnyBaseHours) {
+			await botui.message.add({
+			  content: isFr
+				? '⚠️ Minstens 1 basisuren-artikel is verplicht.'
+				: '⚠️ Minstens 1 basisuren-artikel is verplicht.'
+			});
+			continue;
+		  }
+		  break;
 		}
 
-		const normalizedHours = rawHours.replace(',', '.');
+		const ca = baseHourArticles[Number(choiceValue)];
+		const hoursQty = await askHoursQuantityAndBook(job, ca, plainArticleLabel(ca));
 
-		if (!/^\d+(\.\d{1,2})?$/.test(normalizedHours) || Number(normalizedHours) < 0) {
-		  await botui.message.add({
-			content: isFr
-			  ? '⚠️ Le nombre d’heures doit être valable. Saisissez 0 si aucune heure n’a été prestée.'
-			  : '⚠️ Het aantal uren moet geldig zijn. Vul 0 in als er geen uren werden gepresteerd.'
-		  });
-		  continue;
-		}
+		bookedAnyBaseHours = true;
+		performedHoursForUltimo = String(Number(performedHoursForUltimo) + Number(hoursQty));
 
-		performedHours = normalizedHours.replace('.', ',');
-		performedHoursForUltimo = normalizedHours;
+		await offerOptionalSupplement(job, hourArticles, ca, hoursQty);
 
-		await botui.message.add({
-		  type: 'html',
-		  content: `
-			<div class="acceptance-check-box">
-			  <b>${isFr ? 'Contrôle prestation' : 'Controle prestatie'}</b><br>
-			  ${isFr ? 'Heures réellement prestées' : 'Effectief gepresteerde uren'}:
-			  <b>${performedHours}</b>
-			</div>
-		  `
+		const askMore = await botui.action.button({
+		  action: [
+			{ text: isFr ? '➕ Ajouter un autre article d’heures' : '➕ Nog een uren-artikel toevoegen', value: 'more' },
+			{ text: isFr ? '✅ Terminé' : '✅ Klaar', value: 'done' }
+		  ]
 		});
 
-		break;
+		if ((askMore.value ?? askMore) === 'done') break;
 	  }
 
-	  // Uren als kost boeken in Ultimo
-	  if (Number(performedHoursForUltimo) > 0) {
-		await submitUpdate({
-		  action: 'ADD_ACCEPTANCE_HOURS',
-		  jobId: job.Id,
-		  email: sessionEmail,
-		  PerformedHours: performedHoursForUltimo
-		}, isFr ? '✅ Heures ajoutées aux coûts.' : '✅ Uren toegevoegd aan de kosten.');
-	  } else {
-		await botui.message.add({
-		  content: isFr
-			? '✅ Aucune heure à ajouter aux coûts.'
-			: '✅ Geen uren toe te voegen aan de kosten.'
-		});
-	  }
+	  const performedHours = performedHoursForUltimo.replace('.', ',');
 
 	  // Producten ophalen uit PurchaseRequestLine
 	  const acceptanceProducts = await fetchAcceptanceProducts(job);
@@ -2562,6 +2687,32 @@ function normalizeQuantityInput(raw) {
 		// Fetch eenmalig — alle wijzigingen worden lokaal bijgehouden
 		const current = await fetchAcceptanceCurrent(job);
 
+
+		if (current.lines && current.lines.length) {
+		  const overviewRowsHtml = current.lines.map(l => {
+			const desc = String(l.Description || '').trim();
+			const qty = String(l.Quantity || '0').trim();
+			return `<div>${desc}: <b>${qty}</b></div>`;
+		  }).join('');
+
+		  await botui.message.add({
+			type: 'html',
+			content: `
+			  <div class="acceptance-section-box">
+				<b>${isFr ? 'Lignes actuelles' : 'Huidige lijnen'}</b><br>
+				${overviewRowsHtml}
+			  </div>
+			`
+		  });
+		}
+
+		if (current.lines && current.lines.length) {
+		  await botui.message.add({
+			content: isFr
+			  ? 'Nous allons maintenant parcourir ces lignes une par une, pour que vous puissiez les corriger si nécessaire.'
+			  : 'We overlopen deze lijnen nu één voor één, zodat je ze indien nodig kan corrigeren.'
+		  });
+		}
 		// Bestaande regels één voor één tonen en eventueel bewerken
 		for (const line of current.lines) {
 		  const lineId = String(line.Id || '').trim();
@@ -2691,15 +2842,6 @@ function normalizeQuantityInput(raw) {
 
 		// Extra kosten menu
 		while (true) {
-		  await botui.message.add({
-			type: 'html',
-			content: `
-			  <div class="acceptance-section-box">
-				<b>${isFr ? 'Coûts supplémentaires' : 'Extra kosten'}</b>
-			  </div>
-			`
-		  });
-
 		  const mainChoice = await botui.action.button({
 			action: [
 			  { text: isFr ? '➕ Ajouter des coûts supplémentaires' : '➕ Extra kosten toevoegen', value: 'add_extra' },
@@ -2714,120 +2856,39 @@ function normalizeQuantityInput(raw) {
 
 		  const extraChoice = await botui.action.button({
 			action: [
-			  { text: isFr ? '➕ Heures supplémentaires' : '➕ Extra uren', value: 'extra_hours' },
+			  { text: isFr ? '➕ Heures' : '➕ Uren', value: 'extra_hours' },
 			  { text: isFr ? '➕ Article supplémentaire' : '➕ Extra artikel', value: 'extra_product' }
 			]
 		  });
 		  const extraChoiceValue = extraChoice.value ?? extraChoice;
 
 		  if (extraChoiceValue === 'extra_hours') {
-			let extraHoursForUltimo = '';
+			const hourArticles = (current.complexArticleList || []).filter(ca => ca.ArticleGroup === '11-P');
+			const baseHourArticles = findBaseHourArticles(hourArticles);
 
-			while (true) {
-			  const rawHoursAnswer = await askPerformedHoursInline({ defaultHours: '0' });
-			  const rawHours = String(rawHoursAnswer || '').trim();
-
-			  if (!rawHours) {
-				await botui.message.add({
-				  content: isFr
-					? '⚠️ Le nombre d’heures est obligatoire. Introduisez 0 si aucune heure ne doit être ajoutée.'
-					: '⚠️ Het aantal uren is verplicht. Geef 0 in als er geen uren toegevoegd moeten worden.'
-				});
-				continue;
-			  }
-
-			  const normalizedHours = normalizeQuantityInput(rawHours);
-
-			  if (!normalizedHours.ok) {
-				await botui.message.add({
-				  content: isFr
-					? '⚠️ Introduisez une quantité valable, par exemple 0, 1 ou 2,5.'
-					: '⚠️ Geef een geldig aantal in, bijvoorbeeld 0, 1 of 2,5.'
-				});
-				continue;
-			  }
-
-			  extraHoursForUltimo = normalizedHours.forUltimo;
-			  break;
-			}
-
-			if (Number(extraHoursForUltimo) === 0) {
+			if (!baseHourArticles.length) {
 			  await botui.message.add({
-				content: isFr ? 'Rien n’a été ajouté.' : 'Er werd niets toegevoegd.'
+				content: isFr ? 'Aucun article "Heures" disponible.' : 'Geen "Uren"-artikel beschikbaar.'
 			  });
 			  continue;
 			}
 
-			let remark = '';
-			let remarkCancelled = false;
+			const hourButtons = baseHourArticles.map((ca, idx) => ({
+			  text: plainArticleLabel(ca),
+			  value: String(idx)
+			}));
 
-			while (true) {
-			  const rawRemark = await askLineQuantityInline({
-				label: isFr ? 'Remarque (obligatoire)' : 'Opmerking (verplicht)',
-				defaultQty: '',
-				fieldLabel: isFr ? 'Remarque' : 'Opmerking',
-				inputMode: 'text'
-			  });
+			const choiceValue = await askArticleSearchInline(hourButtons, isFr ? 'Kies het uren-artikel' : 'Kies het uren-artikel');
 
-			  remark = String(rawRemark || '').trim();
-
-			  if (!remark) {
-				const cancelChoice = await botui.action.button({
-				  action: [
-					{ text: isFr ? '✏️ Réessayer' : '✏️ Opnieuw proberen', value: 'retry' },
-					{ text: isFr ? '❌ Annuler' : '❌ Annuleren', value: 'cancel' }
-				  ]
-				});
-				const cancelChoiceValue = cancelChoice.value ?? cancelChoice;
-
-				if (cancelChoiceValue === 'cancel') {
-				  remarkCancelled = true;
-				  break;
-				}
-
-				await botui.message.add({
-				  content: isFr
-					? '⚠️ Une remarque est obligatoire.'
-					: '⚠️ Een opmerking is verplicht.'
-				});
-				continue;
-			  }
-
-			  break;
-			}
-
-			if (remarkCancelled) {
-			  await botui.message.add({
-				content: isFr ? 'Ajout annulé.' : 'Toevoeging geannuleerd.'
-			  });
+			if (choiceValue === '__abort__' || choiceValue === '__cancel__') {
 			  continue;
 			}
 
-			const lineDescription = `🔳 ${isFr ? 'Heures supplémentaires' : 'Extra uren'} (${formatAcceptanceTimestamp()}): ${remark}`;
+			const ca = baseHourArticles[Number(choiceValue)];
 
 			try {
-			  const data = await submitUpdate({
-				action: 'ADD_ACCEPTANCE_HOURS',
-				jobId: job.Id,
-				email: sessionEmail,
-				PerformedHours: extraHoursForUltimo,
-				AppendNewLine: 'true',
-				LineDescription: lineDescription
-			  });
-
-			  if (data?.Result === false) {
-				await botui.message.add({
-				  content: data?.Message
-					? String(data.Message)
-					: (isFr ? '❌ Les heures n’ont pas pu être ajoutées.' : '❌ De uren konden niet toegevoegd worden.')
-				});
-				continue;
-			  }
-
-			  await botui.message.add({
-				content: isFr ? '✅ Heures ajoutées aux coûts.' : '✅ Uren toegevoegd aan de kosten.'
-			  });
-
+			  const hoursQty = await askHoursQuantityAndBook(job, ca, plainArticleLabel(ca));
+			  await offerOptionalSupplement(job, hourArticles, ca, hoursQty);
 			} catch (err) {
 			  await botui.message.add({
 				content: isFr
@@ -2841,7 +2902,7 @@ function normalizeQuantityInput(raw) {
 
 		  if (extraChoiceValue === 'extra_product') {
 			const acceptanceProducts = current.productList || [];
-			const complexArticles = current.complexArticleList || [];
+			const complexArticles = (current.complexArticleList || []).filter(ca => ca.ArticleGroup !== '11-P');
 
 			if (!acceptanceProducts.length && !complexArticles.length) {
 			  await botui.message.add({
@@ -2873,7 +2934,7 @@ function normalizeQuantityInput(raw) {
 			  const articleDescription = String(ca.ArticleDescription || '').trim();
 
 			  combinedButtons.push({
-				text: `🆕 ${[articleId, articleDescription].filter(Boolean).join(' - ')}`,
+				text: `🆕 ${formatArticleLabel(articleId, articleDescription, ca.DepRef, job)}`,
 				value: `new:${idx}`
 			  });
 			});
