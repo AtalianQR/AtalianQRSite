@@ -488,7 +488,7 @@ export async function handler(event) {
 
           const vibrationPng = await buildVibrationChartPng(vibration, alarmTimestamp, `${titleBase} - vibratiehistoriek (${alarmTypeLabel(alarm.alarm_type)})`);
           if (vibrationPng) {
-            await attachJobDocument(ULTIMO_BASE, jobId, vibrationPng, 'vibratiehistoriek.png', `Vibratiehistoriek (${windowLabel}) rond het alarm - Soundsensing`);
+            await attachJobDocument(ULTIMO_BASE, jobId, vibrationPng, 'vibratiehistoriek.png', `${titleBase} - Vibratiehistoriek (${windowLabel}) rond het alarm - Soundsensing`);
             console.log(`[soundsensing-sync] Vibratiegrafiek bijgevoegd aan job ${jobId} (${vibration.length} datapunten, venster=${lookbackHours}u)`);
           } else {
             console.log(`[soundsensing-sync] Geen vibratiedata gevonden voor device_id=${alarm.device_id}`);
@@ -501,7 +501,7 @@ export async function handler(event) {
           const probabilityWindowLabel = `laatste ${CHART_LOOKBACK_HOURS_PROBABILITY} uur`;
           const probabilityPng = await buildProbabilityChartPng(probabilityWindowPoints, alarmTimestamp, `${titleBase} - anomaliekans (${alarmTypeLabel(alarm.alarm_type)})`);
           if (probabilityPng) {
-            await attachJobDocument(ULTIMO_BASE, jobId, probabilityPng, 'anomaliekans.png', `Anomaliekans (${probabilityWindowLabel}) rond het alarm - vroege-waarschuwingsindicator van het model - Soundsensing`);
+            await attachJobDocument(ULTIMO_BASE, jobId, probabilityPng, 'anomaliekans.png', `${titleBase} - Anomaliekans (${probabilityWindowLabel}) rond het alarm - vroege-waarschuwingsindicator van het model - Soundsensing`);
             console.log(`[soundsensing-sync] Kansgrafiek bijgevoegd aan job ${jobId}`);
           }
         } catch (chartErr) {
