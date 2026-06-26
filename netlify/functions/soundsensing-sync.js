@@ -155,11 +155,26 @@ function alarmTypeLabel(alarmType) {
   return '⚠️ Andere afwijking';
 }
 
-async function createUltimoJob(ultimoBase, equipmentId, description, alarmType) {
+// Zelfde formaat én tijdzone als Soundsensing's eigen alarm-mail ("25.06.2026 14:50") - hun mail
+// toont UTC, niet Brussel-tijd (gecontroleerd: alarm 49d5bd06 stond bij Soundsensing op 06:50
+// Brussel-tijd, de mail zelf zei "04:50" - exact het UTC-verschil). Dit veld toont wanneer het
+// alarm écht afging, niet wanneer de job aangemaakt werd (dat kan door Soundsensing's eigen
+// publicatievertraging uren tot zelfs dagen later zijn).
+function formatAlarmTimestamp(unixSeconds) {
+  const parts = new Intl.DateTimeFormat('nl-BE', {
+    timeZone: 'UTC',
+    day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit',
+  }).formatToParts(new Date(unixSeconds * 1000));
+  const get = (type) => parts.find((p) => p.type === type)?.value || '';
+  return `${get('day')}.${get('month')}.${get('year')} ${get('hour')}:${get('minute')}`;
+}
+
+async function createUltimoJob(ultimoBase, equipmentId, description, alarmType, alarmTimestamp) {
   const url = `${ultimoBase}/action/${ACTION_CREATE}`;
   const externalId = `ss-${Date.now()}-${Math.random().toString(36).slice(2)}`.slice(0, 48);
   const titlePrefix = alarmTypeLabel(alarmType);
-  const jobDescr = `${titlePrefix} - ${String(description || 'Soundsensing alarm').trim()}`;
+  const timeLabel = formatAlarmTimestamp(alarmTimestamp);
+  const jobDescr = `${titlePrefix} - ${String(description || 'Soundsensing alarm').trim()} (${timeLabel})`;
   const payload = {
     JobDescr: jobDescr.slice(0, 500),
     Provider: 'QRConnectEqm',
@@ -469,7 +484,8 @@ export async function handler(event) {
         continue; // niet als verwerkt markeren: opnieuw proberen zodra de koppeling in Ultimo staat (zit toch binnen het vaste terugblikvenster)
       }
 
-      const { jobId } = await createUltimoJob(ULTIMO_BASE, equipment.EquipmentId, alarm.description, alarm.alarm_type);
+      const alarmTimestamp = Number(alarm.timestamp || alarm.created_at);
+      const { jobId } = await createUltimoJob(ULTIMO_BASE, equipment.EquipmentId, alarm.description, alarm.alarm_type, alarmTimestamp);
       console.log(`[soundsensing-sync] Job aangemaakt voor EquipmentId=${equipment.EquipmentId} (alarm ${alarm.id}, jobId=${jobId})`);
       created++;
       newlyProcessed.push({ id: alarm.id, date: new Date().toISOString() });
@@ -478,7 +494,6 @@ export async function handler(event) {
       // Venster hangt af van het alarmtype: 12u (ingezoomd) voor schema-afwijkingen, 7 dagen voor trilling.
       if (jobId) {
         try {
-          const alarmTimestamp = Number(alarm.timestamp || alarm.created_at);
           const titleBase = equipment.Description || equipment.EquipmentId;
           const lookbackHours = lookbackHoursForAlarmType(alarm.alarm_type);
           const vibration = await fetchVibrationHistory(alarm.device_id, alarmTimestamp, lookbackHours);
