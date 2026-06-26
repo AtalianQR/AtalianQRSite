@@ -101,13 +101,28 @@ export async function handler(event) {
           return respond(400, { error: "vorderingsnummer ontbreekt." });
         }
 
-        const raw = await callUltimo({
-          Action: 'SET_VORDERING',
-          JobIds: jobIds,
-          Vorderingsnummer: vorderingsnummer,
-        });
-        const out = getOutputObject(raw);
-        const results = Array.isArray(out?.Results) ? out.Results : [];
+        // Ultimo bindt een JSON-array niet correct als REST-inputparameter (List[UltimoString]
+        // bleek leeg te blijven). Daarom roepen we de actie hier per job afzonderlijk aan met
+        // een gewone enkele JobId-string, en bouwen we de Results-lijst zelf op.
+        const results = [];
+        for (const jobId of jobIds) {
+          try {
+            const raw = await callUltimo({
+              Action: 'SET_VORDERING',
+              JobId: jobId,
+              Vorderingsnummer: vorderingsnummer,
+            });
+            const out = getOutputObject(raw);
+            if (out && typeof out === 'object' && 'Success' in out) {
+              results.push(out);
+            } else {
+              results.push({ JobId: jobId, Success: false, Message: 'Onverwacht antwoord van Ultimo.' });
+            }
+          } catch (err) {
+            results.push({ JobId: jobId, Success: false, Message: err.message });
+          }
+        }
+
         return respond(200, { ok: true, Results: results });
       }
 

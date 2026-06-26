@@ -35,14 +35,14 @@ const BLOBS_STORE = 'soundsensing-config';
 const STATE_KEY = 'state';
 const PROCESSED_MAX_AGE_DAYS = 90;
 
-// Soundsensing publiceert alarmen met vertraging (tot enkele uren - eigen alarm-mail deed er ooit
-// ~4u over, zie plan-document). Een opschuivend venster op basis van "laatste check" liep daardoor
-// het risico een alarm te missen: het bestond nog niet op het moment van checken, en tegen de tijd
-// dat het wél verscheen, was de teller er al voorbij (incident 24/06/2026 - alarm 49d5bd06/021257
-// nooit verwerkt omdat lastCheck er ondertussen al overheen was geschoven).
-// Daarom: elke run kijkt altijd een vaste, ruime periode terug, los van de vorige check-tijd.
-// De enige bescherming tegen dubbele jobs is de alarm-ID-deduplicatie (processedAlarms hieronder).
-const LOOKBACK_SECONDS = 12 * 3600;
+// Soundsensing publiceert alarmen met onvoorspelbare vertraging - eerst ~4u vastgesteld, later zelfs
+// 9u (incident 24/06/2026, alarm 49d5bd06/021257) en daarna nog langer, 19u+ (incident 26/06/2026,
+// alarm dad7b510/021259). Een vast terugblikvenster (eerst 12u) bleek dus telkens weer te kort zodra
+// Soundsensing's eigen vertraging groter werd dan de gekozen marge. Er is geen bovengrens aan die
+// vertraging die wij kunnen voorspellen of garanderen.
+// Daarom: geen tijdsvenster meer - elke run haalt gewoon de VOLLEDIGE lijst onopgeloste alarmen op
+// (die lijst is klein, typisch enkele stuks). De alarm-ID-deduplicatie (processedAlarms hieronder)
+// is de enige en voldoende bescherming tegen dubbele jobs, ongeacht hoe laat een alarm verschijnt.
 
 // === Blobs helpers (zelfde patroon als dmassistent.js, met lokale fallback voor netlify dev) ====
 const LOCAL_FALLBACK_PATH = join(tmpdir(), 'soundsensing-sync-state.json');
@@ -87,8 +87,9 @@ async function writeState(state) {
 }
 
 // === Soundsensing ====================================================
-async function fetchNewAlarms(startTimeUnix) {
-  const url = `${SOUNDSENSING_BASE_URL}/alarm?start_time=${startTimeUnix}&resolved=false`;
+// Geen start_time-venster - haalt altijd alle onopgeloste alarmen op (zie toelichting hierboven).
+async function fetchNewAlarms() {
+  const url = `${SOUNDSENSING_BASE_URL}/alarm?start_time=0&resolved=false`;
   const res = await fetch(url, {
     headers: {
       Authorization: `Bearer ${SOUNDSENSING_API_KEY}`,
@@ -438,17 +439,15 @@ export async function handler(event) {
   const state = await readState();
   const nowUnix = Math.floor(Date.now() / 1000);
 
-  const startTime = nowUnix - LOOKBACK_SECONDS;
-
   let alarms = [];
   try {
-    alarms = await fetchNewAlarms(startTime);
+    alarms = await fetchNewAlarms();
   } catch (err) {
     console.error('[soundsensing-sync] Fout bij ophalen alarmen:', err.message);
     return { statusCode: 502, body: `Fout bij ophalen alarmen: ${err.message}` };
   }
 
-  console.log(`[soundsensing-sync] ${alarms.length} alarm(en) ontvangen sinds ${new Date(startTime * 1000).toISOString()}`);
+  console.log(`[soundsensing-sync] ${alarms.length} onopgelost(e) alarm(en) ontvangen`);
 
   const processedIds = new Set((state.processedAlarms || []).map((p) => p.id));
   const newlyProcessed = [];
@@ -518,8 +517,8 @@ export async function handler(event) {
   const cutoff = Date.now() - PROCESSED_MAX_AGE_DAYS * 24 * 3600 * 1000;
   const prunedProcessed = (state.processedAlarms || []).filter((p) => new Date(p.date).getTime() > cutoff);
 
-  // lastCheck is enkel informatief (laatste run-tijdstip) - het venster zelf is altijd vast
-  // (LOOKBACK_SECONDS), dus dit stuurt niets meer aan.
+  // lastCheck is enkel informatief (laatste run-tijdstip) - er is geen tijdsvenster meer dat
+  // dit aanstuurt; elke run haalt toch de volledige onopgeloste-alarmenlijst op.
   const newState = {
     lastCheck: nowUnix,
     processedAlarms: [...prunedProcessed, ...newlyProcessed],

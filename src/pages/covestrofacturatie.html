@@ -101,6 +101,7 @@
     tr.job-row.done span.copy-part { cursor: default; background: #e5e7eb; }
     span.copy-part.copied-flash { background: #22c55e !important; color: #fff; }
     .vorderingsnummer-input { width: 140px; margin-right: .5rem; }
+    .periode-select { margin-right: .5rem; padding: .3rem; border-radius: 6px; }
     td.vordering-cell { white-space: nowrap; }
     .job-error { color: #b91c1c; font-size: .8rem; }
   </style>
@@ -272,6 +273,45 @@
       return Number.isFinite(num) ? String(num).replace('.', ',') : String(value == null ? '' : value);
     }
 
+    function getLoonweekNumber(date) {
+      const utcDate = Date.UTC(date.getFullYear(), date.getMonth(), date.getDate());
+      const utcJan1 = Date.UTC(date.getFullYear(), 0, 1);
+      const diffDays = Math.round((utcDate - utcJan1) / 86400000);
+      const week = Math.floor(diffDays / 7) + 1;
+      return Math.min(week, 52);
+    }
+
+    function lastDayOfMonth(year, month) {
+      return new Date(year, month + 1, 0);
+    }
+
+    function getLoonweekLabel(year, month) {
+      const endWeek = getLoonweekNumber(lastDayOfMonth(year, month));
+
+      let prevYear = year;
+      let prevMonth = month - 1;
+      if (prevMonth < 0) { prevMonth = 11; prevYear = year - 1; }
+
+      const prevEndWeek = getLoonweekNumber(lastDayOfMonth(prevYear, prevMonth));
+      let startWeek = prevEndWeek + 1;
+      if (startWeek > 52) startWeek = 1;
+
+      return `LW${startWeek}-${endWeek}`;
+    }
+
+    function buildPeriodeOptions(buildingKey) {
+      const now = new Date();
+      const options = [];
+      for (let offset = -2; offset <= 1; offset++) {
+        const d = new Date(now.getFullYear(), now.getMonth() + offset, 1);
+        const label = getLoonweekLabel(d.getFullYear(), d.getMonth());
+        const maandNaam = d.toLocaleDateString('nl-BE', { month: 'long', year: 'numeric' });
+        const selected = offset === 0 ? 'selected' : '';
+        options.push(`<option value="${escapeHtml(label)}" ${selected}>${escapeHtml(label)} (${escapeHtml(maandNaam)})</option>`);
+      }
+      return options.join('');
+    }
+
     function getBeschrijving(code) {
       if (String(code || '').trim() !== 'BL 2 - LA 2') return '';
       const now = new Date();
@@ -328,6 +368,33 @@
       return trimmed ? copyPart(trimmed, trimmed) : '';
     }
 
+    function mergeJobsByWO(jobsInCode, code) {
+      const isBl2La2 = String(code || '').trim() === 'BL 2 - LA 2';
+      const byWO = new Map();
+
+      for (const job of jobsInCode) {
+        const wo = String(job.WO || '').trim();
+        if (!byWO.has(wo)) {
+          byWO.set(wo, { ...job, jobIds: [String(job.JobId || '').trim()], aantalSum: 0, totaalSum: 0 });
+        }
+        const merged = byWO.get(wo);
+        if (!merged.jobIds.includes(String(job.JobId || '').trim())) {
+          merged.jobIds.push(String(job.JobId || '').trim());
+        }
+        merged.aantalSum += parseFloat(String(job.Aantal || '0').replace(',', '.')) || 0;
+        merged.totaalSum += parseTotaalNumber(job.Totaal);
+      }
+
+      return Array.from(byWO.values()).map((merged) => ({
+        ...merged,
+        JobId: merged.jobIds[0],
+        // BL 2 - LA 2 is een vast forfait per lijn (geen echte telbare hoeveelheid) - Aantal
+        // blijft altijd 1, ook na samenvoegen. Enkel het Totaal (bedrag) telt op.
+        Aantal: isBl2La2 ? '1' : String(merged.aantalSum).replace('.', ','),
+        Totaal: formatEuro(merged.totaalSum).replace('€ ', 'EUR '),
+      }));
+    }
+
     function renderBuildings() {
       const container = document.getElementById('buildings-container');
       container.innerHTML = '';
@@ -363,6 +430,9 @@
             <td class="num-right"><span class="building-total" data-total-for="${escapeHtml(group.building)}">${escapeHtml(calculateBuildingTotal(group))}</span></td>
             <td>${escapeHtml(group.externalId)}</td>
             <td colspan="2" class="vordering-cell">
+              <select class="periode-select" data-building="${escapeHtml(group.building)}">
+                ${buildPeriodeOptions(group.building)}
+              </select>
               <input type="text" class="vorderingsnummer-input" placeholder="00000" maxlength="5" inputmode="numeric" pattern="\d{5}" data-building="${escapeHtml(group.building)}" />
               <button type="button" class="btn btn-primary btn-process" data-building="${escapeHtml(group.building)}" disabled>Verwerk</button>
             </td>
@@ -373,7 +443,8 @@
         `;
 
         for (const [code, jobsInCode] of group.codeGroups.entries()) {
-          jobsInCode.forEach((job, idx) => {
+          const mergedRows = mergeJobsByWO(jobsInCode, code);
+          mergedRows.forEach((job, idx) => {
             const jobId = String(job.JobId || '').trim();
             const isBl2La2 = String(code || '').trim() === 'BL 2 - LA 2';
             rowsHtml += `
