@@ -1277,24 +1277,15 @@ async function requireGpsIfPortalSelf({ botui, Telemetry, isFr, cameFromPortalSe
 
 	  const productList = Array.isArray(res?.Products) ? res.Products : [];
 	  const rawComplexArticles = Array.isArray(res?.ComplexArticles) ? res.ComplexArticles : [];
-	  const articleArray = Array.isArray(res?.Articles) ? res.Articles : [];
 
-	  const articleDescMap = new Map();
-	  const articleProductCodeMap = new Map();
-	  for (const a of articleArray) {
-		const id = String(a.ArtId || '').trim();
-		if (id) {
-		  articleDescMap.set(id, String(a.ArtDescription || '').trim());
-		  articleProductCodeMap.set(id, String(a.ArtProductCode || '').trim());
-		}
-	  }
-
+	  // ArticleDescription/ProductCode komen sinds de WFL-optimalisatie rechtstreeks mee in
+	  // ComplexArticles (geen losse Articles-tabel-scan + frontend-join meer nodig).
 	  const complexArticleList = rawComplexArticles.map(ca => ({
 		...ca,
-		ArticleDescription: articleDescMap.get(String(ca.ArticleId || '').trim()) || '',
+		ArticleDescription: String(ca.ArticleDescription || '').trim(),
 		ArticleGroup: String(ca.ArticleGroup || '').trim(),
 		DepRef: String(ca._DepRef || '').trim(),
-		ProductCode: articleProductCodeMap.get(String(ca.ArticleId || '').trim()) || ''
+		ProductCode: String(ca.ArticleProductCode || '').trim()
 	  }));
 
 	  const products = {};
@@ -1328,20 +1319,21 @@ async function requireGpsIfPortalSelf({ botui, Telemetry, isFr, cameFromPortalSe
 		return { articleId, label: stripped };
 	  };
 
-	  // 11-P-artikel-id's (ArtikelGroep 11-P) — deze identificeren de nieuwe uren-artikellijnen,
-	  // die net als gewone producten via ADD_PURCHASE_REQUEST_LINE als External='0014' geboekt
-	  // worden (zie WFL ADD_PURCHASE_REQUEST_LINE-handler). Ze moeten dus op articleId
-	  // onderscheiden worden van echte productlijnen, niet op External.
+	  // 11-P-artikel-id's (ArtikelGroep 11-P) — deze identificeren de uren-artikellijnen,
+	  // die net als gewone producten via ADD_PURCHASE_REQUEST_LINE geboekt worden (zie WFL
+	  // ADD_PURCHASE_REQUEST_LINE-handler). Sinds de 0009-migratie krijgen ze External='0009'
+	  // i.p.v. '0014'; oudere, nog niet-uitgedoofde lijnen kunnen nog op '0014' staan. Ze
+	  // moeten dus op articleId onderscheiden worden van echte productlijnen, niet op External.
 	  const hourArticleIds = new Set(
 		(current?.complexArticleList || [])
 		  .filter(ca => ca.ArticleGroup === '11-P')
 		  .map(ca => String(ca.ArticleId || '').trim())
 	  );
 
-	  // Alle 0014-lijnen (producten én 11-P-uren-artikelen delen dit External-kenmerk) één keer
-	  // parsen, en dan splitsen op basis van lidmaatschap van hourArticleIds.
+	  // Alle 0009- en 0014-lijnen (producten én 11-P-uren-artikelen delen dit External-kenmerk)
+	  // één keer parsen, en dan splitsen op basis van lidmaatschap van hourArticleIds.
 	  const parsedZeroOneFourLines = rawLines
-		.filter(l => String(l.External).trim() === '0014')
+		.filter(l => ['0009', '0014'].includes(String(l.External).trim()))
 		.map(l => ({ line: l, parsed: parseArticleLine(l) }));
 
 	  const newHourLines = parsedZeroOneFourLines.filter(({ parsed }) => hourArticleIds.has(parsed.articleId));
@@ -2090,6 +2082,38 @@ function normalizeQuantityInput(raw) {
 
 	async function collectAndSaveAcceptancePreparation(job, defaults) {
 
+	  // Snelle check: bestaan er al JobExternal-kostenregels voor deze job (manueel gezet,
+	  // of vooraf ingevuld door een periodieke job)? Indien ja: toon ze read-only als
+	  // waarschuwing, en laat de normale flow daarna gewoon doorlopen (geen blokkade, geen
+	  // edit-UI hier — dat staat al apart in manageAcceptanceLines voor een latere fase).
+	  try {
+		const existing = await fetchAcceptanceCurrent(job);
+		if (existing?.lines?.length) {
+		  const existingRowsHtml = existing.lines.map(l => {
+			const desc = String(l.Description || '').trim();
+			const qty  = String(l.Quantity || '0').trim();
+			return `<div>${desc}: <b>${qty}</b></div>`;
+		  }).join('');
+
+		  await botui.message.add({
+			type: 'html',
+			content: `
+			  <div class="acceptance-check-box">
+				<b>⚠️ ${isFr ? 'Lignes déjà existantes' : 'Reeds bestaande lijnen'}</b><br>
+				${
+				  isFr
+					? 'Cette tâche a déjà des lignes de coûts enregistrées (probablement saisies manuellement ou via un job périodique) :'
+					: 'Deze taak heeft al kostenregels geregistreerd staan (waarschijnlijk manueel ingevuld of via een periodieke job):'
+				}
+				${existingRowsHtml}
+			  </div>
+			`
+		  });
+		}
+	  } catch (e) {
+		console.warn('[ACCEPTANCE PREP] bestaande JobExternal-check mislukt (niet blokkerend):', e?.message || e);
+	  }
+
 	  // BLOK 1 — Prestatieverklaring
 	  await botui.message.add({
 		type: 'html',
@@ -2105,73 +2129,84 @@ function normalizeQuantityInput(raw) {
 		`
 	  });
 
-	  await botui.message.add({
-		type: 'html',
-		content: `
-		  <div class="acceptance-check-box">
-			<b>${isFr ? 'Heures prestées' : 'Gepresteerde uren'}</b><br>
-			${
-			  isFr
-				? 'Sélectionnez au moins un article "Heures" et indiquez le nombre d’heures.'
-				: 'Kies minstens 1 "Uren"-artikel en geef het aantal uren in.'
-			}
-		  </div>
-		`
+	  const hoursWorkedPick = await botui.action.button({
+		action: [
+		  { text: isFr ? '✅ Oui, des heures ont été prestées' : '✅ Ja, er werden uren gepresteerd', value: 'yes' },
+		  { text: isFr ? '❌ Non, aucune heure' : '❌ Nee, geen uren', value: 'no' }
+		]
 	  });
+	  const hoursWereWorked = (hoursWorkedPick.value ?? hoursWorkedPick) === 'yes';
 
-	  const hoursAcceptanceCurrent = await fetchAcceptanceCurrent(job);
-	  const hourArticles = (hoursAcceptanceCurrent.complexArticleList || [])
-		.filter(ca => ca.ArticleGroup === '11-P');
-	  const baseHourArticles = findBaseHourArticles(hourArticles);
-
-	  if (!baseHourArticles.length) {
-		throw new Error(isFr
-		  ? 'Aucun article "Heures" (11-P) disponible pour cette tâche. Contactez votre planificateur.'
-		  : 'Geen "Uren"-artikel (11-P) beschikbaar voor deze job. Contacteer je planner.');
-	  }
-
-	  let bookedAnyBaseHours = false;
 	  let performedHoursForUltimo = '0';
 
-	  while (true) {
-		const hourButtons = baseHourArticles.map((ca, idx) => ({
-		  text: plainArticleLabel(ca),
-		  value: String(idx)
-		}));
-
-		const choiceValue = await askArticleSearchInline(
-		  hourButtons,
-		  isFr ? 'Kies het uren-artikel' : 'Kies het uren-artikel'
-		);
-
-		if (choiceValue === '__abort__' || choiceValue === '__cancel__') {
-		  if (!bookedAnyBaseHours) {
-			await botui.message.add({
-			  content: isFr
-				? '⚠️ Minstens 1 basisuren-artikel is verplicht.'
-				: '⚠️ Minstens 1 basisuren-artikel is verplicht.'
-			});
-			continue;
-		  }
-		  break;
-		}
-
-		const ca = baseHourArticles[Number(choiceValue)];
-		const hoursQty = await askHoursQuantityAndBook(job, ca, plainArticleLabel(ca));
-
-		bookedAnyBaseHours = true;
-		performedHoursForUltimo = String(Number(performedHoursForUltimo) + Number(hoursQty));
-
-		await offerOptionalSupplement(job, hourArticles, ca, hoursQty);
-
-		const askMore = await botui.action.button({
-		  action: [
-			{ text: isFr ? '➕ Ajouter un autre article d’heures' : '➕ Nog een uren-artikel toevoegen', value: 'more' },
-			{ text: isFr ? '✅ Terminé' : '✅ Klaar', value: 'done' }
-		  ]
+	  if (hoursWereWorked) {
+		await botui.message.add({
+		  type: 'html',
+		  content: `
+			<div class="acceptance-check-box">
+			  <b>${isFr ? 'Heures prestées' : 'Gepresteerde uren'}</b><br>
+			  ${
+				isFr
+				  ? 'Sélectionnez au moins un article "Heures" et indiquez le nombre d’heures.'
+				  : 'Kies minstens 1 "Uren"-artikel en geef het aantal uren in.'
+			  }
+			</div>
+		  `
 		});
 
-		if ((askMore.value ?? askMore) === 'done') break;
+		const hoursAcceptanceCurrent = await fetchAcceptanceCurrent(job);
+		const hourArticles = (hoursAcceptanceCurrent.complexArticleList || [])
+		  .filter(ca => ca.ArticleGroup === '11-P');
+		const baseHourArticles = findBaseHourArticles(hourArticles);
+
+		if (!baseHourArticles.length) {
+		  throw new Error(isFr
+			? 'Aucun article "Heures" (11-P) disponible pour cette tâche. Contactez votre planificateur.'
+			: 'Geen "Uren"-artikel (11-P) beschikbaar voor deze job. Contacteer je planner.');
+		}
+
+		let bookedAnyBaseHours = false;
+
+		while (true) {
+		  const hourButtons = baseHourArticles.map((ca, idx) => ({
+			text: plainArticleLabel(ca),
+			value: String(idx)
+		  }));
+
+		  const choiceValue = await askArticleSearchInline(
+			hourButtons,
+			isFr ? 'Kies het uren-artikel' : 'Kies het uren-artikel'
+		  );
+
+		  if (choiceValue === '__abort__' || choiceValue === '__cancel__') {
+			if (!bookedAnyBaseHours) {
+			  await botui.message.add({
+				content: isFr
+				  ? '⚠️ Minstens 1 basisuren-artikel is verplicht.'
+				  : '⚠️ Minstens 1 basisuren-artikel is verplicht.'
+			  });
+			  continue;
+			}
+			break;
+		  }
+
+		  const ca = baseHourArticles[Number(choiceValue)];
+		  const hoursQty = await askHoursQuantityAndBook(job, ca, plainArticleLabel(ca));
+
+		  bookedAnyBaseHours = true;
+		  performedHoursForUltimo = String(Number(performedHoursForUltimo) + Number(hoursQty));
+
+		  await offerOptionalSupplement(job, hourArticles, ca, hoursQty);
+
+		  const askMore = await botui.action.button({
+			action: [
+			  { text: isFr ? '➕ Ajouter un autre article d’heures' : '➕ Nog een uren-artikel toevoegen', value: 'more' },
+			  { text: isFr ? '✅ Terminé' : '✅ Klaar', value: 'done' }
+			]
+		  });
+
+		  if ((askMore.value ?? askMore) === 'done') break;
+		}
 	  }
 
 	  const performedHours = performedHoursForUltimo.replace('.', ',');
