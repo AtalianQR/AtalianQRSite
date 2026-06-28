@@ -493,17 +493,24 @@
     function jobListHtml(jobs) {
       if (!jobs.length) return `<div class='muted' style='text-align:center;padding:1rem'>Geen items gevonden.</div>`;
       return `
-        <input type='search' id='dm-job-filter' placeholder='${T.searching}'
-          style='width:100%;padding:.45rem .7rem;border:1.5px solid #e5e7eb;border-radius:8px;font-size:.88rem;font-family:inherit;margin-bottom:.6rem;outline:none'
-          oninput='window._dmFilterJobs(this.value)'>
-        <div id='dm-job-list'>${jobs.map(jobCard).join('')}</div>
-        <div id='dm-job-count' class='muted' style='font-size:.8rem;margin-top:.4rem;text-align:right'>${T.items(jobs.length)}</div>`;
+        <div class='dm-job-block'>
+          <input type='search' class='dm-job-filter' placeholder='${T.searching}'
+            style='width:100%;padding:.45rem .7rem;border:1.5px solid #e5e7eb;border-radius:8px;font-size:.88rem;font-family:inherit;margin-bottom:.6rem;outline:none'
+            oninput='window._dmFilterJobs(this)'>
+          <div class='dm-job-list'>${jobs.map(jobCard).join('')}</div>
+          <div class='dm-job-count muted' style='font-size:.8rem;margin-top:.4rem;text-align:right'>${T.items(jobs.length)}</div>
+        </div>`;
     }
 
-    window._dmFilterJobs = (q) => {
-      const term = q.trim().toLowerCase();
-      const list = document.getElementById('dm-job-list');
-      const cnt  = document.getElementById('dm-job-count');
+    // Gescopeerd op het invoerveld zelf (closest), niet via getElementById — anders
+    // raakt het filter de OUDSTE joblijst in de chat i.p.v. de net getoonde, zodra er
+    // meerdere job-overzichten in dezelfde botui-sessie zijn weergegeven (duplicate id's).
+    window._dmFilterJobs = (inputEl) => {
+      const term  = String(inputEl.value || '').trim().toLowerCase();
+      const block = inputEl.closest('.dm-job-block');
+      if (!block) return;
+      const list = block.querySelector('.dm-job-list');
+      const cnt  = block.querySelector('.dm-job-count');
       if (!list) return;
       let visible = 0;
       list.querySelectorAll('.card').forEach(card => {
@@ -516,6 +523,10 @@
 
     // ── tellers berekenen ──────────────────────────────────────────
     function isAcceptable(j) {
+      // TIJDELIJKE WORKAROUND: status 1010 ("Volledig uitgevoerd door ABS") is een gekende
+      // Ultimo-bug die de job per ongeluk voorbijschiet aan 1016 — tot dat opgelost is,
+      // behandelen we 1010 ook als "nog te accepteren" zodat de job niet onzichtbaar wordt.
+      if (String(j.ProgressStatusId || '').trim() === '1010') return true;
       return String(j.IsAcceptanceJob || '0').trim() === '1';
     }
 
