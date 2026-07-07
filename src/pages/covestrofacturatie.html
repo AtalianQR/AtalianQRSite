@@ -97,7 +97,20 @@
     tr.job-row td.code-group-start { border-top: 1px solid #d1d5db; }
     td.num-right, th.num-right { text-align: right; font-variant-numeric: tabular-nums; }
     table.building-table td:nth-child(5) { white-space: nowrap; }
-    span.copy-part { cursor: pointer; padding: 0 .15rem; border-radius: 4px; background: #fff200; }
+    .grand-total {
+      margin: .75rem 0 1rem;
+      padding: .75rem 1rem;
+      background: #EE7E00;
+      color: #fff;
+      border-radius: 10px;
+      font-size: 1.15rem;
+      font-weight: 700;
+      display: none;
+    }
+    .grand-total span { font-size: 1.35rem; }
+    .loonweek-global { margin: 0 0 1rem; padding: .6rem .8rem; background: #eef2f7; border-radius: 8px; font-size: .95rem; }
+    .loonweek-global select { margin-left: .5rem; }
+    span.copy-part { cursor: pointer; padding: 0 .15rem; border-radius: 4px; background: #fff200; color: #1f2937; }
     tr.job-row.done span.copy-part { cursor: default; background: #e5e7eb; }
     span.copy-part.copied-flash { background: #22c55e !important; color: #fff; }
     .vorderingsnummer-input { width: 140px; margin-right: .5rem; }
@@ -129,8 +142,13 @@
 
     <section class="page-card" id="main-card" style="display:none">
       <h1>Covestro facturatie</h1>
-      <button type="button" id="btn-load" class="btn btn-primary">Lijst laden</button>
+      <button type="button" id="btn-load" class="btn btn-primary">Lijst herladen</button>
       <div class="status" id="load-status"></div>
+      <div id="grand-total" class="grand-total">Totaal over alle gebouwen: <span id="grand-total-value">€ 0,00</span></div>
+      <div id="loonweek-global" class="loonweek-global" style="display:none">
+        <label for="global-periode"><strong>Loonweek voor alle gebouwen:</strong></label>
+        <select id="global-periode" class="periode-select"></select>
+      </div>
       <div id="buildings-container"></div>
     </section>
   </main>
@@ -138,6 +156,7 @@
   <script>
     const qs = new URLSearchParams(window.location.search);
     const host = location.host || '';
+    const isLocalhost = ['localhost', '127.0.0.1', '[::1]'].includes(location.hostname);
     const isTestEnv = qs.has('test') || qs.get('env') === 'test' || /test|staging/i.test(host);
     const FUNCTION_URL = '/.netlify/functions/covestro_vordering';
 
@@ -192,9 +211,14 @@
       document.getElementById('password-status').classList.toggle('error', !!message);
     }
 
+    let hasAutoLoaded = false;
     function showMainScreen() {
       document.getElementById('password-card').style.display = 'none';
       document.getElementById('main-card').style.display = 'block';
+      if (!hasAutoLoaded) {
+        hasAutoLoaded = true;
+        loadList();
+      }
     }
 
     async function trySubmitPassword() {
@@ -219,6 +243,12 @@
 
     async function initSession() {
       initEnvBanner();
+      if (isLocalhost) {
+        // Op localhost is er geen wachtwoord nodig - de functie draait onder netlify dev
+        // en slaat de wachtwoordcheck daar over.
+        showMainScreen();
+        return;
+      }
       if (getPortalPassword()) {
         try {
           await apiFetch('CHECK_PASSWORD');
@@ -273,12 +303,14 @@
       return Number.isFinite(num) ? String(num).replace('.', ',') : String(value == null ? '' : value);
     }
 
+    // Loonweek = blok van 7 dagen vanaf 1 januari (LW1 = 1-7 jan, LW2 = 8-14 jan, ...).
+    // De laatste dag(en) van het jaar die niet meer in 52 weken passen, vormen LW53
+    // (geen cap op 52). Januari begint weer bij LW1.
     function getLoonweekNumber(date) {
       const utcDate = Date.UTC(date.getFullYear(), date.getMonth(), date.getDate());
       const utcJan1 = Date.UTC(date.getFullYear(), 0, 1);
       const diffDays = Math.round((utcDate - utcJan1) / 86400000);
-      const week = Math.floor(diffDays / 7) + 1;
-      return Math.min(week, 52);
+      return Math.floor(diffDays / 7) + 1;
     }
 
     function lastDayOfMonth(year, month) {
@@ -294,7 +326,7 @@
 
       const prevEndWeek = getLoonweekNumber(lastDayOfMonth(prevYear, prevMonth));
       let startWeek = prevEndWeek + 1;
-      if (startWeek > 52) startWeek = 1;
+      if (startWeek > 52) startWeek = 1; // na LW52/LW53 (december) start januari opnieuw bij LW1
 
       return `LW${startWeek}-${endWeek}`;
     }
@@ -307,16 +339,41 @@
         const label = getLoonweekLabel(d.getFullYear(), d.getMonth());
         const maandNaam = d.toLocaleDateString('nl-BE', { month: 'long', year: 'numeric' });
         const selected = offset === 0 ? 'selected' : '';
-        options.push(`<option value="${escapeHtml(label)}" ${selected}>${escapeHtml(label)} (${escapeHtml(maandNaam)})</option>`);
+        const value = `${label}|${d.getFullYear()}-${d.getMonth()}`;
+        options.push(`<option value="${escapeHtml(value)}" ${selected}>${escapeHtml(label)} (${escapeHtml(maandNaam)})</option>`);
       }
       return options.join('');
     }
 
-    function getBeschrijving(code) {
+    function parsePeriode(value) {
+      const now = new Date();
+      const ym = String(value || '').split('|')[1] || '';
+      const [y, m] = ym.split('-').map(Number);
+      return {
+        year: Number.isFinite(y) ? y : now.getFullYear(),
+        month: Number.isFinite(m) ? m : now.getMonth(),
+      };
+    }
+
+    function getBeschrijving(code, year, month) {
       if (String(code || '').trim() !== 'BL 2 - LA 2') return '';
       const now = new Date();
-      const maand = String(now.getMonth() + 1).padStart(2, '0');
-      return `Materiaallevering incl handelingstoeslag Ultimo - Maand ${now.getFullYear()}/${maand}`;
+      const y = Number.isFinite(year) ? year : now.getFullYear();
+      const m = Number.isFinite(month) ? month : now.getMonth();
+      const maand = String(m + 1).padStart(2, '0');
+      return `Materiaallevering incl handelingstoeslag Ultimo - Maand ${y}/${maand}`;
+    }
+
+    function updateBeschrijvingen() {
+      document.querySelectorAll('.beschrijving-part[data-building]').forEach((span) => {
+        const bk = span.getAttribute('data-building');
+        const code = span.getAttribute('data-code');
+        const sel = document.querySelector(`.periode-select[data-building="${cssEscape(bk)}"]`);
+        const { year, month } = parsePeriode(sel ? sel.value : '');
+        const text = getBeschrijving(code, year, month);
+        span.textContent = text;
+        span.setAttribute('data-copy-value', text);
+      });
     }
 
     function formatTotaalDisplay(value) {
@@ -346,6 +403,44 @@
         }
       }
       return formatEuro(sum);
+    }
+
+    function setupGlobalPeriode() {
+      const sel = document.getElementById('global-periode');
+      const wrap = document.getElementById('loonweek-global');
+      if (!sel || !wrap) return;
+      if (!sel.options.length) {
+        sel.innerHTML = buildPeriodeOptions('');
+        sel.addEventListener('change', applyGlobalPeriode);
+      }
+      wrap.style.display = buildingGroups.length ? 'block' : 'none';
+    }
+
+    function applyGlobalPeriode() {
+      const sel = document.getElementById('global-periode');
+      if (!sel || !sel.value) return;
+      document.querySelectorAll('.periode-select[data-building]').forEach((s) => {
+        s.value = sel.value;
+      });
+      updateBeschrijvingen();
+    }
+
+    function updateGrandTotal() {
+      const el = document.getElementById('grand-total');
+      const valueEl = document.getElementById('grand-total-value');
+      if (!el || !valueEl) return;
+
+      let sum = 0;
+      for (const group of buildingGroups) {
+        for (const jobsInCode of group.codeGroups.values()) {
+          for (const job of jobsInCode) {
+            sum += parseTotaalNumber(job.Totaal);
+          }
+        }
+      }
+
+      valueEl.textContent = formatEuro(sum);
+      el.style.display = buildingGroups.length ? 'block' : 'none';
     }
 
     function copyPart(displayText, copyValue) {
@@ -401,6 +496,8 @@
 
       if (!buildingGroups.length) {
         container.innerHTML = '<p>Geen jobs klaar om te factureren.</p>';
+        updateGrandTotal();
+        setupGlobalPeriode();
         return;
       }
 
@@ -428,7 +525,7 @@
           <tr class="building-header" id="${groupId}">
             <td colspan="3">${escapeHtml(group.building)}</td>
             <td class="num-right"><span class="building-total" data-total-for="${escapeHtml(group.building)}">${escapeHtml(calculateBuildingTotal(group))}</span></td>
-            <td>${escapeHtml(group.externalId)}</td>
+            <td>${group.externalId ? copyPart(group.externalId, group.externalId) : ''}</td>
             <td colspan="2" class="vordering-cell">
               <select class="periode-select" data-building="${escapeHtml(group.building)}">
                 ${buildPeriodeOptions(group.building)}
@@ -454,7 +551,7 @@
                 <td class="num-right">${copyPart(formatAantal(job.Aantal), formatAantal(job.Aantal))}</td>
                 <td class="num-right">${isBl2La2 ? copyPart(formatTotaalDisplay(job.Totaal), totaalCopyValue(job.Totaal)) : escapeHtml(formatTotaalDisplay(job.Totaal))}</td>
                 <td>${renderCodeCell(code)}</td>
-                <td>${isBl2La2 ? copyPart(getBeschrijving(code), getBeschrijving(code)) : ''}</td>
+                <td>${isBl2La2 ? `<span class="copy-part beschrijving-part" data-building="${escapeHtml(group.building)}" data-code="${escapeHtml(code)}" data-copy-value=""></span>` : ''}</td>
                 <td>
                   <input type="checkbox" class="job-checkbox" data-building="${escapeHtml(group.building)}" data-jobid="${escapeHtml(jobId)}" checked />
                 </td>
@@ -468,6 +565,10 @@
       table.innerHTML = rowsHtml;
       container.appendChild(table);
 
+      updateGrandTotal();
+      setupGlobalPeriode();
+      applyGlobalPeriode();
+      updateBeschrijvingen();
       attachBuildingHandlers();
     }
 
@@ -483,6 +584,10 @@
 
       document.querySelectorAll('span.copy-part').forEach((part) => {
         part.addEventListener('click', () => copyValueToClipboard(part));
+      });
+
+      document.querySelectorAll('.periode-select[data-building]').forEach((s) => {
+        s.addEventListener('change', updateBeschrijvingen);
       });
     }
 
@@ -566,6 +671,7 @@
 
         const totalSpan = document.querySelector(`span.building-total[data-total-for="${cssEscape(buildingKey)}"]`);
         if (totalSpan) totalSpan.textContent = calculateBuildingTotal(group);
+        updateGrandTotal();
 
         // Show error message under each failed row, leave its checkbox as-is so it can be retried
         failedResults.forEach(({ JobId, Message }) => {

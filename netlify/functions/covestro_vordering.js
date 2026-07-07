@@ -48,7 +48,13 @@ function getOutputObject(raw) {
   return txt;
 }
 
+function isLocalDev(event) {
+  const host = String((event.headers || {}).host || '');
+  return process.env.NETLIFY_DEV === 'true' || /^(localhost|127\.0\.0\.1|\[::1\])(:\d+)?$/.test(host);
+}
+
 function checkPassword(event) {
+  if (isLocalDev(event)) return true; // localhost: geen wachtwoord nodig
   const headers = event.headers || {};
   const headerPw = headers['x-portal-password'] || headers['X-Portal-Password'] || '';
   return !!PORTAL_PASSWORD && headerPw === PORTAL_PASSWORD;
@@ -60,7 +66,8 @@ export async function handler(event) {
       return { statusCode: 204, headers: corsHeaders, body: '' };
     }
 
-    if (!API_KEY || !BASE_URL || !APP_ELEMENT || !PORTAL_PASSWORD) {
+    const needPassword = !isLocalDev(event);
+    if (!API_KEY || !BASE_URL || !APP_ELEMENT || (needPassword && !PORTAL_PASSWORD)) {
       return respond(500, { error: "Serverconfig onvolledig: ontbrekende API-sleutels, BASE_URL of wachtwoord." });
     }
 
