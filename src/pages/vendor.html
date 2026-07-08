@@ -946,6 +946,10 @@ async function requireGpsIfPortalSelf({ botui, Telemetry, isFr, cameFromPortalSe
 	  const lineCustomer = klant || (isFr ? 'Client inconnu' : 'Onbekende klant');
 	  const lineComplex  = complex || (isFr ? 'Complexe inconnu' : 'Onbekend complex');
 
+	  // Meldingsdatum (StatusCreatedReportDate) komt als job.Date binnen, formaat "24-4-2026 17:49:05".
+	  // We tonen enkel het datumdeel (vóór de spatie), net als in de DM-assistent.
+	  const reportDate = String(job.Date || '').split(' ')[0].trim();
+
 	  // 1) Bouwdeel + verdieping (boven de ruimte)
 	  const partFloorLine = (partDesc || floorLvl)
 		? `<div class="type">
@@ -962,12 +966,17 @@ async function requireGpsIfPortalSelf({ botui, Telemetry, isFr, cameFromPortalSe
 		   </div>`
 		: `<div class="space muted">${isFr ? 'Espace: inconnu' : 'Ruimte: onbekend'}</div>`;
 
+	  const reportDateLine = reportDate
+		? `<div class="jobidline">${isFr ? 'Signalé le' : 'Gemeld op'}: ${reportDate}</div>`
+		: '';
+
 	  elInfo.innerHTML = `
 		<div class="customer">${lineCustomer}</div>
 		<div class="complex">${lineComplex}</div>
 		${partFloorLine}
 		${spaceLine}
 		<div class="jobidline">${isFr ? 'ID tâche' : 'Job ID'}: ${job.Id}</div>
+		${reportDateLine}
 	  `;
 	  elInfo.style.display = 'flex';
 	}
