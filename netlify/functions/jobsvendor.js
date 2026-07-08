@@ -298,7 +298,12 @@ async function handlePostAction(event, body, cfg) {
   const jobId = String(qs.jobId || body.jobId || "").trim();
   const email = String(body.email || qs.email || "").trim();
   const channel = String(body.channel || body.Channel || "PortalSelf").trim();
-  
+
+  // Kwam deze sessie via de DM-assistent binnen? (frontend stuurt dit mee vanuit vendor.html)
+  const fromDmAssistent =
+    body?.fromDmAssistent === true ||
+    channel.toLowerCase() === "dmassistent";
+
   if (!action) return respond(400, { error: "action ontbreekt" });
   if (!jobId) return respond(400, { error: "jobId ontbreekt" });
   if (!email) return respond(400, { error: "email ontbreekt" });
@@ -422,6 +427,10 @@ if (action === "ACCEPTED") {
     if (vendorId === "000016" && isAtalian) {
       allowed = true;
       console.info("[auth] allow: Atalian vendor + Atalian mail");
+    } else if (isAtalian && fromDmAssistent) {
+      // Atalian-medewerker handelt via de DM-assistent af namens een externe leverancier.
+      allowed = true;
+      console.info("[auth] allow: Atalian mail via DM-assistent", { jobId, email, vendorId });
     } else if (vendorEmail) {
       const loginDom = getDomain(email);
       const vendorDom = getDomain(vendorEmail);
