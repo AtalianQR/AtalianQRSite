@@ -188,6 +188,36 @@
       flex-wrap: wrap;
     }
 
+    .vestiging-group {
+      display: flex;
+      gap: .75rem;
+      flex-wrap: wrap;
+      margin-top: .4rem;
+    }
+
+    .vestiging-btn {
+      flex: 1 1 auto;
+      min-width: 140px;
+      border-radius: 14px;
+      padding: 1rem 1.2rem;
+      border: 2px solid rgba(0,86,179,.35);
+      background: rgba(255,255,255,.6);
+      color: #0b2a4a;
+      font-weight: 800;
+      font-size: 1rem;
+      cursor: pointer;
+      transition: transform .12s ease, box-shadow .12s ease, background .12s ease, border-color .12s ease;
+    }
+
+    .vestiging-btn:hover { transform: translateY(-1px); }
+
+    .vestiging-btn.active {
+      background: rgba(0,86,179,.94);
+      color: #fff;
+      border-color: rgba(0,86,179,.94);
+      box-shadow: 0 10px 22px rgba(0,86,179,.34);
+    }
+
     .btn {
       border-radius: 999px;
       padding: .68rem 1.4rem;
@@ -247,23 +277,23 @@
     <section class="page-card">
       <h1 id="title-text">Waar wil je een melding aanmaken?</h1>
       <p id="intro-text">
-        Kies eerst het complex. Daarna tonen we meteen de ruimtes waarvoor je een melding kan aanmaken.
+        Kies eerst de vestiging. Daarna tonen we meteen de ruimtes waarvoor je een melding kan aanmaken.
       </p>
 
       <div class="form-block" id="block-select">
-        <div class="hint" id="building-hint">De complexen worden geladen…</div>
+        <div class="hint" id="building-hint">De vestigingen worden geladen…</div>
 
         <div style="margin-top:.85rem;">
-          <label id="label-building" for="select-building">Kies complex</label>
-          <select id="select-building" disabled>
-            <option value="">-- complexen worden geladen --</option>
-          </select>
+          <label id="label-building">Kies vestiging</label>
+          <div id="building-buttons" class="vestiging-group">
+            <div class="hint" id="building-loading">Vestigingen worden geladen…</div>
+          </div>
         </div>
 
         <div style="margin-top:.85rem;">
           <label id="label-space" for="select-space">Kies ruimte</label>
           <select id="select-space" disabled>
-            <option value="">-- kies eerst een complex --</option>
+            <option value="">-- kies eerst een vestiging --</option>
           </select>
         </div>
 
@@ -276,7 +306,7 @@
 
         <div class="actions">
           <button type="button" class="btn btn-secondary" id="btn-reset">⬅️ Terug</button>
-          <button type="button" class="btn btn-primary" id="btn-go">➡️ Ga naar meldingsportaal</button>
+          <button type="button" class="btn btn-primary" id="btn-go" style="display:none;">➡️ Ga naar meldingsportaal</button>
         </div>
       </div>
     </section>
@@ -292,6 +322,9 @@
     ============================================================ */
     const CUSTOMER_DEPARTMENT_ID = '000740';
     const LIST_ENDPOINT = '/.netlify/functions/complexinfo';
+
+    // Enkel deze vestigingen tonen (MSIG Antwerpen, MSIG Brussel).
+    const ALLOWED_BUILDING_IDS = ['006359', '006403'];
 
     /* ============================================================
        TAAL EN OMGEVING
@@ -309,7 +342,7 @@
     const statusEl = document.getElementById('status');
     const btnGo = document.getElementById('btn-go');
     const btnReset = document.getElementById('btn-reset');
-    const selectBuilding = document.getElementById('select-building');
+    const buildingButtons = document.getElementById('building-buttons');
     const qrBlock = document.getElementById('qr-block');
     const qrCanvas = document.getElementById('space-qr');
 
@@ -325,8 +358,11 @@
 
       if (!spaceId) {
         qrBlock.style.display = 'none';
+        btnGo.style.display = 'none';
         return;
       }
+
+      btnGo.style.display = '';
 
       const code = buildCodeForPortal('space', spaceId);
       const url = new URL('/portal.html', window.location.origin);
@@ -389,19 +425,19 @@
       const isFr = lang === 'fr';
       document.documentElement.lang = isFr ? 'fr' : 'nl';
 
-      document.getElementById('label-building').textContent = isFr ? 'Choisissez un complexe' : 'Kies complex';
+      document.getElementById('label-building').textContent = isFr ? 'Choisissez une implantation' : 'Kies vestiging';
 
       document.getElementById('title-text').textContent = isFr
         ? 'Où voulez-vous créer un signalement ?'
         : 'Waar wil je een melding aanmaken?';
 
       document.getElementById('intro-text').textContent = isFr
-        ? "Choisissez d'abord le complexe. Ensuite, nous affichons directement les espaces pour lesquels vous pouvez créer un signalement."
-        : 'Kies eerst het complex. Daarna tonen we meteen de ruimtes waarvoor je een melding kan aanmaken.';
+        ? "Choisissez d'abord l'implantation. Ensuite, nous affichons directement les espaces pour lesquels vous pouvez créer un signalement."
+        : 'Kies eerst de vestiging. Daarna tonen we meteen de ruimtes waarvoor je een melding kan aanmaken.';
 
       document.getElementById('building-hint').textContent = isFr
-        ? 'Les complexes sont en cours de chargement…'
-        : 'De complexen worden geladen…';
+        ? 'Les implantations sont en cours de chargement…'
+        : 'De vestigingen worden geladen…';
       document.getElementById('label-space').textContent = isFr ? 'Choisissez un espace' : 'Kies ruimte';
       btnReset.textContent = isFr ? '⬅️ Retour' : '⬅️ Terug';
       btnGo.textContent = isFr ? '➡️ Aller au portail de ticket' : '➡️ Ga naar meldingsportaal';
@@ -409,7 +445,7 @@
 
     async function fetchBuildings() {
       const isFr = lang === 'fr';
-      setStatus(isFr ? 'Chargement des complexes…' : 'Complexen worden geladen…', false);
+      setStatus(isFr ? 'Chargement des implantations…' : 'Vestigingen worden geladen…', false);
 
       const url = new URL(LIST_ENDPOINT, window.location.origin);
       url.searchParams.set('action', 'LIST_BUILDINGS_BY_COUNTRY');
@@ -447,7 +483,7 @@
       return Array.isArray(data.Items) ? data.Items : (Array.isArray(data.items) ? data.items : []);
     }
 
-    function prepareBuildingDropdown() {
+    function renderBuildingButtons() {
       const isFr = lang === 'fr';
 
       allBuildings = allBuildings.slice().sort((a, b) => {
@@ -456,46 +492,44 @@
         return nameA.localeCompare(nameB, isFr ? 'fr' : 'nl', { numeric: true, sensitivity: 'base' });
       });
 
-      selectBuilding.disabled = false;
-      selectBuilding.innerHTML = `<option value="">${isFr ? '-- choisissez un complexe --' : '-- kies een complex --'}</option>`;
+      buildingButtons.innerHTML = '';
 
       allBuildings.forEach((b, index) => {
         const label = valueOf(b, 'Description') || valueOf(b, 'Id');
-        selectBuilding.insertAdjacentHTML(
-          'beforeend',
-          `<option value="${index}">${escHtml(label)}</option>`
-        );
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'vestiging-btn';
+        btn.dataset.index = String(index);
+        btn.textContent = label;
+        btn.addEventListener('click', () => selectBuildingSpaces(index));
+        buildingButtons.appendChild(btn);
       });
 
       selectSpace.disabled = true;
-      selectSpace.innerHTML = `<option value="">${isFr ? "-- choisissez d'abord un complexe --" : '-- kies eerst een complex --'}</option>`;
+      selectSpace.innerHTML = `<option value="">${isFr ? "-- choisissez d'abord une implantation --" : '-- kies eerst een vestiging --'}</option>`;
 
       setStatus(isFr
-        ? `✅ ${allBuildings.length} complexe(s) trouvé(s).`
-        : `✅ ${allBuildings.length} complex(en) gevonden.`, false);
+        ? `✅ ${allBuildings.length} implantation(s) trouvée(s).`
+        : `✅ ${allBuildings.length} vestiging(en) gevonden.`, false);
 
       if (allBuildings.length === 1) {
-        selectBuilding.value = '0';
-        selectBuilding.dispatchEvent(new Event('change'));
+        selectBuildingSpaces(0);
       }
     }
 
-    function selectBuildingSpaces() {
+    function selectBuildingSpaces(index) {
       const isFr = lang === 'fr';
-      selectedBuildingKey = selectBuilding.value;
+      selectedBuildingKey = String(index);
 
-      if (selectedBuildingKey === '') {
-        qrBlock.style.display = 'none';
-        spacesForSelectedBuilding = [];
-        selectSpace.disabled = true;
-        selectSpace.innerHTML = `<option value="">${isFr ? "-- choisissez d'abord un complexe --" : '-- kies eerst een complex --'}</option>`;
-        return;
-      }
+      buildingButtons.querySelectorAll('.vestiging-btn').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.index === selectedBuildingKey);
+      });
 
       const building = allBuildings[Number(selectedBuildingKey)];
       spacesForSelectedBuilding = Array.isArray(building?.Spaces) ? building.Spaces : [];
 
       qrBlock.style.display = 'none';
+      btnGo.style.display = 'none';
       selectSpace.disabled = spacesForSelectedBuilding.length === 0;
 
       renderSpaceOptions();
@@ -556,22 +590,21 @@
       selectedBuildingKey = '';
       spacesForSelectedBuilding = [];
 
-      selectBuilding.disabled = true;
-      selectBuilding.innerHTML = `<option value="">${isFr ? '-- chargement des complexes --' : '-- complexen worden geladen --'}</option>`;
+      buildingButtons.innerHTML = `<div class="hint">${isFr ? 'Chargement des implantations…' : 'Vestigingen worden geladen…'}</div>`;
       selectSpace.disabled = true;
       selectSpace.innerHTML = `<option value="">${isFr ? '-- chargement --' : '-- laden --'}</option>`;
 
       const items = await fetchBuildings();
-      allBuildings = items;
+      allBuildings = items.filter(b => ALLOWED_BUILDING_IDS.includes(valueOf(b, 'Id')));
 
-      if (!items.length) {
-        selectBuilding.innerHTML = `<option value="">${isFr ? '-- aucun complexe disponible --' : '-- geen complexen beschikbaar --'}</option>`;
+      if (!allBuildings.length) {
+        buildingButtons.innerHTML = `<div class="hint">${isFr ? 'Aucune implantation disponible.' : 'Geen vestigingen beschikbaar.'}</div>`;
         selectSpace.innerHTML = `<option value="">${isFr ? '-- aucun espace disponible --' : '-- geen ruimtes beschikbaar --'}</option>`;
-        setStatus(isFr ? 'Geen complexen gevonden.' : 'Geen complexen gevonden.', true);
+        setStatus(isFr ? 'Aucune implantation trouvée.' : 'Geen vestigingen gevonden.', true);
         return;
       }
 
-      prepareBuildingDropdown();
+      renderBuildingButtons();
     }
 
     function buildCodeForPortal(type, id) {
@@ -594,7 +627,7 @@
       const isFr = lang === 'fr';
 
       if (!selectedBuildingKey) {
-        alert(isFr ? "Choisissez d'abord un complexe." : 'Kies eerst een complex.');
+        alert(isFr ? "Choisissez d'abord une implantation." : 'Kies eerst een vestiging.');
         return;
       }
 
@@ -617,15 +650,16 @@
       const isFr = lang === 'fr';
 
       selectSpace.value = '';
-      selectBuilding.value = '';
+      buildingButtons.querySelectorAll('.vestiging-btn').forEach(btn => btn.classList.remove('active'));
       selectedBuildingKey = '';
       spacesForSelectedBuilding = [];
 
       selectSpace.disabled = true;
-      selectSpace.innerHTML = `<option value="">${isFr ? "-- choisissez d'abord un complexe --" : '-- kies eerst een complex --'}</option>`;
+      selectSpace.innerHTML = `<option value="">${isFr ? "-- choisissez d'abord une implantation --" : '-- kies eerst een vestiging --'}</option>`;
 
       setStatus('', false);
       qrBlock.style.display = 'none';
+      btnGo.style.display = 'none';
     }
 
     /* ============================================================
@@ -648,7 +682,6 @@
     btnGo.addEventListener('click', goToPortal);
     btnReset.addEventListener('click', resetPortal);
 
-    selectBuilding.addEventListener('change', selectBuildingSpaces);
     selectSpace.addEventListener('change', updateSpaceQr);
 
     /* ============================================================
@@ -659,7 +692,7 @@
       applyLanguage();
       loadBuildings().catch(err => {
         console.error(err);
-        setStatus('Fout bij het laden van de complexen.', true);
+        setStatus('Fout bij het laden van de vestigingen.', true);
       });
     })();
   </script>
