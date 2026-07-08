@@ -523,6 +523,10 @@
 
     // ── tellers berekenen ──────────────────────────────────────────
     function isAcceptable(j) {
+      // Acceptatie hoort enkel bij de opdrachtenstroom — klachten (KwisId 002) hebben
+      // hun eigen stroom (Lopende klachten / Goed te keuren SPOC) en mogen nooit in
+      // "Nog te accepteren" verschijnen, ook niet als IsAcceptanceJob of status 1010 klopt.
+      if (String(j.KwisId || '').trim() === '002') return false;
       // TIJDELIJKE WORKAROUND: status 1010 ("Volledig uitgevoerd door ABS") is een gekende
       // Ultimo-bug die de job per ongeluk voorbijschiet aan 1016 — tot dat opgelost is,
       // behandelen we 1010 ook als "nog te accepteren" zodat de job niet onzichtbaar wordt.
