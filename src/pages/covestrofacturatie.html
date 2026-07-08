@@ -117,6 +117,19 @@
     .periode-select { margin-right: .5rem; padding: .3rem; border-radius: 6px; }
     td.vordering-cell { white-space: nowrap; }
     .job-error { color: #b91c1c; font-size: .8rem; }
+
+    .building-head-cell { display: flex; align-items: center; justify-content: space-between; gap: .5rem; }
+    button.btn-jobid-toggle { flex-shrink: 0; background: #fff; color: #1f2937; border: 1px solid #d1d5db; border-radius: 999px; padding: .12rem .6rem; font-size: .76rem; font-weight: 600; cursor: pointer; white-space: nowrap; }
+    button.btn-jobid-toggle:hover { background: #f3f4f6; }
+    tr.jobid-detail-row > td { background: #eaf2fb; border-left: 3px solid #3b82f6; padding: .5rem .8rem; }
+    .jobid-detail-title { font-size: .82rem; font-weight: 700; color: #1e3a8a; margin: 0 0 .4rem; }
+    table.jobid-detail-table { width: 100%; border-collapse: collapse; }
+    table.jobid-detail-table th, table.jobid-detail-table td { padding: .25rem .5rem; font-size: .82rem; border-bottom: 1px solid #cdddf2; text-align: left; color: #1f2937; }
+    table.jobid-detail-table th { background: #d5e6fa; color: #1e3a8a; font-weight: 700; }
+    table.jobid-detail-table tr.jid-a td { background: #e3eefb; }
+    table.jobid-detail-table tr.jid-b td { background: #f3f8fe; }
+    table.jobid-detail-table tr.jid-start td { border-top: 2px solid #93b4e6; }
+    table.jobid-detail-table td.num-right, table.jobid-detail-table th.num-right { text-align: right; font-variant-numeric: tabular-nums; }
   </style>
 </head>
 
@@ -490,6 +503,56 @@
       }));
     }
 
+    // Ongesamenvoegde lijst per JobID — puur ter raadpleging, zodat de gebruiker de
+    // samenstelling van een opgeteld bedrag (per WO/code) kan controleren bij twijfel.
+    // Verandert niets aan de bestaande, samengevoegde weergave of aan de verwerklogica.
+    function renderJobIdBreakdown(group) {
+      const lines = [];
+      for (const [code, jobsInCode] of group.codeGroups.entries()) {
+        for (const job of jobsInCode) {
+          lines.push({ code, ...job });
+        }
+      }
+      lines.sort((a, b) =>
+        String(a.JobId || '').localeCompare(String(b.JobId || ''), undefined, { numeric: true }) ||
+        String(a.WO || '').localeCompare(String(b.WO || ''), undefined, { numeric: true })
+      );
+
+      let prevJob = null;
+      let shade = 1;
+      const body = lines.map((j) => {
+        const jobId = String(j.JobId || '').trim();
+        // Wissel van tint telkens het JobID verandert, zodat regels van dezelfde job
+        // samen één blok vormen en verschillende jobs visueel gescheiden zijn.
+        const isNewJob = jobId !== prevJob;
+        if (isNewJob) { shade = 1 - shade; prevJob = jobId; }
+        const rowClass = `${shade === 0 ? 'jid-a' : 'jid-b'}${isNewJob ? ' jid-start' : ''}`;
+        return `
+          <tr class="${rowClass}">
+            <td>${isNewJob ? escapeHtml(jobId) : ''}</td>
+            <td>${escapeHtml(j.ProjectNr)}</td>
+            <td>${escapeHtml(j.WO)}</td>
+            <td>${escapeHtml(String(j.code || '').trim())}</td>
+            <td>${escapeHtml(j.Beschrijving)}</td>
+            <td class="num-right">${escapeHtml(formatAantal(j.Aantal))}</td>
+            <td class="num-right">${escapeHtml(formatTotaalDisplay(j.Totaal))}</td>
+          </tr>`;
+      }).join('');
+
+      return `
+        <tr class="jobid-detail-row" data-building="${escapeHtml(group.building)}" style="display:none">
+          <td colspan="7">
+            <div class="jobid-detail-title">Samenstelling per JobID — ${escapeHtml(group.building)} (${lines.length} lijn${lines.length !== 1 ? 'en' : ''})</div>
+            <table class="jobid-detail-table">
+              <thead>
+                <tr><th>JobID</th><th>ProjectNr</th><th>WO</th><th>Code</th><th>Beschrijving</th><th class="num-right">Aantal</th><th class="num-right">Totaal</th></tr>
+              </thead>
+              <tbody>${body}</tbody>
+            </table>
+          </td>
+        </tr>`;
+    }
+
     function renderBuildings() {
       const container = document.getElementById('buildings-container');
       container.innerHTML = '';
@@ -523,7 +586,7 @@
 
         rowsHtml += `
           <tr class="building-header" id="${groupId}">
-            <td colspan="3">${escapeHtml(group.building)}</td>
+            <td colspan="3"><div class="building-head-cell">${escapeHtml(group.building)}<button type="button" class="btn-jobid-toggle" data-building="${escapeHtml(group.building)}">🔍 Per JobID</button></div></td>
             <td class="num-right"><span class="building-total" data-total-for="${escapeHtml(group.building)}">${escapeHtml(calculateBuildingTotal(group))}</span></td>
             <td>${group.externalId ? copyPart(group.externalId, group.externalId) : ''}</td>
             <td colspan="2" class="vordering-cell">
@@ -559,6 +622,8 @@
             `;
           });
         }
+
+        rowsHtml += renderJobIdBreakdown(group);
       }
 
       rowsHtml += `</tbody>`;
@@ -584,6 +649,10 @@
 
       document.querySelectorAll('span.copy-part').forEach((part) => {
         part.addEventListener('click', () => copyValueToClipboard(part));
+      });
+
+      document.querySelectorAll('.btn-jobid-toggle').forEach((btn) => {
+        btn.addEventListener('click', () => toggleJobIdDetail(btn.getAttribute('data-building'), btn));
       });
 
       document.querySelectorAll('.periode-select[data-building]').forEach((s) => {
@@ -732,6 +801,20 @@
 
     function cssEscape(s) {
       return String(s).replace(/["\\]/g, '\\$&');
+    }
+
+    function toggleJobIdDetail(buildingKey, btn) {
+      const row = document.querySelector(`tr.jobid-detail-row[data-building="${cssEscape(buildingKey)}"]`);
+      if (!row) return;
+      const willOpen = row.style.display === 'none';
+      if (willOpen) {
+        // Accordion: klap eerst alle andere open detaillijsten dicht, zodat er
+        // steeds maar één gebouw tegelijk uitgeklapt is.
+        document.querySelectorAll('tr.jobid-detail-row').forEach((r) => { r.style.display = 'none'; });
+        document.querySelectorAll('.btn-jobid-toggle').forEach((b) => { b.textContent = '🔍 Per JobID'; });
+      }
+      row.style.display = willOpen ? '' : 'none';
+      if (btn) btn.textContent = willOpen ? '🔽 Verberg JobID' : '🔍 Per JobID';
     }
 
     async function loadList() {
