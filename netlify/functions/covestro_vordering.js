@@ -87,7 +87,10 @@ export async function handler(event) {
         const raw = await callUltimo({ Action: 'LIST_TO_INVOICE' });
         const out = getOutputObject(raw);
         const jobs = Array.isArray(out?.Jobs) ? out.Jobs : [];
-        return respond(200, { ok: true, Jobs: jobs });
+        // Jobs met een 00633-lijn (nacalculatie, kost nog niet gekend) komen niet in Jobs,
+        // maar apart in PendingJobs zodat de frontend ze onderaan als 'blijft hangen' toont.
+        const pendingJobs = Array.isArray(out?.PendingJobs) ? out.PendingJobs : [];
+        return respond(200, { ok: true, Jobs: jobs, PendingJobs: pendingJobs });
       }
 
       return respond(400, { error: `Onbekende action: ${action}` });

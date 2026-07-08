@@ -2375,6 +2375,145 @@ function normalizeQuantityInput(raw) {
 		deliveredProductsText = deliveredProductLines.join('<br>');
 	  }
 
+	  // Extra product / kost toevoegen (catalogus) — ook wanneer er GEEN vooraf-bestelde
+	  // producten zijn. Zonder deze stap kon een vendor pas na een reload (via
+	  // manageAcceptanceLines) een artikel toevoegen. Hier kan bv. artikel 00633
+	  // (nacalculatie) geboekt worden: taak is uitgevoerd en geaccepteerd, kost volgt later.
+	  // Boekt via ADD_PURCHASE_REQUEST_LINE, net als de uren en de 'extra artikel'-flow.
+	  const extraProductLines = [];
+	  {
+		const catalogueCurrent = await fetchAcceptanceCurrent(job);
+		const productComplexArticles = (catalogueCurrent.complexArticleList || [])
+		  .filter(ca => ca.ArticleGroup !== '11-P');
+
+		await botui.message.add({
+		  type: 'html',
+		  content: `
+			<div class="acceptance-section-box">
+			  <b>${isFr ? 'Produits / coûts supplémentaires' : 'Producten / extra kosten'}</b><br>
+			  ${
+				isFr
+				  ? 'Des produits ont-ils été livrés ou y a-t-il des coûts supplémentaires (p.ex. à décompter ultérieurement) ?'
+				  : 'Werden er producten geleverd of zijn er extra kosten (bv. nog te verrekenen)?'
+			  }
+			</div>
+		  `
+		});
+
+		let addProductChoice = await botui.action.button({
+		  action: [
+			{ text: isFr ? '➕ Ajouter un produit / coût' : '➕ Product / kost toevoegen', value: 'add' },
+			{ text: isFr ? '❌ Non, aucun' : '❌ Nee, geen', value: 'no' }
+		  ]
+		});
+
+		while ((addProductChoice.value ?? addProductChoice) === 'add') {
+		  if (!productComplexArticles.length) {
+			await botui.message.add({
+			  content: isFr
+				? 'Aucun article disponible dans le catalogue.'
+				: 'Geen artikelen beschikbaar in de catalogus.'
+			});
+			break;
+		  }
+
+		  const productButtons = productComplexArticles.map((ca, idx) => ({
+			text: formatArticleLabel(
+			  String(ca.ArticleId || '').trim(),
+			  String(ca.ArticleDescription || '').trim(),
+			  ca.DepRef,
+			  job
+			),
+			value: String(idx)
+		  }));
+
+		  const pick = await askArticleSearchInline(
+			productButtons,
+			isFr ? 'Choisissez un article' : 'Kies een artikel'
+		  );
+
+		  // __abort__/__cancel__: geen keuze uit de catalogus — terug naar de vraag.
+		  if (pick !== '__abort__' && pick !== '__cancel__') {
+			const ca = productComplexArticles[Number(pick)];
+			const label = formatArticleLabel(
+			  String(ca.ArticleId || '').trim(),
+			  String(ca.ArticleDescription || '').trim(),
+			  ca.DepRef,
+			  job
+			);
+
+			let qty = '';
+			while (true) {
+			  const rawQty = await askLineQuantityInline({
+				label,
+				defaultQty: '',
+				fieldLabel: isFr ? 'Quantité' : 'Aantal',
+				inputMode: 'decimal'
+			  });
+
+			  const normalized = normalizeQuantityInput(rawQty);
+
+			  if (!normalized.ok || Number(normalized.forUltimo) <= 0) {
+				await botui.message.add({
+				  content: isFr
+					? '⚠️ Introduisez une quantité valable, par exemple 1 ou 2,5.'
+					: '⚠️ Geef een geldig aantal in, bijvoorbeeld 1 of 2,5.'
+				});
+				continue;
+			  }
+
+			  qty = normalized.forUltimo;
+			  break;
+			}
+
+			try {
+			  const data = await submitUpdate({
+				action: 'ADD_PURCHASE_REQUEST_LINE',
+				jobId: job.Id,
+				email: sessionEmail,
+				ComplexArticleId: String(ca.ComplexArticleId || '').trim(),
+				Quantity: qty
+			  });
+
+			  if (data?.Result === false) {
+				await botui.message.add({
+				  content: data?.Message
+					? String(data.Message)
+					: (isFr ? '❌ L’article n’a pas pu être ajouté.' : '❌ Het artikel kon niet toegevoegd worden.')
+				});
+			  } else {
+				await botui.message.add({
+				  content: isFr ? '✅ Article ajouté aux coûts.' : '✅ Artikel toegevoegd aan de kosten.'
+				});
+				extraProductLines.push(
+				  `• ${label} - ${qty.replace('.', ',')} ${isFr ? 'pc.' : 'st.'}`
+				);
+			  }
+			} catch (err) {
+			  await botui.message.add({
+				content: isFr
+				  ? '❌ Une erreur s’est produite, veuillez réessayer.'
+				  : '❌ Er ging iets mis, probeer opnieuw.'
+			  });
+			}
+		  }
+
+		  addProductChoice = await botui.action.button({
+			action: [
+			  { text: isFr ? '➕ Ajouter un autre' : '➕ Nog een toevoegen', value: 'add' },
+			  { text: isFr ? '✅ Terminé' : '✅ Klaar', value: 'no' }
+			]
+		  });
+		}
+	  }
+
+	  // Toegevoegde extra producten mee opnemen in de prestatieverklaring.
+	  if (extraProductLines.length) {
+		deliveredProductsText = [deliveredProductsText, extraProductLines.join('<br>')]
+		  .filter(Boolean)
+		  .join('<br>');
+	  }
+
 	  // Bijkomende note is optioneel.
 	  // Belangrijk: deze note mag nooit bepalen of AcceptanceStatement wordt opgeslagen.
 	  let acceptanceExtraNote = '';

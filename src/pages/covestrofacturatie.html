@@ -130,6 +130,14 @@
     table.jobid-detail-table tr.jid-b td { background: #f3f8fe; }
     table.jobid-detail-table tr.jid-start td { border-top: 2px solid #93b4e6; }
     table.jobid-detail-table td.num-right, table.jobid-detail-table th.num-right { text-align: right; font-variant-numeric: tabular-nums; }
+
+    .pending-section { margin-top: 2rem; border: 2px solid #f59e0b; border-radius: 10px; background: #fffbeb; padding: 1rem 1.25rem; }
+    .pending-section h2 { margin: 0 0 .25rem; font-size: 1.1rem; color: #92400e; }
+    .pending-section p.pending-intro { margin: 0 0 .75rem; font-size: .88rem; color: #92400e; }
+    table.pending-table { width: 100%; border-collapse: collapse; }
+    table.pending-table th, table.pending-table td { padding: .4rem .6rem; font-size: .88rem; text-align: left; border-bottom: 1px solid #fcd34d; overflow-wrap: break-word; }
+    table.pending-table th { background: #fde68a; color: #7c2d12; font-weight: 700; }
+    table.pending-table tr:last-child td { border-bottom: none; }
   </style>
 </head>
 
@@ -163,6 +171,7 @@
         <select id="global-periode" class="periode-select"></select>
       </div>
       <div id="buildings-container"></div>
+      <div id="pending-container"></div>
     </section>
   </main>
 
@@ -277,6 +286,7 @@
     initSession();
 
     let buildingGroups = []; // [{ building, externalId, gebouwnummer, codeGroups: Map<code, jobs[]> }]
+    let pendingJobs = [];    // jobs met een 00633-lijn (nacalculatie): niet factureren, wel apart tonen
 
     function groupJobs(jobs) {
       const byBuilding = new Map();
@@ -637,6 +647,50 @@
       attachBuildingHandlers();
     }
 
+    // Jobs met een 00633-lijn (nacalculatie, kost nog niet gekend) worden door de backend niet
+    // in de te factureren lijst gezet, maar apart aangeleverd. Ze tellen dus niet mee in de
+    // totalen; we tonen ze hier onderaan enkel ter info zodat ze niet 'verloren' lijken.
+    function renderPending() {
+      const container = document.getElementById('pending-container');
+      if (!container) return;
+      container.innerHTML = '';
+
+      if (!pendingJobs.length) return;
+
+      // Ontdubbel op JobId (een job kan meerdere 00633-lijnen hebben).
+      const seen = new Set();
+      const uniqueJobs = [];
+      for (const job of pendingJobs) {
+        const jid = String(job.JobId || '').trim();
+        if (jid && seen.has(jid)) continue;
+        if (jid) seen.add(jid);
+        uniqueJobs.push(job);
+      }
+
+      const rows = uniqueJobs.map((job) => `
+        <tr>
+          <td>${escapeHtml(String(job.JobId || '').trim())}</td>
+          <td>${escapeHtml(String(job.Building || '').trim())}</td>
+          <td>${escapeHtml(String(job.ProjectNr || '').trim())}</td>
+          <td>${escapeHtml(String(job.WO || '').trim())}</td>
+        </tr>
+      `).join('');
+
+      const section = document.createElement('div');
+      section.className = 'pending-section';
+      section.innerHTML = `
+        <h2>⏳ Blijft hangen — kost nog niet gekend (${uniqueJobs.length})</h2>
+        <p class="pending-intro">Deze job(s) bevatten een lijn met artikel 00633 (nacalculatie): de taak is uitgevoerd en geaccepteerd, maar de kost is nog niet gekend. Ze worden <strong>niet</strong> meegerekend in de facturatie hierboven en blijven staan tot de kost gekend is.</p>
+        <table class="pending-table">
+          <thead>
+            <tr><th>JobID</th><th>Gebouw</th><th>ProjectNr</th><th>WO</th></tr>
+          </thead>
+          <tbody>${rows}</tbody>
+        </table>
+      `;
+      container.appendChild(section);
+    }
+
     function attachBuildingHandlers() {
       document.querySelectorAll('.vorderingsnummer-input, .job-checkbox').forEach((el) => {
         el.addEventListener('input', updateProcessButtonState);
@@ -825,8 +879,12 @@
       try {
         const data = await apiFetch('LIST_TO_INVOICE');
         buildingGroups = groupJobs(data.Jobs || []);
+        pendingJobs = data.PendingJobs || [];
         renderBuildings();
-        status.textContent = `${data.Jobs.length} job(s) geladen, ${buildingGroups.length} gebouw(en).`;
+        renderPending();
+        const pendingCount = new Set(pendingJobs.map(j => String(j.JobId || '').trim()).filter(Boolean)).size;
+        const pendingNote = pendingCount ? `, ${pendingCount} blijft hangen (00633)` : '';
+        status.textContent = `${data.Jobs.length} job(s) geladen, ${buildingGroups.length} gebouw(en)${pendingNote}.`;
       } catch (err) {
         if (err.message === 'UNAUTHORIZED') return;
         status.textContent = `Fout bij laden: ${err.message}`;
