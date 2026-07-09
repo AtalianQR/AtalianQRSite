@@ -418,6 +418,22 @@
       return '€ ' + num.toLocaleString('nl-BE', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
     }
 
+    // Aantal producten voor de controle-tabel (Samenstelling per JobID): het echte geleverde
+    // aantal (ProductAantal = ext.Quantity in Ultimo). Valt terug op het facturatie-Aantal
+    // zolang de WFL het veld nog niet meestuurt, zodat de pagina blijft werken vóór de deploy.
+    function productAantalValue(job) {
+      const raw = job.ProductAantal;
+      return (raw == null || String(raw).trim() === '') ? job.Aantal : raw;
+    }
+
+    // Eenheidsprijs = Totaal / aantal producten, afgeleid zodat hij altijd klopt met het
+    // getoonde totaal. Bij aantal 0 of onbekend: leeg.
+    function eenheidsprijsDisplay(job) {
+      const aantal = parseFloat(String(productAantalValue(job) ?? '').replace(',', '.'));
+      if (!Number.isFinite(aantal) || aantal === 0) return '';
+      return formatEuro(parseTotaalNumber(job.Totaal) / aantal);
+    }
+
     function calculateBuildingTotal(group) {
       let sum = 0;
       for (const jobsInCode of group.codeGroups.values()) {
@@ -545,6 +561,8 @@
             <td>${escapeHtml(String(j.code || '').trim())}</td>
             <td>${escapeHtml(j.Beschrijving)}</td>
             <td class="num-right">${escapeHtml(formatAantal(j.Aantal))}</td>
+            <td class="num-right">${escapeHtml(formatAantal(productAantalValue(j)))}</td>
+            <td class="num-right">${escapeHtml(eenheidsprijsDisplay(j))}</td>
             <td class="num-right">${escapeHtml(formatTotaalDisplay(j.Totaal))}</td>
           </tr>`;
       }).join('');
@@ -555,7 +573,7 @@
             <div class="jobid-detail-title">Samenstelling per JobID — ${escapeHtml(group.building)} (${lines.length} lijn${lines.length !== 1 ? 'en' : ''})</div>
             <table class="jobid-detail-table">
               <thead>
-                <tr><th>JobID</th><th>ProjectNr</th><th>WO</th><th>Code</th><th>Beschrijving</th><th class="num-right">Aantal</th><th class="num-right">Totaal</th></tr>
+                <tr><th>JobID</th><th>ProjectNr</th><th>WO</th><th>Code</th><th>Beschrijving</th><th class="num-right">Aantal (fac.)</th><th class="num-right">Aantal producten</th><th class="num-right">Eenheidsprijs</th><th class="num-right">Totaal</th></tr>
               </thead>
               <tbody>${body}</tbody>
             </table>
