@@ -1331,6 +1331,105 @@
 	}
 	/* ==================== /INFO TOEVOEGEN ==================== */
 
+	/* ==================== AFHANDELEN: foto (optioneel) + commentaar + bevestiging ====================
+	   Spiegelt de CLOSE-flow van vendor.html (runCommentWithOptionalPhoto) zodat de afhandeling
+	   even vlot verloopt als bij een gewone taak. */
+	async function askCloseCommentWithOptionalPhoto(job){
+		let pickedFile = null;
+		let pickedName = '';
+		let mime = '';
+		let pickedKind = '';
+
+		const addPhoto = await botui.action.button({
+			action: [
+				{ text: isFr ? '📎 Oui, ajouter une photo' : '📎 Ja, foto toevoegen', value: 'yes' },
+				{ text: isFr ? '🖊️ Non, seulement un commentaire' : '🖊️ Nee, enkel commentaar', value: 'no' }
+			]
+		});
+
+		if (addPhoto.value === 'yes') {
+			while (true) {
+				const $file = document.getElementById('info-file-vendor');
+				if (!$file) {
+					await botui.message.add({ content: isFr ? '❌ Pièce jointe manquante.' : '❌ Bestand-component ontbreekt.' });
+					break;
+				}
+
+				$file.value = '';
+				$file.click();
+				const file = await new Promise(resolve => {
+					const h = () => { $file.removeEventListener('change', h); resolve($file.files && $file.files[0]); };
+					$file.addEventListener('change', h, { once: true });
+				});
+				if (!file) {
+					const back = await botui.action.button({
+						action: [
+							{ text: isFr ? '↩️ Retour' : '↩️ Terug', value: 'back', cssClass: 'secondary-button' },
+							{ text: isFr ? '📎 Réessayer' : '📎 Opnieuw kiezen', value: 'again' }
+						]
+					});
+					if (back.value === 'back') break;
+					else continue;
+				}
+
+				pickedFile = file;
+				pickedName = file.name;
+				mime = file.type || _guessMimeByName(pickedName);
+				pickedKind = mime.startsWith('image/') ? 'image' : (mime === 'application/pdf' ? 'pdf' : 'other');
+
+				try {
+					if (pickedKind === 'image') {
+						const blobUrl = URL.createObjectURL(pickedFile);
+						await botui.message.add({
+							type: 'html',
+							content: `<figure style="margin:0"><img src="${blobUrl}" alt="${_escapeHtml(pickedName)}" style="max-width:100%;height:auto;border:1px solid #ddd;border-radius:6px"/><figcaption style="font-size:.85rem;color:#6b7280;margin-top:.25rem">${_escapeHtml(pickedName)}</figcaption></figure>`
+						});
+						setTimeout(() => URL.revokeObjectURL(blobUrl), 15000);
+					} else if (pickedKind === 'pdf') {
+						await botui.message.add({
+							type: 'html',
+							content: `<div style="display:flex;align-items:center;gap:.5rem;padding:.5rem .75rem;border:1px solid #e5e7eb;border-radius:8px;background:#fafafa"><span>📄</span><div><div style="font-weight:600">${_escapeHtml(pickedName)}</div><div style="font-size:.85rem;color:#6b7280">${isFr ? 'PDF sélectionné' : 'PDF geselecteerd'}</div></div></div>`
+						});
+					} else {
+						await botui.message.add({ content: (isFr ? 'Fichier sélectionné: ' : 'Bestand geselecteerd: ') + pickedName });
+					}
+				} catch {}
+
+				const confPhoto = await botui.action.button({
+					action: [
+						{ text: isFr ? '📷 Changer le fichier' : '📷 Bestand wijzigen', value: 'change' },
+						{ text: isFr ? '✅ OK' : '✅ OK', value: 'ok' },
+						{ text: isFr ? '↩️ Annuler' : '↩️ Annuleren', value: 'cancel', cssClass: 'secondary-button' }
+					]
+				});
+				if (confPhoto.value === 'change') continue;
+				if (confPhoto.value === 'cancel') { pickedFile = null; break; }
+				if (confPhoto.value === 'ok') break;
+			}
+		}
+
+		// verplicht commentaar
+		await botui.message.add({ content: isFr ? 'Votre commentaire (max. 200):' : 'Jouw commentaar (max. 200):' });
+		const t = await botui.action.text({ action: { placeholder: isFr ? 'Détail…' : 'Detail…', maxLength: 200 } });
+		const comment = (t.value || '').trim().substring(0, 200);
+		if (!comment) {
+			await botui.message.add({ content: isFr ? '⚠️ Entrez un texte.' : '⚠️ Geef wat tekst in.' });
+			return { confirmed: false, comment: '', file: null };
+		}
+
+		// bevestiging vóór de klacht definitief wordt afgehandeld
+		const c = await botui.action.button({
+			action: [
+				{ text: isFr ? 'Confirmer la clôture' : 'Sluiting bevestigen', value: 'yes' },
+				{ text: isFr ? 'Annuler' : 'Annuleren', value: 'no', cssClass: 'secondary-button' }
+			]
+		});
+		if (c.value !== 'yes') return { confirmed: false, comment, file: pickedFile };
+
+		return { confirmed: true, comment, file: pickedFile };
+	}
+	/* ==================== /AFHANDELEN ==================== */
+
 async function complaintFlow(job){
 
 	 const editable = canEditVendorIssues(job);
@@ -1516,6 +1615,84 @@ async function complaintFlow(job){
 			}
 			continue; // terug naar knoppen
 		  }
+
+		  // ✅ Afhandelen: foto (optioneel) + verplicht commentaar + bevestiging (analoog aan vendor)
+		  if (conf.value === 'finish') {
+			// velden op klik-moment lezen (kunnen nog aangepast zijn in de samenvatting)
+			const fRoot          = trimToMax(document.getElementById('vc_root')?.value, 1000);
+			const fCorrection    = trimToMax(document.getElementById('vc_correction')?.value, 1000);
+			const fCorrective    = trimToMax(document.getElementById('vc_corrective')?.value, 1200);
+			const fEffectiveness = trimToMax(document.getElementById('vc_effectiveness')?.value, 1200);
+
+			if (!fRoot || !fCorrection || !fCorrective || !fEffectiveness) {
+			  await botui.message.add({
+				content: isFr
+				  ? '⚠️ Tous les champs sont obligatoires. Complétez-les dans le résumé et réessayez.'
+				  : '⚠️ Alle velden zijn verplicht. Vul ze aan in de samenvatting en probeer opnieuw.'
+			  });
+			  continue; // terug naar knoppen
+			}
+
+			let closeRes;
+			try {
+			  closeRes = await askCloseCommentWithOptionalPhoto(job);
+			} catch (e) {
+			  const msg = (e && e.message) ? e.message : String(e);
+			  await botui.message.add({ content: (isFr ? '❌ Erreur: ' : '❌ Fout: ') + msg });
+			  continue;
+			}
+			if (!closeRes || !closeRes.confirmed) continue; // annuleren → terug naar knoppen
+
+			Telemetry.send('vendorklacht_finish_clicked');
+			await botui.message.add({ content: isFr ? '✅ Traitement…' : '✅ Afhandelen…' });
+
+			// 1) velden bewaren
+			await submitVendorComplaint({
+			  jobId: job.Id,
+			  loopVendorId: job?.LoopVendorId,
+			  rootCause: fRoot,
+			  correction: fCorrection,
+			  correctiveMeasure: fCorrective,
+			  effectiveness: fEffectiveness
+			});
+
+			// 2) foto uploaden indien gekozen
+			if (closeRes.file) {
+			  try {
+				await botui.message.add({ content: isFr ? '⏳ Téléversement…' : '⏳ Uploaden…' });
+				await uploadJobDocUltimo(job.Id, closeRes.file, closeRes.comment);
+				await botui.message.add({ content: isFr ? '✅ Document ajouté.' : '✅ Document toegevoegd.' });
+				hasJobDocuments = true;
+				revealFab();
+			  } catch (e) {
+				await botui.message.add({ content: (isFr ? '❌ Échec du téléversement: ' : '❌ Upload mislukt: ') + ((e && e.message) ? e.message : String(e)) });
+			  }
+			}
+
+			// 3) commentaar wegschrijven als info
+			try {
+			  const infoText = closeRes.file ? `${closeRes.comment} (document: ${closeRes.file.name})` : closeRes.comment;
+			  await submitAddInfoUltimo(job.Id, _formatTextForUltimo(infoText));
+			} catch (e) {
+			  await botui.message.add({ content: (isFr ? '❌ Erreur: ' : '❌ Fout: ') + ((e && e.message) ? e.message : String(e)) });
+			}
+
+			// 4) status → 1016
+			await setProgressStatus({ jobId: job.Id, newProgressStatusId: '1016' });
+
+			await botui.message.add({
+			  content: isFr ? '✅ Plainte traitée.' : '✅ Klacht afgehandeld.'
+			});
+
+			closeDocPanel();
+			if (cameFromPortalSelf || cameFromDmAssistent) return goBackAfterVendor();
+
+			await botui.message.add({
+			  content: isFr ? '🔚 Vous pouvez fermer cette fenêtre.' : '🔚 Je mag dit venster sluiten.'
+			});
+			return;
+		  }
+
 		  break;
 		}
 
@@ -1587,43 +1764,8 @@ async function complaintFlow(job){
 	}
 
 	
-	if (conf.value === 'finish') {
-	  Telemetry.send('vendorklacht_finish_clicked');
-
-	  await botui.message.add({
-		content: isFr ? '✅ Traitement…' : '✅ Afhandelen…'
-	  });
-
-	  // 1) eerst velden bewaren
-	await submitVendorComplaint({
-	  jobId: job.Id,
-	  loopVendorId: job?.LoopVendorId,
-	  rootCause: vRoot,
-	  correction: vCorrection,
-	  correctiveMeasure: vCorrective,
-	  effectiveness: vEffectiveness
-	});
-
-
-	  // 2) dan status naar 1016
-	  await setProgressStatus({ jobId: job.Id, newProgressStatusId: '1016' });
-
-	  await botui.message.add({
-		content: isFr
-		  ? '✅ Plainte traitée.'
-		  : '✅ Klacht afgehandeld.'
-	  });
-
-	  closeDocPanel();
-	  if (cameFromPortalSelf || cameFromDmAssistent) return goBackAfterVendor();
-
-	  await botui.message.add({
-		content: isFr ? '🔚 Vous pouvez fermer cette fenêtre.' : '🔚 Je mag dit venster sluiten.'
-	  });
-	  return;
-	}
-
-
+	// 'finish' wordt volledig in de knoppenlus hierboven afgehandeld
+	// (foto + commentaar + bevestiging + bewaren + status 1016).
 
 	if (conf.value === 'misassigned') {
 	  Telemetry.send('vendorklacht_misassigned_clicked');
