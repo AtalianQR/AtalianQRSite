@@ -404,7 +404,15 @@
     }
 
     function totaalCopyValue(value) {
-      return String(value || '').replace(/^EUR\s*/i, '').trim();
+      // Kopieerwaarde met punt als decimaalteken (geen duizendtalscheiding),
+      // zodat het bedrag plakbaar is; de weergave op het scherm houdt de komma.
+      return parseTotaalNumber(value).toFixed(2);
+    }
+
+    function aantalCopyValue(value) {
+      // Kopieerwaarde met punt als decimaalteken i.p.v. komma.
+      const num = parseFloat(String(value == null ? '' : value).replace(',', '.'));
+      return Number.isFinite(num) ? String(num) : String(value == null ? '' : value);
     }
 
     function parseTotaalNumber(value) {
@@ -639,7 +647,7 @@
               <tr class="job-row" data-jobid="${escapeHtml(jobId)}">
                 <td class="${idx === 0 ? 'code-group-start' : ''}">${escapeHtml(job.ProjectNr)}</td>
                 <td>${escapeHtml(job.WO)}</td>
-                <td class="num-right">${copyPart(formatAantal(job.Aantal), formatAantal(job.Aantal))}</td>
+                <td class="num-right">${copyPart(formatAantal(job.Aantal), aantalCopyValue(job.Aantal))}</td>
                 <td class="num-right">${isBl2La2 ? copyPart(formatTotaalDisplay(job.Totaal), totaalCopyValue(job.Totaal)) : escapeHtml(formatTotaalDisplay(job.Totaal))}</td>
                 <td>${renderCodeCell(code)}</td>
                 <td>${isBl2La2 ? `<span class="copy-part beschrijving-part" data-building="${escapeHtml(group.building)}" data-code="${escapeHtml(code)}" data-copy-value=""></span>` : ''}</td>
