@@ -26,12 +26,16 @@ Alles hangt aan **object features** (objectkenmerken), niet aan dedicated velden
 | **000151** | Iot Factory asset ID | **Ruimte** (Space) | Alfanumeriek | RealPulse-asset-id → *welk device* companion moet uitlezen |
 | **000152** | Portalcompanion | **Gebouw** (Building) | Ja/Nee | companion *aan/uit* voor het hele gebouw |
 
-Beide hangen als **1:N** onder hun object: `<Object> → ObjectFeatures (OBJECTFEATURE 1:N) → Feature`. Op een concreet object voeg je één `ObjectFeature`-rij toe die naar de betreffende Feature verwijst met de waarde. Voordeel t.o.v. een dedicated veld: geen schemawijziging, herbruikbaar patroon, per object beheerbaar zonder overal vinkjes. In elke WFL-lookup **matchen op de kenmerkcode** (`000151`/`000152`) — stabieler dan de naam.
+Beide hangen als **1:N** onder hun object: `<Object> → ObjectFeatures (OBJECTFEATURE 1:N) → Feature`. Op een concreet object voeg je één `ObjectFeature`-rij toe die naar de betreffende Feature verwijst met de waarde. Voordeel t.o.v. een dedicated veld: geen schemawijziging, herbruikbaar patroon, per object beheerbaar zonder overal vinkjes.
+
+**Ultimo = master, de `*.js` = slaves (routing op description).** De proxy hardcodeert géén kenmerkcode. De WFL geeft de kenmerken van het object terug (`code + description + value`), en de `*.js` **routeert op de feature-description** naar het juiste bronsysteem: description bevat "iot" → RealPulse (waarde = asset-id); bij installaties bevat ze "soundsensing" → Soundsensing (waarde = device-id). Een nieuwe integratie toevoegen = een kenmerk met de juiste naam in Ultimo, zonder codewijziging downstream. Zo bepaalt Ultimo (de naamgeving) welk systeem geldt.
+
+Bevestigde Ultimo-metadata (entity `ObjectFeature`): `AlphanumericValue` (kolom `OBJFALPHANUMERIC`, string 250) = de waarde; relaties `Space` (`OBJFSPCID`), `Building` (`OBJFBLDID`), `Equipment`, `Feature` (`OBJFFTRID`). `Feature.Id` = de code (bv. `000151`), `Feature.Description` = de naam.
 
 ### 2.1 Kenmerk `000151` "Iot Factory asset ID" (Space, alfanumeriek)
 - Draagt per lokaal de **RealPulse-asset-id** (bv. Ruimte 001406 "Brel" → `6508159013019d0012630847`). Dit vervangt de `iotAssetId` in de registry `rooms.json` uit §6 van de bestaande spec: de koppeling leeft nu in Ultimo op de Space.
 - Een lokaal **zonder** deze feature heeft geen IoT-koppeling → companion toont er de live comfort-/drukte-kaarten niet, de rest wél.
-- **Server-side gebruikt** (zie §3, keuze A): `room.js` resolvet space → `ObjectFeatures[Feature=000151]` → asset-id → RealPulse. De asset-id gaat **niet** naar de browser.
+- **Server-side gebruikt** (zie §4, keuze A): `room.js` haalt via de WFL de kenmerken op, kiest het kenmerk met een IoT-description en gebruikt zijn `AlphanumericValue` als RealPulse-asset-id. De asset-id gaat **niet** naar de browser.
 
 ### 2.2 Kenmerk `000152` "Portalcompanion" (Building, Ja/Nee)
 - Eén Ja/Nee-kenmerk op het gebouw zet companion aan/uit voor de hele site. **Granulariteit = building-niveau (bewust):** een lokaal zonder IoT in een enabled gebouw geniet gewoon mee van de companion (weer, nieuws, wifi, vestigingen, naamgever…); enkel de sensorkaarten hangen af van `000151`. Reden: niet elke klant plaatst overal sensoren.
@@ -62,14 +66,15 @@ QR-scan → portal.html?id=<SpaceId>&lang=&env=
 ```
 companion.html  →  room.js?spaceId=<SpaceId>&lang=&env=
    room.js:
-     1) Ultimo: Space → ObjectFeatures[Feature=000151] → alfanumerieke asset-id
-     2) RealPulse: GET /api/assets/<asset-id>  (Basic Auth, creds server-side)
-     3) terug: gesaneerd { coupled, temp, co2, hum, motion, updatedAt }
-                (GEEN asset-id, GEEN creds naar de browser)
-   geen 000151-rij → { coupled: false }  → companion laat de sensorkaarten weg
+     1) Ultimo WFL GET_SPACE_FEATURES → { features:[{code,description,value}] }
+     2) routeer op description: bevat "iot" → RealPulse; value = asset-id
+     3) RealPulse: GET /api/assets/<asset-id>  (Basic Auth, creds server-side)
+     4) terug: gesaneerd { coupled, temp, co2, hum, motion, updatedAt }
+                (GEEN asset-id, GEEN creds naar de browser; ?debug=1 echo't ze wel)
+   geen IoT-kenmerk → { coupled: false }  → companion laat de sensorkaarten weg
 ```
 
-Waarom A boven "portal geeft de id mee in de URL": nette URL's, de browser kent de asset-id niet, en de resolutie zit op één plek. Kost een extra Ultimo-call in de functie — aanvaardbaar (server-side, cachebaar).
+Waarom A boven "portal geeft de id mee in de URL": nette URL's, de browser kent de asset-id niet, en de resolutie + routing zitten op één plek. Kost een extra Ultimo-call in de functie — aanvaardbaar (server-side, cachebaar).
 
 **Credentials in Netlify (niet in Ultimo).** De RealPulse-creds blijven **Netlify env-vars**, uitsluitend server-side gelezen door `room.js` (precedent: `soundsensing-sync.js`).
 - **Demo = één omgeving, één sleutelpaar** (`REALPULSE_USER` / `REALPULSE_PASS`). Voldoende voor nu.
@@ -107,9 +112,9 @@ Elke schakel draagt `env` door zodat de volledige keten in de testomgeving werkt
 
 Niet alles tegelijk: bouw de **dunste verticale plak** die de héle keten bewijst (*Ultimo-feature → asset-id → RealPulse → scherm*), en laat de rest decoratie zijn.
 
-- **Fase 0 · Ultimo/WFL — de eerste stap.** Een **Query-WFL** die voor een gegeven `SpaceId` de **Space-`ObjectFeatures` 1:N** doorloopt, filtert op **`Feature = 000151`** en de **alfanumerieke waarde** (de RealPulse-asset-id) teruggeeft. Dit is de knoop die eerst uitgedokterd wordt; alles hangt hieraan. (De building-`000152`-vlag komt pas in Fase 3.)
+- **Fase 0 · Ultimo/WFL — de eerste stap. ✅ gebouwd.** Action **`GET_SPACE_FEATURES`** in `_rest_QueryAtalianJobs.wfl`: voor een `SpaceId` de **Space-`ObjectFeatures` 1:N** (`Query Type="ObjectFeature"`, filter `Space=${SpaceId}`, join `Feature` alias FTR) → `{features:[{code,description,value}]}` (value = `AlphanumericValue`), leeg = `'{}'`. Géén codefilter — Ultimo blijft master, `room.js` routeert op description. (De building-`000152`-vlag komt pas in Fase 3.)
 - **Fase 1 · dunne plak, op `localhost` (`netlify dev`).**
-  1. **`room.js`** — keuze A: `?spaceId=&lang=&env=` → asset-id via de Query-WFL → RealPulse server-side → gesaneerde `{coupled, temp, co2, hum, motion, updatedAt}`.
+  1. **`room.js`** — keuze A ✅: `?spaceId=&lang=&env=` → `GET_SPACE_FEATURES` → routeer op description ("iot" → RealPulse) → RealPulse server-side → gesaneerde `{coupled, temp, co2, hum, motion, updatedAt}`. `?debug=1` echo't de kenmerken + match.
   2. **`companion.html`** — minimale pagina die één **comfortkaart** voor Brel toont + "Meld een probleem" (`src`+`melden=1`).
   3. **`portal.html`** — **dev-bypass**: op `localhost` (of `?companion=1`) meteen naar companion redirecten, **zónder** de `000152`-vlagtest, zodat de keten rijdt vóór de vlag-WFL af is.
 - **Fase 2 · widgets.** Weer, nieuws, vestigingen, wifi, naamgever — puur UI bovenop de werkende pipeline.
@@ -119,8 +124,8 @@ Niet alles tegelijk: bouw de **dunste verticale plak** die de héle keten bewijs
 
 | Component | Wijziging |
 |---|---|
-| **Ultimo — Query-WFL (Fase 0)** | voor `SpaceId` de Space-`ObjectFeatures[Feature=000151]` teruggeven (alfanumerieke asset-id). Later ook building-`ObjectFeatures[Feature=000152]` → `companionEnabled` |
-| **`room.js`** | keuze A: `?spaceId=&env=` → asset-id via WFL → RealPulse server-side → gesaneerde sensordata; `env`-bewust; creds uit Netlify env-vars |
+| **Ultimo — Query-WFL (Fase 0) ✅** | action `GET_SPACE_FEATURES`: voor `SpaceId` de Space-`ObjectFeatures` teruggeven als `{features:[{code,description,value}]}`. Later ook building-`ObjectFeatures[Feature=000152]` → `companionEnabled` |
+| **`room.js` ✅** | keuze A: `?spaceId=&env=` → `GET_SPACE_FEATURES` → routeer op description → RealPulse server-side → gesaneerde sensordata; `env`-bewust; creds uit Netlify env-vars |
 | **`companion.html`** | **nieuw** bestand: companion-UI; sensorkaart via `room.js?spaceId=`; melden-knop met `src`+`melden=1`+`env` naar `portal.html` |
 | **`portal.html`** | Fase 1: dev-bypass (`localhost`/`?companion=1`) → companion. Fase 3: branch na `space.js` op `companionEnabled`, met `melden=1`/vlag-uit → ongewijzigd gedrag |
 | **`space.js`** | Fase 3: `companionEnabled` (building-`000152`) opnemen in de gesaneerde JSON |
