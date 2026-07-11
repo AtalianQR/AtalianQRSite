@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>ATALIAN · Companion</title>
+  <link rel="icon" href="/AtalianFavicon.png" />
+  <style>
+    :root{
+      --accent:#EE7E00; --accent2:#F28C00; --navy:#24313F;
+      --ok:#2e9e5b; --warn:#e08a00; --bad:#d64550;
+      --bg:#f4f6fa; --card:#ffffff; --line:#e5e9ef; --muted:#6b7280;
+    }
+    *{box-sizing:border-box}
+    body{margin:0;font-family:system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif;background:var(--bg);color:var(--navy)}
+    .wrap{max-width:520px;margin:0 auto;padding:0 16px 40px}
+    header.site{background:var(--navy);color:#fff;padding:14px 16px;display:flex;align-items:center;gap:10px}
+    header.site .wrap{max-width:520px;margin:0 auto;padding:0;display:flex;align-items:center;gap:10px;width:100%}
+    header.site img{height:22px}
+    header.site .loc{font-weight:600;letter-spacing:.02em}
+    header.site .lang{margin-left:auto;display:flex;gap:6px}
+    header.site .lang a{color:#cdd6df;text-decoration:none;font-size:.82rem;padding:2px 6px;border-radius:6px}
+    header.site .lang a.on{color:#fff;background:rgba(255,255,255,.14)}
+    h1{font-size:1.15rem;margin:18px 2px 4px}
+    .sub{color:var(--muted);font-size:.86rem;margin:0 2px 14px}
+    .card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px;margin:12px 0;box-shadow:0 1px 3px rgba(36,49,63,.05)}
+    .card h2{font-size:.78rem;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin:0 0 12px}
+    .badge{display:inline-flex;align-items:center;gap:8px;font-weight:700;font-size:1.02rem;padding:8px 12px;border-radius:10px}
+    .badge.ok{background:#e8f6ee;color:var(--ok)} .badge.warn{background:#fdf1dd;color:var(--warn)} .badge.bad{background:#fbe6e8;color:var(--bad)}
+    .dot{width:10px;height:10px;border-radius:50%;background:currentColor;flex:0 0 auto}
+    .metrics{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:14px}
+    .metric{text-align:center;background:#fafbfd;border:1px solid var(--line);border-radius:10px;padding:10px 6px}
+    .metric .v{font-size:1.3rem;font-weight:700} .metric .k{font-size:.72rem;color:var(--muted);margin-top:2px}
+    .updated{font-size:.76rem;color:var(--muted);margin-top:12px}
+    .btn{display:block;width:100%;text-align:center;text-decoration:none;background:var(--accent);color:#fff;font-weight:700;padding:14px;border-radius:12px;margin-top:16px;border:none;cursor:pointer;font-size:1rem}
+    .btn:active{background:var(--accent2)}
+    .muted-card{color:var(--muted);font-size:.9rem}
+    .spin{display:inline-block;width:16px;height:16px;border:2px solid var(--line);border-top-color:var(--accent);border-radius:50%;animation:sp .8s linear infinite;vertical-align:-3px}
+    @keyframes sp{to{transform:rotate(360deg)}}
+  </style>
+</head>
+<body>
+  <header class="site">
+    <div class="wrap">
+      <img src="/AtalianLogo.png" alt="ATALIAN" onerror="this.style.display='none'" />
+      <span class="loc" id="loc">ATALIAN</span>
+      <span class="lang" id="lang">
+        <a href="#" data-l="nl">NL</a><a href="#" data-l="fr">FR</a><a href="#" data-l="en">EN</a>
+      </span>
+    </div>
+  </header>
+
+  <div class="wrap">
+    <h1 id="roomName"></h1>
+    <p class="sub" id="roomSub"></p>
+
+    <section class="card" id="comfort">
+      <h2 id="comfortTitle"></h2>
+      <div id="comfortBody"><span class="spin"></span> <span id="loadingTxt"></span></div>
+    </section>
+
+    <a class="btn" id="meldBtn" href="#"></a>
+  </div>
+
+  <script>
+    // ---- URL-parameters ------------------------------------------------
+    const qs = new URLSearchParams(location.search);
+    const spaceId = (qs.get('id') || qs.get('spaceId') || '').trim();
+    const env = qs.get('env') === 'test' ? 'test' : 'prod';
+    const debug = qs.get('debug') === '1';
+
+    let lang = (qs.get('lang') || (navigator.language || 'nl').slice(0,2)).toLowerCase();
+    if (!['nl','fr','en'].includes(lang)) lang = 'nl';
+    document.documentElement.lang = lang;
+    const tr = (nl, fr, en) => (lang === 'fr' ? fr : lang === 'en' ? en : nl);
+
+    // ---- i18n statische labels ----------------------------------------
+    document.getElementById('comfortTitle').textContent = tr('Comfort & luchtkwaliteit', 'Confort & qualité de l’air', 'Comfort & air quality');
+    document.getElementById('loadingTxt').textContent = tr('Sensordata ophalen…', 'Chargement des données…', 'Loading sensor data…');
+    document.getElementById('meldBtn').textContent = tr('🛠️ Meld een probleem', '🛠️ Signaler un problème', '🛠️ Report a problem');
+
+    // taal-schakelaar
+    document.querySelectorAll('#lang a').forEach(a => {
+      if (a.dataset.l === lang) a.classList.add('on');
+      a.addEventListener('click', e => { e.preventDefault(); const u = new URL(location.href); u.searchParams.set('lang', a.dataset.l); location.href = u.toString(); });
+    });
+
+    // ---- Melden-knop: terug naar het traditionele portaal, keert nadien terug ----
+    // (round-trip via ?src; melden=1 markeert de traditionele modus voor later, zie spec §3/§4)
+    (function buildMeldLink(){
+      const u = new URL('/portal.html', location.origin);
+      if (spaceId) u.searchParams.set('id', spaceId);
+      u.searchParams.set('lang', lang);
+      u.searchParams.set('env', env);
+      u.searchParams.set('src', location.href);
+      u.searchParams.set('melden', '1');
+      document.getElementById('meldBtn').setAttribute('href', u.toString());
+    })();
+
+    // ---- Ruimte-info (naam + gebouw) voor de header -------------------
+    async function loadRoomInfo(){
+      if (!spaceId) return;
+      try {
+        const r = await fetch(`/.netlify/functions/space?id=${encodeURIComponent(spaceId)}&lang=${lang}&env=${env}`);
+        if (!r.ok) return;
+        const d = await r.json();
+        const name = (d.description || '').trim();
+        const bld  = (d.buildingName || '').trim();
+        if (name) document.getElementById('roomName').textContent = name;
+        if (bld)  document.getElementById('loc').textContent = `ATALIAN · ${bld}`;
+        document.getElementById('roomSub').textContent = [d.clientName, bld].filter(Boolean).join(' · ');
+      } catch {}
+    }
+
+    // ---- Comfort-kaart -------------------------------------------------
+    function comfortForCo2(co2){
+      if (co2 == null || isNaN(co2)) return null;
+      if (co2 < 900)  return { cls:'ok',   txt: tr('Frisse lucht', 'Air frais', 'Fresh air') };
+      if (co2 <= 1200) return { cls:'warn', txt: tr('Ventileer even', 'Aérez un peu', 'Ventilate a bit') };
+      return { cls:'bad', txt: tr('Ventileer nu', 'Aérez maintenant', 'Ventilate now') };
+    }
+    function fmtTime(ts){
+      if (!ts) return '';
+      const d = new Date(ts);            // RealPulse-timestamps zijn UTC (…Z)
+      if (isNaN(d)) return '';
+      return d.toLocaleTimeString(lang === 'fr' ? 'fr-BE' : lang === 'en' ? 'en-GB' : 'nl-BE', { hour:'2-digit', minute:'2-digit' });
+    }
+    function num(v, dec=0){ return (v==null||isNaN(v)) ? '–' : Number(v).toFixed(dec); }
+
+    async function loadComfort(){
+      const body = document.getElementById('comfortBody');
+      if (!spaceId){ body.innerHTML = `<div class="muted-card">${tr('Geen lokaal opgegeven.', 'Aucun local indiqué.', 'No room specified.')}</div>`; return; }
+      try {
+        const r = await fetch(`/.netlify/functions/room?spaceId=${encodeURIComponent(spaceId)}&env=${env}${debug?'&debug=1':''}`);
+        const d = await r.json();
+
+        if (!r.ok) { body.innerHTML = `<div class="muted-card">${tr('Sensordata tijdelijk niet beschikbaar.', 'Données momentanément indisponibles.', 'Sensor data temporarily unavailable.')}</div>`; return; }
+
+        if (!d.coupled) {
+          body.innerHTML = `<div class="muted-card">${tr('Dit lokaal heeft (nog) geen sensoren.', 'Ce local n’a pas (encore) de capteurs.', 'This room has no sensors (yet).')}</div>`;
+          return;
+        }
+
+        const c = comfortForCo2(d.co2);
+        const badge = c ? `<span class="badge ${c.cls}"><span class="dot"></span>${c.txt}</span>` : '';
+        body.innerHTML = `
+          ${badge}
+          <div class="metrics">
+            <div class="metric"><div class="v">${num(d.temp,1)}°</div><div class="k">${tr('Temperatuur','Température','Temperature')}</div></div>
+            <div class="metric"><div class="v">${num(d.co2)}</div><div class="k">CO₂ ppm</div></div>
+            <div class="metric"><div class="v">${num(d.hum)}%</div><div class="k">${tr('Vocht','Humidité','Humidity')}</div></div>
+          </div>
+          ${d.updatedAt ? `<div class="updated">${tr('Laatst bijgewerkt','Dernière mise à jour','Last updated')}: ${fmtTime(d.updatedAt)}</div>` : ''}
+        `;
+      } catch (e) {
+        body.innerHTML = `<div class="muted-card">${tr('Sensordata tijdelijk niet beschikbaar.', 'Données momentanément indisponibles.', 'Sensor data temporarily unavailable.')}</div>`;
+      }
+    }
+
+    loadRoomInfo();
+    loadComfort();
+  </script>
+</body>
+</html>
