@@ -1,0 +1,98 @@
+{
+  "schema": "companion.v1",
+  "naamgever": {
+    "naam": "Victor Horta",
+    "discipline": {
+      "nl": "Architect · 1861–1947",
+      "fr": "Architecte · 1861–1947",
+      "en": "Architect · 1861–1947"
+    },
+    "omschrijving": {
+      "nl": "Belgische architect en grondlegger van de art nouveau.",
+      "fr": "Architecte belge et pionnier de l’Art nouveau.",
+      "en": "Belgian architect and pioneer of Art Nouveau."
+    },
+    "weetjes": [
+      {
+        "nl": "Bij Horta kreeg zelfs een deurbel of deurklink dezelfde ontwerpaandacht als het meubilair.",
+        "fr": "Chez Horta, même une sonnette ou une poignée de porte recevait autant d’attention que le mobilier.",
+        "en": "For Horta, even a doorbell or door handle received the same design attention as the furniture."
+      },
+      {
+        "nl": "Vier Brusselse huizen van Horta staan samen op de UNESCO-Werelderfgoedlijst.",
+        "fr": "Quatre maisons bruxelloises de Horta sont inscrites ensemble au patrimoine mondial de l’UNESCO.",
+        "en": "Four of Horta’s Brussels houses are jointly listed as UNESCO World Heritage."
+      },
+      {
+        "nl": "Hôtel Tassel uit 1893 geldt als een van de baanbrekende werken van de vroege art nouveau.",
+        "fr": "L’Hôtel Tassel de 1893 est considéré comme l’une des œuvres pionnières de l’Art nouveau.",
+        "en": "The 1893 Hôtel Tassel is considered one of the pioneering works of early Art Nouveau."
+      },
+      {
+        "nl": "Horta liet gebogen decoratielijnen letterlijk samenvloeien met de structuur van het gebouw.",
+        "fr": "Horta faisait littéralement fusionner les lignes courbes du décor avec la structure du bâtiment.",
+        "en": "Horta literally merged curved decorative lines with the structure of the building."
+      },
+      {
+        "nl": "Staal en glas waren bij Horta geen elementen om te verbergen. Ze maakten deel uit van de architectuur.",
+        "fr": "Chez Horta, l’acier et le verre n’étaient pas à cacher. Ils faisaient partie de l’architecture.",
+        "en": "For Horta, steel and glass were not elements to hide. They were part of the architecture."
+      },
+      {
+        "nl": "Open ruimtes en de verspreiding van licht maakten Horta’s huizen revolutionair aan het einde van de 19e eeuw.",
+        "fr": "Les espaces ouverts et la diffusion de la lumière rendaient les maisons de Horta révolutionnaires à la fin du XIXe siècle.",
+        "en": "Open spaces and the diffusion of light made Horta’s houses revolutionary at the end of the 19th century."
+      },
+      {
+        "nl": "Hôtel Tassel en Hôtel van Eetvelde zijn opgebouwd als dubbele huizen, verbonden door een glazen circulatieruimte.",
+        "fr": "L’Hôtel Tassel et l’Hôtel van Eetvelde sont conçus comme des maisons doubles reliées par un espace de circulation vitré.",
+        "en": "Hôtel Tassel and Hôtel van Eetvelde were designed as double houses connected by a glass-covered circulation space."
+      },
+      {
+        "nl": "De glazen verbindingsruimtes in Horta’s huizen bevatten vaak een wintertuin.",
+        "fr": "Les espaces vitrés qui reliaient les parties des maisons de Horta abritaient souvent un jardin d’hiver.",
+        "en": "The glass-covered connecting spaces in Horta’s houses often contained a winter garden."
+      },
+      {
+        "nl": "UNESCO noemt Hôtel Solvay Horta’s meest ambitieuze en spectaculaire art-nouveauwerk.",
+        "fr": "L’UNESCO qualifie l’Hôtel Solvay d’œuvre Art nouveau la plus ambitieuse et spectaculaire de Horta.",
+        "en": "UNESCO describes Hôtel Solvay as Horta’s most ambitious and spectacular Art Nouveau work."
+      },
+      {
+        "nl": "Horta ontwierp elk huis zodat het de persoonlijkheid van de eigenaar weerspiegelde.",
+        "fr": "Horta concevait chaque maison pour qu’elle reflète la personnalité de son propriétaire.",
+        "en": "Horta designed each house to reflect the personality of its owner."
+      },
+      {
+        "nl": "Voor Horta waren architectuur en decoratie geen aparte vakken. Alles moest één geheel vormen.",
+        "fr": "Pour Horta, l’architecture et la décoration n’étaient pas séparées. Tout devait former un ensemble.",
+        "en": "For Horta, architecture and decoration were not separate disciplines. Everything had to form one whole."
+      },
+      {
+        "nl": "In 1919 kreeg Horta de opdracht om het Brusselse Paleis voor Schone Kunsten te ontwerpen.",
+        "fr": "En 1919, Horta reçoit la mission de concevoir le Palais des Beaux-Arts de Bruxelles.",
+        "en": "In 1919, Horta was commissioned to design Brussels’ Centre for Fine Arts."
+      },
+      {
+        "nl": "Voor het huidige BOZAR ruilde Horta de golvende art-nouveaulijnen in voor de geometrie van de art deco.",
+        "fr": "Pour l’actuel BOZAR, Horta abandonne les lignes sinueuses de l’Art nouveau au profit de la géométrie Art déco.",
+        "en": "For today’s BOZAR, Horta traded the flowing lines of Art Nouveau for the geometry of Art Deco."
+      },
+      {
+        "nl": "Horta noemde het Paleis voor Schone Kunsten zelf een hoogtepunt in zijn carrière.",
+        "fr": "Horta qualifiait lui-même le Palais des Beaux-Arts de sommet de sa carrière.",
+        "en": "Horta himself described the Centre for Fine Arts as a high point in his career."
+      },
+      {
+        "nl": "Het Brusselse Paleis voor Schone Kunsten opende in 1928 voor het publiek.",
+        "fr": "Le Palais des Beaux-Arts de Bruxelles a ouvert ses portes au public en 1928.",
+        "en": "Brussels’ Centre for Fine Arts opened to the public in 1928."
+      }
+    ]
+  },
+  "bronnen": [
+    "https://whc.unesco.org/en/list/1005/",
+    "https://www.bozar.be/en/four-aspects-architecture",
+    "https://www.bozar.be/en/building"
+  ]
+}

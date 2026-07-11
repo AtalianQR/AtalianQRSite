@@ -1,0 +1,96 @@
+{
+  "schema": "companion.v1",
+  "naamgever": {
+    "naam": "Jacques Brel",
+    "discipline": {
+      "nl": "Chansonnier · 1929–1978",
+      "fr": "Chanteur, auteur-compositeur · 1929–1978",
+      "en": "Singer-songwriter · 1929–1978"
+    },
+    "omschrijving": {
+      "nl": "Belgische chansonnier die wereldfaam verwierf met zijn Franstalige liederen.",
+      "fr": "Chansonnier belge devenu mondialement célèbre pour ses chansons en français.",
+      "en": "Belgian singer-songwriter who won worldwide fame with his French-language chansons."
+    },
+    "weetjes": [
+      {
+        "nl": "In 1953 nam Brel zijn eerste 78-toerenplaat op. Zes jaar later nam hij Ne me quitte pas op.",
+        "fr": "En 1953, Brel enregistre son premier 78 tours. Six ans plus tard, il enregistre Ne me quitte pas.",
+        "en": "In 1953, Brel recorded his first 78 rpm record. Six years later, he recorded Ne me quitte pas."
+      },
+      {
+        "nl": "Amsterdam werd in 1964 opgenomen tijdens Brels passage in de Olympia in Parijs.",
+        "fr": "Amsterdam est enregistré en 1964 lors du passage de Brel à l’Olympia de Paris.",
+        "en": "Amsterdam was recorded in 1964 during Brel’s appearance at the Olympia in Paris."
+      },
+      {
+        "nl": "In 1966 besliste Brel te stoppen met tournees. Zijn allerlaatste podiumoptreden volgde in 1967 in Roubaix.",
+        "fr": "En 1966, Brel décide d’arrêter les tournées. Sa toute dernière prestation sur scène a lieu en 1967 à Roubaix.",
+        "en": "In 1966, Brel decided to stop touring. His final stage performance followed in 1967 in Roubaix."
+      },
+      {
+        "nl": "In 1974 verliet Brel Antwerpen op zijn zeilboot Askoy II.",
+        "fr": "En 1974, Brel quitte Anvers à bord de son voilier Askoy II.",
+        "en": "In 1974, Brel left Antwerp aboard his sailing boat Askoy II."
+      },
+      {
+        "nl": "In 1975 stak Brel de Stille Oceaan over richting Polynesië.",
+        "fr": "En 1975, Brel traverse le Pacifique en direction de la Polynésie.",
+        "en": "In 1975, Brel crossed the Pacific Ocean towards Polynesia."
+      },
+      {
+        "nl": "In 1976 vestigde Brel zich op Hiva Oa, een eiland in de Marquesas.",
+        "fr": "En 1976, Brel s’installe à Hiva Oa, une île des Marquises.",
+        "en": "In 1976, Brel settled on Hiva Oa, an island in the Marquesas."
+      },
+      {
+        "nl": "Brel ligt begraven op Hiva Oa, het eiland waar hij zijn laatste levensjaren doorbracht.",
+        "fr": "Brel repose à Hiva Oa, l’île où il a passé les dernières années de sa vie.",
+        "en": "Brel is buried on Hiva Oa, the island where he spent the final years of his life."
+      },
+      {
+        "nl": "In 1977 nam Brel zijn laatste plaat Les Marquises op.",
+        "fr": "En 1977, Brel enregistre son dernier disque, Les Marquises.",
+        "en": "In 1977, Brel recorded his final album, Les Marquises."
+      },
+      {
+        "nl": "Brel was ook filmregisseur: hij regisseerde Franz en Le Far West.",
+        "fr": "Brel était aussi réalisateur : il a réalisé Franz et Le Far West.",
+        "en": "Brel was also a film director: he directed Franz and Le Far West."
+      },
+      {
+        "nl": "In 1968 maakte Brel de Franse versie van de musical L’Homme de la Mancha.",
+        "fr": "En 1968, Brel crée la version française de la comédie musicale L’Homme de la Mancha.",
+        "en": "In 1968, Brel created the French version of the musical Man of La Mancha."
+      },
+      {
+        "nl": "Brel richtte in 1962 zijn eigen muziekuitgeverij Éditions Pouchenel op.",
+        "fr": "En 1962, Brel crée sa propre maison d’édition musicale, les Éditions Pouchenel.",
+        "en": "In 1962, Brel founded his own music publishing company, Éditions Pouchenel."
+      },
+      {
+        "nl": "In augustus 1953 nam Brel bij Radio Hasselt zijn volledige repertoire op.",
+        "fr": "En août 1953, Brel enregistre tout son répertoire à Radio Hasselt.",
+        "en": "In August 1953, Brel recorded his entire repertoire at Radio Hasselt."
+      },
+      {
+        "nl": "Brel stond in 1961 voor het eerst als hoofdact in de Olympia.",
+        "fr": "En 1961, Brel se produit pour la première fois en vedette à l’Olympia.",
+        "en": "In 1961, Brel appeared as the headline act at the Olympia for the first time."
+      },
+      {
+        "nl": "In 1969 nam Brel ook Het verhaal van Babar en Peter en de Wolf op.",
+        "fr": "En 1969, Brel enregistre aussi L’Histoire de Babar et Pierre et le Loup.",
+        "en": "In 1969, Brel also recorded The Story of Babar and Peter and the Wolf."
+      },
+      {
+        "nl": "In 1967 gaf Brel zijn laatste concert én begon hij aan een nieuwe carrière als filmacteur.",
+        "fr": "En 1967, Brel donne son dernier concert et entame une nouvelle carrière d’acteur de cinéma.",
+        "en": "In 1967, Brel gave his final concert and began a new career as a film actor."
+      }
+    ]
+  },
+  "bronnen": [
+    "https://fondationbrel.be/biographie-brel/"
+  ]
+}

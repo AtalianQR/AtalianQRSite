@@ -143,17 +143,23 @@ De niet-sensor content (naamgever, capaciteit, hasWindow, wifi, vestigingen…) 
 
 **② Document `companion.json`** — meertalige/rijke + gedeelde content, **één per object**, met overerving **ruimte ← gebouw ← complex** (ruimte overschrijft gebouw overschrijft complex):
 
-Ruimte-niveau:
+Ruimte-niveau (`schema: "companion.v1"`):
 ```json
 {
+  "schema": "companion.v1",
   "naamgever": {
     "naam": "Toots Thielemans",
-    "discipline": { "nl": "Jazzmuzikant · 1922–2016", "fr": "…", "en": "…" },
-    "weetje":     { "nl": "Belgische jazzlegende die de mondharmonica…", "fr": "…", "en": "…" }
+    "discipline":   { "nl": "Jazzmuzikant · 1922–2016", "fr": "…", "en": "…" },
+    "omschrijving": { "nl": "Belgische jazzlegende die de mondharmonica…", "fr": "…", "en": "…" },
+    "weetjes": [
+      { "nl": "…", "fr": "…", "en": "…" },
+      { "nl": "…", "fr": "…", "en": "…" }
+    ]
   },
-  "tips": { "nl": "…", "fr": "…", "en": "…" }
+  "bronnen": [ "https://…" ]
 }
 ```
+`omschrijving` = de vaste "wie is dit"-regel (toont altijd); `weetjes` = array waaruit de companion **willekeurig** één toont (zodat je niet steeds dezelfde tekst ziet). Geseede documenten + generator: `docs/companion-content/` (`build_companion_docs.py` → `companion-<naamgever>.json`, 15 weetjes/persoon NL/FR/EN). Elk wordt in Ultimo als document **`companion.json`** op de betreffende Space gehangen.
 Gebouw-/complex-niveau (gedeeld, één keer invullen):
 ```json
 {
