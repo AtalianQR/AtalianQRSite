@@ -12,7 +12,7 @@
 De companion **naast** het bestaande meldingsportaal kunnen uitrollen en ontwikkelen, aan- en uitschakelbaar met **één vinkje in Ultimo**, zonder de bestaande QR-stickers te herdrukken en zonder regressie voor niet-companion locaties. Met de vlag uit gedraagt alles zich exact zoals vandaag; companion kan zo los verder ontwikkeld worden.
 
 **Kernprincipes**
-- De **QR-URL per lokaal blijft** `portal.html?id=<SpaceId>&lang=&env=`.
+- De **QR-URL per lokaal blijft** `portal.html?code=<QR>&lang=&env=`. De `code` is de QR-payload (8–20 cijfers); `parseUltimoQR` (`public/js/CodeUrl.js`) leidt de **SpaceId** af uit de even posities, laatste cijfer = indicator (`9`=installatie, anders ruimte). Companion draagt diezelfde `code` mee (en kan in dev een kale `id` ⇄ `code` converteren).
 - Twee **Ultimo object features** sturen alles: `000151` "Iot Factory asset ID" (Space → welk device) en `000152` "Portalcompanion" (Building → aan/uit). Zie §2.
 - Melden vanuit companion gebruikt het **traditionele** meldingsportaal en **keert daarna terug** naar companion.
 - Alles werkt onder **`?env=test`** zodat we in de Ultimo-testomgeving kunnen testen.
@@ -43,16 +43,17 @@ Bevestigde Ultimo-metadata (entity `ObjectFeature`): `AlphanumericValue` (kolom 
 - `GET_SPACE_INFO` resolvet space → building → `ObjectFeatures[Feature=000152]` en geeft de boolean mee (bv. `companionEnabled`). `space.js` roept `GET_SPACE_INFO` al aan bij load (geeft al `buildingName` terug), dus de vlag komt **zonder extra call** mee. **Geen rij aanwezig → behandelen als uit** (`companionEnabled = false`).
 - De feature-waarde kan in de **test-omgeving** van Ultimo apart gezet worden, zodat companion daar getest wordt zonder productie te raken.
 
-## 3. Instap & branching (QR-URL blijft `portal.html?id=X`)
+## 3. Instap & branching (QR-URL blijft `portal.html?code=<QR>`)
 
 ```
-QR-scan → portal.html?id=<SpaceId>&lang=&env=
+QR-scan → portal.html?code=<QR>&lang=&env=
             │  bij load: space.js → GET_SPACE_INFO → { …, companionEnabled }
             ├─ vlag UIT                     → traditionele meldingsportal (0 regressie)
             ├─ vlag AAN + melden=1 aanwezig → traditionele meldingsportal (round-trip, zie §4)
             └─ vlag AAN + géén melden=1
-                 → location.replace('companion.html?id=<SpaceId>&lang=&env=&src=<deze portal-url>')
+                 → location.replace('companion.html?code=<QR>&lang=&env=&src=<deze portal-url>')
 ```
+Companion leidt de SpaceId uit de `code` af voor `room.js`/`space.js`.
 
 - De branch gebeurt **meteen na de `space.js`-respons**, vóór de melding-UI wordt opgebouwd. Een neutraal laadscherm dekt de hop.
 - **`location.replace`** (niet `href`): de portal→companion-hop komt niet in de browser-history, zodat "terug" in de browser geen lus veroorzaakt.
@@ -87,7 +88,7 @@ Het round-trip mechanisme bestaat **al** in deze codebase en wordt hergebruikt:
 
 ```
 companion "Meld een probleem"
-   → portal.html?id=<SpaceId>&lang=&env=&src=<companion-url>&melden=1     (normale href → browser-back werkt)
+   → portal.html?code=<QR>&lang=&env=&src=<companion-url>&melden=1     (normale href → browser-back werkt)
 portal.html ziet melden=1  → NIET terug-redirecten naar companion; traditionele meldingsflow draaien
    → na afloop toont portal al de knop "🏢 Terug" → window.location.href = sourceUrl (= companion)
 ```
@@ -98,7 +99,7 @@ portal.html ziet melden=1  → NIET terug-redirecten naar companion; traditionel
 
 **Lus-preventie = de expliciete `melden=1`-marker.** Zelfs in een enabled complex blijft de portal traditioneel zolang `melden=1` aanwezig is. Zonder marker + vlag aan → companion. Robuust en leesbaar; hangt niet af van louter de aanwezigheid van `src`.
 
-**Randgeval:** `portal.html?id=X&melden=1` zonder `src` (bv. een bookmark) → traditionele portal zonder terug-knop, d.w.z. gedrag als vandaag. Aanvaardbaar.
+**Randgeval:** `portal.html?code=<QR>&melden=1` zonder `src` (bv. een bookmark) → traditionele portal zonder terug-knop, d.w.z. gedrag als vandaag. Aanvaardbaar.
 
 ## 6. `?env=test` — testomgeving
 
@@ -140,9 +141,9 @@ Niet alles tegelijk: bouw de **dunste verticale plak** die de héle keten bewijs
 
 ## 10. Succescriterium
 
-**Fase 1 (dunne plak, localhost):** `localhost/portal.html?id=001406&companion=1` toont de companion voor Brel met een **live comfortkaart** (data via `room.js` → `000151` → RealPulse), en "Meld een probleem" opent het traditionele portaal en keert daarna terug. Dit bewijst de volledige pijplijn.
+**Fase 1 (dunne plak, localhost) — ✅ bereikt:** `localhost:8888/companion.html?id=001406&debug=1` toont de companion voor Brel met een **live comfortkaart** (data via `room.js` → routing op description → RealPulse), en "Meld een probleem" → `portal.html?code=<QR>&src=…&melden=1` (companion synthetiseert de `code` uit de id) opent het traditionele portaal en keert via de bestaande "Terug"-knop terug. Dit bewijst de volledige pijplijn.
 
-**Eindbeeld (Fase 3):** met `000152` aan toont het scannen van `portal.html?id=<SpaceId>&env=test` de companion; met de vlag uit gedraagt exact dezelfde URL zich als het huidige meldingsportaal — zonder enige regressie.
+**Eindbeeld (Fase 3):** met `000152` aan toont het scannen van `portal.html?code=<QR>&env=test` de companion; met de vlag uit gedraagt exact dezelfde URL zich als het huidige meldingsportaal — zonder enige regressie.
 
 ## 11. Referenties
 

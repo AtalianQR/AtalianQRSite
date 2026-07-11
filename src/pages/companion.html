@@ -64,10 +64,30 @@
 
   <script>
     // ---- URL-parameters ------------------------------------------------
+    // portal.html werkt met een QR-'code' (8-20 cijfers); parseUltimoQR() reconstrueert de
+    // SpaceId uit de EVEN posities, het laatste cijfer is de indicator (9=installatie, anders ruimte).
+    // Companion accepteert zowel die 'code' (echte QR, stroomt door) als een kale 'id' (dev) en
+    // kan tussen beide converteren zodat de melden-knop altijd een geldige code kan meegeven.
     const qs = new URLSearchParams(location.search);
-    const spaceId = (qs.get('id') || qs.get('spaceId') || '').trim();
     const env = qs.get('env') === 'test' ? 'test' : 'prod';
     const debug = qs.get('debug') === '1';
+
+    function idFromCode(code){
+      if (!/^\d{8,20}$/.test(code)) return '';
+      let id = '';
+      for (let i = 0; i < code.length - 1; i += 2) id += code[i];
+      return id;
+    }
+    // Inverse: dubbel elk id-cijfer (id-cijfers landen zo op even posities) + indicator '0' (=ruimte).
+    function codeFromId(id){
+      if (!/^\d+$/.test(id)) return '';
+      return [...id].map(d => d + d).join('') + '0';
+    }
+
+    const rawCode = (qs.get('code') || '').trim();
+    let spaceId = (qs.get('id') || qs.get('spaceId') || '').trim();
+    if (rawCode && !spaceId) spaceId = idFromCode(rawCode);
+    const qrCode = rawCode || codeFromId(spaceId);
 
     let lang = (qs.get('lang') || (navigator.language || 'nl').slice(0,2)).toLowerCase();
     if (!['nl','fr','en'].includes(lang)) lang = 'nl';
@@ -89,7 +109,7 @@
     // (round-trip via ?src; melden=1 markeert de traditionele modus voor later, zie spec §3/§4)
     (function buildMeldLink(){
       const u = new URL('/portal.html', location.origin);
-      if (spaceId) u.searchParams.set('id', spaceId);
+      if (qrCode) u.searchParams.set('code', qrCode);   // portal.html verwacht de QR-code, geen kale id
       u.searchParams.set('lang', lang);
       u.searchParams.set('env', env);
       u.searchParams.set('src', location.href);
