@@ -132,20 +132,61 @@ Niet alles tegelijk: bouw de **dunste verticale plak** die de héle keten bewijs
 | **`space.js`** | Fase 3: `companionEnabled` (building-`000152`) opnemen in de gesaneerde JSON |
 | **Niet-enabled gebouwen** | **niets** verandert — nul regressie |
 
-## 9. Non-goals / afbakening
+## 9. Content-laag (laag 3) — kenmerken + documenten (Ultimo master, FM-beheerd)
+
+De niet-sensor content (naamgever, capaciteit, hasWindow, wifi, vestigingen…) leeft **in Ultimo** zodat elke FM het per klant instelt. Twee dragers, elk voor waar ze sterk in zijn:
+
+**① Kenmerken (object features)** — scalairs/vlaggen, querybaar, FM zet ze op de Kenmerken-tab (zelfde patroon als `000151/000152`), komen mee via `GET_SPACE_FEATURES`:
+- `Companion capaciteit` (Numeriek) — of Ultimo's native Space-capaciteit als die bestaat
+- `Companion raam` (Ja/Nee) = hasWindow ("verlucht via raam" vs "meld voor bijregeling")
+- `Companion ruimtetype` (Meerkeuze) — of native ruimtesoort
+
+**② Document `companion.json`** — meertalige/rijke + gedeelde content, **één per object**, met overerving **ruimte ← gebouw ← complex** (ruimte overschrijft gebouw overschrijft complex):
+
+Ruimte-niveau:
+```json
+{
+  "naamgever": {
+    "naam": "Toots Thielemans",
+    "discipline": { "nl": "Jazzmuzikant · 1922–2016", "fr": "…", "en": "…" },
+    "weetje":     { "nl": "Belgische jazzlegende die de mondharmonica…", "fr": "…", "en": "…" }
+  },
+  "tips": { "nl": "…", "fr": "…", "en": "…" }
+}
+```
+Gebouw-/complex-niveau (gedeeld, één keer invullen):
+```json
+{
+  "wifi": { "ssid": "…", "password": "…" },
+  "vestigingen": [ { "naam": "…", "reistijdMin": 12 } ],
+  "nieuwsbron": { "nl": "VRT NWS", "fr": "RTBF Info", "en": "The Brussels Times" },
+  "lunch": { "nl": "…", "fr": "…", "en": "…" }
+}
+```
+
+**Leespad:**
+- `GET_SPACE_FEATURES` (bestaat) → scalairs + resolve building/complex-id's (uitbreiden zodat het die id's meegeeft).
+- nieuwe WFL `GET_OBJECT_DOC` (object-type + id + filename `companion.json` → base64). Precedent: `_rest_ObjDocSendB64.wfl`, `GET_JOB_DOC` (`jobquery.js`). *(Exacte ObjectDocument-query bevestigen bij het bouwen.)*
+- nieuwe **`content.js`**: merge't features + de 3 documenten (ruimte>gebouw>complex) tot één content-JSON; `companion.html` rendert die **samen** met de live sensors uit `room.js`.
+
+**FM-vriendelijkheid:** kenmerken = triviaal; het JSON-document niet. Demo: jij auteur het. Product: een kleine **"Companion content"-editor** (webformulier dat `companion.json` via de Ultimo-API leest/schrijft) zodat een FM nooit ruwe JSON ziet.
+
+**Fasering:** dit is **Fase 2** (content/widgets), ná de `portal.html` dev-bypass. Eerste content-stap: `GET_OBJECT_DOC` + `content.js` + de naamgever-kaart in companion.
+
+## 10. Non-goals / afbakening
 
 - Geen herbouw van de meldingsflow (portal.html blijft dé melder).
 - Geen wijziging aan bestaande QR-stickers/URL's.
 - Geen per-lokaal companion-boolean; granulariteit blijft op building-niveau via object feature `000152` (de asset-koppeling `000151` stuurt enkel de sensorkaarten).
 - De companion-UI zelf (widgets, layout, IoT-communicatie) staat in de bestaande spec `2026-07-11-werkplek-companion-qr-design.md`; dit document raakt enkel signaal + instap + round-trip + env.
 
-## 10. Succescriterium
+## 11. Succescriterium
 
 **Fase 1 (dunne plak, localhost) — ✅ bereikt:** `localhost:8888/companion.html?id=001406&debug=1` toont de companion voor Brel met een **live comfortkaart** (data via `room.js` → routing op description → RealPulse), en "Meld een probleem" → `portal.html?code=<QR>&src=…&melden=1` (companion synthetiseert de `code` uit de id) opent het traditionele portaal en keert via de bestaande "Terug"-knop terug. Dit bewijst de volledige pijplijn.
 
 **Eindbeeld (Fase 3):** met `000152` aan toont het scannen van `portal.html?code=<QR>&env=test` de companion; met de vlag uit gedraagt exact dezelfde URL zich als het huidige meldingsportaal — zonder enige regressie.
 
-## 11. Referenties
+## 12. Referenties
 
 - Companion-UI & IoT: `docs/2026-07-11-werkplek-companion-qr-design.md`
 - Instap/branch: `src/pages/portal.html` (`sourceUrl` regel 468-480; "terug"-knop regel 1020-1046; `space.js`-call regel 592)
