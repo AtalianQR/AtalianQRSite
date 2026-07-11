@@ -1,7 +1,7 @@
 # Design — Companion-mode via Ultimo-vlag (branch vanaf de vaste portal-URL)
 
 **Datum:** 2026-07-11
-**Status:** Ontwerp goedgekeurd. Klaar voor implementatieplan.
+**Status:** Ontwerp goedgekeurd. Gefaseerde bouw; **eerste stap = de Query-WFL die kenmerk `000151` voor de ruimte ophaalt** (zie §7, Fase 0).
 **Codebase:** `AtalianQRSite` (Astro.js + Tailwind + Netlify).
 **Bouwt voort op:** `docs/2026-07-11-werkplek-companion-qr-design.md` (companion-scherm, IoT/RealPulse, registry §6). Dit document beschrijft **hoe je companion aan/uit zet en instapt** — niet de companion-UI zelf.
 
@@ -13,18 +13,30 @@ De companion **naast** het bestaande meldingsportaal kunnen uitrollen en ontwikk
 
 **Kernprincipes**
 - De **QR-URL per lokaal blijft** `portal.html?id=<SpaceId>&lang=&env=`.
-- Een **signaal in Ultimo** (Ja/Nee object feature op de Building, Kenmerk `000152` "Portalcompanion") beslist of companion getoond wordt.
+- Twee **Ultimo object features** sturen alles: `000151` "Iot Factory asset ID" (Space → welk device) en `000152` "Portalcompanion" (Building → aan/uit). Zie §2.
 - Melden vanuit companion gebruikt het **traditionele** meldingsportaal en **keert daarna terug** naar companion.
 - Alles werkt onder **`?env=test`** zodat we in de Ultimo-testomgeving kunnen testen.
 
-## 2. Het signaal in Ultimo — Building object feature
+## 2. De twee Ultimo object features (de ankers)
 
-- **Object feature op de Building** i.p.v. een los veld of een complex-boolean. In Ultimo gedefinieerd als **Kenmerk `000152` "Portalcompanion"**, waardetype **Ja/Nee veld** (boolean), onder *Stamgegevens › Gebouw › Vastgoed › Kenmerken gebouw*.
-- **Datamodel:** `Gebouw → ObjectFeatures (OBJECTFEATURE 1:N) → Feature`. Op een concreet gebouw voeg je één `ObjectFeature`-rij toe die naar Feature `000152` verwijst met de Ja/Nee-waarde. Voordeel t.o.v. een dedicated veld: geen schemawijziging, herbruikbaar patroon, en per gebouw beheerbaar zonder overal vinkjes.
-- **Granulariteit = building-niveau (bewust).** Een lokaal **zonder** IoT in een enabled gebouw geniet gewoon mee van de companion (weer, nieuws, wifi, vestigingen, naamgever…). Enkel de **live comfort-/drukte-kaarten** blijven weg — die worden per lokaal gestuurd door de IoT-koppeling (`IoTAssetId` in de registry `rooms.json`, ongewijzigd t.o.v. §6 van de bestaande spec). Reden: niet elke klant plaatst overal sensoren.
-- **Enkel aan/uit.** Omdat `000152` een Ja/Nee-kenmerk is, draagt het louter de schakelaar. Credentials/IoT-config blijven waar ze zijn (Netlify env-vars, registry) — de object feature brengt géén geheimen in de flow.
-- **`GET_SPACE_INFO` breidt uit:** die Ultimo-actie resolvet space → building → `ObjectFeatures` waar `Feature = 000152` en geeft de boolean mee terug (bv. als `companionEnabled`). `space.js` roept `GET_SPACE_INFO` al aan bij het laden van de portal (en geeft al `buildingName` terug, dus de building-context is bereikbaar), dus de vlag komt **zonder extra call** mee. Matchen op de **kenmerkcode `000152`** (stabieler dan de naam "Portalcompanion").
-  - **WFL-implementatiedetail (Ultimo):** de object features hangen als **1:N** onder de Building (`Gebouw → ObjectFeatures (OBJECTFEATURE 1:N) → Feature`). De workflow moet die 1:N-relatie **doorlopen/filteren** op `Feature = 000152` en de `Ja/Nee`-waarde van die ene rij uitlezen. Geen rij aanwezig → behandelen als **uit** (`companionEnabled = false`). Dit is de knoop die in de WFL uitgedokterd moet worden.
+Alles hangt aan **object features** (objectkenmerken), niet aan dedicated velden. Twee kenmerken sturen de flow:
+
+| Code | Kenmerk | Hangt aan | Waardetype | Rol |
+|---|---|---|---|---|
+| **000151** | Iot Factory asset ID | **Ruimte** (Space) | Alfanumeriek | RealPulse-asset-id → *welk device* companion moet uitlezen |
+| **000152** | Portalcompanion | **Gebouw** (Building) | Ja/Nee | companion *aan/uit* voor het hele gebouw |
+
+Beide hangen als **1:N** onder hun object: `<Object> → ObjectFeatures (OBJECTFEATURE 1:N) → Feature`. Op een concreet object voeg je één `ObjectFeature`-rij toe die naar de betreffende Feature verwijst met de waarde. Voordeel t.o.v. een dedicated veld: geen schemawijziging, herbruikbaar patroon, per object beheerbaar zonder overal vinkjes. In elke WFL-lookup **matchen op de kenmerkcode** (`000151`/`000152`) — stabieler dan de naam.
+
+### 2.1 Kenmerk `000151` "Iot Factory asset ID" (Space, alfanumeriek)
+- Draagt per lokaal de **RealPulse-asset-id** (bv. Ruimte 001406 "Brel" → `6508159013019d0012630847`). Dit vervangt de `iotAssetId` in de registry `rooms.json` uit §6 van de bestaande spec: de koppeling leeft nu in Ultimo op de Space.
+- Een lokaal **zonder** deze feature heeft geen IoT-koppeling → companion toont er de live comfort-/drukte-kaarten niet, de rest wél.
+- **Server-side gebruikt** (zie §3, keuze A): `room.js` resolvet space → `ObjectFeatures[Feature=000151]` → asset-id → RealPulse. De asset-id gaat **niet** naar de browser.
+
+### 2.2 Kenmerk `000152` "Portalcompanion" (Building, Ja/Nee)
+- Eén Ja/Nee-kenmerk op het gebouw zet companion aan/uit voor de hele site. **Granulariteit = building-niveau (bewust):** een lokaal zonder IoT in een enabled gebouw geniet gewoon mee van de companion (weer, nieuws, wifi, vestigingen, naamgever…); enkel de sensorkaarten hangen af van `000151`. Reden: niet elke klant plaatst overal sensoren.
+- **Enkel aan/uit** — géén geheimen. Credentials blijven server-side (§4).
+- `GET_SPACE_INFO` resolvet space → building → `ObjectFeatures[Feature=000152]` en geeft de boolean mee (bv. `companionEnabled`). `space.js` roept `GET_SPACE_INFO` al aan bij load (geeft al `buildingName` terug), dus de vlag komt **zonder extra call** mee. **Geen rij aanwezig → behandelen als uit** (`companionEnabled = false`).
 - De feature-waarde kan in de **test-omgeving** van Ultimo apart gezet worden, zodat companion daar getest wordt zonder productie te raken.
 
 ## 3. Instap & branching (QR-URL blijft `portal.html?id=X`)
@@ -43,7 +55,28 @@ QR-scan → portal.html?id=<SpaceId>&lang=&env=
 - **`env` wordt doorgegeven** in de redirect-URL, zodat companion en zijn datacalls in dezelfde omgeving blijven (`test`/`prod`).
 - `companion.html` = **eigen bestand** (zoals de bestaande 58KB mockup), meertalig NL/FR/EN, Atalian-huisstijl. De aparte Astro-route `/lokaal/[id]` uit de oude spec vervalt: de vaste `portal.html`-entry maakt ze overbodig.
 
-## 4. Melden-round-trip (analoog aan `dm-assistent` → `vendor.html`)
+## 4. Sensordata-resolutie (keuze A) & credentials
+
+**Keuze A — `room.js` resolvet zelf.** De browser stuurt enkel `spaceId` (+`lang`,`env`); alle Ultimo- en RealPulse-logica zit in de functie. Companion blijft "dom".
+
+```
+companion.html  →  room.js?spaceId=<SpaceId>&lang=&env=
+   room.js:
+     1) Ultimo: Space → ObjectFeatures[Feature=000151] → alfanumerieke asset-id
+     2) RealPulse: GET /api/assets/<asset-id>  (Basic Auth, creds server-side)
+     3) terug: gesaneerd { coupled, temp, co2, hum, motion, updatedAt }
+                (GEEN asset-id, GEEN creds naar de browser)
+   geen 000151-rij → { coupled: false }  → companion laat de sensorkaarten weg
+```
+
+Waarom A boven "portal geeft de id mee in de URL": nette URL's, de browser kent de asset-id niet, en de resolutie zit op één plek. Kost een extra Ultimo-call in de functie — aanvaardbaar (server-side, cachebaar).
+
+**Credentials in Netlify (niet in Ultimo).** De RealPulse-creds blijven **Netlify env-vars**, uitsluitend server-side gelezen door `room.js` (precedent: `soundsensing-sync.js`).
+- **Demo = één omgeving, één sleutelpaar** (`REALPULSE_USER` / `REALPULSE_PASS`). Voldoende voor nu.
+- **Later, per gebouw/klant:** conventie-genaamde vars op de `buildingId` die we tóch al resolven — `REALPULSE_USER__<buildingId>` / `REALPULSE_PASS__<buildingId>`, met de kale variant als fallback. Netlify heeft géén per-tenant scoping; de keuze gebeurt in de functie.
+- **Grens om te kennen:** Netlify-functies draaien op AWS Lambda → **~4 KB voor álle env-vars samen**. Bij veel klanten die limiet mijden door de credential-map naar **Netlify Blobs**/secret manager te verhuizen. Voor de demo niet relevant.
+
+## 5. Melden-round-trip (analoog aan `dm-assistent` → `vendor.html`)
 
 Het round-trip mechanisme bestaat **al** in deze codebase en wordt hergebruikt:
 
@@ -62,7 +95,7 @@ portal.html ziet melden=1  → NIET terug-redirecten naar companion; traditionel
 
 **Randgeval:** `portal.html?id=X&melden=1` zonder `src` (bv. een bookmark) → traditionele portal zonder terug-knop, d.w.z. gedrag als vandaag. Aanvaardbaar.
 
-## 5. `?env=test` — testomgeving
+## 6. `?env=test` — testomgeving
 
 Elke schakel draagt `env` door zodat de volledige keten in de testomgeving werkt:
 - `portal.html`: leest `env` uit de query (bestaand), gebruikt het voor `space.js` (`GET_SPACE_INFO` → test-Ultimo) en zet het in de companion-redirect-URL.
@@ -70,31 +103,47 @@ Elke schakel draagt `env` door zodat de volledige keten in de testomgeving werkt
 - Melden-link: `…&env=<env>&melden=1` zodat de melding in dezelfde omgeving landt.
 - `CompanionEnabled` wordt in **test-Ultimo** gezet om companion daar te activeren zonder productie te raken.
 
-## 6. Overzicht — wat verandert, wat niet
+## 7. Implementatievolgorde (fasering) — start met de Query-WFL
+
+Niet alles tegelijk: bouw de **dunste verticale plak** die de héle keten bewijst (*Ultimo-feature → asset-id → RealPulse → scherm*), en laat de rest decoratie zijn.
+
+- **Fase 0 · Ultimo/WFL — de eerste stap.** Een **Query-WFL** die voor een gegeven `SpaceId` de **Space-`ObjectFeatures` 1:N** doorloopt, filtert op **`Feature = 000151`** en de **alfanumerieke waarde** (de RealPulse-asset-id) teruggeeft. Dit is de knoop die eerst uitgedokterd wordt; alles hangt hieraan. (De building-`000152`-vlag komt pas in Fase 3.)
+- **Fase 1 · dunne plak, op `localhost` (`netlify dev`).**
+  1. **`room.js`** — keuze A: `?spaceId=&lang=&env=` → asset-id via de Query-WFL → RealPulse server-side → gesaneerde `{coupled, temp, co2, hum, motion, updatedAt}`.
+  2. **`companion.html`** — minimale pagina die één **comfortkaart** voor Brel toont + "Meld een probleem" (`src`+`melden=1`).
+  3. **`portal.html`** — **dev-bypass**: op `localhost` (of `?companion=1`) meteen naar companion redirecten, **zónder** de `000152`-vlagtest, zodat de keten rijdt vóór de vlag-WFL af is.
+- **Fase 2 · widgets.** Weer, nieuws, vestigingen, wifi, naamgever — puur UI bovenop de werkende pipeline.
+- **Fase 3 · productie-poort.** De `000152`-vlag in de WFL + de échte branch in `portal.html` (aan → companion, uit → traditioneel); dev-bypass erachter/eruit.
+
+## 8. Overzicht — wat verandert, wat niet
 
 | Component | Wijziging |
 |---|---|
-| **Ultimo** | Building object feature — Kenmerk `000152` "Portalcompanion" (Ja/Nee); `GET_SPACE_INFO` resolvet space → building → `ObjectFeatures[Feature=000152]` en geeft `companionEnabled` mee |
-| **`space.js`** | `companionEnabled` opnemen in de gesaneerde JSON die de portal krijgt |
-| **`portal.html`** | vroege branch na `space.js`: vlag AAN + geen `melden=1` → `location.replace` naar `companion.html` (met `id/lang/env/src`); `melden=1` of vlag UIT → ongewijzigd gedrag |
-| **`companion.html`** | **nieuw** bestand: companion-UI + melden-knop die met `src`+`melden=1`+`env` naar `portal.html` gaat |
-| **`room.js`** (of gelijk) | server-side RealPulse-proxy voor sensordata, `env`-bewust (zie bestaande spec §14) |
-| **Niet-enabled complexen** | **niets** verandert — nul regressie |
+| **Ultimo — Query-WFL (Fase 0)** | voor `SpaceId` de Space-`ObjectFeatures[Feature=000151]` teruggeven (alfanumerieke asset-id). Later ook building-`ObjectFeatures[Feature=000152]` → `companionEnabled` |
+| **`room.js`** | keuze A: `?spaceId=&env=` → asset-id via WFL → RealPulse server-side → gesaneerde sensordata; `env`-bewust; creds uit Netlify env-vars |
+| **`companion.html`** | **nieuw** bestand: companion-UI; sensorkaart via `room.js?spaceId=`; melden-knop met `src`+`melden=1`+`env` naar `portal.html` |
+| **`portal.html`** | Fase 1: dev-bypass (`localhost`/`?companion=1`) → companion. Fase 3: branch na `space.js` op `companionEnabled`, met `melden=1`/vlag-uit → ongewijzigd gedrag |
+| **`space.js`** | Fase 3: `companionEnabled` (building-`000152`) opnemen in de gesaneerde JSON |
+| **Niet-enabled gebouwen** | **niets** verandert — nul regressie |
 
-## 7. Non-goals / afbakening
+## 9. Non-goals / afbakening
 
 - Geen herbouw van de meldingsflow (portal.html blijft dé melder).
 - Geen wijziging aan bestaande QR-stickers/URL's.
-- Geen per-lokaal companion-boolean; granulariteit blijft op building-niveau via object feature `000152` (IoT-koppeling stuurt enkel de sensorkaarten).
+- Geen per-lokaal companion-boolean; granulariteit blijft op building-niveau via object feature `000152` (de asset-koppeling `000151` stuurt enkel de sensorkaarten).
 - De companion-UI zelf (widgets, layout, IoT-communicatie) staat in de bestaande spec `2026-07-11-werkplek-companion-qr-design.md`; dit document raakt enkel signaal + instap + round-trip + env.
 
-## 8. Succescriterium
+## 10. Succescriterium
 
-Met `CompanionEnabled` aan (in test) toont het scannen van `portal.html?id=<SpaceId>&env=test` de companion; "Meld een probleem" opent het traditionele portaal, en na de melding keert de gebruiker terug in de companion. Met de vlag uit gedraagt exact dezelfde URL zich als het huidige meldingsportaal — zonder enige regressie.
+**Fase 1 (dunne plak, localhost):** `localhost/portal.html?id=001406&companion=1` toont de companion voor Brel met een **live comfortkaart** (data via `room.js` → `000151` → RealPulse), en "Meld een probleem" opent het traditionele portaal en keert daarna terug. Dit bewijst de volledige pijplijn.
 
-## 9. Referenties
+**Eindbeeld (Fase 3):** met `000152` aan toont het scannen van `portal.html?id=<SpaceId>&env=test` de companion; met de vlag uit gedraagt exact dezelfde URL zich als het huidige meldingsportaal — zonder enige regressie.
+
+## 11. Referenties
 
 - Companion-UI & IoT: `docs/2026-07-11-werkplek-companion-qr-design.md`
 - Instap/branch: `src/pages/portal.html` (`sourceUrl` regel 468-480; "terug"-knop regel 1020-1046; `space.js`-call regel 592)
 - Round-trip-patroon: `src/pages/dm-assistent.html` (`buildJobUrl`/`openJob` regel 421-445)
 - Ultimo-call: `netlify/functions/space.js` (`GET_SPACE_INFO`), `netlify/functions/complexinfo.js` (complex-acties)
+- Object features: `000151` "Iot Factory asset ID" (Space, alfanumeriek) · `000152` "Portalcompanion" (Building, Ja/Nee) — beide `Object → ObjectFeatures (1:N) → Feature`
+- RealPulse/IoT (endpoints, asset-ids, creds): bestaande spec §14 + cockpit `OneDrive\Claude\Atalian-Claude\Iot Factory\CLAUDE.md`
