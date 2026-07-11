@@ -13,16 +13,19 @@ De companion **naast** het bestaande meldingsportaal kunnen uitrollen en ontwikk
 
 **Kernprincipes**
 - De **QR-URL per lokaal blijft** `portal.html?id=<SpaceId>&lang=&env=`.
-- Een **signaal in Ultimo** (vlag op het complex) beslist of companion getoond wordt.
+- Een **signaal in Ultimo** (Ja/Nee object feature op de Building, Kenmerk `000152` "Portalcompanion") beslist of companion getoond wordt.
 - Melden vanuit companion gebruikt het **traditionele** meldingsportaal en **keert daarna terug** naar companion.
 - Alles werkt onder **`?env=test`** zodat we in de Ultimo-testomgeving kunnen testen.
 
-## 2. Het signaal in Ultimo
+## 2. Het signaal in Ultimo — Building object feature
 
-- **Nieuw veld op het complex:** `CompanionEnabled` (boolean). Eén vinkje per demo-/klantlocatie zet companion aan voor de hele site.
-- **Granulariteit = complex-niveau (bewust).** Een lokaal **zonder** IoT in een enabled complex geniet gewoon mee van de companion (weer, nieuws, wifi, vestigingen, naamgever…). Enkel de **live comfort-/drukte-kaarten** blijven weg — die worden per lokaal gestuurd door de IoT-koppeling (`IoTAssetId` in de registry `rooms.json`, ongewijzigd t.o.v. §6 van de bestaande spec). Reden: niet elke klant plaatst overal sensoren.
-- **`GET_SPACE_INFO` breidt uit:** die Ultimo-actie resolvet de space → complex en geeft de vlag mee terug. `space.js` roept `GET_SPACE_INFO` al aan bij het laden van de portal, dus de vlag is beschikbaar **zonder extra call**.
-- De vlag kan in de **test-omgeving** van Ultimo apart gezet worden, zodat companion daar getest wordt zonder productie te raken.
+- **Object feature op de Building** i.p.v. een los veld of een complex-boolean. In Ultimo gedefinieerd als **Kenmerk `000152` "Portalcompanion"**, waardetype **Ja/Nee veld** (boolean), onder *Stamgegevens › Gebouw › Vastgoed › Kenmerken gebouw*.
+- **Datamodel:** `Gebouw → ObjectFeatures (OBJECTFEATURE 1:N) → Feature`. Op een concreet gebouw voeg je één `ObjectFeature`-rij toe die naar Feature `000152` verwijst met de Ja/Nee-waarde. Voordeel t.o.v. een dedicated veld: geen schemawijziging, herbruikbaar patroon, en per gebouw beheerbaar zonder overal vinkjes.
+- **Granulariteit = building-niveau (bewust).** Een lokaal **zonder** IoT in een enabled gebouw geniet gewoon mee van de companion (weer, nieuws, wifi, vestigingen, naamgever…). Enkel de **live comfort-/drukte-kaarten** blijven weg — die worden per lokaal gestuurd door de IoT-koppeling (`IoTAssetId` in de registry `rooms.json`, ongewijzigd t.o.v. §6 van de bestaande spec). Reden: niet elke klant plaatst overal sensoren.
+- **Enkel aan/uit.** Omdat `000152` een Ja/Nee-kenmerk is, draagt het louter de schakelaar. Credentials/IoT-config blijven waar ze zijn (Netlify env-vars, registry) — de object feature brengt géén geheimen in de flow.
+- **`GET_SPACE_INFO` breidt uit:** die Ultimo-actie resolvet space → building → `ObjectFeatures` waar `Feature = 000152` en geeft de boolean mee terug (bv. als `companionEnabled`). `space.js` roept `GET_SPACE_INFO` al aan bij het laden van de portal (en geeft al `buildingName` terug, dus de building-context is bereikbaar), dus de vlag komt **zonder extra call** mee. Matchen op de **kenmerkcode `000152`** (stabieler dan de naam "Portalcompanion").
+  - **WFL-implementatiedetail (Ultimo):** de object features hangen als **1:N** onder de Building (`Gebouw → ObjectFeatures (OBJECTFEATURE 1:N) → Feature`). De workflow moet die 1:N-relatie **doorlopen/filteren** op `Feature = 000152` en de `Ja/Nee`-waarde van die ene rij uitlezen. Geen rij aanwezig → behandelen als **uit** (`companionEnabled = false`). Dit is de knoop die in de WFL uitgedokterd moet worden.
+- De feature-waarde kan in de **test-omgeving** van Ultimo apart gezet worden, zodat companion daar getest wordt zonder productie te raken.
 
 ## 3. Instap & branching (QR-URL blijft `portal.html?id=X`)
 
@@ -71,7 +74,7 @@ Elke schakel draagt `env` door zodat de volledige keten in de testomgeving werkt
 
 | Component | Wijziging |
 |---|---|
-| **Ultimo** | nieuw veld `CompanionEnabled` op het complex; `GET_SPACE_INFO` geeft `companionEnabled` mee (space → complex resolve) |
+| **Ultimo** | Building object feature — Kenmerk `000152` "Portalcompanion" (Ja/Nee); `GET_SPACE_INFO` resolvet space → building → `ObjectFeatures[Feature=000152]` en geeft `companionEnabled` mee |
 | **`space.js`** | `companionEnabled` opnemen in de gesaneerde JSON die de portal krijgt |
 | **`portal.html`** | vroege branch na `space.js`: vlag AAN + geen `melden=1` → `location.replace` naar `companion.html` (met `id/lang/env/src`); `melden=1` of vlag UIT → ongewijzigd gedrag |
 | **`companion.html`** | **nieuw** bestand: companion-UI + melden-knop die met `src`+`melden=1`+`env` naar `portal.html` gaat |
@@ -82,7 +85,7 @@ Elke schakel draagt `env` door zodat de volledige keten in de testomgeving werkt
 
 - Geen herbouw van de meldingsflow (portal.html blijft dé melder).
 - Geen wijziging aan bestaande QR-stickers/URL's.
-- Geen per-lokaal companion-boolean; granulariteit blijft op complex-niveau (IoT-koppeling stuurt enkel de sensorkaarten).
+- Geen per-lokaal companion-boolean; granulariteit blijft op building-niveau via object feature `000152` (IoT-koppeling stuurt enkel de sensorkaarten).
 - De companion-UI zelf (widgets, layout, IoT-communicatie) staat in de bestaande spec `2026-07-11-werkplek-companion-qr-design.md`; dit document raakt enkel signaal + instap + round-trip + env.
 
 ## 8. Succescriterium
