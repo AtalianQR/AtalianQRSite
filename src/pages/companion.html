@@ -291,9 +291,9 @@
         const tone = co2 > 1200 ? 'crit' : 'warn';
         if (!hasWin) {
           parts.push({ icon:'⚠️', tone, txt: tr(
-            'Luchtkwaliteit is verhoogd, maar dit lokaal heeft geen raam. Verhoog de ventilatie of meld het hieronder.',
-            'Qualité de l’air élevée, mais ce local n’a pas de fenêtre. Augmentez la ventilation ou signalez-le ci-dessous.',
-            'Air quality is elevated, but this room has no window. Increase ventilation or report it below.') });
+            'Luchtkwaliteit is verhoogd, maar dit lokaal heeft geen raam. Zet eventueel even de deur open, verhoog de ventilatie of meld het hieronder.',
+            'Qualité de l’air élevée, mais ce local n’a pas de fenêtre. Ouvrez éventuellement la porte un instant, augmentez la ventilation ou signalez-le ci-dessous.',
+            'Air quality is elevated, but this room has no window. Consider opening the door for a moment, increase ventilation, or report it below.') });
         } else if (dOut != null && dOut > 6) {
           parts.push({ icon:'🪟', tone, txt: tr(
             'Verlucht kort en sluit daarna, om extra opwarming te vermijden.',
