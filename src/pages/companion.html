@@ -74,6 +74,25 @@
     .artist .fact{display:flex;gap:7px;align-items:flex-start;margin-top:8px;font-size:11.5px;color:var(--accent-2);font-weight:600}
     .artist .fact svg{width:15px;height:15px;flex:0 0 auto;margin-top:1px}
 
+    .news{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);box-shadow:var(--shadow-sm);overflow:hidden}
+    .ticker{display:flex;align-items:stretch;cursor:pointer;user-select:none}
+    .ticker-src{flex:0 0 auto;font-size:9.5px;font-weight:800;letter-spacing:.03em;color:#fff;background:var(--accent);padding:0 11px;text-transform:uppercase;display:flex;align-items:center}
+    .ticker-view{flex:1 1 auto;min-width:0;overflow:hidden;position:relative;white-space:nowrap;-webkit-mask-image:linear-gradient(90deg,transparent,#000 14px,#000 calc(100% - 20px),transparent);mask-image:linear-gradient(90deg,transparent,#000 14px,#000 calc(100% - 20px),transparent)}
+    .ticker-track{display:inline-flex;white-space:nowrap;will-change:transform;animation:ticker 45s linear infinite}
+    .ticker-track span{padding:9px 0;font-size:12px;color:var(--ink-soft);font-weight:500}
+    .ticker:hover .ticker-track,.ticker:focus-visible .ticker-track{animation-play-state:paused}
+    .ticker:focus-visible{outline:2px solid var(--accent);outline-offset:-2px}
+    .ticker-chev{flex:0 0 auto;width:16px;height:16px;color:var(--ink-faint);margin:0 10px;align-self:center;transition:transform .25s}
+    .news.open .ticker-chev{transform:rotate(180deg)}
+    @keyframes ticker{from{transform:translateX(0)}to{transform:translateX(-50%)}}
+    .news-body{display:grid;grid-template-rows:0fr;transition:grid-template-rows .28s ease}
+    .news-body>div{overflow:hidden}
+    .news.open .news-body{grid-template-rows:1fr}
+    .news-list{padding:2px 14px 12px}
+    .news-list .nrow{display:flex;gap:8px;align-items:flex-start;padding:9px 0;border-top:1px solid var(--line-2);font-size:12.5px;color:var(--ink);line-height:1.35;text-decoration:none}
+    .news-list .nrow:first-child{border-top:0}
+    .news-list .nrow::before{content:"›";color:var(--accent);font-weight:800;flex:0 0 auto}
+    @media (prefers-reduced-motion:reduce){.ticker-track{animation:none}}
     .btn{appearance:none;font-family:inherit;cursor:pointer;border-radius:var(--r-sm);font-weight:600;font-size:13.5px;padding:13px 14px;width:100%;display:inline-flex;align-items:center;justify-content:center;gap:8px;border:1px solid transparent;background:var(--accent);color:#fff;text-decoration:none;transition:transform .1s,background .18s;margin-top:2px}
     .btn:active{transform:scale(.985)} .btn .ic{width:17px;height:17px}
     .hidden{display:none !important}
@@ -124,6 +143,15 @@
           <div class="fact"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M9 18h6M10 21h4M12 3a6 6 0 0 0-4 10.5c.7.7 1 1.2 1 2.5h6c0-1.3.3-1.8 1-2.5A6 6 0 0 0 12 3z"/></svg><span id="artFact"></span></div>
         </div>
       </div>
+    </div>
+
+    <div class="news hidden" id="news">
+      <div class="ticker" id="tickerBar" role="button" tabindex="0" aria-expanded="false">
+        <div class="ticker-src" id="newsSrc"></div>
+        <div class="ticker-view"><div class="ticker-track" id="tickerTrack"></div></div>
+        <svg class="ticker-chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 9l6 6 6-6"/></svg>
+      </div>
+      <div class="news-body"><div><div class="news-list" id="newsList"></div></div></div>
     </div>
 
     <a class="btn" id="meldBtn" href="#">
@@ -261,9 +289,38 @@
       } catch {}
     }
 
+    // ---- Live nieuws-ticker (server-side RSS/Atom via news.js) --------
+    function esc(s){ const d = document.createElement('div'); d.textContent = String(s ?? ''); return d.innerHTML; }
+    async function loadNews(){
+      try {
+        const r = await fetch(`/.netlify/functions/news?lang=${lang}`);
+        if (!r.ok) return;
+        const d = await r.json();
+        const items = Array.isArray(d.items) ? d.items : [];
+        if (!items.length) return;
+
+        document.getElementById('newsSrc').textContent = d.source || tr('Nieuws', 'Actu', 'News');
+        const line = items.map(i => esc(i.title)).join(' • ') + ' • ';
+        document.getElementById('tickerTrack').innerHTML = `<span>${line}</span><span>${line}</span>`;
+        document.getElementById('newsList').innerHTML = items.map(i =>
+          i.link
+            ? `<a class="nrow" href="${esc(i.link)}" target="_blank" rel="noopener">${esc(i.title)}</a>`
+            : `<div class="nrow">${esc(i.title)}</div>`
+        ).join('');
+
+        const news = document.getElementById('news');
+        const bar  = document.getElementById('tickerBar');
+        const toggle = () => { const open = news.classList.toggle('open'); bar.setAttribute('aria-expanded', open ? 'true' : 'false'); };
+        bar.addEventListener('click', toggle);
+        bar.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggle(); } });
+        news.classList.remove('hidden');
+      } catch {}
+    }
+
     loadRoomInfo();
     loadComfort();
     loadNaamgever();
+    loadNews();
   </script>
 </body>
 </html>
