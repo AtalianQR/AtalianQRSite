@@ -551,23 +551,28 @@ export async function handler(event) {
     // Companion-vlag (gebouw-kenmerk 000152 "QR-Portalcompanion", Ja/Nee) - best effort:
     // een fout hier mag GET_SPACE_INFO nooit breken, dus alles in try/catch en default false.
     let companionEnabled = false;
+    let companionDebug = null;
     try {
       const cRes = await fetch(`${base}/action/_rest_QueryAtalianJobs`, {
         method: 'POST',
         headers: { accept: 'application/json', 'Content-Type': 'application/json', ApiKey: API_KEY, ApplicationElementId: APP_QUERY },
         body: JSON.stringify({ Action: 'GET_SPACE_COMPANION', SpaceId: spaceId })
       });
+      const bodyText = await cRes.text().catch(() => '');
+      let cStr = '', yn = '';
       if (cRes.ok) {
-        const cRaw = await cRes.json().catch(() => ({}));
-        const cStr = cRaw?.properties?.Output?.object;
+        let cRaw = {}; try { cRaw = JSON.parse(bodyText); } catch {}
+        cStr = cRaw?.properties?.Output?.object;
         const cTxt = cStr ? String(cStr).trim().replace(/^'(.*)'$/, '$1').replace(/&quot;/g, '"') : '';
-        let yn = '';
         if (cTxt.startsWith('{')) { try { yn = String(JSON.parse(cTxt).companion ?? '').trim(); } catch {} }
         companionEnabled = /^(1|true|yes|ja|y|j)$/i.test(yn);
       }
+      companionDebug = { status: cRes.status, output: String(cStr ?? '').slice(0, 200), yn, bodyPreview: bodyText.slice(0, 300) };
     } catch (e) {
-      // stil: companionEnabled blijft false
+      companionDebug = { error: String(e?.message || e) };
     }
+
+    const wantDebug = String(event.queryStringParameters?.debug ?? '') === '1';
 
     return json(200, {
       description: String(beschrijving || '').trim(),
@@ -577,7 +582,8 @@ export async function handler(event) {
       clientId,
       buildingName,
       companionEnabled,
-      env
+      env,
+      ...(wantDebug ? { companionDebug } : {})
     });
   } catch (err) {
     return json(500, {

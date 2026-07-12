@@ -24,7 +24,9 @@ Alles hangt aan **object features** (objectkenmerken), niet aan dedicated velden
 | Code | Kenmerk | Hangt aan | Waardetype | Rol |
 |---|---|---|---|---|
 | **000151** | Iot Factory asset ID | **Ruimte** (Space) | Alfanumeriek | RealPulse-asset-id → *welk device* companion moet uitlezen |
-| **000152** | Portalcompanion | **Gebouw** (Building) | Ja/Nee | companion *aan/uit* voor het hele gebouw |
+| **000152** | QR-Portalcompanion | **Complex** (ComplexBuilding) | Ja/Nee | companion *aan/uit* voor de hele site |
+
+> **Elk gegeven op zijn logische niveau — niet alles in één hoop.** Sommige kenmerken/documenten horen op **Complex** (companion aan/uit, vestigingen, nieuwsbron), andere op **Gebouw** (wifi), andere op **Ruimte** (naamgever, capaciteit, raam, IoT-asset). Voor overlappende zaken geldt overerving **space > gebouw > complex** (specifieker wint); zaken die maar op één niveau bestaan, leven daar. Het `doel`-veld (documenten) en de feature-description (kenmerken) houden alles gescheiden.
 
 Beide hangen als **1:N** onder hun object: `<Object> → ObjectFeatures (OBJECTFEATURE 1:N) → Feature`. Op een concreet object voeg je één `ObjectFeature`-rij toe die naar de betreffende Feature verwijst met de waarde. Voordeel t.o.v. een dedicated veld: geen schemawijziging, herbruikbaar patroon, per object beheerbaar zonder overal vinkjes.
 
@@ -37,8 +39,9 @@ Bevestigde Ultimo-metadata (entity `ObjectFeature`): `AlphanumericValue` (kolom 
 - Een lokaal **zonder** deze feature heeft geen IoT-koppeling → companion toont er de live comfort-/drukte-kaarten niet, de rest wél.
 - **Server-side gebruikt** (zie §4, keuze A): `room.js` haalt via de WFL de kenmerken op, kiest het kenmerk met een IoT-description en gebruikt zijn `AlphanumericValue` als RealPulse-asset-id. De asset-id gaat **niet** naar de browser.
 
-### 2.2 Kenmerk `000152` "Portalcompanion" (Building, Ja/Nee)
-- Eén Ja/Nee-kenmerk op het gebouw zet companion aan/uit voor de hele site. **Granulariteit = building-niveau (bewust):** een lokaal zonder IoT in een enabled gebouw geniet gewoon mee van de companion (weer, nieuws, wifi, vestigingen, naamgever…); enkel de sensorkaarten hangen af van `000151`. Reden: niet elke klant plaatst overal sensoren.
+### 2.2 Kenmerk `000152` "QR-Portalcompanion" (Complex, Ja/Nee)
+- Eén Ja/Nee-kenmerk op het **Complex** zet companion aan/uit voor de hele site. **Granulariteit = complex-niveau (bewust):** een lokaal zonder IoT in een enabled complex geniet gewoon mee van de companion (weer, nieuws, wifi, vestigingen, naamgever…); enkel de sensorkaarten hangen af van `000151`. Reden: niet elke klant plaatst overal sensoren.
+- **WFL `GET_SPACE_COMPANION`** resolvet space → `…Building.ComplexBuilding.ObjectFeatures`, zoekt `Feature.Id = 000152` en leest `YesNoValue`. `space.js` roept dit best-effort (try/catch) bij `GET_SPACE_INFO` en geeft `companionEnabled` mee; `portal.html` branch't erop.
 - **Enkel aan/uit** — géén geheimen. Credentials blijven server-side (§4).
 - `GET_SPACE_INFO` resolvet space → building → `ObjectFeatures[Feature=000152]` en geeft de boolean mee (bv. `companionEnabled`). `space.js` roept `GET_SPACE_INFO` al aan bij load (geeft al `buildingName` terug), dus de vlag komt **zonder extra call** mee. **Geen rij aanwezig → behandelen als uit** (`companionEnabled = false`).
 - De feature-waarde kan in de **test-omgeving** van Ultimo apart gezet worden, zodat companion daar getest wordt zonder productie te raken.
