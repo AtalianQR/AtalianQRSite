@@ -40,7 +40,10 @@ async function outdoorFromRealpulse(assetId) {
   if (!res.ok) return {};
   const a = await res.json().catch(() => ({}));
   const w = collectWeather(a);
-  return { temp: w.temperature ?? null, hum: w.humidity ?? null };
+  // Gebouw-breed aantal personen (RealPulse "People - Anderlecht"-teller: type counter, unit people).
+  const last = Array.isArray(a?.last) ? a.last : [];
+  const pe = last.find((x) => x && x.type === 'counter' && x.unit === 'people');
+  return { temp: w.temperature ?? null, hum: w.humidity ?? null, people: pe ? Number(pe.value) : null };
 }
 
 async function forecastFromOpenMeteo(lat, lon) {
@@ -75,6 +78,7 @@ export async function handler(event) {
       place,
       now: { temp: outdoor.temp, hum: outdoor.hum, code: fc.code },
       forecast: fc.forecast,
+      occupancy: { people: outdoor.people ?? null }, // gebouw-breed, vermoedelijk
     });
   } catch (err) {
     console.error('[weather] fout:', err.message);
