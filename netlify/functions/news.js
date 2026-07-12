@@ -6,9 +6,14 @@
 // doel:"nieuws") een eigen { label, feed } per taal meegeven (?feed=&label= override).
 /* eslint-disable */
 
+const MAX_ITEMS = 5; // enkel de belangrijkste koppen
+
+// RTBF biedt geen publieke RSS (HTML/403); 7sur7 (DPG Media) blokkeert artikels via een
+// privacy-gate/WAF. BX1 (Brusselse regionale zender) heeft een schone WordPress-feed en past
+// bij een Brussels/Anderlecht-site. Overschrijfbaar via ?feed=&label= (later via complex-content).
 const FEEDS = {
   nl: { label: 'VRT NWS', url: 'https://www.vrt.be/vrtnws/nl.rss.articles.xml' },
-  fr: { label: '7sur7',   url: 'https://www.7sur7.be/home/rss.xml' },
+  fr: { label: 'BX1',     url: 'https://bx1.be/feed/' },
   en: { label: 'VRT NWS', url: 'https://www.vrt.be/vrtnws/en.rss.articles.xml' },
 };
 
@@ -65,7 +70,7 @@ function parseFeed(xml) {
     }
     if (link) link = decodeEntities(link); // entiteiten (&#038; enz.) → zuivere URL
     items.push({ title, link });
-    if (items.length >= 15) break;
+    if (items.length >= MAX_ITEMS) break;
   }
   return items;
 }
