@@ -393,7 +393,7 @@
       bars.className = 'druk-bars ' + cls;
       [...bars.children].forEach((b, i) => b.classList.toggle('on', i < on));
       document.getElementById('drukLvl').textContent = lvl;
-      document.getElementById('drukSub').textContent = tr(`${rate}% bezet`, `${rate}% occupé`, `${rate}% occupied`);
+      document.getElementById('drukSub').textContent = tr(`${rate}% vergaderzalen bezet`, `${rate}% des salles occupées`, `${rate}% of meeting rooms in use`);
       document.getElementById('drukMeta').textContent = tr('in het gebouw', 'dans le bâtiment', 'in the building');
       card.classList.remove('hidden');
     }

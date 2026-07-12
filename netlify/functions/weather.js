@@ -40,13 +40,13 @@ async function outdoorFromRealpulse(assetId) {
   if (!res.ok) return {};
   const a = await res.json().catch(() => ({}));
   const w = collectWeather(a);
-  // Gebouw-brede bezettingsgraad: max van de occupancy-rate-metingen (Desk/Meeting room occupancy rate,
-  // unit %). Betrouwbaarder dan de deurteller-headcount (die geeft footfall, geen netto-aanwezigheid).
+  // Bezettingsgraad van de VERGADERZALEN (Meeting room occupancy rate, %). Realistisch tot ~85% (6/7);
+  // betrouwbaarder dan de deurteller-headcount (footfall). Fallback: eender welke occupancy-% als de
+  // meeting-room-meting even ontbreekt.
   const last = Array.isArray(a?.last) ? a.last : [];
-  const rates = last
-    .filter((x) => x && x.unit === '%' && (/ccupanc/i.test(x.type || '') || /occupanc/i.test(x.deviceName || '')))
-    .map((x) => Number(x.value)).filter((v) => !Number.isNaN(v));
-  const occupancyRate = rates.length ? Math.max(...rates) : null;
+  const pct = last.filter((x) => x && x.unit === '%' && (/ccupanc/i.test(x.type || '') || /occupanc/i.test(x.deviceName || '')));
+  const mr = pct.find((x) => /meeting\s*room/i.test(x.deviceName || ''));
+  const occupancyRate = mr ? Number(mr.value) : (pct.length ? Number(pct[0].value) : null);
   return { temp: w.temperature ?? null, hum: w.humidity ?? null, occupancyRate };
 }
 
