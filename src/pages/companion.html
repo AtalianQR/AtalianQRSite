@@ -198,6 +198,16 @@
     const env = qs.get('env') === 'test' ? 'test' : 'prod';
     const debug = qs.get('debug') === '1';
 
+    // Demo-simulatie: overschrijf sensor-/weerwaarden via de URL om het advies te tonen.
+    // bv. ?simCo2=1300&simIn=28&simOut=33&simWin=2&simTherm=ja
+    const sim = {
+      co2:  qs.has('simCo2') ? Number(qs.get('simCo2')) : null,
+      tin:  qs.has('simIn')  ? Number(qs.get('simIn'))  : null,
+      tout: qs.has('simOut') ? Number(qs.get('simOut')) : null,
+      win:  qs.has('simWin') ? Number(qs.get('simWin')) : null,
+      therm: qs.has('simTherm') ? /^(1|true|ja|yes|y|j)$/i.test(qs.get('simTherm')) : null,
+    };
+
     function idFromCode(code){
       if (!/^\d{8,20}$/.test(code)) return '';
       let id = ''; for (let i = 0; i < code.length - 1; i += 2) id += code[i];
@@ -328,6 +338,14 @@
         const r = await fetch(`/.netlify/functions/room?spaceId=${encodeURIComponent(spaceId)}&env=${env}${debug?'&debug=1':''}`);
         const d = await r.json();
         if (!r.ok) { body.innerHTML = `<div class="muted">${tr('Sensordata tijdelijk niet beschikbaar.', 'Données momentanément indisponibles.', 'Sensor data temporarily unavailable.')}</div>`; return; }
+
+        // Demo-simulatie toepassen (toont de kaart ook zonder sensor).
+        if (sim.co2 != null) d.co2 = sim.co2;
+        if (sim.tin != null) d.temp = sim.tin;
+        if (sim.win != null) d.windows = sim.win;
+        if (sim.therm != null) d.thermostat = sim.therm;
+        if (!d.coupled && (sim.co2 != null || sim.tin != null)) d.coupled = true;
+
         if (!d.coupled) { body.innerHTML = `<div class="muted">${tr('Dit lokaal heeft (nog) geen sensoren.', 'Ce local n’a pas (encore) de capteurs.', 'This room has no sensors (yet).')}</div>`; return; }
 
         const c = comfortForCo2(d.co2);
@@ -430,6 +448,7 @@
         const r = await fetch(`/.netlify/functions/weather?lang=${lang}`);
         if (!r.ok) return;
         const d = await r.json();
+        if (sim.tout != null) { d.now = d.now || {}; d.now.temp = sim.tout; }
         const fc = Array.isArray(d.forecast) ? d.forecast : [];
         if (d.now?.temp == null && !fc.length) return;
 
