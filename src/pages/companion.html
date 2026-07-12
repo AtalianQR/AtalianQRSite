@@ -313,13 +313,30 @@
       }
 
       if (indoor != null && thermostat) {        // thermostaat aanwezig → bij thermisch ongemak
-        const warm = indoor >= 26 && outdoor != null && outdoor > 26; // enkel bij hittegolf: binnen én buiten warm
-        const cold = indoor < 19;
-        if (warm || cold) {
+        if (indoor >= 26 && outdoor != null && outdoor > 26) {
+          // hittegolf: binnen én buiten warm → de thermostaat kan de hitte niet wegwerken
           parts.push({ icon:'🌡️', tone:'warn', txt: tr(
-            `Het is hier wat ${warm ? 'warm' : 'koel'}. Controleer of de thermostaat juist staat (±${comfort}°C).`,
-            `Il fait un peu ${warm ? 'chaud' : 'frais'} ici. Vérifiez le réglage du thermostat (±${comfort}°C).`,
-            `It’s a bit ${warm ? 'warm' : 'cool'} here. Check the thermostat setting (±${comfort}°C).`) });
+            'Het is warm, ook buiten. Sluit ramen en zonwering, drink voldoende water; de thermostaat kan de hitte niet wegwerken.',
+            'Il fait chaud, aussi dehors. Fermez fenêtres et stores, buvez suffisamment; le thermostat ne peut pas évacuer la chaleur.',
+            'It’s warm, outside too. Close windows and blinds, stay hydrated; the thermostat can’t remove this heat.') });
+        } else if (indoor >= 26 && outdoor != null) {
+          // abnormaal warm: binnen warmer dan buiten → wellicht thermostaat verkeerd ingesteld
+          parts.push({ icon:'🌡️', tone:'warn', txt: tr(
+            `Het is hier warmer dan buiten. Controleer of de thermostaat juist staat (±${comfort}°C).`,
+            `Il fait plus chaud ici que dehors. Vérifiez le réglage du thermostat (±${comfort}°C).`,
+            `It’s warmer here than outside. Check the thermostat setting (±${comfort}°C).`) });
+        } else if (indoor >= 26) {
+          // buitentemp onbekend → geen vergelijking, generiek advies
+          parts.push({ icon:'🌡️', tone:'warn', txt: tr(
+            `Het is hier wat warm. Controleer of de thermostaat juist staat (±${comfort}°C).`,
+            `Il fait un peu chaud ici. Vérifiez le réglage du thermostat (±${comfort}°C).`,
+            `It’s a bit warm here. Check the thermostat setting (±${comfort}°C).`) });
+        } else if (indoor < 19) {
+          // te koel → thermostaat controleren
+          parts.push({ icon:'🌡️', tone:'warn', txt: tr(
+            `Het is hier wat koel. Controleer of de thermostaat juist staat (±${comfort}°C).`,
+            `Il fait un peu frais ici. Vérifiez le réglage du thermostat (±${comfort}°C).`,
+            `It’s a bit cool here. Check the thermostat setting (±${comfort}°C).`) });
         }
       }
       return parts;
