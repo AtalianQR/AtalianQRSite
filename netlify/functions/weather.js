@@ -47,7 +47,18 @@ async function outdoorFromRealpulse(assetId) {
   const pct = last.filter((x) => x && x.unit === '%' && (/ccupanc/i.test(x.type || '') || /occupanc/i.test(x.deviceName || '')));
   const mr = pct.find((x) => /meeting\s*room/i.test(x.deviceName || ''));
   const occupancyRate = mr ? Number(mr.value) : (pct.length ? Number(pct[0].value) : null);
-  return { temp: w.temperature ?? null, hum: w.humidity ?? null, occupancyRate };
+
+  // Energie (elektriciteitsverbruik) van het gebouw — deltas uit de Elec-meter.
+  const daily = last.find((x) => x && x.type === 'Elec (daily delta)');
+  const hourly = last.find((x) => x && x.type === 'Elec (hourly delta)');
+  const yearly = last.find((x) => x && x.type === 'Elec (yearly delta)');
+  const energy = {
+    daily: daily ? Number(daily.value) : null,
+    hourly: hourly ? Number(hourly.value) : null,
+    yearly: yearly ? Number(yearly.value) : null,
+  };
+
+  return { temp: w.temperature ?? null, hum: w.humidity ?? null, occupancyRate, energy };
 }
 
 async function forecastFromOpenMeteo(lat, lon) {
@@ -83,6 +94,7 @@ export async function handler(event) {
       now: { temp: outdoor.temp, hum: outdoor.hum, code: fc.code },
       forecast: fc.forecast,
       occupancy: { rate: outdoor.occupancyRate ?? null }, // gebouw-brede bezettingsgraad %
+      energy: outdoor.energy ?? null,                     // Elec-verbruik gebouw (daily/hourly/yearly kWh)
     });
   } catch (err) {
     console.error('[weather] fout:', err.message);

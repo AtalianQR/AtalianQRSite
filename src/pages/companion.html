@@ -76,6 +76,16 @@
     .druk-bars.good b.on{background:var(--good)} .druk-bars.warn b.on{background:var(--warn)} .druk-bars.crit b.on{background:var(--crit)}
     .druk-txt b{font-size:14px;display:block;letter-spacing:-.01em}
     .druk-txt span{font-size:11.5px;color:var(--ink-soft)}
+    .eco{border-radius:var(--r);padding:13px 15px;display:flex;gap:12px;align-items:flex-start;border:1px solid transparent}
+    .eco.good{background:var(--good-bg);border-color:color-mix(in srgb,var(--good) 22%,transparent)}
+    .eco.warn{background:var(--warn-bg);border-color:color-mix(in srgb,var(--warn) 24%,transparent)}
+    .eco.crit{background:var(--crit-bg);border-color:color-mix(in srgb,var(--crit) 26%,transparent)}
+    .eco .badge{width:38px;height:38px;border-radius:11px;flex:0 0 auto;display:grid;place-items:center;color:#fff}
+    .eco.good .badge{background:var(--good)} .eco.warn .badge{background:var(--warn)} .eco.crit .badge{background:var(--crit)}
+    .eco .t b{font-size:13px;display:block;letter-spacing:-.01em}
+    .eco.good .t b{color:var(--good)} .eco.warn .t b{color:var(--warn)} .eco.crit .t b{color:var(--crit)}
+    .eco .t p{margin:2px 0 0;font-size:12px;color:var(--ink-soft);line-height:1.45}
+    .eco .t .tip{margin-top:6px;font-size:11.5px;font-weight:600}
 
     .artist .artist-in{display:flex;gap:12px;padding:13px 15px;align-items:flex-start}
     .artist .mono{width:40px;height:40px;border-radius:11px;flex:0 0 auto;display:grid;place-items:center;font-weight:800;font-size:19px;background:var(--accent-bg);color:var(--accent-2);letter-spacing:-.02em}
@@ -198,6 +208,11 @@
       </div>
     </div>
 
+    <div class="eco good hidden" id="eco">
+      <div class="badge"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M11 20A7 7 0 0 1 9.8 6.1C15 5 17 4.5 19 2c1 5 .8 12-4 15a7 7 0 0 1-4 3z"/><path d="M9 15c1.5-3 3.5-5 6-6.5"/></svg></div>
+      <div class="t"><b id="ecoTitle"></b><p id="ecoBody"></p><div class="tip" id="ecoTip"></div></div>
+    </div>
+
     <div class="news hidden" id="news">
       <div class="ticker" id="tickerBar" role="button" tabindex="0" aria-expanded="false">
         <div class="ticker-src" id="newsSrc"></div>
@@ -232,6 +247,7 @@
       occ:  qs.has('simOcc') ? Number(qs.get('simOcc')) : null,
       people: qs.has('simPeople') ? Number(qs.get('simPeople')) : null,
       cap:  qs.has('simCap') ? Number(qs.get('simCap')) : null,
+      eco:  qs.get('simEco') || null,
     };
 
     function idFromCode(code){
@@ -397,6 +413,57 @@
       document.getElementById('drukMeta').textContent = tr('in het gebouw', 'dans le bâtiment', 'in the building');
       card.classList.remove('hidden');
     }
+    function ecoTip(){
+      const tips = [
+        tr('Zet schermen en verlichting uit bij het verlaten.', 'Éteignez écrans et lumières en partant.', 'Turn off screens and lights when you leave.'),
+        tr('Vergaderzaal vrij? Verwarm of koel ze niet onnodig.', 'Salle libre ? Ne la chauffez/climatisez pas inutilement.', 'Room free? Don’t heat or cool it needlessly.'),
+        tr('Neem de trap in plaats van de lift.', 'Prenez l’escalier plutôt que l’ascenseur.', 'Take the stairs instead of the lift.'),
+      ];
+      return tips[Math.floor(Math.random() * tips.length)];
+    }
+    function renderEco(){
+      // Slimme eco-badge: verbruik afgezet tegen uur-van-de-dag + bezetting.
+      const el = document.getElementById('eco');
+      const en = _weather && _weather.energy;
+      if (!el || !en || en.daily == null) return;
+
+      const hour = sim.hour != null ? sim.hour : new Date().getHours();
+      const afterHours = hour < 7 || hour >= 19;                         // buiten kantooruren
+      const occRate = (_weather && _weather.occupancy) ? _weather.occupancy.rate : null;
+      const rate = sim.occ != null ? sim.occ : occRate;
+      const avgHourly = en.daily / Math.max(1, hour);                    // ruw daggemiddelde per uur
+      const high = en.hourly != null && en.hourly > avgHourly * 1.3;     // dit uur duidelijk boven gemiddelde
+
+      const forced = ['good', 'warn', 'crit'].includes(sim.eco) ? sim.eco : null;
+      let tone, title, body, tip = '';
+      if (forced === 'crit' || (!forced && afterHours && high)) {
+        tone = 'crit';
+        title = tr('Verbruik buiten de uren', 'Consommation hors heures', 'After-hours use');
+        body  = tr('Nog volop verbruik terwijl het gebouw dicht is. Kijk of er iets onnodig aanstaat.',
+                   'Consommation élevée alors que le bâtiment est fermé. Vérifiez si quelque chose tourne inutilement.',
+                   'Still high consumption while the building is closed. Check if something is left on.');
+      } else if (forced === 'warn' || (!forced && !afterHours && rate != null && rate < 20 && high)) {
+        tone = 'warn';
+        title = tr('Verhoogd verbruik', 'Consommation élevée', 'Elevated use');
+        body  = tr('Veel verbruik bij lage bezetting. Zet ongebruikte toestellen of verlichting uit.',
+                   'Consommation élevée pour une faible occupation. Éteignez les appareils/lumières inutiles.',
+                   'High consumption at low occupancy. Switch off unused devices or lights.');
+      } else {
+        tone = 'good';
+        title = tr('Energievriendelijk', 'Écoénergétique', 'Energy-friendly');
+        body  = tr(`Efficiënt verbruik. Vandaag ${Math.round(en.daily)} kWh in het gebouw.`,
+                   `Consommation efficace. ${Math.round(en.daily)} kWh aujourd’hui.`,
+                   `Efficient use. ${Math.round(en.daily)} kWh today.`);
+        tip = ecoTip();
+      }
+
+      el.classList.remove('good', 'warn', 'crit');
+      el.classList.add(tone);
+      document.getElementById('ecoTitle').textContent = title;
+      document.getElementById('ecoBody').textContent = body;
+      document.getElementById('ecoTip').textContent = tip;
+      el.classList.remove('hidden');
+    }
     function renderAdvice(){
       const el = document.getElementById('advies');
       if (!el || !_room || !_room.coupled) return;
@@ -535,6 +602,7 @@
         document.getElementById('weatherCard').classList.remove('hidden');
         _weather = d;
         renderDrukte();
+        renderEco();
         renderAdvice();
       } catch {}
     }
