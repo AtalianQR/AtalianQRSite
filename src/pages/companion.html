@@ -35,6 +35,12 @@
     .btn{display:block;width:100%;text-align:center;text-decoration:none;background:var(--accent);color:#fff;font-weight:700;padding:14px;border-radius:12px;margin-top:16px;border:none;cursor:pointer;font-size:1rem}
     .btn:active{background:var(--accent2)}
     .muted-card{color:var(--muted);font-size:.9rem}
+    #naamgever .ng-head{display:flex;align-items:center;gap:12px;margin-bottom:10px}
+    #naamgever .ng-avatar{width:40px;height:40px;border-radius:10px;background:#fdefdc;color:var(--accent);display:flex;align-items:center;justify-content:center;font-weight:800;font-size:1.1rem;flex:0 0 auto}
+    #naamgever .ng-name{font-weight:800;font-size:1.05rem}
+    #naamgever .ng-disc{font-size:.74rem;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);margin-top:2px}
+    #naamgever .ng-omschrijving{margin:0 0 10px;font-size:.92rem;color:var(--navy)}
+    #naamgever .ng-weetje{margin:0;font-size:.9rem;color:var(--accent);font-weight:600;line-height:1.4}
     .spin{display:inline-block;width:16px;height:16px;border:2px solid var(--line);border-top-color:var(--accent);border-radius:50%;animation:sp .8s linear infinite;vertical-align:-3px}
     @keyframes sp{to{transform:rotate(360deg)}}
   </style>
@@ -57,6 +63,19 @@
     <section class="card" id="comfort">
       <h2 id="comfortTitle"></h2>
       <div id="comfortBody"><span class="spin"></span> <span id="loadingTxt"></span></div>
+    </section>
+
+    <section class="card" id="naamgever" style="display:none">
+      <h2 id="ngTitle"></h2>
+      <div class="ng-head">
+        <div class="ng-avatar" id="ngAvatar"></div>
+        <div>
+          <div class="ng-name" id="ngName"></div>
+          <div class="ng-disc" id="ngDisc"></div>
+        </div>
+      </div>
+      <p class="ng-omschrijving" id="ngOmschrijving"></p>
+      <p class="ng-weetje" id="ngWeetje"></p>
     </section>
 
     <a class="btn" id="meldBtn" href="#"></a>
@@ -98,6 +117,7 @@
     document.getElementById('comfortTitle').textContent = tr('Comfort & luchtkwaliteit', 'Confort & qualité de l’air', 'Comfort & air quality');
     document.getElementById('loadingTxt').textContent = tr('Sensordata ophalen…', 'Chargement des données…', 'Loading sensor data…');
     document.getElementById('meldBtn').textContent = tr('🛠️ Meld een probleem', '🛠️ Signaler un problème', '🛠️ Report a problem');
+    document.getElementById('ngTitle').textContent = tr('Naamgever van deze ruimte', 'Personne qui a donné son nom à la salle', 'Namesake of this room');
 
     // taal-schakelaar
     document.querySelectorAll('#lang a').forEach(a => {
@@ -177,8 +197,34 @@
       }
     }
 
+    // ---- Naamgever-kaart (content-laag via Ultimo-document) -----------
+    const pickLang = (o) => (o && typeof o === 'object') ? (o[lang] || o.nl || '') : '';
+    async function loadNaamgever(){
+      if (!spaceId) return;
+      try {
+        const r = await fetch(`/.netlify/functions/content?spaceId=${encodeURIComponent(spaceId)}&env=${env}${debug?'&debug=1':''}`);
+        if (!r.ok) return;
+        const d = await r.json();
+        const ng = d.content && d.content.naamgever;
+        if (!ng || !ng.naam) return;
+
+        document.getElementById('ngName').textContent = ng.naam;
+        document.getElementById('ngAvatar').textContent = ng.naam.trim().charAt(0).toUpperCase();
+        document.getElementById('ngDisc').textContent = pickLang(ng.discipline);
+        document.getElementById('ngOmschrijving').textContent = pickLang(ng.omschrijving);
+
+        const weetjes = Array.isArray(ng.weetjes) ? ng.weetjes : [];
+        if (weetjes.length) {
+          const w = weetjes[Math.floor(Math.random() * weetjes.length)];  // willekeurig, niet steeds hetzelfde
+          document.getElementById('ngWeetje').textContent = '💡 ' + pickLang(w);
+        }
+        document.getElementById('naamgever').style.display = '';
+      } catch {}
+    }
+
     loadRoomInfo();
     loadComfort();
+    loadNaamgever();
   </script>
 </body>
 </html>
