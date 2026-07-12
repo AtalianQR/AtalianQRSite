@@ -206,6 +206,8 @@
       tout: qs.has('simOut') ? Number(qs.get('simOut')) : null,
       win:  qs.has('simWin') ? Number(qs.get('simWin')) : null,
       therm: qs.has('simTherm') ? /^(1|true|ja|yes|y|j)$/i.test(qs.get('simTherm')) : null,
+      hour: qs.has('simHour') ? Number(qs.get('simHour')) : null,
+      code: qs.has('simCode') ? Number(qs.get('simCode')) : null,
     };
 
     function idFromCode(code){
@@ -282,7 +284,7 @@
 
     // ---- Verlucht-advies: CO2 bepaalt OF, buitentemp bepaalt HOE LANG; ramen/thermostaat = poortwachters ----
     let _room = null, _weather = null;
-    function ventAdvice({ co2, indoor, outdoor, windows, thermostat, comfort = 21 }){
+    function ventAdvice({ co2, indoor, outdoor, weatherCode, hour, windows, thermostat, comfort = 21 }){
       const parts = [];
       const hasWin = windows == null ? true : windows > 0; // onbekend → aannemen dat er een raam is
       const dOut = (outdoor != null) ? (outdoor - comfort) : null;
@@ -339,13 +341,21 @@
             `It’s a bit cool here. Check the thermostat setting (±${comfort}°C).`) });
         }
       }
+      // Sluit-raam-reminder (tegen inbraak): enkel bij mooi weer, vanaf de namiddag, én als er een raam is.
+      if (windows > 0 && weatherCode != null && weatherCode <= 2 && hour != null && hour >= 13) {
+        parts.push({ icon:'🔒', tone:'good', txt: tr(
+          'Mooi weer. Vergeet bij het verlaten niet het raam te sluiten (tegen inbraak).',
+          'Beau temps. En partant, n’oubliez pas de fermer la fenêtre (contre le cambriolage).',
+          'Nice weather. When you leave, don’t forget to close the window (against burglary).') });
+      }
       return parts;
     }
     function renderAdvice(){
       const el = document.getElementById('advies');
       if (!el || !_room || !_room.coupled) return;
-      const outdoor = (_weather && _weather.now) ? _weather.now.temp : null;
-      const parts = ventAdvice({ co2:_room.co2, indoor:_room.temp, outdoor, windows:_room.windows, thermostat:_room.thermostat });
+      const wxNow = (_weather && _weather.now) ? _weather.now : {};
+      const hour = sim.hour != null ? sim.hour : new Date().getHours();
+      const parts = ventAdvice({ co2:_room.co2, indoor:_room.temp, outdoor: wxNow.temp ?? null, weatherCode: wxNow.code ?? null, hour, windows:_room.windows, thermostat:_room.thermostat });
       el.innerHTML = parts.map(p => `<div class="adv adv-${p.tone}"><span>${p.icon}</span><span>${p.txt}</span></div>`).join('');
     }
 
@@ -467,6 +477,7 @@
         if (!r.ok) return;
         const d = await r.json();
         if (sim.tout != null) { d.now = d.now || {}; d.now.temp = sim.tout; }
+        if (sim.code != null) { d.now = d.now || {}; d.now.code = sim.code; }
         const fc = Array.isArray(d.forecast) ? d.forecast : [];
         if (d.now?.temp == null && !fc.length) return;
 
