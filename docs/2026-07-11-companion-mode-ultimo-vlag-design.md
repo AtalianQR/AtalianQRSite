@@ -141,11 +141,14 @@ De niet-sensor content (naamgever, capaciteit, hasWindow, wifi, vestigingen…) 
 - `Companion raam` (Ja/Nee) = hasWindow ("verlucht via raam" vs "meld voor bijregeling")
 - `Companion ruimtetype` (Meerkeuze) — of native ruimtesoort
 
-**② Document `companion.json`** — meertalige/rijke + gedeelde content, **één per object**, met overerving **ruimte ← gebouw ← complex** (ruimte overschrijft gebouw overschrijft complex):
+**② Documenten** — meertalige/rijke + gedeelde content, met overerving **ruimte ← gebouw ← complex** (ruimte overschrijft gebouw overschrijft complex).
 
-Ruimte-niveau (`schema: "companion.v1"`):
+**Eén documentsoort voor het hele portaal** (bv. `Companion content`), en elk document **beschrijft zichzelf** via een veld `doel` bovenaan. Zo hangt onder één soort elk soort portaaldocument (naamgever, wifi, vestigingen…), en `content.js` routeert op `doel` — exact parallel met de feature-routing op description (§4). De WFL matcht op de **documentsoort-code** (stabiel), niet op de bestandsnaam. Zo blijft het beheersbaar met veel documenten.
+
+Ruimte-niveau (`doel: "naamgever"`):
 ```json
 {
+  "doel": "naamgever",
   "schema": "companion.v1",
   "naamgever": {
     "naam": "Toots Thielemans",
@@ -172,8 +175,8 @@ Gebouw-/complex-niveau (gedeeld, één keer invullen):
 
 **Leespad:**
 - `GET_SPACE_FEATURES` (bestaat) → scalairs + resolve building/complex-id's (uitbreiden zodat het die id's meegeeft).
-- nieuwe WFL `GET_OBJECT_DOC` (object-type + id + filename `companion.json` → base64). Precedent: `_rest_ObjDocSendB64.wfl`, `GET_JOB_DOC` (`jobquery.js`). *(Exacte ObjectDocument-query bevestigen bij het bouwen.)*
-- nieuwe **`content.js`**: merge't features + de 3 documenten (ruimte>gebouw>complex) tot één content-JSON; `companion.html` rendert die **samen** met de live sensors uit `room.js`.
+- nieuwe WFL `GET_OBJECT_DOCS` (object-type + id, filter op **documentsoort-code** `Companion content`) → de bijgevoegde JSON-documenten (base64). Precedent: `_rest_ObjDocSendB64.wfl`, `GET_JOB_DOC` (`jobquery.js`). *(Exacte ObjectDocument-query + soort-code bevestigen bij het bouwen.)*
+- nieuwe **`content.js`**: haalt de documenten voor ruimte+gebouw+complex, **routeert op `doel`**, en merge't (ruimte>gebouw>complex) samen met de features tot één content-JSON; `companion.html` rendert die **samen** met de live sensors uit `room.js`. Voor `doel: "naamgever"` toont het de vaste `omschrijving` + een **willekeurig** weetje uit `weetjes`.
 
 **FM-vriendelijkheid:** kenmerken = triviaal; het JSON-document niet. Demo: jij auteur het. Product: een kleine **"Companion content"-editor** (webformulier dat `companion.json` via de Ultimo-API leest/schrijft) zodat een FM nooit ruwe JSON ziet.
 

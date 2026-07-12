@@ -355,6 +355,9 @@ OUT = Path(__file__).parent
 for person, items in facts.items():
     m = meta[person]
     doc = {
+        # Eén documentsoort voor het hele portaal; het document beschrijft zichzelf via "doel"
+        # bovenaan, zodat content.js weet hoe het te routeren (parallel met de feature-routing).
+        "doel": "naamgever",
         "schema": "companion.v1",
         "naamgever": {
             "naam": m["naam"],
