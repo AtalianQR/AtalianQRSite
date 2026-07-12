@@ -586,12 +586,16 @@ async function preloadContextAndShow() {
 }
 
   let cleaningProgramText = ""; // wordt gevuld door showLocation()
+  let _spaceInfo = null;        // space.js-respons, gecacht zodat init() en showLocation() niet dubbel fetchen
 
   async function showLocation(){
-    const r = await fetch(
-      `${endpointLoc}?id=${encodeURIComponent(id)}&lang=${lang}&env=${prefix}`
-    );
-    const d = await r.json();
+    let d = _spaceInfo;
+    if (!d) {
+      const r = await fetch(
+        `${endpointLoc}?id=${encodeURIComponent(id)}&lang=${lang}&env=${prefix}`
+      );
+      d = await r.json();
+    }
     if(!d.description) return;
     Telemetry.setExtra({ locationName: d.description, buildingName: d.buildingName || '', ...(d.clientName ? { clientName: d.clientName } : {}) });
     Telemetry.send('location_known', { locationName: d.description, clientName: d.clientName || '', buildingName: d.buildingName || '' });
@@ -873,6 +877,30 @@ async function preloadContextAndShow() {
      CHATFLOW – INIT
   ====================================================================== */
   async function init() {
+    // ── Companion-poort ──────────────────────────────────────────────
+    // Kenmerk QR-Portalcompanion (gebouw, 000152) aan + geen melden-marker → met DEZELFDE
+    // gecodeerde 'code' door naar de companion. Van daaruit keert "Meld een probleem" terug
+    // (met melden=1), zodat het traditionele portaal dan gewoon draait. Geen kale SpaceId in beeld.
+    const isMeldenReturn = qs.has('melden');
+    if (code && id && !isEquipment && !isMeldenReturn) {
+      try {
+        const r = await fetch(`${endpointLoc}?id=${encodeURIComponent(id)}&lang=${lang}&env=${prefix}`);
+        if (r.ok) {
+          _spaceInfo = await r.json();
+          if (_spaceInfo && _spaceInfo.companionEnabled) {
+            const u = new URL('/companion.html', location.origin);
+            u.searchParams.set('code', code);
+            u.searchParams.set('lang', lang);
+            u.searchParams.set('env', prefix);
+            u.searchParams.set('src', location.href);
+            Telemetry.send('companion_redirect', { id });
+            location.replace(u.toString());
+            return;
+          }
+        }
+      } catch { /* stil: val terug op het normale meldingsportaal */ }
+    }
+
     // Altijd eerst BotUI initialiseren
     botui = new BotUI('botui-app');
 
