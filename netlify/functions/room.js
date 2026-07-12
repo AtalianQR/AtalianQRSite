@@ -101,6 +101,8 @@ async function fetchSpaceFeatures(base, spaceId) {
     code: String(f.code ?? f.Code ?? '').trim(),
     description: String(f.description ?? f.Description ?? '').trim(),
     value: String(f.value ?? f.Value ?? '').trim(),
+    numeric: String(f.numeric ?? f.Numeric ?? '').trim(),
+    yesno: String(f.yesno ?? f.YesNo ?? '').trim(),
   }));
 }
 
@@ -153,10 +155,19 @@ export async function handler(event) {
     const features = await fetchSpaceFeatures(base, spaceId);
     const iotFeature = features.find((f) => f.value && routeForFeature(f.description) === 'realpulse');
 
+    // Ruimte-poortwachters voor het verlucht-advies: aantal ramen (numeriek) + thermostaat (ja/nee).
+    const winF = features.find((f) => /\braam\b|\bramen\b/i.test(f.description));
+    const thF  = features.find((f) => /thermosta/i.test(f.description));
+    const roomFacts = {
+      windows: winF ? (parseInt(winF.numeric || winF.value || '', 10) || 0) : null,
+      thermostat: thF ? /^(1|true|yes|ja|y|j|-1)$/i.test(String(thF.yesno || thF.value || '')) : null,
+    };
+
     if (!iotFeature) {
       // Geen IoT-kenmerk → niet gekoppeld. Companion laat de sensorkaarten weg.
       return json(200, {
         coupled: false,
+        ...roomFacts,
         env,
         ...(debug ? { spaceId, features } : {}),
       });
@@ -168,6 +179,7 @@ export async function handler(event) {
     return json(200, {
       coupled: true,
       ...sensors,
+      ...roomFacts,
       env,
       ...(debug ? { spaceId, matched: iotFeature, features } : {}), // id/kenmerk enkel in debug
     });

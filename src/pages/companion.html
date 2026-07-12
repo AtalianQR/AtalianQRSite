@@ -63,6 +63,12 @@
     .gauge{height:6px;border-radius:99px;background:var(--line-2);margin-top:11px;overflow:hidden;position:relative}
     .gauge i{position:absolute;inset:0 auto 0 0;border-radius:99px;transition:width .5s ease,background .3s}
     .gauge-cap{display:flex;justify-content:space-between;font-size:10px;color:var(--ink-faint);margin-top:5px}
+    .advies{margin-top:11px;display:flex;flex-direction:column;gap:7px}
+    .adv{display:flex;gap:8px;align-items:flex-start;font-size:12px;line-height:1.4;padding:9px 11px;border-radius:var(--r-sm);font-weight:600}
+    .adv>span:first-child{flex:0 0 auto}
+    .adv-good{background:var(--good-bg);color:var(--good)}
+    .adv-warn{background:var(--warn-bg);color:var(--warn)}
+    .adv-crit{background:var(--crit-bg);color:var(--crit)}
 
     .artist .artist-in{display:flex;gap:12px;padding:13px 15px;align-items:flex-start}
     .artist .mono{width:40px;height:40px;border-radius:11px;flex:0 0 auto;display:grid;place-items:center;font-weight:800;font-size:19px;background:var(--accent-bg);color:var(--accent-2);letter-spacing:-.02em}
@@ -264,6 +270,57 @@
     const num = (v, dec=0) => (v==null||isNaN(v)) ? '–' : Number(v).toFixed(dec);
     const cssVar = { good:'var(--good)', warn:'var(--warn)', crit:'var(--crit)' };
 
+    // ---- Verlucht-advies: CO2 bepaalt OF, buitentemp bepaalt HOE LANG; ramen/thermostaat = poortwachters ----
+    let _room = null, _weather = null;
+    function ventAdvice({ co2, indoor, outdoor, windows, thermostat, comfort = 21 }){
+      const parts = [];
+      const hasWin = windows == null ? true : windows > 0; // onbekend → aannemen dat er een raam is
+      const dOut = (outdoor != null) ? (outdoor - comfort) : null;
+
+      if (co2 != null && co2 >= 900) {           // CO2 bepaalt OF er verlucht moet worden
+        const tone = co2 > 1200 ? 'crit' : 'warn';
+        if (!hasWin) {
+          parts.push({ icon:'⚠️', tone, txt: tr(
+            'Luchtkwaliteit is verhoogd, maar dit lokaal heeft geen raam. Verhoog de ventilatie of meld het hieronder.',
+            'Qualité de l’air élevée, mais ce local n’a pas de fenêtre. Augmentez la ventilation ou signalez-le ci-dessous.',
+            'Air quality is elevated, but this room has no window. Increase ventilation or report it below.') });
+        } else if (dOut != null && dOut > 6) {
+          parts.push({ icon:'🪟', tone, txt: tr(
+            'Verlucht kort en sluit daarna, om extra opwarming te vermijden.',
+            'Aérez brièvement puis refermez, pour éviter un réchauffement supplémentaire.',
+            'Ventilate briefly, then close to avoid extra heating.') });
+        } else if (dOut != null && dOut < -6) {
+          parts.push({ icon:'🪟', tone, txt: tr(
+            'Verlucht kort en sluit daarna, om warmteverlies te beperken.',
+            'Aérez brièvement puis refermez, pour limiter les pertes de chaleur.',
+            'Ventilate briefly, then close to limit heat loss.') });
+        } else {
+          parts.push({ icon:'🪟', tone, txt: tr(
+            'Zet het raam open tot de luchtkwaliteit weer verbetert.',
+            'Ouvrez la fenêtre jusqu’à ce que la qualité de l’air s’améliore.',
+            'Open the window until the air quality improves.') });
+        }
+      }
+
+      if (indoor != null && thermostat) {        // thermostaat aanwezig → bij thermisch ongemak
+        const warm = indoor > 24, cold = indoor < 19;
+        if (warm || cold) {
+          parts.push({ icon:'🌡️', tone:'warn', txt: tr(
+            `Het is hier wat ${warm ? 'warm' : 'koel'}. Controleer of de thermostaat juist staat (±${comfort}°C).`,
+            `Il fait un peu ${warm ? 'chaud' : 'frais'} ici. Vérifiez le réglage du thermostat (±${comfort}°C).`,
+            `It’s a bit ${warm ? 'warm' : 'cool'} here. Check the thermostat setting (±${comfort}°C).`) });
+        }
+      }
+      return parts;
+    }
+    function renderAdvice(){
+      const el = document.getElementById('advies');
+      if (!el || !_room || !_room.coupled) return;
+      const outdoor = (_weather && _weather.now) ? _weather.now.temp : null;
+      const parts = ventAdvice({ co2:_room.co2, indoor:_room.temp, outdoor, windows:_room.windows, thermostat:_room.thermostat });
+      el.innerHTML = parts.map(p => `<div class="adv adv-${p.tone}"><span>${p.icon}</span><span>${p.txt}</span></div>`).join('');
+    }
+
     async function loadComfort(){
       const body = document.getElementById('comfortBody');
       if (!spaceId){ body.innerHTML = `<div class="muted">${tr('Geen lokaal opgegeven.', 'Aucun local indiqué.', 'No room specified.')}</div>`; return; }
@@ -286,7 +343,10 @@
           ${c ? `<div class="verdict ${c.cls}"><svg class="vi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M12 8v5M12 16h.01"/><circle cx="12" cy="12" r="9"/></svg><span>${c.txt}</span></div>` : ''}
           <div class="gauge"><i style="width:${gw}%;background:${gcol}"></i></div>
           <div class="gauge-cap"><span>400</span><span>1500 ppm</span></div>
+          <div class="advies" id="advies"></div>
         `;
+        _room = d;
+        renderAdvice();
       } catch {
         body.innerHTML = `<div class="muted">${tr('Sensordata tijdelijk niet beschikbaar.', 'Données momentanément indisponibles.', 'Sensor data temporarily unavailable.')}</div>`;
       }
@@ -378,6 +438,8 @@
         document.getElementById('wxPlace').textContent = [d.place, tr('eigen sensor', 'capteur propre', 'own sensor')].filter(Boolean).join(' · ');
         document.getElementById('wxFc').innerHTML = fc.map(f => `<div>${hourLabel(f.hour)}<b>${f.temp}°</b></div>`).join('');
         document.getElementById('weatherCard').classList.remove('hidden');
+        _weather = d;
+        renderAdvice();
       } catch {}
     }
 
