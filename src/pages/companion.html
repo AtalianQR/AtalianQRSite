@@ -74,6 +74,14 @@
     .artist .fact{display:flex;gap:7px;align-items:flex-start;margin-top:8px;font-size:11.5px;color:var(--accent-2);font-weight:600}
     .artist .fact svg{width:15px;height:15px;flex:0 0 auto;margin-top:1px}
 
+    .section-label{font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-faint);font-weight:600;padding:6px 4px 0}
+    .wx-card .card-h .wx-emoji{font-size:20px;line-height:1;flex:0 0 auto}
+    .wx{display:flex;align-items:center;gap:14px}
+    .wx .now{font-size:30px;font-weight:700;letter-spacing:-.02em;font-variant-numeric:tabular-nums;line-height:1}
+    .wx .now-k{font-size:11px;color:var(--ink-faint);font-weight:600;margin-top:4px}
+    .wx .fc{margin-left:auto;display:flex;gap:12px}
+    .wx .fc div{text-align:center;font-size:11px;color:var(--ink-soft);font-variant-numeric:tabular-nums}
+    .wx .fc b{display:block;font-size:13px;color:var(--ink);margin-top:2px}
     .news{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);box-shadow:var(--shadow-sm);overflow:hidden}
     .ticker{display:flex;align-items:stretch;cursor:pointer;user-select:none}
     .ticker-src{flex:0 0 auto;font-size:9.5px;font-weight:800;letter-spacing:.03em;color:#fff;background:var(--accent);padding:0 11px;text-transform:uppercase;display:flex;align-items:center}
@@ -145,6 +153,24 @@
       </div>
     </div>
 
+    <div class="section-label" id="handigLabel"></div>
+
+    <div class="card wx-card hidden" id="weatherCard">
+      <div class="card-h">
+        <span class="wx-emoji" id="wxEmoji">🌤️</span>
+        <h3 id="weatherTitle"></h3>
+      </div>
+      <div class="card-b">
+        <div class="wx">
+          <div>
+            <div class="now"><span id="wxTemp">–</span>°</div>
+            <div class="now-k" id="wxPlace"></div>
+          </div>
+          <div class="fc" id="wxFc"></div>
+        </div>
+      </div>
+    </div>
+
     <div class="news hidden" id="news">
       <div class="ticker" id="tickerBar" role="button" tabindex="0" aria-expanded="false">
         <div class="ticker-src" id="newsSrc"></div>
@@ -191,6 +217,8 @@
     document.getElementById('loadingTxt').textContent  = tr('Sensordata ophalen…', 'Chargement…', 'Loading sensor data…');
     document.getElementById('meldTxt').textContent     = tr('Meld een probleem', 'Signaler un problème', 'Report a problem');
     document.getElementById('artEyebrow').textContent  = tr('Naamgever van deze ruimte', 'Personne qui a donné son nom', 'Namesake of this room');
+    document.getElementById('handigLabel').textContent = tr('Handig vandaag', 'Pratique aujourd’hui', 'Handy today');
+    document.getElementById('weatherTitle').textContent = tr('Weer & buiten', 'Météo & extérieur', 'Weather & outside');
 
     document.querySelectorAll('#lang a').forEach(a => {
       if (a.dataset.l === lang) a.classList.add('on');
@@ -323,9 +351,40 @@
       } catch {}
     }
 
+    // ---- Weerkaart (live buitentemp via IoT + forecast via Open-Meteo) ----
+    function wmoEmoji(c){
+      if (c == null) return '🌡️';
+      if (c === 0) return '☀️';
+      if (c <= 2) return '🌤️';
+      if (c === 3) return '☁️';
+      if (c >= 45 && c <= 48) return '🌫️';
+      if (c >= 51 && c <= 67) return '🌧️';
+      if (c >= 71 && c <= 77) return '🌨️';
+      if (c >= 80 && c <= 82) return '🌦️';
+      if (c >= 95) return '⛈️';
+      return '🌡️';
+    }
+    const hourLabel = (h) => lang === 'nl' ? `${h}u` : `${h}h`;
+    async function loadWeather(){
+      try {
+        const r = await fetch(`/.netlify/functions/weather?lang=${lang}`);
+        if (!r.ok) return;
+        const d = await r.json();
+        const fc = Array.isArray(d.forecast) ? d.forecast : [];
+        if (d.now?.temp == null && !fc.length) return;
+
+        document.getElementById('wxEmoji').textContent = wmoEmoji(d.now && d.now.code);
+        document.getElementById('wxTemp').textContent  = (d.now && d.now.temp != null) ? Math.round(d.now.temp) : '–';
+        document.getElementById('wxPlace').textContent = [d.place, tr('eigen sensor', 'capteur propre', 'own sensor')].filter(Boolean).join(' · ');
+        document.getElementById('wxFc').innerHTML = fc.map(f => `<div>${hourLabel(f.hour)}<b>${f.temp}°</b></div>`).join('');
+        document.getElementById('weatherCard').classList.remove('hidden');
+      } catch {}
+    }
+
     loadRoomInfo();
     loadComfort();
     loadNaamgever();
+    loadWeather();
     loadNews();
   </script>
 </body>
