@@ -7,101 +7,143 @@
   <link rel="icon" href="/AtalianFavicon.png" />
   <style>
     :root{
-      --accent:#EE7E00; --accent2:#F28C00; --navy:#24313F;
-      --ok:#2e9e5b; --warn:#e08a00; --bad:#d64550;
-      --bg:#f4f6fa; --card:#ffffff; --line:#e5e9ef; --muted:#6b7280;
+      --bg:#ece8e3; --phone:#fdfcfa; --surface:#ffffff; --surface-2:#f5f1ec;
+      --ink:#24313f; --ink-soft:#5c6672; --ink-faint:#95a1ac;
+      --line:#e6e1da; --line-2:#efeae3;
+      --accent:#ee7e00; --accent-2:#c26600; --accent-bg:#fdecd6;
+      --good:#2f8f4e; --good-bg:#e6f2e9; --warn:#b47a12; --warn-bg:#f8eed6; --crit:#c0392b; --crit-bg:#f7e2de;
+      --shadow:0 1px 2px rgba(36,49,63,.05),0 10px 30px rgba(36,49,63,.11);
+      --shadow-sm:0 1px 2px rgba(36,49,63,.07);
+      --r:16px; --r-sm:11px;
+      --font:'Segoe UI',system-ui,-apple-system,Roboto,Helvetica,Arial,sans-serif;
     }
+    @media (prefers-color-scheme:dark){:root{
+      --bg:#161e26; --phone:#24313f; --surface:#2b3947; --surface-2:#334352;
+      --ink:#eef2f6; --ink-soft:#aab4bf; --ink-faint:#71808d; --line:#3a4a58; --line-2:#32414e;
+      --accent:#ff9a2e; --accent-2:#ffb257; --accent-bg:#3a2b16;
+      --good:#4fae63; --good-bg:#1e3226; --warn:#dda94a; --warn-bg:#332a15; --crit:#e06b58; --crit-bg:#3a2320;
+      --shadow:0 1px 2px rgba(0,0,0,.3),0 14px 40px rgba(0,0,0,.5); --shadow-sm:0 1px 2px rgba(0,0,0,.4);
+    }}
     *{box-sizing:border-box}
-    body{margin:0;font-family:system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif;background:var(--bg);color:var(--navy)}
-    .wrap{max-width:520px;margin:0 auto;padding:0 16px 40px}
-    header.site{background:var(--navy);color:#fff;padding:14px 16px;display:flex;align-items:center;gap:10px}
-    header.site .wrap{max-width:520px;margin:0 auto;padding:0;display:flex;align-items:center;gap:10px;width:100%}
-    header.site img{height:22px}
-    header.site .loc{font-weight:600;letter-spacing:.02em}
-    header.site .lang{margin-left:auto;display:flex;gap:6px}
-    header.site .lang a{color:#cdd6df;text-decoration:none;font-size:.82rem;padding:2px 6px;border-radius:6px}
-    header.site .lang a.on{color:#fff;background:rgba(255,255,255,.14)}
-    h1{font-size:1.15rem;margin:18px 2px 4px}
-    .sub{color:var(--muted);font-size:.86rem;margin:0 2px 14px}
-    .card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px;margin:12px 0;box-shadow:0 1px 3px rgba(36,49,63,.05)}
-    .card h2{font-size:.78rem;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin:0 0 12px}
-    .badge{display:inline-flex;align-items:center;gap:8px;font-weight:700;font-size:1.02rem;padding:8px 12px;border-radius:10px}
-    .badge.ok{background:#e8f6ee;color:var(--ok)} .badge.warn{background:#fdf1dd;color:var(--warn)} .badge.bad{background:#fbe6e8;color:var(--bad)}
-    .dot{width:10px;height:10px;border-radius:50%;background:currentColor;flex:0 0 auto}
-    .metrics{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:14px}
-    .metric{text-align:center;background:#fafbfd;border:1px solid var(--line);border-radius:10px;padding:10px 6px}
-    .metric .v{font-size:1.3rem;font-weight:700} .metric .k{font-size:.72rem;color:var(--muted);margin-top:2px}
-    .updated{font-size:.76rem;color:var(--muted);margin-top:12px}
-    .btn{display:block;width:100%;text-align:center;text-decoration:none;background:var(--accent);color:#fff;font-weight:700;padding:14px;border-radius:12px;margin-top:16px;border:none;cursor:pointer;font-size:1rem}
-    .btn:active{background:var(--accent2)}
-    .muted-card{color:var(--muted);font-size:.9rem}
-    #naamgever .ng-head{display:flex;align-items:center;gap:12px;margin-bottom:10px}
-    #naamgever .ng-avatar{width:40px;height:40px;border-radius:10px;background:#fdefdc;color:var(--accent);display:flex;align-items:center;justify-content:center;font-weight:800;font-size:1.1rem;flex:0 0 auto}
-    #naamgever .ng-name{font-weight:800;font-size:1.05rem}
-    #naamgever .ng-disc{font-size:.74rem;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);margin-top:2px}
-    #naamgever .ng-omschrijving{margin:0 0 10px;font-size:.92rem;color:var(--navy)}
-    #naamgever .ng-weetje{margin:0;font-size:.9rem;color:var(--accent);font-weight:600;line-height:1.4}
-    .spin{display:inline-block;width:16px;height:16px;border:2px solid var(--line);border-top-color:var(--accent);border-radius:50%;animation:sp .8s linear infinite;vertical-align:-3px}
+    body{margin:0;font-family:var(--font);background:var(--bg);color:var(--ink);-webkit-font-smoothing:antialiased}
+    .screen{max-width:400px;margin:0 auto;padding:18px 15px 40px;display:flex;flex-direction:column;gap:12px}
+
+    .topbar{display:flex;align-items:center;gap:10px;padding:2px 4px}
+    .brand{display:flex;align-items:center;gap:8px}
+    .brand .mark{width:24px;height:24px;flex:0 0 auto}
+    .brand-txt{font-size:9px;letter-spacing:.18em;text-transform:uppercase;color:var(--ink-faint);font-weight:700;display:flex;flex-direction:column;line-height:1.1;gap:1px}
+    .brand-txt .site{font-size:14px;letter-spacing:-.01em;text-transform:none;color:var(--accent);font-weight:800}
+    .seg.lang{margin-left:auto;display:inline-flex;background:var(--surface);border:1px solid var(--line);border-radius:999px;padding:3px;box-shadow:var(--shadow-sm)}
+    .seg.lang a{cursor:pointer;font-size:12px;font-weight:600;color:var(--ink-soft);padding:5px 10px;border-radius:999px;text-decoration:none}
+    .seg.lang a.on{background:var(--surface-2);color:var(--accent-2)}
+
+    .hero{padding:2px 4px 0}
+    .hero .kicker{font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-faint);font-weight:600}
+    .hero h2{margin:.15em 0 .12em;font-size:27px;letter-spacing:-.02em;display:flex;align-items:baseline;gap:9px;flex-wrap:wrap}
+    .hero h2 .sub{font-size:13px;font-weight:500;color:var(--ink-soft);letter-spacing:0}
+    .hero .note{font-size:11.5px;color:var(--ink-soft)}
+
+    .card{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);box-shadow:var(--shadow-sm);overflow:hidden}
+    .card-h{display:flex;align-items:center;gap:10px;padding:13px 15px}
+    .card-h .ic{width:20px;height:20px;flex:0 0 auto;color:var(--accent)}
+    .card-h h3{margin:0;font-size:14px;letter-spacing:-.01em}
+    .card-h .meta{margin-left:auto;font-size:11px;color:var(--ink-faint);font-variant-numeric:tabular-nums}
+    .card-b{padding:0 15px 15px}
+    .loading{display:flex;align-items:center;gap:9px;color:var(--ink-faint);font-size:12.5px;padding:4px 0}
+    .muted{color:var(--ink-soft);font-size:12.5px;padding:4px 0}
+
+    .metrics{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:2px}
+    .metric{background:var(--surface-2);border-radius:var(--r-sm);padding:11px 8px;text-align:center}
+    .metric .n{font-size:22px;font-weight:700;letter-spacing:-.02em;font-variant-numeric:tabular-nums;line-height:1}
+    .metric .n .u{font-size:11px;color:var(--ink-faint);font-weight:600;margin-left:1px}
+    .metric .k{font-size:10px;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-faint);margin-top:6px;font-weight:600}
+    .verdict{display:flex;align-items:center;gap:9px;margin-top:12px;padding:10px 12px;border-radius:var(--r-sm);font-size:13px;font-weight:600}
+    .verdict.good{background:var(--good-bg);color:var(--good)} .verdict.warn{background:var(--warn-bg);color:var(--warn)} .verdict.crit{background:var(--crit-bg);color:var(--crit)}
+    .verdict .vi{width:18px;height:18px;flex:0 0 auto}
+    .gauge{height:6px;border-radius:99px;background:var(--line-2);margin-top:11px;overflow:hidden;position:relative}
+    .gauge i{position:absolute;inset:0 auto 0 0;border-radius:99px;transition:width .5s ease,background .3s}
+    .gauge-cap{display:flex;justify-content:space-between;font-size:10px;color:var(--ink-faint);margin-top:5px}
+
+    .artist .artist-in{display:flex;gap:12px;padding:13px 15px;align-items:flex-start}
+    .artist .mono{width:40px;height:40px;border-radius:11px;flex:0 0 auto;display:grid;place-items:center;font-weight:800;font-size:19px;background:var(--accent-bg);color:var(--accent-2);letter-spacing:-.02em}
+    .artist .eyebrow-s{font-size:9.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-faint);font-weight:700;margin-bottom:3px}
+    .artist .a-top{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap}
+    .artist .a-top b{font-size:14px;letter-spacing:-.01em}
+    .artist .disc{font-size:10.5px;letter-spacing:.04em;text-transform:uppercase;color:var(--ink-faint);font-weight:600}
+    .artist p{margin:4px 0 0;font-size:12px;color:var(--ink-soft);line-height:1.45}
+    .artist .fact{display:flex;gap:7px;align-items:flex-start;margin-top:8px;font-size:11.5px;color:var(--accent-2);font-weight:600}
+    .artist .fact svg{width:15px;height:15px;flex:0 0 auto;margin-top:1px}
+
+    .btn{appearance:none;font-family:inherit;cursor:pointer;border-radius:var(--r-sm);font-weight:600;font-size:13.5px;padding:13px 14px;width:100%;display:inline-flex;align-items:center;justify-content:center;gap:8px;border:1px solid transparent;background:var(--accent);color:#fff;text-decoration:none;transition:transform .1s,background .18s;margin-top:2px}
+    .btn:active{transform:scale(.985)} .btn .ic{width:17px;height:17px}
+    .hidden{display:none !important}
+    .spin{display:inline-block;width:15px;height:15px;border:2px solid var(--line);border-top-color:var(--accent);border-radius:50%;animation:sp .8s linear infinite}
     @keyframes sp{to{transform:rotate(360deg)}}
   </style>
 </head>
 <body>
-  <header class="site">
-    <div class="wrap">
-      <img src="/AtalianLogo.png" alt="ATALIAN" onerror="this.style.display='none'" />
-      <span class="loc" id="loc">ATALIAN</span>
-      <span class="lang" id="lang">
-        <a href="#" data-l="nl">NL</a><a href="#" data-l="fr">FR</a><a href="#" data-l="en">EN</a>
+  <div class="screen">
+
+    <div class="topbar">
+      <span class="brand">
+        <svg class="mark" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          <circle cx="12" cy="12" r="2.4" fill="var(--accent)"/>
+          <path d="M6.5 6.5a7.8 7.8 0 000 11M17.5 6.5a7.8 7.8 0 010 11M3.6 3.6a11.9 11.9 0 000 16.8M20.4 3.6a11.9 11.9 0 010 16.8" stroke="var(--accent)" stroke-width="1.5" stroke-linecap="round" opacity=".55"/>
+        </svg>
+        <span class="brand-txt">ATALIAN <b class="site" id="brandSite"></b></span>
+      </span>
+      <span class="seg lang" id="lang">
+        <a data-l="nl">NL</a><a data-l="fr">FR</a><a data-l="en">EN</a>
       </span>
     </div>
-  </header>
 
-  <div class="wrap">
-    <h1 id="roomName"></h1>
-    <p class="sub" id="roomSub"></p>
+    <div class="hero">
+      <div class="kicker" id="kicker"></div>
+      <h2><span id="roomName"></span> <span class="sub" id="roomSub"></span></h2>
+      <div class="note" id="heroNote"></div>
+    </div>
 
-    <section class="card" id="comfort">
-      <h2 id="comfortTitle"></h2>
-      <div id="comfortBody"><span class="spin"></span> <span id="loadingTxt"></span></div>
-    </section>
+    <div class="card">
+      <div class="card-h">
+        <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M12 3v6M12 21v-3M4 8a8 8 0 0116 0c0 4-3 5-4 8H8c-1-3-4-4-4-8z"/></svg>
+        <h3 id="comfortTitle"></h3>
+        <span class="meta"><span id="updLabel"></span> <span id="updT"></span></span>
+      </div>
+      <div class="card-b" id="comfortBody">
+        <div class="loading"><span class="spin"></span> <span id="loadingTxt"></span></div>
+      </div>
+    </div>
 
-    <section class="card" id="naamgever" style="display:none">
-      <h2 id="ngTitle"></h2>
-      <div class="ng-head">
-        <div class="ng-avatar" id="ngAvatar"></div>
-        <div>
-          <div class="ng-name" id="ngName"></div>
-          <div class="ng-disc" id="ngDisc"></div>
+    <div class="card artist hidden" id="artistCard">
+      <div class="artist-in">
+        <div class="mono" id="artMono"></div>
+        <div class="at">
+          <div class="eyebrow-s" id="artEyebrow"></div>
+          <div class="a-top"><b id="artName"></b><span class="disc" id="artDisc"></span></div>
+          <p id="artBlurb"></p>
+          <div class="fact"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M9 18h6M10 21h4M12 3a6 6 0 0 0-4 10.5c.7.7 1 1.2 1 2.5h6c0-1.3.3-1.8 1-2.5A6 6 0 0 0 12 3z"/></svg><span id="artFact"></span></div>
         </div>
       </div>
-      <p class="ng-omschrijving" id="ngOmschrijving"></p>
-      <p class="ng-weetje" id="ngWeetje"></p>
-    </section>
+    </div>
 
-    <a class="btn" id="meldBtn" href="#"></a>
+    <a class="btn" id="meldBtn" href="#">
+      <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"><path d="M12 9v4M12 17h.01M10.3 3.9 2.6 17.5A2 2 0 0 0 4.3 20.5h15.4a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/></svg>
+      <span id="meldTxt"></span>
+    </a>
   </div>
 
   <script>
-    // ---- URL-parameters ------------------------------------------------
-    // portal.html werkt met een QR-'code' (8-20 cijfers); parseUltimoQR() reconstrueert de
-    // SpaceId uit de EVEN posities, het laatste cijfer is de indicator (9=installatie, anders ruimte).
-    // Companion accepteert zowel die 'code' (echte QR, stroomt door) als een kale 'id' (dev) en
-    // kan tussen beide converteren zodat de melden-knop altijd een geldige code kan meegeven.
+    // ---- URL-parameters (code-first; kale id enkel voor dev) ----------
     const qs = new URLSearchParams(location.search);
     const env = qs.get('env') === 'test' ? 'test' : 'prod';
     const debug = qs.get('debug') === '1';
 
     function idFromCode(code){
       if (!/^\d{8,20}$/.test(code)) return '';
-      let id = '';
-      for (let i = 0; i < code.length - 1; i += 2) id += code[i];
+      let id = ''; for (let i = 0; i < code.length - 1; i += 2) id += code[i];
       return id;
     }
-    // Inverse: dubbel elk id-cijfer (id-cijfers landen zo op even posities) + indicator '0' (=ruimte).
-    function codeFromId(id){
-      if (!/^\d+$/.test(id)) return '';
-      return [...id].map(d => d + d).join('') + '0';
-    }
+    function codeFromId(id){ return /^\d+$/.test(id) ? [...id].map(d => d + d).join('') + '0' : ''; }
 
     const rawCode = (qs.get('code') || '').trim();
     let spaceId = (qs.get('id') || qs.get('spaceId') || '').trim();
@@ -112,24 +154,25 @@
     if (!['nl','fr','en'].includes(lang)) lang = 'nl';
     document.documentElement.lang = lang;
     const tr = (nl, fr, en) => (lang === 'fr' ? fr : lang === 'en' ? en : nl);
+    const pickLang = (o) => (o && typeof o === 'object') ? (o[lang] || o.nl || '') : '';
 
-    // ---- i18n statische labels ----------------------------------------
+    // ---- statische labels ---------------------------------------------
+    document.getElementById('kicker').textContent      = tr('Gescand lokaal', 'Local scanné', 'Scanned room');
     document.getElementById('comfortTitle').textContent = tr('Comfort & luchtkwaliteit', 'Confort & qualité de l’air', 'Comfort & air quality');
-    document.getElementById('loadingTxt').textContent = tr('Sensordata ophalen…', 'Chargement des données…', 'Loading sensor data…');
-    document.getElementById('meldBtn').textContent = tr('🛠️ Meld een probleem', '🛠️ Signaler un problème', '🛠️ Report a problem');
-    document.getElementById('ngTitle').textContent = tr('Naamgever van deze ruimte', 'Personne qui a donné son nom à la salle', 'Namesake of this room');
+    document.getElementById('updLabel').textContent    = tr('Bijgewerkt', 'Mis à jour', 'Updated');
+    document.getElementById('loadingTxt').textContent  = tr('Sensordata ophalen…', 'Chargement…', 'Loading sensor data…');
+    document.getElementById('meldTxt').textContent     = tr('Meld een probleem', 'Signaler un problème', 'Report a problem');
+    document.getElementById('artEyebrow').textContent  = tr('Naamgever van deze ruimte', 'Personne qui a donné son nom', 'Namesake of this room');
 
-    // taal-schakelaar
     document.querySelectorAll('#lang a').forEach(a => {
       if (a.dataset.l === lang) a.classList.add('on');
       a.addEventListener('click', e => { e.preventDefault(); const u = new URL(location.href); u.searchParams.set('lang', a.dataset.l); location.href = u.toString(); });
     });
 
-    // ---- Melden-knop: terug naar het traditionele portaal, keert nadien terug ----
-    // (round-trip via ?src; melden=1 markeert de traditionele modus voor later, zie spec §3/§4)
+    // ---- Melden: terug naar het traditionele portaal (round-trip) -----
     (function buildMeldLink(){
       const u = new URL('/portal.html', location.origin);
-      if (qrCode) u.searchParams.set('code', qrCode);   // portal.html verwacht de QR-code, geen kale id
+      if (qrCode) u.searchParams.set('code', qrCode);
       u.searchParams.set('lang', lang);
       u.searchParams.set('env', env);
       u.searchParams.set('src', location.href);
@@ -137,68 +180,63 @@
       document.getElementById('meldBtn').setAttribute('href', u.toString());
     })();
 
-    // ---- Ruimte-info (naam + gebouw) voor de header -------------------
+    // ---- Ruimte-info (naam, gebouw, klant) ----------------------------
     async function loadRoomInfo(){
       if (!spaceId) return;
       try {
         const r = await fetch(`/.netlify/functions/space?id=${encodeURIComponent(spaceId)}&lang=${lang}&env=${env}`);
         if (!r.ok) return;
         const d = await r.json();
-        const name = (d.description || '').trim();
-        const bld  = (d.buildingName || '').trim();
-        if (name) document.getElementById('roomName').textContent = name;
-        if (bld)  document.getElementById('loc').textContent = `ATALIAN · ${bld}`;
-        document.getElementById('roomSub').textContent = [d.clientName, bld].filter(Boolean).join(' · ');
+        if (d.description) document.getElementById('roomName').textContent = d.description;
+        if (d.buildingName) document.getElementById('brandSite').textContent = d.buildingName;
+        document.getElementById('heroNote').textContent = [d.clientName, d.buildingName].filter(Boolean).join(' · ');
       } catch {}
     }
 
-    // ---- Comfort-kaart -------------------------------------------------
+    // ---- Comfort-kaart ------------------------------------------------
     function comfortForCo2(co2){
       if (co2 == null || isNaN(co2)) return null;
-      if (co2 < 900)  return { cls:'ok',   txt: tr('Frisse lucht', 'Air frais', 'Fresh air') };
+      if (co2 < 900)   return { cls:'good', txt: tr('Frisse lucht', 'Air frais', 'Fresh air') };
       if (co2 <= 1200) return { cls:'warn', txt: tr('Ventileer even', 'Aérez un peu', 'Ventilate a bit') };
-      return { cls:'bad', txt: tr('Ventileer nu', 'Aérez maintenant', 'Ventilate now') };
+      return { cls:'crit', txt: tr('Ventileer nu', 'Aérez maintenant', 'Ventilate now') };
     }
     function fmtTime(ts){
       if (!ts) return '';
-      const d = new Date(ts);            // RealPulse-timestamps zijn UTC (…Z)
-      if (isNaN(d)) return '';
+      const d = new Date(ts); if (isNaN(d)) return '';
       return d.toLocaleTimeString(lang === 'fr' ? 'fr-BE' : lang === 'en' ? 'en-GB' : 'nl-BE', { hour:'2-digit', minute:'2-digit' });
     }
-    function num(v, dec=0){ return (v==null||isNaN(v)) ? '–' : Number(v).toFixed(dec); }
+    const num = (v, dec=0) => (v==null||isNaN(v)) ? '–' : Number(v).toFixed(dec);
+    const cssVar = { good:'var(--good)', warn:'var(--warn)', crit:'var(--crit)' };
 
     async function loadComfort(){
       const body = document.getElementById('comfortBody');
-      if (!spaceId){ body.innerHTML = `<div class="muted-card">${tr('Geen lokaal opgegeven.', 'Aucun local indiqué.', 'No room specified.')}</div>`; return; }
+      if (!spaceId){ body.innerHTML = `<div class="muted">${tr('Geen lokaal opgegeven.', 'Aucun local indiqué.', 'No room specified.')}</div>`; return; }
       try {
         const r = await fetch(`/.netlify/functions/room?spaceId=${encodeURIComponent(spaceId)}&env=${env}${debug?'&debug=1':''}`);
         const d = await r.json();
-
-        if (!r.ok) { body.innerHTML = `<div class="muted-card">${tr('Sensordata tijdelijk niet beschikbaar.', 'Données momentanément indisponibles.', 'Sensor data temporarily unavailable.')}</div>`; return; }
-
-        if (!d.coupled) {
-          body.innerHTML = `<div class="muted-card">${tr('Dit lokaal heeft (nog) geen sensoren.', 'Ce local n’a pas (encore) de capteurs.', 'This room has no sensors (yet).')}</div>`;
-          return;
-        }
+        if (!r.ok) { body.innerHTML = `<div class="muted">${tr('Sensordata tijdelijk niet beschikbaar.', 'Données momentanément indisponibles.', 'Sensor data temporarily unavailable.')}</div>`; return; }
+        if (!d.coupled) { body.innerHTML = `<div class="muted">${tr('Dit lokaal heeft (nog) geen sensoren.', 'Ce local n’a pas (encore) de capteurs.', 'This room has no sensors (yet).')}</div>`; return; }
 
         const c = comfortForCo2(d.co2);
-        const badge = c ? `<span class="badge ${c.cls}"><span class="dot"></span>${c.txt}</span>` : '';
+        const gw = d.co2 == null ? 0 : Math.max(4, Math.min(100, Math.round((Number(d.co2) - 400) / (1500 - 400) * 100)));
+        const gcol = cssVar[c ? c.cls : 'good'];
+        document.getElementById('updT').textContent = fmtTime(d.updatedAt);
         body.innerHTML = `
-          ${badge}
           <div class="metrics">
-            <div class="metric"><div class="v">${num(d.temp,1)}°</div><div class="k">${tr('Temperatuur','Température','Temperature')}</div></div>
-            <div class="metric"><div class="v">${num(d.co2)}</div><div class="k">CO₂ ppm</div></div>
-            <div class="metric"><div class="v">${num(d.hum)}%</div><div class="k">${tr('Vocht','Humidité','Humidity')}</div></div>
+            <div class="metric"><div class="n">${num(d.temp,1)}<span class="u">°C</span></div><div class="k">${tr('Temperatuur','Température','Temperature')}</div></div>
+            <div class="metric"><div class="n">${num(d.co2)}</div><div class="k">CO₂ ppm</div></div>
+            <div class="metric"><div class="n">${num(d.hum)}<span class="u">%</span></div><div class="k">${tr('Vocht','Humidité','Humidity')}</div></div>
           </div>
-          ${d.updatedAt ? `<div class="updated">${tr('Laatst bijgewerkt','Dernière mise à jour','Last updated')}: ${fmtTime(d.updatedAt)}</div>` : ''}
+          ${c ? `<div class="verdict ${c.cls}"><svg class="vi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M12 8v5M12 16h.01"/><circle cx="12" cy="12" r="9"/></svg><span>${c.txt}</span></div>` : ''}
+          <div class="gauge"><i style="width:${gw}%;background:${gcol}"></i></div>
+          <div class="gauge-cap"><span>400</span><span>1500 ppm</span></div>
         `;
-      } catch (e) {
-        body.innerHTML = `<div class="muted-card">${tr('Sensordata tijdelijk niet beschikbaar.', 'Données momentanément indisponibles.', 'Sensor data temporarily unavailable.')}</div>`;
+      } catch {
+        body.innerHTML = `<div class="muted">${tr('Sensordata tijdelijk niet beschikbaar.', 'Données momentanément indisponibles.', 'Sensor data temporarily unavailable.')}</div>`;
       }
     }
 
-    // ---- Naamgever-kaart (content-laag via Ultimo-document) -----------
-    const pickLang = (o) => (o && typeof o === 'object') ? (o[lang] || o.nl || '') : '';
+    // ---- Naamgever-kaart (Ultimo-document) ----------------------------
     async function loadNaamgever(){
       if (!spaceId) return;
       try {
@@ -208,17 +246,18 @@
         const ng = d.content && d.content.naamgever;
         if (!ng || !ng.naam) return;
 
-        document.getElementById('ngName').textContent = ng.naam;
-        document.getElementById('ngAvatar').textContent = ng.naam.trim().charAt(0).toUpperCase();
-        document.getElementById('ngDisc').textContent = pickLang(ng.discipline);
-        document.getElementById('ngOmschrijving').textContent = pickLang(ng.omschrijving);
-
+        document.getElementById('artName').textContent  = ng.naam;
+        document.getElementById('artMono').textContent  = ng.naam.trim().charAt(0).toUpperCase();
+        document.getElementById('artDisc').textContent  = pickLang(ng.discipline);
+        document.getElementById('artBlurb').textContent = pickLang(ng.omschrijving);
         const weetjes = Array.isArray(ng.weetjes) ? ng.weetjes : [];
         if (weetjes.length) {
-          const w = weetjes[Math.floor(Math.random() * weetjes.length)];  // willekeurig, niet steeds hetzelfde
-          document.getElementById('ngWeetje').textContent = '💡 ' + pickLang(w);
+          const w = weetjes[Math.floor(Math.random() * weetjes.length)];
+          document.getElementById('artFact').textContent = pickLang(w);
+        } else {
+          document.querySelector('#artistCard .fact').style.display = 'none';
         }
-        document.getElementById('naamgever').style.display = '';
+        document.getElementById('artistCard').classList.remove('hidden');
       } catch {}
     }
 
