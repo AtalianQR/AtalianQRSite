@@ -88,8 +88,10 @@ function mergeDocs(docs) {
     if (!d || typeof d !== 'object') continue;
     const doel = String(d.doel || '').trim() || 'onbekend';
     seen.push(doel);
+    // Vlakke merge: de eigen veldnamen van het document (naamgever, wifi, vestigingen, bronnen…)
+    // worden rechtstreeks de content-keys. 'doel' is enkel een routing-/labelhint, geen nesting-key.
     const { doel: _d, schema: _s, ...rest } = d;
-    content[doel] = { ...(content[doel] || {}), ...rest };
+    Object.assign(content, rest);
   }
   return { content, doelen: seen };
 }
