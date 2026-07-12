@@ -162,7 +162,7 @@ Ruimte-niveau (`doel: "naamgever"`):
   "bronnen": [ "https://…" ]
 }
 ```
-`omschrijving` = de vaste "wie is dit"-regel (toont altijd); `weetjes` = array waaruit de companion **willekeurig** één toont (zodat je niet steeds dezelfde tekst ziet). Geseede documenten + generator: `docs/companion-content/` (`build_companion_docs.py` → `companion-<naamgever>.json`, 15 weetjes/persoon NL/FR/EN). Elk wordt in Ultimo als document **`companion.json`** op de betreffende Space gehangen.
+`omschrijving` = de vaste "wie is dit"-regel (toont altijd); `weetjes` = array waaruit de companion **willekeurig** één toont (zodat je niet steeds dezelfde tekst ziet). Geseede documenten + generator staan **buiten de repo** (niet naar GitHub) in `OneDrive\Claude\Atalian-Claude\QRWebportaal\Anderlecht - vergaderzalen\` (`build_meetingroomexplanation_docs.py` → `meetingroomexplanation-<naamgever>.json`, 15 weetjes/persoon NL/FR/EN). Elk wordt in Ultimo als document van soort **35 (QR settings)** op de betreffende Space gehangen; de WFL filtert op die soort-code, niet op de bestandsnaam.
 Gebouw-/complex-niveau (gedeeld, één keer invullen):
 ```json
 {
