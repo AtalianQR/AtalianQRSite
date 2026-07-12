@@ -40,10 +40,14 @@ async function outdoorFromRealpulse(assetId) {
   if (!res.ok) return {};
   const a = await res.json().catch(() => ({}));
   const w = collectWeather(a);
-  // Gebouw-breed aantal personen (RealPulse "People - Anderlecht"-teller: type counter, unit people).
+  // Gebouw-brede bezettingsgraad: max van de occupancy-rate-metingen (Desk/Meeting room occupancy rate,
+  // unit %). Betrouwbaarder dan de deurteller-headcount (die geeft footfall, geen netto-aanwezigheid).
   const last = Array.isArray(a?.last) ? a.last : [];
-  const pe = last.find((x) => x && x.type === 'counter' && x.unit === 'people');
-  return { temp: w.temperature ?? null, hum: w.humidity ?? null, people: pe ? Number(pe.value) : null };
+  const rates = last
+    .filter((x) => x && x.unit === '%' && (/ccupanc/i.test(x.type || '') || /occupanc/i.test(x.deviceName || '')))
+    .map((x) => Number(x.value)).filter((v) => !Number.isNaN(v));
+  const occupancyRate = rates.length ? Math.max(...rates) : null;
+  return { temp: w.temperature ?? null, hum: w.humidity ?? null, occupancyRate };
 }
 
 async function forecastFromOpenMeteo(lat, lon) {
@@ -78,7 +82,7 @@ export async function handler(event) {
       place,
       now: { temp: outdoor.temp, hum: outdoor.hum, code: fc.code },
       forecast: fc.forecast,
-      occupancy: { people: outdoor.people ?? null }, // gebouw-breed, vermoedelijk
+      occupancy: { rate: outdoor.occupancyRate ?? null }, // gebouw-brede bezettingsgraad %
     });
   } catch (err) {
     console.error('[weather] fout:', err.message);
