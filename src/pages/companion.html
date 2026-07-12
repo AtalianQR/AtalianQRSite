@@ -313,7 +313,7 @@
       }
 
       if (indoor != null && thermostat) {        // thermostaat aanwezig → bij thermisch ongemak
-        const warm = indoor > 24, cold = indoor < 19;
+        const warm = indoor >= 26, cold = indoor < 19;
         if (warm || cold) {
           parts.push({ icon:'🌡️', tone:'warn', txt: tr(
             `Het is hier wat ${warm ? 'warm' : 'koel'}. Controleer of de thermostaat juist staat (±${comfort}°C).`,
