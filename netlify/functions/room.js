@@ -161,10 +161,13 @@ export async function handler(event) {
     // Ruimte-poortwachters voor het verlucht-advies: aantal ramen (numeriek) + thermostaat (ja/nee).
     const winF = features.find((f) => /\braam\b|\bramen\b/i.test(f.description));
     const thF  = features.find((f) => /thermosta/i.test(f.description));
+    const capF = features.find((f) => /personen|capacit/i.test(f.description));
     const roomFacts = {
       windows: winF ? (parseInt(winF.numeric || winF.value || '', 10) || 0) : null,
       thermostat: thF ? /^(1|true|yes|ja|y|j|-1)$/i.test(String(thF.yesno || thF.value || '')) : null,
     };
+    const capFromFeature = capF ? (parseInt(capF.numeric || capF.value || '', 10) || null) : null;
+    if (capFromFeature != null) roomFacts.capacity = capFromFeature; // kenmerk "Aantal personen" wint van RealPulse-capacity
 
     if (!iotFeature) {
       // Geen IoT-kenmerk → niet gekoppeld. Companion laat de sensorkaarten weg.

@@ -170,6 +170,7 @@
       <div class="card-h">
         <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="9" cy="8" r="3"/><circle cx="16.5" cy="9" r="2.3"/><path d="M4 19c0-2.8 2.2-5 5-5s5 2.2 5 5M15 19c0-2 .6-3.6 2-4.4"/></svg>
         <h3 id="drukteTitle"></h3>
+        <span class="meta" id="drukMeta"></span>
       </div>
       <div class="card-b">
         <div class="drukte">
@@ -230,6 +231,7 @@
       code: qs.has('simCode') ? Number(qs.get('simCode')) : null,
       occ:  qs.has('simOcc') ? Number(qs.get('simOcc')) : null,
       people: qs.has('simPeople') ? Number(qs.get('simPeople')) : null,
+      cap:  qs.has('simCap') ? Number(qs.get('simCap')) : null,
     };
 
     function idFromCode(code){
@@ -390,6 +392,9 @@
       bars.className = 'druk-bars ' + cls;
       [...bars.children].forEach((b, i) => b.classList.toggle('on', i < on));
       document.getElementById('drukLvl').textContent = lvl;
+
+      const cap = sim.cap != null ? sim.cap : _room.capacity;
+      document.getElementById('drukMeta').textContent = (cap && cap > 0) ? tr(`${cap} pers.`, `${cap} pers.`, `${cap} ppl`) : '';
 
       const sub = [];
       if (people != null && people > 0) sub.push(tr(`${people} aanwezig`, `${people} présent·e·s`, `${people} present`));
