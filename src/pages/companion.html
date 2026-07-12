@@ -301,7 +301,13 @@
 
         document.getElementById('newsSrc').textContent = d.source || tr('Nieuws', 'Actu', 'News');
         const line = items.map(i => esc(i.title)).join(' • ') + ' • ';
-        document.getElementById('tickerTrack').innerHTML = `<span>${line}</span><span>${line}</span>`;
+        const track = document.getElementById('tickerTrack');
+        track.innerHTML = `<span>${line}</span><span>${line}</span>`;
+        // Duur evenredig met de breedte → vaste, rustige leessnelheid (~55 px/s) i.p.v. te snel.
+        requestAnimationFrame(() => {
+          const half = track.scrollWidth / 2;
+          if (half > 0) track.style.animationDuration = Math.max(24, Math.round(half / 55)) + 's';
+        });
         document.getElementById('newsList').innerHTML = items.map(i =>
           i.link
             ? `<a class="nrow" href="${esc(i.link)}" target="_blank" rel="noopener">${esc(i.title)}</a>`
