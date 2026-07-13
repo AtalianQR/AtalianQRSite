@@ -39,7 +39,7 @@ const DESK_TOTAL = 30, MEETING_TOTAL = 6;
 
 const json = (status, obj = {}, extra = {}) => ({
   statusCode: status,
-  headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*', 'Cache-Control': 'public, max-age=300', ...extra },
+  headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*', 'Cache-Control': 'no-store', ...extra },
   body: JSON.stringify(obj),
 });
 
@@ -79,6 +79,11 @@ async function outdoorFromRealpulse(assetId, deskTotal = DESK_TOTAL, meetingTota
     return Number.isFinite(n) ? n : null;
   };
   const metricText = (row) => norm([
+    row?.label,
+    row?.name,
+    row?.title,
+    row?.column,
+    row?.metric,
     row?.type,
     row?.unit,
     row?.measurement?.type,
@@ -86,8 +91,11 @@ async function outdoorFromRealpulse(assetId, deskTotal = DESK_TOTAL, meetingTota
   ].join(' '));
   const deviceText = (row) => norm([
     row?.deviceName,
+    row?.device?.name,
     row?.name,
-    row?.label,
+    row?.group,
+    row?.groupName,
+    row?.labelAggregation,
   ].join(' '));
   const allText = (row) => norm(JSON.stringify(row ?? {}));
   const ts = (row) => {
@@ -113,8 +121,8 @@ async function outdoorFromRealpulse(assetId, deskTotal = DESK_TOTAL, meetingTota
 
       const looseDeviceOk = isMeeting ? /\bmeeting rooms?\b|\bmr\b/.test(t) : /\bdesks?\b/.test(t);
       const metricOk = metric === 'rate'
-        ? /\boccupancy rate\b|\brate\b/.test(m) || /\boccupancy rate\b/.test(t)
-        : (/\boccupied\b/.test(m) && !/\brate\b/.test(m)) || (/\boccupied\b/.test(t) && !/\boccupancy rate\b/.test(t));
+        ? /\boccupancy rate\b|\brate\b/.test(m) && !/\bavailability\b|\bavailable\b|\btotal\b/.test(m)
+        : /\boccupied\b/.test(m) && !/\brate\b|\bavailability\b|\bavailable\b|\btotal\b/.test(m);
 
       if (!metricOk || !(deviceOk || looseDeviceOk)) return null;
 
@@ -136,7 +144,7 @@ async function outdoorFromRealpulse(assetId, deskTotal = DESK_TOTAL, meetingTota
   const deskRate = aggregateMetric('desk', 'rate');
   const meetingRate = aggregateMetric('meeting', 'rate');
   const deskCount = aggregateMetric('desk', 'count') ?? countFromRate(deskRate, deskTotal);
-  const meetingCount = aggregateMetric('meeting', 'count') ?? countFromRate(meetingRate, meetingTotal);
+  const meetingCount = aggregateMetric('meeting', 'count');
   const occupancy = {
     people:       num(peopleRow),
     deskRate,
