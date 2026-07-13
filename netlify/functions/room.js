@@ -170,8 +170,19 @@ export async function handler(event) {
   // Tier bepalen (intern / gast / publiek) uit het uitgaand IP + de wifi-CIDR's uit Ultimo.
   // Faalt veilig naar 'public' → bij twijfel geeft de proxy nooit onbedoeld meer prijs.
   const { tier, ip, networks } = await resolveSpaceTier(event, { base, spaceId, apiKey: ULTIMO_API_KEY, appQuery: APP_QUERY });
-  const tierDebug = debug ? { tier, ip, networks } : {};
-  const guestWifi = (tier !== 'internal' && networks && networks.ssid) ? { ssid: networks.ssid, pass: networks.pass || '' } : null;
+  const tierDebug = debug
+    ? {
+        tier,
+        ip,
+        ...(tier === 'internal' ? { networks } : {}),
+      }
+    : {};
+  const guestWifi = (tier !== 'internal' && networks && networks.ssid)
+    ? {
+        ssid: networks.ssid,
+        ...(tier === 'guest' ? { pass: networks.pass || '' } : {}),
+      }
+    : null;
 
   try {
     // Stap 1 — kenmerken ophalen en routeren op description
