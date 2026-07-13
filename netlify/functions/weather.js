@@ -137,6 +137,48 @@ async function outdoorFromRealpulse(assetId, deskTotal = DESK_TOTAL, meetingTota
     candidates.sort((a, b) => (b.score - a.score) || (ts(b.row) - ts(a.row)));
     return num(candidates[0]?.row);
   };
+  const peopleCount = () => {
+    const unitRows = new Map();
+    for (const row of last) {
+      const value = num(row);
+      if (value == null) continue;
+
+      const d = deviceText(row);
+      const m = metricText(row);
+      const t = allText(row);
+
+      const admin = /\badmin unit\b/.test(d) || (/\badmin unit\b/.test(t) && !/\bprivate unit\b/.test(t));
+      const priv = /\bprivate unit\b/.test(d) || (/\bprivate unit\b/.test(t) && !/\badmin unit\b/.test(t));
+      const key = admin ? 'admin' : priv ? 'private' : null;
+      if (!key) continue;
+
+      const signalOk =
+        d === `${key} unit` ||
+        /\bpeople counter\b|\bcounter people\b/.test(m) ||
+        /\bpeople\b|\bpersons?\b|\bpersonen\b|\bpers\b/.test(m);
+      const wrongMetric = /\bavailability\b|\bavailable\b|\btotal\b|\brate\b|\bdesk\b|\bdesks\b|\bmeeting rooms?\b|\bmr\b/.test(m);
+      if (!signalOk || wrongMetric) continue;
+
+      const prev = unitRows.get(key);
+      if (!prev || ts(row) > ts(prev)) unitRows.set(key, row);
+    }
+    if (unitRows.size) {
+      return [...unitRows.values()].reduce((sum, row) => sum + (num(row) ?? 0), 0);
+    }
+
+    const candidates = last.map((row) => {
+      const m = metricText(row);
+      const t = allText(row);
+      if (num(row) == null) return null;
+      let score = 0;
+      if (/\bpeople counter\b|\bcounter people\b/.test(m) || /\bpeople counter\b|\bcounter people\b/.test(t)) score += 50;
+      if (/\bpeople\b|\bpersons?\b|\bpersonen\b|\bpers\b/.test(m)) score += 25;
+      if (score <= 0) return null;
+      return { row, score };
+    }).filter(Boolean);
+    candidates.sort((a, b) => (b.score - a.score) || (ts(b.row) - ts(a.row)));
+    return num(candidates[0]?.row);
+  };
   const countFromRate = (rate, total) => (
     rate != null && total != null ? Math.round((Number(rate) / 100) * Number(total)) : null
   );
@@ -144,9 +186,7 @@ async function outdoorFromRealpulse(assetId, deskTotal = DESK_TOTAL, meetingTota
   const deskCount = aggregateMetric('desk', 'count') ?? countFromRate(deskRate, deskTotal);
   const meetingCount = aggregateMetric('meeting', 'count');
   const occupancy = {
-    // The top RealPulse "Admin unit" tile is not the same signal as the first asset-level
-    // people row in asset.last. Do not show a person count until we can read that exact tile.
-    people:       null,
+    people:       peopleCount(),
     deskRate,
     deskCount,
     deskTotal:    deskTotal,
