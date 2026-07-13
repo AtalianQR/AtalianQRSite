@@ -66,7 +66,7 @@ async function outdoorFromRealpulse(assetId, deskTotal = DESK_TOTAL, meetingTota
   const a = await res.json().catch(() => ({}));
   const w = collectWeather(a);
   // Drukte = drie complementaire signalen uit RealPulse (gebouw-breed):
-  //   - people:  live headcount ("People - Anderlecht", counter/people) — hoeveel mensen NU aanwezig
+  //   - people:  Admin + Private unit People counter — hoeveel mensen NU aanwezig
   //   - desk:    werkplek-bezetting (rate % + absoluut aantal) — hoe vol de kantoortuin zit
   //   - meeting: vergaderzaal-bezetting (rate % + aantal) — overleg-activiteit
   // Het NIVEAU (rustig/gemiddeld/druk) leiden we af uit de desk-graad (zelf-genormaliseerd).
@@ -158,22 +158,47 @@ async function outdoorFromRealpulse(assetId, deskTotal = DESK_TOTAL, meetingTota
       const d = deviceText(row);
       const m = metricText(row);
       const t = allText(row);
+      const nameText = norm([
+        row?.name,
+        row?.deviceName,
+        row?.device?.name,
+        row?.assetName,
+        row?.object,
+        row?.group,
+        row?.groupName,
+        row?.labelAggregation,
+      ].join(' '));
+      const sourceText = [d, m, nameText, t].join(' ');
+      const peopleSignal = /\bpeople counter\b|\bcounter people\b|\bpeople\b|\bpersons?\b|\bpersonen\b|\bpers\b/.test(sourceText);
+      const peopleCounter = /\bpeople counter\b|\bcounter people\b/.test(sourceText);
 
-      const admin = /\badmin unit\b/.test(d) || (/\badmin unit\b/.test(t) && !/\bprivate unit\b/.test(t));
-      const priv = /\bprivate unit\b/.test(d) || (/\bprivate unit\b/.test(t) && !/\badmin unit\b/.test(t));
+      const admin =
+        /\badmin unit\b/.test(sourceText) ||
+        (peopleSignal && /\badmin\b/.test(nameText) && !/\barea admin\b|\bkitchen admin\b/.test(nameText));
+      const priv =
+        /\bprivate unit\b/.test(sourceText) ||
+        (peopleSignal && /\bprivate\b/.test(nameText) && !/\bkitchen private\b/.test(nameText));
+      if (admin === priv) continue;
       const key = admin ? 'admin' : priv ? 'private' : null;
       if (!key) continue;
 
-      const unitLabel = new RegExp(`\\b${key} unit\\b`).test([d, m].join(' '));
-      const peopleSignal = /\bpeople counter\b|\bcounter people\b|\bpeople\b|\bpersons?\b|\bpersonen\b|\bpers\b/.test([d, m, t].join(' '));
+      const unitLabel = new RegExp(`\\b${key} unit\\b`).test(sourceText);
       const wrongMetric = /\bavailability\b|\bavailable\b|\btotal\b|\brate\b|\bdesk\b|\bdesks\b|\bmeeting rooms?\b|\bmr\b/.test(m);
       if (wrongMetric || (!unitLabel && !peopleSignal)) continue;
 
       const prev = unitRows.get(key);
-      if (!prev || ts(row) > ts(prev)) unitRows.set(key, row);
+      let score = 0;
+      if (peopleCounter) score += 100;
+      if (nameText === key) score += 80;
+      if (new RegExp(`\\b${key}\\b`).test(nameText)) score += 40;
+      if (unitLabel) score += 20;
+      if (/\bpeople in\b/.test(sourceText)) score += 10;
+      if (!prev || score > prev.score || (score === prev.score && ts(row) > ts(prev.row))) {
+        unitRows.set(key, { row, score });
+      }
     }
     if (unitRows.size) {
-      return [...unitRows.values()].reduce((sum, row) => sum + (num(row) ?? 0), 0);
+      return [...unitRows.values()].reduce((sum, hit) => sum + (num(hit.row) ?? 0), 0);
     }
     return null;
   };
