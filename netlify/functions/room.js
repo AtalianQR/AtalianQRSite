@@ -11,7 +11,21 @@
 //
 // Geen asset-id en geen credentials in het antwoord (behalve met ?debug=1, enkel voor
 // ontwikkeling: dan echo't het ook welk kenmerk matchte en de resolved id).
+//
+// Privacy-tiering (zie lib/tier.js): wie NIET op het kantoornetwerk zit (publiek IP buiten de
+// wifi-CIDR's uit Ultimo) krijgt enkel een LIGHT-versie zonder exacte meetwaarden. Op het
+// gastnetwerk komen de comfortcijfers wel mee, maar geen bezetting/aanwezigen; enkel intern
+// ziet alles. De redactie gebeurt hier server-side, nooit in de browser.
 /* eslint-disable */
+import { resolveSpaceTier } from './lib/tier.js';
+
+// CO2 → kwalitatief comfortlabel (voor de light-versie; frontend vertaalt de key).
+function comfortKey(co2) {
+  if (co2 == null || isNaN(co2)) return null;
+  if (Number(co2) < 900)  return 'good';
+  if (Number(co2) <= 1200) return 'ok';
+  return 'poor';
+}
 
 // === ENV: Ultimo =====================================================
 const ULTIMO_API_KEY   = process.env.ULTIMO_API_KEY;
@@ -153,6 +167,11 @@ export async function handler(event) {
 
   const { base, env } = detectEnvironment(event);
 
+  // Tier bepalen (intern / gast / publiek) uit het uitgaand IP + de wifi-CIDR's uit Ultimo.
+  // Faalt veilig naar 'public' → bij twijfel geeft de proxy nooit onbedoeld meer prijs.
+  const { tier, ip, networks } = await resolveSpaceTier(event, { base, spaceId, apiKey: ULTIMO_API_KEY, appQuery: APP_QUERY });
+  const tierDebug = debug ? { tier, ip, networks } : {};
+
   try {
     // Stap 1 — kenmerken ophalen en routeren op description
     const features = await fetchSpaceFeatures(base, spaceId);
@@ -174,20 +193,39 @@ export async function handler(event) {
       return json(200, {
         coupled: false,
         ...roomFacts,
+        tier,
         env,
-        ...(debug ? { spaceId, features } : {}),
+        ...(debug ? { spaceId, features, ...tierDebug } : {}),
       });
     }
 
     // Stap 2 — sensordata bij RealPulse (waarde van het kenmerk = asset-id)
     const sensors = await fetchRealpulseAsset(iotFeature.value);
+    const full = { coupled: true, ...sensors, ...roomFacts };
+
+    // Stap 3 — redactie volgens tier (server-side afscherming):
+    //   internal → alles; guest → comfortcijfers zonder bezetting/aanwezigen;
+    //   public   → enkel kwalitatief comfort, geen cijfers.
+    let payload;
+    if (tier === 'internal') {
+      payload = full;
+    } else if (tier === 'guest') {
+      const { occupancyRate, people, capacity, ...rest } = full;
+      payload = rest;
+    } else {
+      payload = {
+        coupled: true,
+        comfort: comfortKey(sensors.co2),
+        ventilate: sensors.co2 != null && Number(sensors.co2) >= 900,
+        ...roomFacts,        // ramen/thermostaat blijven (niet gevoelig, nodig voor het advies)
+      };
+    }
 
     return json(200, {
-      coupled: true,
-      ...sensors,
-      ...roomFacts,
+      ...payload,
+      tier,
       env,
-      ...(debug ? { spaceId, matched: iotFeature, features } : {}), // id/kenmerk enkel in debug
+      ...(debug ? { spaceId, matched: iotFeature, features, ...tierDebug } : {}), // id/kenmerk enkel in debug
     });
   } catch (err) {
     console.error('[room] fout:', err.message);

@@ -233,6 +233,8 @@
     const qs = new URLSearchParams(location.search);
     const env = qs.get('env') === 'test' ? 'test' : 'prod';
     const debug = qs.get('debug') === '1';
+    // Veilige test-override: ?tier=public|guest kan de weergave enkel AFSchalen (server dwingt dit af).
+    const tierQS = ['public','guest','internal'].includes(qs.get('tier')) ? `&tier=${qs.get('tier')}` : '';
 
     // Demo-simulatie: overschrijf sensor-/weerwaarden via de URL om het advies te tonen.
     // bv. ?simCo2=1300&simIn=28&simOut=33&simWin=2&simTherm=ja
@@ -314,6 +316,13 @@
       if (co2 < 900)   return { cls:'good', txt: tr('Frisse lucht', 'Air frais', 'Fresh air') };
       if (co2 <= 1200) return { cls:'warn', txt: tr('Ventileer even', 'Aérez un peu', 'Ventilate a bit') };
       return { cls:'crit', txt: tr('Ventileer nu', 'Aérez maintenant', 'Ventilate now') };
+    }
+    // Light-versie (publiek netwerk): server stuurt enkel een kwalitatieve key i.p.v. cijfers.
+    function comfortForKey(k){
+      if (k === 'good') return { cls:'good', txt: tr('Frisse lucht', 'Air frais', 'Fresh air') };
+      if (k === 'ok')   return { cls:'warn', txt: tr('Ventileer even', 'Aérez un peu', 'Ventilate a bit') };
+      if (k === 'poor') return { cls:'crit', txt: tr('Ventileer nu', 'Aérez maintenant', 'Ventilate now') };
+      return null;
     }
     function fmtTime(ts){
       if (!ts) return '';
@@ -477,7 +486,7 @@
       const body = document.getElementById('comfortBody');
       if (!spaceId){ body.innerHTML = `<div class="muted">${tr('Geen lokaal opgegeven.', 'Aucun local indiqué.', 'No room specified.')}</div>`; return; }
       try {
-        const r = await fetch(`/.netlify/functions/room?spaceId=${encodeURIComponent(spaceId)}&env=${env}${debug?'&debug=1':''}`);
+        const r = await fetch(`/.netlify/functions/room?spaceId=${encodeURIComponent(spaceId)}&env=${env}${tierQS}${debug?'&debug=1':''}`);
         const d = await r.json();
         if (!r.ok) { body.innerHTML = `<div class="muted">${tr('Sensordata tijdelijk niet beschikbaar.', 'Données momentanément indisponibles.', 'Sensor data temporarily unavailable.')}</div>`; return; }
 
@@ -489,6 +498,23 @@
         if (!d.coupled && (sim.co2 != null || sim.tin != null)) d.coupled = true;
 
         if (!d.coupled) { body.innerHTML = `<div class="muted">${tr('Dit lokaal heeft (nog) geen sensoren.', 'Ce local n’a pas (encore) de capteurs.', 'This room has no sensors (yet).')}</div>`; return; }
+
+        // Light-versie (publiek netwerk): geen exacte meetwaarden, enkel een kwalitatief oordeel.
+        if (d.tier === 'public' && d.co2 == null && d.comfort) {
+          const lc = comfortForKey(d.comfort);
+          document.getElementById('updT').textContent = fmtTime(d.updatedAt);
+          body.innerHTML = `
+            ${lc ? `<div class="verdict ${lc.cls}"><svg class="vi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M12 8v5M12 16h.01"/><circle cx="12" cy="12" r="9"/></svg><span>${lc.txt}</span></div>` : ''}
+            <div class="advies" id="advies"></div>
+            <div class="muted" style="margin-top:12px;font-size:12px;line-height:1.4">🔒 ${tr(
+              'Beperkte weergave. Verbind met het kantoornetwerk voor de exacte meetwaarden.',
+              'Affichage limité. Connectez-vous au réseau du bureau pour les valeurs exactes.',
+              'Limited view. Connect to the office network for the exact readings.')}</div>
+          `;
+          _room = d;
+          renderAdvice();
+          return;
+        }
 
         const c = comfortForCo2(d.co2);
         const gw = d.co2 == null ? 0 : Math.max(4, Math.min(100, Math.round((Number(d.co2) - 400) / (1500 - 400) * 100)));
@@ -587,7 +613,7 @@
     const hourLabel = (h) => lang === 'nl' ? `${h}u` : `${h}h`;
     async function loadWeather(){
       try {
-        const r = await fetch(`/.netlify/functions/weather?lang=${lang}`);
+        const r = await fetch(`/.netlify/functions/weather?lang=${lang}&spaceId=${encodeURIComponent(spaceId)}&env=${env}${tierQS}${debug?'&debug=1':''}`);
         if (!r.ok) return;
         const d = await r.json();
         if (sim.tout != null) { d.now = d.now || {}; d.now.temp = sim.tout; }

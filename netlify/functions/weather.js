@@ -3,11 +3,30 @@
 // uurforecast van Open-Meteo (een sensor voorspelt niet). Ultimo = master; asset-id/plaats
 // zijn defaults voor de demo en later uit de complex-content (companion.json) te halen
 // (?asset=&lat=&lon=&place= override).
+//
+// Privacy-tiering (zie lib/tier.js): het weer zelf (buitentemp + forecast) is publieke info en
+// blijft altijd zichtbaar. Het ENERGIEVERBRUIK en de BEZETTINGSGRAAD van het gebouw zijn
+// bedrijfsgevoelig (verraden wanneer het gebouw leeg staat) en komen enkel mee voor bezoekers
+// op het interne kantoornetwerk. Vereist daarvoor ?spaceId= zodat de wifi-CIDR's opzoekbaar zijn.
 /* eslint-disable */
+import { resolveSpaceTier } from './lib/tier.js';
 
 const REALPULSE_USER = process.env.REALPULSE_USER;
 const REALPULSE_PASS = process.env.REALPULSE_PASS;
 const REALPULSE_BASE = process.env.REALPULSE_BASEURL || 'https://report.iotfactory.eu';
+
+// Ultimo (voor de tier-lookup; zelfde env als room.js/space.js).
+const ULTIMO_API_KEY   = process.env.ULTIMO_API_KEY;
+const ULTIMO_BASE_PROD = process.env.ULTIMO_API_BASEURL;
+const ULTIMO_BASE_TEST = process.env.ULTIMO_API_BASEURL_TEST || process.env.ULTIMO_API_BASEURL;
+const APP_QUERY        = process.env.APP_ELEMENT_QueryAtalianJobs;
+
+function detectBase(event = {}) {
+  const qs = event.queryStringParameters || {};
+  const host = (event.headers && event.headers.host) || '';
+  const isTest = qs.test === '1' || qs.test === 'true' || qs.env === 'test' || /test|staging/i.test(host);
+  return isTest ? ULTIMO_BASE_TEST : ULTIMO_BASE_PROD;
+}
 
 const DEFAULT_ASSET = '66fd4b46bcb30600213e90aa'; // "Atalian - Anderlecht" WEATHER-asset
 const DEFAULT_LAT = 50.8333, DEFAULT_LON = 4.3167, DEFAULT_PLACE = 'Anderlecht';
@@ -86,15 +105,25 @@ export async function handler(event) {
   const assetId = String(qs.asset || DEFAULT_ASSET);
   const lat = qs.lat || DEFAULT_LAT, lon = qs.lon || DEFAULT_LON;
   const place = String(qs.place || DEFAULT_PLACE);
+  const spaceId = String(qs.spaceId || qs.id || '').trim();
+  const debug = qs.debug === '1' || qs.debug === 'true';
 
   try {
+    // Tier bepalen (faalt veilig naar 'public'). Zonder spaceId → publiek → geen energie/bezetting.
+    const { tier, ip } = await resolveSpaceTier(event, { base: detectBase(event), spaceId, apiKey: ULTIMO_API_KEY, appQuery: APP_QUERY });
+
     const [outdoor, fc] = await Promise.all([outdoorFromRealpulse(assetId), forecastFromOpenMeteo(lat, lon)]);
     return json(200, {
       place,
-      now: { temp: outdoor.temp, hum: outdoor.hum, code: fc.code },
+      now: { temp: outdoor.temp, hum: outdoor.hum, code: fc.code }, // weer = altijd publiek
       forecast: fc.forecast,
-      occupancy: { rate: outdoor.occupancyRate ?? null }, // gebouw-brede bezettingsgraad %
-      energy: outdoor.energy ?? null,                     // Elec-verbruik gebouw (daily/hourly/yearly kWh)
+      // Gebouw-brede bezetting + energie: bedrijfsgevoelig → enkel op het interne netwerk.
+      ...(tier === 'internal' ? {
+        occupancy: { rate: outdoor.occupancyRate ?? null },
+        energy: outdoor.energy ?? null,
+      } : {}),
+      tier,
+      ...(debug ? { spaceId, ip } : {}),
     });
   } catch (err) {
     console.error('[weather] fout:', err.message);
