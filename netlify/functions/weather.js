@@ -132,37 +132,11 @@ async function outdoorFromRealpulse(assetId, deskTotal = DESK_TOTAL, meetingTota
   const countFromRate = (rate, total) => (
     rate != null && total != null ? Math.round((Number(rate) / 100) * Number(total)) : null
   );
-  const activeCounter = (row) => {
-    const value = row?.value ?? row?.measurement?.value;
-    if (value == null || value === '') return false;
-    const n = Number(value);
-    if (Number.isFinite(n)) return n > 0;
-    return !/^(0|false|no|nee|non)$/i.test(String(value).trim());
-  };
-  const countPeopleCounters = (kind) => {
-    const isMeeting = kind === 'meeting';
-    const isDesk = kind === 'desk';
-    const seen = new Set();
-    for (const row of last) {
-      const d = deviceText(row);
-      const m = metricText(row);
-      const t = allText(row);
-      const isPeopleCounter = /\bpeople counter\b|\bcounter people\b/.test(m) || /\bpeople counter\b|\bcounter people\b/.test(t);
-      const inScope = isMeeting
-        ? /\bmr\b|\bmeeting rooms?\b/.test(d) || /\bmr\b|\bmeeting rooms?\b/.test(t)
-        : isDesk
-          ? /\bdesk\b|\bdesks\b/.test(d) || /\bdesk\b|\bdesks\b/.test(t)
-          : false;
-      if (!isPeopleCounter || !inScope || !activeCounter(row)) continue;
-      seen.add(String(row.deviceId ?? row.deviceName ?? row.id ?? row.name ?? row.label ?? row.value));
-    }
-    return seen.size || null;
-  };
   const peopleRow = latest(last.filter((y) => y && /people/i.test(y.deviceName || '') && /people/i.test(y.unit || '')));
   const deskRate = aggregateMetric('desk', 'rate');
   const meetingRate = aggregateMetric('meeting', 'rate');
-  const deskCount = countPeopleCounters('desk') ?? aggregateMetric('desk', 'count') ?? countFromRate(deskRate, deskTotal);
-  const meetingCount = countPeopleCounters('meeting') ?? aggregateMetric('meeting', 'count') ?? countFromRate(meetingRate, meetingTotal);
+  const deskCount = aggregateMetric('desk', 'count') ?? countFromRate(deskRate, deskTotal);
+  const meetingCount = aggregateMetric('meeting', 'count') ?? countFromRate(meetingRate, meetingTotal);
   const occupancy = {
     people:       num(peopleRow),
     deskRate,
