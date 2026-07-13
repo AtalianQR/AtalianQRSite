@@ -171,7 +171,7 @@ async function outdoorFromRealpulse(assetId, deskTotal = DESK_TOTAL, meetingTota
     const sources = [];
     const seen = new Set();
     const add = (row, path) => {
-      if (!row || typeof row !== 'object' || seen.has(row) || num(row) == null) return;
+      if (!row || typeof row !== 'object' || seen.has(row)) return;
       seen.add(row);
       sources.push({ row, path });
     };
@@ -250,7 +250,6 @@ async function outdoorFromRealpulse(assetId, deskTotal = DESK_TOTAL, meetingTota
     for (const source of peopleSources) {
       const row = source.row;
       const value = num(row);
-      if (value == null) continue;
 
       const d = deviceText(row);
       const m = metricText(row);
@@ -293,6 +292,7 @@ async function outdoorFromRealpulse(assetId, deskTotal = DESK_TOTAL, meetingTota
 
       const prev = unitRows.get(key);
       let score = 0;
+      if (value != null) score += 1000;
       if (peopleCounter) score += 100;
       if (nameText === key) score += 80;
       if (new RegExp(`\\b${key}\\b`).test(nameText)) score += 40;
@@ -304,7 +304,9 @@ async function outdoorFromRealpulse(assetId, deskTotal = DESK_TOTAL, meetingTota
       }
     }
     if (unitRows.size) {
-      return [...unitRows.values()].reduce((sum, hit) => sum + (num(hit.row) ?? 0), 0);
+      const admin = unitRows.get('admin');
+      const priv = unitRows.get('private');
+      return (num(admin?.row) ?? 0) + (num(priv?.row) ?? 0);
     }
     return null;
   };
