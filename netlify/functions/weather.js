@@ -208,30 +208,21 @@ async function outdoorFromRealpulse(assetId, deskTotal = DESK_TOTAL, meetingTota
       const d = deviceText(row);
       const m = metricText(row);
       const t = allText(row);
-      const labelAgg = norm(row?.labelAggregation);
-      const name = norm(row?.name);
-      const group = norm(row?.group ?? row?.groupName);
-      const object = norm(row?.object);
-      const nestedMeetingAgg = /\blabelaggregation mr\b|\blabel aggregation mr\b/.test(t);
-      const nestedDeskAgg = /\blabelaggregation desks\b|\blabel aggregation desks\b/.test(t);
 
       const deviceOk = isMeeting
-        ? nestedMeetingAgg || labelAgg === 'mr' || name === 'mr' || group === 'mr' || object === 'mr' || d === 'mr' || d === 'meeting rooms' || d === 'meeting room'
+        ? d === 'mr' || d === 'meeting rooms' || d === 'meeting room' || /\bmeeting rooms?\b/.test(d) || (/\bmr\b/.test(d) && !/\bmr [a-z0-9]+/.test(d))
         : isDesk
-          ? nestedDeskAgg || labelAgg === 'desks' || name === 'desks' || group === 'desks' || object === 'desks' || d === 'desks' || d === 'desk'
+          ? d === 'desks' || d === 'desk' || /\bdesks?\b/.test(d)
           : false;
+      const looseDeviceOk = isMeeting ? /\bmeeting rooms?\b|\bmr\b/.test(t) : /\bdesks?\b/.test(t);
 
       const metricOk = metric === 'rate'
         ? /\boccupancy rate\b|\brate\b/.test(m) && !/\bavailability\b|\bavailable\b|\btotal\b/.test(m)
         : /\boccupied\b/.test(m) && !/\brate\b|\bavailability\b|\bavailable\b|\btotal\b/.test(m);
 
-      if (!metricOk || !deviceOk) return null;
+      if (!metricOk || !(deviceOk || looseDeviceOk)) return null;
 
       let score = 0;
-      if (isMeeting && nestedMeetingAgg) score += 100;
-      if (isDesk && nestedDeskAgg) score += 100;
-      if (isMeeting && labelAgg === 'mr') score += 120;
-      if (isDesk && labelAgg === 'desks') score += 120;
       if (isMeeting && (d === 'mr' || d === 'meeting rooms')) score += 80;
       if (isDesk && (d === 'desk' || d === 'desks')) score += 80;
       if (deviceOk) score += 30;

@@ -444,6 +444,7 @@
         if (occ.deskCount != null && occ.deskTotal) rate = (Number(occ.deskCount) / Number(occ.deskTotal)) * 100;
         else if (occ.meetingCount != null && occ.meetingTotal) rate = (Number(occ.meetingCount) / Number(occ.meetingTotal)) * 100;
         else if (occ.people != null) rate = 0;
+        else rate = 0;
       }
       if (rate == null) return;                          // geen bezettingsdata → kaart verbergen
       rate = Math.max(0, Math.min(100, Math.round(Number(rate))));
@@ -458,10 +459,10 @@
       [...bars.children].forEach((b, i) => b.classList.toggle('on', i < on));
       document.getElementById('drukLvl').textContent = lvl;
       const parts = [];
-      if (occ.people != null) parts.push(`<span title="${tr('personen nu in het gebouw','personnes présentes','people in the building')}">👥 <b>${Math.round(occ.people)}</b> ${tr('pers.','pers.','ppl')}</span>`);
-      if (occ.deskCount != null) parts.push(`<span title="${tr('werkplekken bezet','postes occupés','desks in use')}">🖥️ <b>${Math.round(occ.deskCount)}${occ.deskTotal != null ? '/' + Math.round(occ.deskTotal) : ''}</b> ${tr('desks','postes','desks')}</span>`);
-      else if (occ.deskRate != null) parts.push(`<span title="${tr('werkplekken bezet','postes occupés','desks in use')}">🖥️ <b>${Math.round(occ.deskRate)}%</b> ${tr('desks','postes','desks')}</span>`);
-      if (occ.meetingCount != null) parts.push(`<span title="${tr('vergaderzalen in gebruik','salles de réunion utilisées','meeting rooms in use')}">🗓️ <b>${Math.round(occ.meetingCount)}${occ.meetingTotal != null ? '/' + Math.round(occ.meetingTotal) : ''}</b> ${tr('meetings','réunions','meetings')}</span>`);
+      if (occ && occ.people != null) parts.push(`<span title="${tr('personen nu in het gebouw','personnes présentes','people in the building')}">👥 <b>${Math.round(occ.people)}</b> ${tr('pers.','pers.','ppl')}</span>`);
+      if (occ && occ.deskCount != null) parts.push(`<span title="${tr('werkplekken bezet','postes occupés','desks in use')}">🖥️ <b>${Math.round(occ.deskCount)}${occ.deskTotal != null ? '/' + Math.round(occ.deskTotal) : ''}</b> ${tr('desks','postes','desks')}</span>`);
+      else if (occ && occ.deskRate != null) parts.push(`<span title="${tr('werkplekken bezet','postes occupés','desks in use')}">🖥️ <b>${Math.round(occ.deskRate)}%</b> ${tr('desks','postes','desks')}</span>`);
+      if (occ && occ.meetingCount != null) parts.push(`<span title="${tr('vergaderzalen in gebruik','salles de réunion utilisées','meeting rooms in use')}">🗓️ <b>${Math.round(occ.meetingCount)}${occ.meetingTotal != null ? '/' + Math.round(occ.meetingTotal) : ''}</b> ${tr('meetings','réunions','meetings')}</span>`);
       const sub = document.getElementById('drukSub');
       if (parts.length) sub.innerHTML = parts.join(' · ');
       else sub.textContent = tr(`${rate}% vergaderzalen bezet`, `${rate}% des salles occupées`, `${rate}% of meeting rooms in use`);
