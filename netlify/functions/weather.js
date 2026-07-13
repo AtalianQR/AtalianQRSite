@@ -75,8 +75,20 @@ async function outdoorFromRealpulse(assetId, deskTotal = DESK_TOTAL, meetingTota
   const last = Array.isArray(a?.last) ? a.last : [];
   const norm = (v) => String(v ?? '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
   const num = (row) => {
-    const n = Number(row?.value);
-    return Number.isFinite(n) ? n : null;
+    const values = [
+      row?.value,
+      row?.measurement?.value,
+      row?.lastValue,
+      row?.currentValue,
+      row?.data?.value,
+      row?.result?.value,
+    ];
+    for (const value of values) {
+      if (value == null || value === '') continue;
+      const n = Number(String(value).replace(',', '.').replace('%', '').trim());
+      if (Number.isFinite(n)) return n;
+    }
+    return null;
   };
   const metricText = (row) => norm([
     row?.label,
@@ -152,12 +164,10 @@ async function outdoorFromRealpulse(assetId, deskTotal = DESK_TOTAL, meetingTota
       const key = admin ? 'admin' : priv ? 'private' : null;
       if (!key) continue;
 
-      const signalOk =
-        d === `${key} unit` ||
-        /\bpeople counter\b|\bcounter people\b/.test(m) ||
-        /\bpeople\b|\bpersons?\b|\bpersonen\b|\bpers\b/.test(m);
+      const unitLabel = new RegExp(`\\b${key} unit\\b`).test([d, m].join(' '));
+      const peopleSignal = /\bpeople counter\b|\bcounter people\b|\bpeople\b|\bpersons?\b|\bpersonen\b|\bpers\b/.test([d, m, t].join(' '));
       const wrongMetric = /\bavailability\b|\bavailable\b|\btotal\b|\brate\b|\bdesk\b|\bdesks\b|\bmeeting rooms?\b|\bmr\b/.test(m);
-      if (!signalOk || wrongMetric) continue;
+      if (wrongMetric || (!unitLabel && !peopleSignal)) continue;
 
       const prev = unitRows.get(key);
       if (!prev || ts(row) > ts(prev)) unitRows.set(key, row);
@@ -165,19 +175,7 @@ async function outdoorFromRealpulse(assetId, deskTotal = DESK_TOTAL, meetingTota
     if (unitRows.size) {
       return [...unitRows.values()].reduce((sum, row) => sum + (num(row) ?? 0), 0);
     }
-
-    const candidates = last.map((row) => {
-      const m = metricText(row);
-      const t = allText(row);
-      if (num(row) == null) return null;
-      let score = 0;
-      if (/\bpeople counter\b|\bcounter people\b/.test(m) || /\bpeople counter\b|\bcounter people\b/.test(t)) score += 50;
-      if (/\bpeople\b|\bpersons?\b|\bpersonen\b|\bpers\b/.test(m)) score += 25;
-      if (score <= 0) return null;
-      return { row, score };
-    }).filter(Boolean);
-    candidates.sort((a, b) => (b.score - a.score) || (ts(b.row) - ts(a.row)));
-    return num(candidates[0]?.row);
+    return null;
   };
   const countFromRate = (rate, total) => (
     rate != null && total != null ? Math.round((Number(rate) / 100) * Number(total)) : null
