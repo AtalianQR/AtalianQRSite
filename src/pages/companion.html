@@ -440,6 +440,11 @@
       if (!card) return;
       const occ = _weather && _weather.occupancy;
       let rate = sim.occ != null ? sim.occ : (occ ? occ.rate : null);
+      if (rate == null && occ) {
+        if (occ.deskCount != null && occ.deskTotal) rate = (Number(occ.deskCount) / Number(occ.deskTotal)) * 100;
+        else if (occ.meetingCount != null && occ.meetingTotal) rate = (Number(occ.meetingCount) / Number(occ.meetingTotal)) * 100;
+        else if (occ.people != null) rate = 0;
+      }
       if (rate == null) return;                          // geen bezettingsdata → kaart verbergen
       rate = Math.max(0, Math.min(100, Math.round(Number(rate))));
 

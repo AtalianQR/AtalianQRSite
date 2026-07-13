@@ -207,15 +207,18 @@ async function outdoorFromRealpulse(assetId, deskTotal = DESK_TOTAL, meetingTota
     const candidates = last.map((row) => {
       const d = deviceText(row);
       const m = metricText(row);
+      const t = allText(row);
       const labelAgg = norm(row?.labelAggregation);
       const name = norm(row?.name);
       const group = norm(row?.group ?? row?.groupName);
       const object = norm(row?.object);
+      const nestedMeetingAgg = /\blabelaggregation mr\b|\blabel aggregation mr\b/.test(t);
+      const nestedDeskAgg = /\blabelaggregation desks\b|\blabel aggregation desks\b/.test(t);
 
       const deviceOk = isMeeting
-        ? labelAgg === 'mr' || name === 'mr' || group === 'mr' || object === 'mr' || d === 'mr' || d === 'meeting rooms' || d === 'meeting room'
+        ? nestedMeetingAgg || labelAgg === 'mr' || name === 'mr' || group === 'mr' || object === 'mr' || d === 'mr' || d === 'meeting rooms' || d === 'meeting room'
         : isDesk
-          ? labelAgg === 'desks' || name === 'desks' || group === 'desks' || object === 'desks' || d === 'desks' || d === 'desk'
+          ? nestedDeskAgg || labelAgg === 'desks' || name === 'desks' || group === 'desks' || object === 'desks' || d === 'desks' || d === 'desk'
           : false;
 
       const metricOk = metric === 'rate'
@@ -225,6 +228,8 @@ async function outdoorFromRealpulse(assetId, deskTotal = DESK_TOTAL, meetingTota
       if (!metricOk || !deviceOk) return null;
 
       let score = 0;
+      if (isMeeting && nestedMeetingAgg) score += 100;
+      if (isDesk && nestedDeskAgg) score += 100;
       if (isMeeting && labelAgg === 'mr') score += 120;
       if (isDesk && labelAgg === 'desks') score += 120;
       if (isMeeting && (d === 'mr' || d === 'meeting rooms')) score += 80;
@@ -329,6 +334,12 @@ async function outdoorFromRealpulse(assetId, deskTotal = DESK_TOTAL, meetingTota
   const deskRate = aggregateMetric('desk', 'rate');
   const deskCount = aggregateMetric('desk', 'count') ?? countFromRate(deskRate, deskTotal);
   const meetingCount = aggregateMetric('meeting', 'count');
+  const derivedDeskRate = deskRate != null
+    ? deskRate
+    : (deskCount != null && deskTotal ? (Number(deskCount) / Number(deskTotal)) * 100 : null);
+  const derivedMeetingRate = meetingCount != null && meetingTotal
+    ? (Number(meetingCount) / Number(meetingTotal)) * 100
+    : null;
   const occupancy = {
     people:       peopleCount(),
     deskRate,
@@ -339,7 +350,7 @@ async function outdoorFromRealpulse(assetId, deskTotal = DESK_TOTAL, meetingTota
     meetingTotal: meetingTotal,
   };
   // rate = het niveau-bepalende signaal (desk-graad; fallback meeting-graad als desks ontbreken).
-  occupancy.rate = occupancy.deskRate != null ? occupancy.deskRate : occupancy.meetingRate;
+  occupancy.rate = derivedDeskRate != null ? derivedDeskRate : derivedMeetingRate;
 
   // Energie (elektriciteitsverbruik) van het gebouw — deltas uit de Elec-meter.
   const daily = last.find((x) => x && x.type === 'Elec (daily delta)');
