@@ -167,6 +167,16 @@ async function outdoorFromRealpulse(assetId, deskTotal = DESK_TOTAL, meetingTota
     row?.measurementType,
     row?.measurementName,
   ].join(' '));
+  const sourcePreview = (row, path, extra = {}) => ({
+    path,
+    value: num(row),
+    keys: Object.keys(row || {}).slice(0, 16),
+    name: row?.name ?? row?.deviceName ?? row?.assetName ?? row?.object ?? row?.input?.name ?? null,
+    type: row?.type ?? row?.kind ?? null,
+    measurement: debugMeasurement(row) || null,
+    text: ownText(row).slice(0, 220),
+    ...extra,
+  });
   const collectPeopleSources = () => {
     const sources = [];
     const seen = new Set();
@@ -182,7 +192,7 @@ async function outdoorFromRealpulse(assetId, deskTotal = DESK_TOTAL, meetingTota
         return;
       }
       if (!o || typeof o !== 'object') return;
-      const text = ownText(o);
+      const text = `${ownText(o)} ${allText(o)}`;
       if (
         /\b(admin|private|admin unit|private unit)\b/.test(text) &&
         /\bpeople counter\b|\bcounter people\b|\bpeople\b|\bpersons?\b|\bpersonen\b|\bpers\b/.test(text)
@@ -197,22 +207,26 @@ async function outdoorFromRealpulse(assetId, deskTotal = DESK_TOTAL, meetingTota
     const candidates = last.map((row) => {
       const d = deviceText(row);
       const m = metricText(row);
-      const t = allText(row);
+      const labelAgg = norm(row?.labelAggregation);
+      const name = norm(row?.name);
+      const group = norm(row?.group ?? row?.groupName);
+      const object = norm(row?.object);
 
       const deviceOk = isMeeting
-        ? d === 'mr' || d === 'meeting rooms' || d === 'meeting room' || /\bmeeting rooms?\b/.test(d) || (/\bmr\b/.test(d) && !/\bmr [a-z0-9]+/.test(d))
+        ? labelAgg === 'mr' || name === 'mr' || group === 'mr' || object === 'mr' || d === 'mr' || d === 'meeting rooms' || d === 'meeting room'
         : isDesk
-          ? d === 'desks' || d === 'desk' || /\bdesks?\b/.test(d)
+          ? labelAgg === 'desks' || name === 'desks' || group === 'desks' || object === 'desks' || d === 'desks' || d === 'desk'
           : false;
 
-      const looseDeviceOk = isMeeting ? /\bmeeting rooms?\b|\bmr\b/.test(t) : /\bdesks?\b/.test(t);
       const metricOk = metric === 'rate'
         ? /\boccupancy rate\b|\brate\b/.test(m) && !/\bavailability\b|\bavailable\b|\btotal\b/.test(m)
         : /\boccupied\b/.test(m) && !/\brate\b|\bavailability\b|\bavailable\b|\btotal\b/.test(m);
 
-      if (!metricOk || !(deviceOk || looseDeviceOk)) return null;
+      if (!metricOk || !deviceOk) return null;
 
       let score = 0;
+      if (isMeeting && labelAgg === 'mr') score += 120;
+      if (isDesk && labelAgg === 'desks') score += 120;
       if (isMeeting && (d === 'mr' || d === 'meeting rooms')) score += 80;
       if (isDesk && (d === 'desk' || d === 'desks')) score += 80;
       if (deviceOk) score += 30;
@@ -233,17 +247,12 @@ async function outdoorFromRealpulse(assetId, deskTotal = DESK_TOTAL, meetingTota
   const rememberPeopleDebug = (hit) => {
     if (!debug || peopleDebug.length >= 30) return;
     const row = hit.row;
-    peopleDebug.push({
-      path: hit.path,
+    peopleDebug.push(sourcePreview(row, hit.path, {
       key: hit.key,
       accepted: hit.accepted,
       score: hit.score,
-      value: num(row),
-      name: row?.name ?? row?.deviceName ?? row?.assetName ?? row?.object ?? null,
-      type: row?.type ?? row?.kind ?? null,
-      measurement: debugMeasurement(row) || null,
       label: row?.label ?? null,
-    });
+    }));
   };
   const peopleCount = () => {
     const unitRows = new Map();
@@ -259,7 +268,11 @@ async function outdoorFromRealpulse(assetId, deskTotal = DESK_TOTAL, meetingTota
         row?.deviceName,
         row?.device?.name,
         row?.assetName,
+        row?.asset?.name,
         row?.object,
+        row?.kind,
+        row?.input?.name,
+        row?.input?.label,
         row?.group,
         row?.groupName,
         row?.labelAggregation,
@@ -343,7 +356,13 @@ async function outdoorFromRealpulse(assetId, deskTotal = DESK_TOTAL, meetingTota
     hum: w.humidity ?? null,
     occupancy,
     energy,
-    ...(debug ? { occupancyDebug: { peopleSourceCount: peopleSources.length, peopleCandidates: peopleDebug } } : {}),
+    ...(debug ? {
+      occupancyDebug: {
+        peopleSourceCount: peopleSources.length,
+        peopleSources: peopleSources.slice(0, 50).map((source) => sourcePreview(source.row, source.path)),
+        peopleCandidates: peopleDebug,
+      },
+    } : {}),
   };
 }
 
