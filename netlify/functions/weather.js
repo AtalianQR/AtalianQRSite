@@ -31,6 +31,12 @@ function detectBase(event = {}) {
 const DEFAULT_ASSET = '66fd4b46bcb30600213e90aa'; // "Atalian - Anderlecht" WEATHER-asset
 const DEFAULT_LAT = 50.8333, DEFAULT_LON = 4.3167, DEFAULT_PLACE = 'Anderlecht';
 
+// Totaal aantal desks/vergaderzalen = statische gebouwfeiten (Anderlecht: 30 desks, 6 zalen).
+// De asset geeft dit niet betrouwbaar terug (deling count/graad wisselt), dus zetten we het vast en
+// leiden het AANTAL af uit de betrouwbare bezettingsgraad (rate × totaal). Overschrijfbaar via
+// ?deskTotal=&meetingTotal= (later ideaal een gebouwkenmerk in Ultimo).
+const DESK_TOTAL = 30, MEETING_TOTAL = 6;
+
 const json = (status, obj = {}, extra = {}) => ({
   statusCode: status,
   headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*', 'Cache-Control': 'public, max-age=300', ...extra },
@@ -52,20 +58,34 @@ function collectWeather(obj) {
   return out;
 }
 
-async function outdoorFromRealpulse(assetId) {
+async function outdoorFromRealpulse(assetId, deskTotal = DESK_TOTAL, meetingTotal = MEETING_TOTAL) {
   if (!REALPULSE_USER || !REALPULSE_PASS) return {};
   const auth = 'Basic ' + Buffer.from(`${REALPULSE_USER}:${REALPULSE_PASS}`).toString('base64');
   const res = await fetch(`${REALPULSE_BASE}/api/assets/${assetId}`, { headers: { Authorization: auth, accept: 'application/json' } });
   if (!res.ok) return {};
   const a = await res.json().catch(() => ({}));
   const w = collectWeather(a);
-  // Bezettingsgraad van de VERGADERZALEN (Meeting room occupancy rate, %). Realistisch tot ~85% (6/7);
-  // betrouwbaarder dan de deurteller-headcount (footfall). Fallback: eender welke occupancy-% als de
-  // meeting-room-meting even ontbreekt.
+  // Drukte = drie complementaire signalen uit RealPulse (gebouw-breed):
+  //   - people:  live headcount ("People - Anderlecht", counter/people) — hoeveel mensen NU aanwezig
+  //   - desk:    werkplek-bezetting (rate % + absoluut aantal) — hoe vol de kantoortuin zit
+  //   - meeting: vergaderzaal-bezetting (rate % + aantal) — overleg-activiteit
+  // Het NIVEAU (rustig/gemiddeld/druk) leiden we af uit de desk-graad (zelf-genormaliseerd).
+  // RealPulse telt Occupied (desks/MR) correct; het totaal ("Availability" op het dashboard) zit
+  // niet in de meetdata → dat is de vaste gebouwconstante. We tonen dus count/totaal (bv. 1/6).
   const last = Array.isArray(a?.last) ? a.last : [];
-  const pct = last.filter((x) => x && x.unit === '%' && (/ccupanc/i.test(x.type || '') || /occupanc/i.test(x.deviceName || '')));
-  const mr = pct.find((x) => /meeting\s*room/i.test(x.deviceName || ''));
-  const occupancyRate = mr ? Number(mr.value) : (pct.length ? Number(pct[0].value) : null);
+  const numByDev = (re) => { const x = last.find((y) => y && re.test(y.deviceName || '')); return x != null ? Number(x.value) : null; };
+  const peopleRow = last.find((y) => y && /people/i.test(y.deviceName || '') && /people/i.test(y.unit || ''));
+  const occupancy = {
+    people:       peopleRow != null ? Number(peopleRow.value) : null,
+    deskRate:     numByDev(/desk\s*occupancy\s*rate/i),
+    deskCount:    numByDev(/desk\s*occupied/i),
+    deskTotal:    deskTotal,
+    meetingRate:  numByDev(/meeting\s*room\s*occupancy\s*rate/i),
+    meetingCount: numByDev(/meeting\s*room\s*occupied/i),
+    meetingTotal: meetingTotal,
+  };
+  // rate = het niveau-bepalende signaal (desk-graad; fallback meeting-graad als desks ontbreken).
+  occupancy.rate = occupancy.deskRate != null ? occupancy.deskRate : occupancy.meetingRate;
 
   // Energie (elektriciteitsverbruik) van het gebouw — deltas uit de Elec-meter.
   const daily = last.find((x) => x && x.type === 'Elec (daily delta)');
@@ -77,7 +97,7 @@ async function outdoorFromRealpulse(assetId) {
     yearly: yearly ? Number(yearly.value) : null,
   };
 
-  return { temp: w.temperature ?? null, hum: w.humidity ?? null, occupancyRate, energy };
+  return { temp: w.temperature ?? null, hum: w.humidity ?? null, occupancy, energy };
 }
 
 async function forecastFromOpenMeteo(lat, lon) {
@@ -103,27 +123,36 @@ export async function handler(event) {
   if (event.httpMethod === 'OPTIONS') return json(204, {});
   const qs = event.queryStringParameters || {};
   const assetId = String(qs.asset || DEFAULT_ASSET);
-  const lat = qs.lat || DEFAULT_LAT, lon = qs.lon || DEFAULT_LON;
   const place = String(qs.place || DEFAULT_PLACE);
   const spaceId = String(qs.spaceId || qs.id || '').trim();
   const debug = qs.debug === '1' || qs.debug === 'true';
+  const deskTotal = Number(qs.deskTotal) || DESK_TOTAL;
+  const meetingTotal = Number(qs.meetingTotal) || MEETING_TOTAL;
 
   try {
-    // Tier bepalen (faalt veilig naar 'public'). Zonder spaceId → publiek → geen energie/bezetting.
-    const { tier, ip } = await resolveSpaceTier(event, { base: detectBase(event), spaceId, apiKey: ULTIMO_API_KEY, appQuery: APP_QUERY });
+    // Tier + netwerken (incl. gebouwcoördinaten GeocodeX/Y). Faalt veilig naar 'public'.
+    const { tier, ip, networks } = await resolveSpaceTier(event, { base: detectBase(event), spaceId, apiKey: ULTIMO_API_KEY, appQuery: APP_QUERY });
 
-    const [outdoor, fc] = await Promise.all([outdoorFromRealpulse(assetId), forecastFromOpenMeteo(lat, lon)]);
+    // Coördinaten voor de forecast: gebouw (Ultimo) > ?lat/lon= > Anderlecht-default.
+    const lat = (networks && networks.lat != null ? networks.lat : (qs.lat || DEFAULT_LAT));
+    const lon = (networks && networks.lon != null ? networks.lon : (qs.lon || DEFAULT_LON));
+
+    const [outdoor, fc] = await Promise.all([outdoorFromRealpulse(assetId, deskTotal, meetingTotal), forecastFromOpenMeteo(lat, lon)]);
     return json(200, {
       place,
       now: { temp: outdoor.temp, hum: outdoor.hum, code: fc.code }, // weer = altijd publiek
       forecast: fc.forecast,
-      // Gebouw-brede bezetting + energie: bedrijfsgevoelig → enkel op het interne netwerk.
+      // Gebouw-brede data: intern ziet alles; gast enkel het drukte-NIVEAU (rate, geen cijfers);
+      // publiek niets. Energie (kWh) blijft strikt intern.
       ...(tier === 'internal' ? {
-        occupancy: { rate: outdoor.occupancyRate ?? null },
+        occupancy: outdoor.occupancy ?? null, // {people, deskRate, deskCount, meetingRate, meetingCount, rate}
         energy: outdoor.energy ?? null,
+      } : tier === 'guest' ? {
+        occupancy: { rate: outdoor.occupancy ? (outdoor.occupancy.rate ?? null) : null }, // enkel niveau
       } : {}),
       tier,
-      ...(debug ? { spaceId, ip } : {}),
+      // Debug-internals (ip, coördinaten) enkel voor tier 'internal' (kantoornet/lokaal), nooit publiek.
+      ...(debug && tier === 'internal' ? { spaceId, ip, lat, lon, coordSource: (networks && networks.lat != null) ? 'building' : 'default' } : {}),
     });
   } catch (err) {
     console.error('[weather] fout:', err.message);

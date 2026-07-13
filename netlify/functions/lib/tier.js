@@ -74,16 +74,27 @@ export async function fetchNetworks(base, spaceId, { apiKey, appQuery, action = 
     headers: { accept: 'application/json', 'Content-Type': 'application/json', ApiKey: apiKey, ApplicationElementId: appQuery },
     body: JSON.stringify({ Action: action, SpaceId: spaceId }),
   });
-  if (!res.ok) return { intern: [], gast: [] };
+  const empty = { intern: [], gast: [], ssid: '', pass: '', lat: null, lon: null };
+  if (!res.ok) return empty;
   const body = await res.json().catch(() => ({}));
   const s = body?.properties?.Output?.object;
   let txt = s ? String(s).trim().replace(/^'(.*)'$/, '$1').replace(/&quot;/g, '"') : '';
-  if (!txt || txt === '{}') return { intern: [], gast: [] };
+  if (!txt || txt === '{}') return empty;
   try {
     const obj = JSON.parse(txt);
-    return { intern: parseList(obj.intern), gast: parseList(obj.gast) };
+    // In deze Ultimo houdt GeocodeX de LATITUDE (~50.8) en GeocodeY de LONGITUDE (~4.3) — omgekeerd
+    // aan de gangbare X=lon/Y=lat-conventie (vastgesteld op het Anderlecht-gebouw). Komma-decimaal ok.
+    // Veiligheid: latitude kan nooit > 90 → als de waarden toch omgekeerd blijken, wisselen we ze.
+    const coord = (v) => { const n = parseFloat(String(v ?? '').replace(',', '.')); return Number.isFinite(n) && n !== 0 ? n : null; };
+    let lat = coord(obj.geoX), lon = coord(obj.geoY);
+    if (lat != null && Math.abs(lat) > 90 && lon != null && Math.abs(lon) <= 90) { const t = lat; lat = lon; lon = t; }
+    return {
+      intern: parseList(obj.intern), gast: parseList(obj.gast),
+      ssid: String(obj.ssid || '').trim(), pass: String(obj.pass || '').trim(),
+      lat, lon,
+    };
   } catch {
-    return { intern: [], gast: [] };
+    return empty;
   }
 }
 
@@ -105,12 +116,12 @@ export async function resolveSpaceTier(event, { base, spaceId, apiKey, appQuery 
   // Lokale ontwikkeling (`netlify dev`): geen echt publiek IP beschikbaar → standaard intern,
   // zodat je lokaal de volledige weergave ziet. ?tier=public|guest schaalt lokaal gewoon af.
   const devDefault = process.env.NETLIFY_DEV === 'true' ? 'internal' : 'public';
-  if (!spaceId || !base || !apiKey || !appQuery) return { tier: applyDowngrade(event, devDefault), ip, networks: { intern: [], gast: [] } };
+  if (!spaceId || !base || !apiKey || !appQuery) return { tier: applyDowngrade(event, devDefault), ip, networks: { intern: [], gast: [], ssid: '', pass: '', lat: null, lon: null } };
   try {
     const networks = await fetchNetworks(base, spaceId, { apiKey, appQuery });
     const resolved = resolveTier(ip, networks);
     return { tier: applyDowngrade(event, resolved === 'public' ? devDefault : resolved), ip, networks };
   } catch {
-    return { tier: applyDowngrade(event, devDefault), ip, networks: { intern: [], gast: [] } };
+    return { tier: applyDowngrade(event, devDefault), ip, networks: { intern: [], gast: [], ssid: '', pass: '', lat: null, lon: null } };
   }
 }

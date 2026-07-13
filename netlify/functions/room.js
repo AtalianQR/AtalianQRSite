@@ -171,6 +171,7 @@ export async function handler(event) {
   // Faalt veilig naar 'public' → bij twijfel geeft de proxy nooit onbedoeld meer prijs.
   const { tier, ip, networks } = await resolveSpaceTier(event, { base, spaceId, apiKey: ULTIMO_API_KEY, appQuery: APP_QUERY });
   const tierDebug = debug ? { tier, ip, networks } : {};
+  const guestWifi = (tier !== 'internal' && networks && networks.ssid) ? { ssid: networks.ssid, pass: networks.pass || '' } : null;
 
   try {
     // Stap 1 — kenmerken ophalen en routeren op description
@@ -193,6 +194,7 @@ export async function handler(event) {
       return json(200, {
         coupled: false,
         ...roomFacts,
+        ...(guestWifi ? { guestWifi } : {}),
         tier,
         env,
         ...(debug ? { spaceId, features, ...tierDebug } : {}),
@@ -223,6 +225,7 @@ export async function handler(event) {
 
     return json(200, {
       ...payload,
+      ...(guestWifi ? { guestWifi } : {}),
       tier,
       env,
       ...(debug ? { spaceId, matched: iotFeature, features, ...tierDebug } : {}), // id/kenmerk enkel in debug

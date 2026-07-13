@@ -74,8 +74,17 @@
     .druk-bars b{width:16px;height:22px;border-radius:4px;background:var(--line-2)}
     .druk-bars b.on{background:var(--accent)}
     .druk-bars.good b.on{background:var(--good)} .druk-bars.warn b.on{background:var(--warn)} .druk-bars.crit b.on{background:var(--crit)}
+    .druk-txt{min-width:0;flex:1}
     .druk-txt b{font-size:14px;display:block;letter-spacing:-.01em}
-    .druk-txt span{font-size:11.5px;color:var(--ink-soft)}
+    .druk-txt>span{display:flex;align-items:center;gap:8px;font-size:11.5px;color:var(--ink-soft);white-space:nowrap;overflow:hidden}
+    .druk-txt>span>span{display:inline-flex;align-items:baseline;gap:3px;white-space:nowrap;min-width:0}
+    .wifi-row{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:8px 0;border-bottom:1px solid var(--line-2)}
+    .wifi-row:last-child{border-bottom:0}
+    .wifi-k{font-size:12px;color:var(--ink-soft);flex:0 0 auto}
+    .wifi-v{display:inline-flex;align-items:center;gap:8px;min-width:0}
+    .wifi-copy{appearance:none;border:0;background:transparent;color:var(--ink);font:inherit;font-size:13px;font-weight:700;padding:2px 0;cursor:pointer;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+    .wifi-copy.copied{color:var(--good)}
+    .wifi-toggle{appearance:none;border:1px solid var(--line);background:var(--surface-2);color:var(--ink-soft);border-radius:999px;font:inherit;font-size:11px;font-weight:700;padding:3px 8px;cursor:pointer}
     .eco{border-radius:var(--r);padding:13px 15px;display:flex;gap:12px;align-items:flex-start;border:1px solid transparent}
     .eco.good{background:var(--good-bg);border-color:color-mix(in srgb,var(--good) 22%,transparent)}
     .eco.warn{background:var(--warn-bg);border-color:color-mix(in srgb,var(--warn) 24%,transparent)}
@@ -161,6 +170,27 @@
       </div>
       <div class="card-b" id="comfortBody">
         <div class="loading"><span class="spin"></span> <span id="loadingTxt"></span></div>
+      </div>
+    </div>
+
+    <div class="card hidden" id="wifiCard">
+      <div class="card-h">
+        <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M5 12.5a10 10 0 0 1 14 0M8.5 16a5 5 0 0 1 7 0"/><circle cx="12" cy="19.5" r="1"/></svg>
+        <h3 id="wifiTitle"></h3>
+        <span class="meta" id="wifiMeta"></span>
+      </div>
+      <div class="card-b">
+        <div class="wifi-row">
+          <span class="wifi-k" id="wifiSsidK"></span>
+          <span class="wifi-v"><button class="wifi-copy" id="wifiSsidBtn" type="button"></button></span>
+        </div>
+        <div class="wifi-row" id="wifiPassRow">
+          <span class="wifi-k" id="wifiPassK"></span>
+          <span class="wifi-v">
+            <button class="wifi-toggle" id="wifiToggle" type="button"></button>
+            <button class="wifi-copy" id="wifiPassBtn" type="button"></button>
+          </span>
+        </div>
       </div>
     </div>
 
@@ -280,6 +310,10 @@
     document.getElementById('handigLabel').textContent = tr('Handig vandaag', 'Pratique aujourd’hui', 'Handy today');
     document.getElementById('drukteTitle').textContent = tr('Drukte', 'Occupation', 'Occupancy');
     document.getElementById('weatherTitle').textContent = tr('Weer & buiten', 'Météo & extérieur', 'Weather & outside');
+    document.getElementById('wifiTitle').textContent   = tr('Gastnetwerk', 'Réseau invité', 'Guest network');
+    document.getElementById('wifiMeta').textContent    = tr('voor bezoekers', 'pour les visiteurs', 'for visitors');
+    document.getElementById('wifiSsidK').textContent   = tr('Netwerk', 'Réseau', 'Network');
+    document.getElementById('wifiPassK').textContent   = tr('Wachtwoord', 'Mot de passe', 'Password');
 
     document.querySelectorAll('#lang a').forEach(a => {
       if (a.dataset.l === lang) a.classList.add('on');
@@ -418,7 +452,13 @@
       bars.className = 'druk-bars ' + cls;
       [...bars.children].forEach((b, i) => b.classList.toggle('on', i < on));
       document.getElementById('drukLvl').textContent = lvl;
-      document.getElementById('drukSub').textContent = tr(`${rate}% vergaderzalen bezet`, `${rate}% des salles occupées`, `${rate}% of meeting rooms in use`);
+      const parts = [];
+      if (occ.people != null) parts.push(`<span title="${tr('personen nu in het gebouw','personnes présentes','people in the building')}">👥 <b>${Math.round(occ.people)}</b> ${tr('pers.','pers.','ppl')}</span>`);
+      if (occ.deskRate != null) parts.push(`<span title="${tr('werkplekken bezet','postes occupés','desks in use')}">🖥️ <b>${Math.round(occ.deskRate)}%</b> ${tr('desks','postes','desks')}</span>`);
+      if (occ.meetingCount != null) parts.push(`<span title="${tr('vergaderzalen in gebruik','salles de réunion utilisées','meeting rooms in use')}">🗓️ <b>${Math.round(occ.meetingCount)}${occ.meetingTotal != null ? '/' + Math.round(occ.meetingTotal) : ''}</b> ${tr('meetings','réunions','meetings')}</span>`);
+      const sub = document.getElementById('drukSub');
+      if (parts.length) sub.innerHTML = parts.join(' · ');
+      else sub.textContent = tr(`${rate}% vergaderzalen bezet`, `${rate}% des salles occupées`, `${rate}% of meeting rooms in use`);
       document.getElementById('drukMeta').textContent = tr('in het gebouw', 'dans le bâtiment', 'in the building');
       card.classList.remove('hidden');
     }
@@ -481,6 +521,63 @@
       const parts = ventAdvice({ co2:_room.co2, indoor:_room.temp, outdoor: wxNow.temp ?? null, weatherCode: wxNow.code ?? null, hour, windows:_room.windows, thermostat:_room.thermostat });
       el.innerHTML = parts.map(p => `<div class="adv adv-${p.tone}"><span>${p.icon}</span><span>${p.txt}</span></div>`).join('');
     }
+    function fallbackCopy(text){
+      try {
+        const ta = document.createElement('textarea');
+        ta.value = text;
+        ta.style.position = 'fixed';
+        ta.style.opacity = '0';
+        document.body.appendChild(ta);
+        ta.focus();
+        ta.select();
+        document.execCommand('copy');
+        document.body.removeChild(ta);
+        return true;
+      } catch { return false; }
+    }
+    function wifiCopy(text, btn){
+      const original = btn.textContent;
+      const ok = () => {
+        btn.classList.add('copied');
+        btn.textContent = tr('Gekopieerd', 'Copié', 'Copied');
+        clearTimeout(btn._t);
+        btn._t = setTimeout(() => { btn.classList.remove('copied'); btn.textContent = original; }, 1400);
+      };
+      if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(text).then(ok).catch(() => { if (fallbackCopy(text)) ok(); });
+      else if (fallbackCopy(text)) ok();
+    }
+    function renderWifi(d){
+      const w = d && d.guestWifi;
+      if (!w || !w.ssid) return;
+      const card = document.getElementById('wifiCard');
+      const ssidBtn = document.getElementById('wifiSsidBtn');
+      const passRow = document.getElementById('wifiPassRow');
+      const passBtn = document.getElementById('wifiPassBtn');
+      const toggle = document.getElementById('wifiToggle');
+      if (!card || !ssidBtn || !passRow || !passBtn || !toggle) return;
+
+      ssidBtn.textContent = w.ssid;
+      ssidBtn.title = tr('Tik om te kopiëren', 'Touchez pour copier', 'Tap to copy');
+      ssidBtn.onclick = () => wifiCopy(w.ssid, ssidBtn);
+
+      if (w.pass) {
+        const dots = '•'.repeat(Math.min(12, w.pass.length));
+        let shown = false;
+        passBtn.textContent = dots;
+        passBtn.title = tr('Tik om te kopiëren', 'Touchez pour copier', 'Tap to copy');
+        passBtn.onclick = () => wifiCopy(w.pass, passBtn);
+        toggle.textContent = tr('toon', 'voir', 'show');
+        toggle.onclick = () => {
+          shown = !shown;
+          passBtn.textContent = shown ? w.pass : dots;
+          toggle.textContent = shown ? tr('verberg', 'masquer', 'hide') : tr('toon', 'voir', 'show');
+        };
+        passRow.style.display = '';
+      } else {
+        passRow.style.display = 'none';
+      }
+      card.classList.remove('hidden');
+    }
 
     async function loadComfort(){
       const body = document.getElementById('comfortBody');
@@ -489,6 +586,7 @@
         const r = await fetch(`/.netlify/functions/room?spaceId=${encodeURIComponent(spaceId)}&env=${env}${tierQS}${debug?'&debug=1':''}`);
         const d = await r.json();
         if (!r.ok) { body.innerHTML = `<div class="muted">${tr('Sensordata tijdelijk niet beschikbaar.', 'Données momentanément indisponibles.', 'Sensor data temporarily unavailable.')}</div>`; return; }
+        renderWifi(d);
 
         // Demo-simulatie toepassen (toont de kaart ook zonder sensor).
         if (sim.co2 != null) d.co2 = sim.co2;

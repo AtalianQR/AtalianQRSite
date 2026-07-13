@@ -114,6 +114,7 @@
     tr.job-row.done span.copy-part { cursor: default; background: #e5e7eb; }
     span.copy-part.copied-flash { background: #22c55e !important; color: #fff; }
     .vorderingsnummer-input { width: 140px; margin-right: .5rem; }
+    span.copy-part.loonweek-chip { margin-right: .6rem; font-weight: 600; white-space: nowrap; }
     .periode-select { margin-right: .5rem; padding: .3rem; border-radius: 6px; }
     td.vordering-cell { white-space: nowrap; }
     .job-error { color: #b91c1c; font-size: .8rem; }
@@ -166,9 +167,9 @@
       <button type="button" id="btn-load" class="btn btn-primary">Lijst herladen</button>
       <div class="status" id="load-status"></div>
       <div id="grand-total" class="grand-total">Totaal over alle gebouwen: <span id="grand-total-value">€ 0,00</span></div>
-      <div id="loonweek-global" class="loonweek-global" style="display:none">
-        <label for="global-periode"><strong>Loonweek voor alle gebouwen:</strong></label>
-        <select id="global-periode" class="periode-select"></select>
+      <div id="building-filter-wrap" class="loonweek-global" style="display:none">
+        <label for="building-filter"><strong>Filter op gebouw:</strong></label>
+        <select id="building-filter" class="periode-select"><option value="">Alle gebouwen</option></select>
       </div>
       <div id="buildings-container"></div>
       <div id="pending-container"></div>
@@ -285,33 +286,51 @@
 
     initSession();
 
-    let buildingGroups = []; // [{ building, externalId, gebouwnummer, codeGroups: Map<code, jobs[]> }]
+    let buildingGroups = []; // blokken per gebouw+loonweek: [{ blockKey, building, externalId, loonweekKey, loonweekLabel, beschrMonth, processable, codeGroups: Map<code, jobs[]>, jobsById }]
     let pendingJobs = [];    // jobs met een 00633-lijn (nacalculatie): niet factureren, wel apart tonen
 
     function groupJobs(jobs) {
-      const byBuilding = new Map();
+      const byBlock = new Map();
 
       for (const job of jobs) {
         const buildingKey = String(job.Building || '').trim() || '(onbekend gebouw)';
-        if (!byBuilding.has(buildingKey)) {
-          byBuilding.set(buildingKey, {
+        const date = parseSchedDate(job.ScheduledStartDate);
+        const lw = date ? loonweekInfo(date) : unknownLoonweekInfo();
+        const blockKey = `${buildingKey}||${lw.key}`;
+
+        if (!byBlock.has(blockKey)) {
+          byBlock.set(blockKey, {
+            blockKey,
             building: buildingKey,
             externalId: String(job.ExternalId || '').trim(),
-            gebouwnummer: String(job.Gebouwnummer || '').trim(),
+            loonweekKey: lw.key,
+            loonweekLabel: lw.label,
+            loonweekShort: lw.shortLabel,
+            sortYear: lw.year,
+            sortMonth: lw.month,
+            beschrMonth: lw.beschrMonth,
+            processable: lw.key !== UNKNOWN_LW_KEY,
             codeGroups: new Map(),
             jobsById: new Map(),
           });
         }
-        const group = byBuilding.get(buildingKey);
+        const block = byBlock.get(blockKey);
         const codeKey = String(job.Code || '').trim() || '(geen code)';
-        if (!group.codeGroups.has(codeKey)) {
-          group.codeGroups.set(codeKey, []);
-        }
-        group.codeGroups.get(codeKey).push(job);
-        group.jobsById.set(String(job.JobId || '').trim(), job);
+        if (!block.codeGroups.has(codeKey)) block.codeGroups.set(codeKey, []);
+        block.codeGroups.get(codeKey).push(job);
+        block.jobsById.set(String(job.JobId || '').trim(), job);
       }
 
-      return Array.from(byBuilding.values());
+      const blocks = Array.from(byBlock.values());
+      blocks.sort((a, b) => {
+        const byBuilding = String(a.building).localeCompare(String(b.building), undefined, { numeric: true });
+        if (byBuilding !== 0) return byBuilding;
+        // Onbekende maand achteraan.
+        if (a.loonweekKey === UNKNOWN_LW_KEY) return b.loonweekKey === UNKNOWN_LW_KEY ? 0 : 1;
+        if (b.loonweekKey === UNKNOWN_LW_KEY) return -1;
+        return (a.sortYear - b.sortYear) || (a.sortMonth - b.sortMonth);
+      });
+      return blocks;
     }
 
     function escapeHtml(s) {
@@ -326,55 +345,76 @@
       return Number.isFinite(num) ? String(num).replace('.', ',') : String(value == null ? '' : value);
     }
 
-    // Loonweek = blok van 7 dagen vanaf 1 januari (LW1 = 1-7 jan, LW2 = 8-14 jan, ...).
-    // De laatste dag(en) van het jaar die niet meer in 52 weken passen, vormen LW53
-    // (geen cap op 52). Januari begint weer bij LW1.
+    // Loonweek = ISO 8601-weeknummer: weken beginnen op maandag, week 1 is de week met
+    // de eerste donderdag van het jaar. Rond de jaarwissel volgt hieruit vanzelf dat begin
+    // januari nog in week 52/53 van het vorige jaar valt (en eind december in week 1).
     function getLoonweekNumber(date) {
-      const utcDate = Date.UTC(date.getFullYear(), date.getMonth(), date.getDate());
-      const utcJan1 = Date.UTC(date.getFullYear(), 0, 1);
-      const diffDays = Math.round((utcDate - utcJan1) / 86400000);
-      return Math.floor(diffDays / 7) + 1;
+      const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
+      const dayNum = (d.getUTCDay() + 6) % 7; // maandag=0 ... zondag=6
+      d.setUTCDate(d.getUTCDate() - dayNum + 3); // donderdag van deze ISO-week
+      const firstThursday = new Date(Date.UTC(d.getUTCFullYear(), 0, 4));
+      const ftDayNum = (firstThursday.getUTCDay() + 6) % 7;
+      firstThursday.setUTCDate(firstThursday.getUTCDate() - ftDayNum + 3);
+      return 1 + Math.round((d - firstThursday) / (7 * 86400000));
+    }
+
+    const UNKNOWN_LW_KEY = 'GEEN';
+
+    // Parseert ScheduledStartDate defensief. Verwacht 'YYYY-MM-DD' (uit WFL #formatdate),
+    // valt terug op 'DD-MM-YYYY'. Leeg/onparsbaar -> null.
+    function parseSchedDate(str) {
+      const s = String(str == null ? '' : str).trim();
+      if (!s) return null;
+      let m = s.match(/^(\d{4})-(\d{2})-(\d{2})/);
+      if (m) {
+        const d = new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
+        return Number.isNaN(d.getTime()) ? null : d;
+      }
+      m = s.match(/^(\d{2})-(\d{2})-(\d{4})/);
+      if (m) {
+        const d = new Date(Number(m[3]), Number(m[2]) - 1, Number(m[1]));
+        return Number.isNaN(d.getTime()) ? null : d;
+      }
+      return null;
     }
 
     function lastDayOfMonth(year, month) {
       return new Date(year, month + 1, 0);
     }
 
-    function getLoonweekLabel(year, month) {
+    // Loonweek-bereik voor een maand, bv. "LW27-31": ISO-weeknummer van de eerste dag t/m
+    // dat van de laatste dag van de maand. Rond de jaarwissel geeft dit vanzelf het juiste
+    // resultaat, bv. januari 2027 = "LW53-4" (begin januari valt nog in ISO-week 53 van 2026).
+    function getLoonweekRange(year, month) {
+      const startWeek = getLoonweekNumber(new Date(year, month, 1));
       const endWeek = getLoonweekNumber(lastDayOfMonth(year, month));
-
-      let prevYear = year;
-      let prevMonth = month - 1;
-      if (prevMonth < 0) { prevMonth = 11; prevYear = year - 1; }
-
-      const prevEndWeek = getLoonweekNumber(lastDayOfMonth(prevYear, prevMonth));
-      let startWeek = prevEndWeek + 1;
-      if (startWeek > 52) startWeek = 1; // na LW52/LW53 (december) start januari opnieuw bij LW1
-
-      return `LW${startWeek}-${endWeek}`;
+      return startWeek === endWeek ? `LW${startWeek}` : `LW${startWeek}-${endWeek}`;
     }
 
-    function buildPeriodeOptions(buildingKey) {
-      const now = new Date();
-      const options = [];
-      for (let offset = -2; offset <= 1; offset++) {
-        const d = new Date(now.getFullYear(), now.getMonth() + offset, 1);
-        const label = getLoonweekLabel(d.getFullYear(), d.getMonth());
-        const maandNaam = d.toLocaleDateString('nl-BE', { month: 'long', year: 'numeric' });
-        const selected = offset === 0 ? 'selected' : '';
-        const value = `${label}|${d.getFullYear()}-${d.getMonth()}`;
-        options.push(`<option value="${escapeHtml(value)}" ${selected}>${escapeHtml(label)} (${escapeHtml(maandNaam)})</option>`);
-      }
-      return options.join('');
-    }
-
-    function parsePeriode(value) {
-      const now = new Date();
-      const ym = String(value || '').split('|')[1] || '';
-      const [y, m] = ym.split('-').map(Number);
+    // Groep = gebouw × maand (o.b.v. ScheduledStartDate). Label = loonweek-bereik + maand.
+    function loonweekInfo(date) {
+      const year = date.getFullYear();
+      const month = date.getMonth();
+      const range = getLoonweekRange(year, month);
+      const maandNaam = date.toLocaleDateString('nl-BE', { month: 'long', year: 'numeric' });
       return {
-        year: Number.isFinite(y) ? y : now.getFullYear(),
-        month: Number.isFinite(m) ? m : now.getMonth(),
+        year,
+        month,
+        key: `${year}-M${month}`,
+        label: `${range} (${maandNaam})`,
+        shortLabel: range,
+        beschrMonth: { year, month },
+      };
+    }
+
+    function unknownLoonweekInfo() {
+      return {
+        year: null,
+        month: null,
+        key: UNKNOWN_LW_KEY,
+        label: 'Loonweek onbekend',
+        shortLabel: '',
+        beschrMonth: null,
       };
     }
 
@@ -388,12 +428,12 @@
     }
 
     function updateBeschrijvingen() {
-      document.querySelectorAll('.beschrijving-part[data-building]').forEach((span) => {
-        const bk = span.getAttribute('data-building');
+      document.querySelectorAll('.beschrijving-part[data-blockkey]').forEach((span) => {
+        const blockKey = span.getAttribute('data-blockkey');
         const code = span.getAttribute('data-code');
-        const sel = document.querySelector(`.periode-select[data-building="${cssEscape(bk)}"]`);
-        const { year, month } = parsePeriode(sel ? sel.value : '');
-        const text = getBeschrijving(code, year, month);
+        const block = buildingGroups.find(b => b.blockKey === blockKey);
+        const bm = block && block.beschrMonth ? block.beschrMonth : null;
+        const text = bm ? getBeschrijving(code, bm.year, bm.month) : '';
         span.textContent = text;
         span.setAttribute('data-copy-value', text);
       });
@@ -442,9 +482,9 @@
       return formatEuro(parseTotaalNumber(job.Totaal) / aantal);
     }
 
-    function calculateBuildingTotal(group) {
+    function calculateBlockTotal(block) {
       let sum = 0;
-      for (const jobsInCode of group.codeGroups.values()) {
+      for (const jobsInCode of block.codeGroups.values()) {
         for (const job of jobsInCode) {
           sum += parseTotaalNumber(job.Totaal);
         }
@@ -452,24 +492,42 @@
       return formatEuro(sum);
     }
 
-    function setupGlobalPeriode() {
-      const sel = document.getElementById('global-periode');
-      const wrap = document.getElementById('loonweek-global');
+    function setupBuildingFilter() {
+      const sel = document.getElementById('building-filter');
+      const wrap = document.getElementById('building-filter-wrap');
       if (!sel || !wrap) return;
-      if (!sel.options.length) {
-        sel.innerHTML = buildPeriodeOptions('');
-        sel.addEventListener('change', applyGlobalPeriode);
+
+      const buildings = Array.from(new Set(buildingGroups.map(b => b.building)))
+        .sort((a, b) => String(a).localeCompare(String(b), undefined, { numeric: true }));
+
+      const current = sel.value;
+      sel.innerHTML = '<option value="">Alle gebouwen</option>'
+        + buildings.map(b => `<option value="${escapeHtml(b)}">${escapeHtml(b)}</option>`).join('');
+      // Behoud de selectie als het gebouw nog bestaat.
+      if (buildings.includes(current)) sel.value = current;
+
+      if (!sel.dataset.bound) {
+        sel.addEventListener('change', applyBuildingFilter);
+        sel.dataset.bound = '1';
       }
       wrap.style.display = buildingGroups.length ? 'block' : 'none';
+      applyBuildingFilter();
     }
 
-    function applyGlobalPeriode() {
-      const sel = document.getElementById('global-periode');
-      if (!sel || !sel.value) return;
-      document.querySelectorAll('.periode-select[data-building]').forEach((s) => {
-        s.value = sel.value;
-      });
-      updateBeschrijvingen();
+    function applyBuildingFilter() {
+      const sel = document.getElementById('building-filter');
+      const chosen = sel ? sel.value : '';
+      for (const block of buildingGroups) {
+        const show = !chosen || block.building === chosen;
+        document.querySelectorAll(`tr[data-blockkey="${cssEscape(block.blockKey)}"]`).forEach((row) => {
+          // Detailrijen (Per JobID) blijven verborgen tenzij ze al open stonden; we togglen enkel niet-detailrijen.
+          if (row.classList.contains('jobid-detail-row')) {
+            if (!show) row.style.display = 'none';
+            return;
+          }
+          row.style.display = show ? '' : 'none';
+        });
+      }
     }
 
     function updateGrandTotal() {
@@ -478,8 +536,8 @@
       if (!el || !valueEl) return;
 
       let sum = 0;
-      for (const group of buildingGroups) {
-        for (const jobsInCode of group.codeGroups.values()) {
+      for (const block of buildingGroups) {
+        for (const jobsInCode of block.codeGroups.values()) {
           for (const job of jobsInCode) {
             sum += parseTotaalNumber(job.Totaal);
           }
@@ -540,9 +598,9 @@
     // Ongesamenvoegde lijst per JobID — puur ter raadpleging, zodat de gebruiker de
     // samenstelling van een opgeteld bedrag (per WO/code) kan controleren bij twijfel.
     // Verandert niets aan de bestaande, samengevoegde weergave of aan de verwerklogica.
-    function renderJobIdBreakdown(group) {
+    function renderJobIdBreakdown(block) {
       const lines = [];
-      for (const [code, jobsInCode] of group.codeGroups.entries()) {
+      for (const [code, jobsInCode] of block.codeGroups.entries()) {
         for (const job of jobsInCode) {
           lines.push({ code, ...job });
         }
@@ -576,9 +634,9 @@
       }).join('');
 
       return `
-        <tr class="jobid-detail-row" data-building="${escapeHtml(group.building)}" style="display:none">
+        <tr class="jobid-detail-row" data-blockkey="${escapeHtml(block.blockKey)}" style="display:none">
           <td colspan="7">
-            <div class="jobid-detail-title">Samenstelling per JobID — ${escapeHtml(group.building)} (${lines.length} lijn${lines.length !== 1 ? 'en' : ''})</div>
+            <div class="jobid-detail-title">Samenstelling per JobID — ${escapeHtml(block.building)} · ${escapeHtml(block.loonweekLabel)} (${lines.length} lijn${lines.length !== 1 ? 'en' : ''})</div>
             <table class="jobid-detail-table">
               <thead>
                 <tr><th>JobID</th><th>ProjectNr</th><th>WO</th><th>Code</th><th>Beschrijving</th><th class="num-right">Aantal (fac.)</th><th class="num-right">Aantal producten</th><th class="num-right">Eenheidsprijs</th><th class="num-right">Totaal</th></tr>
@@ -596,7 +654,7 @@
       if (!buildingGroups.length) {
         container.innerHTML = '<p>Geen jobs klaar om te factureren.</p>';
         updateGrandTotal();
-        setupGlobalPeriode();
+        setupBuildingFilter();
         return;
       }
 
@@ -617,49 +675,53 @@
         <tbody>
       `;
 
-      for (const group of buildingGroups) {
-        const groupId = `grp-${group.building.replace(/[^a-zA-Z0-9]/g, '_')}`;
+      for (const block of buildingGroups) {
+        const blockId = blockIdFor(block.blockKey);
+        const bk = escapeHtml(block.blockKey);
+        const headLabel = `${escapeHtml(block.building)} &middot; ${block.processable ? '' : '⚠️ '}${escapeHtml(block.loonweekLabel)}`;
+
+        const controlsCell = block.processable
+          ? `<td colspan="2" class="vordering-cell">
+               <span class="copy-part loonweek-chip" data-copy-value="${escapeHtml(block.loonweekShort)}">${escapeHtml(block.loonweekLabel)}</span>
+               <input type="text" class="vorderingsnummer-input" placeholder="00000" maxlength="5" inputmode="numeric" pattern="\d{5}" data-blockkey="${bk}" />
+               <button type="button" class="btn btn-primary btn-process" data-blockkey="${bk}" disabled>Verwerk</button>
+             </td>`
+          : `<td colspan="2" class="vordering-cell"><span class="job-error">Datum ontbreekt — vul ScheduledStartDate in Ultimo in.</span></td>`;
 
         rowsHtml += `
-          <tr class="building-header" id="${groupId}">
-            <td colspan="3"><div class="building-head-cell">${escapeHtml(group.building)}<button type="button" class="btn-jobid-toggle" data-building="${escapeHtml(group.building)}">🔍 Per JobID</button></div></td>
-            <td class="num-right"><span class="building-total" data-total-for="${escapeHtml(group.building)}">${escapeHtml(calculateBuildingTotal(group))}</span></td>
-            <td>${group.externalId ? copyPart(group.externalId, group.externalId) : ''}</td>
-            <td colspan="2" class="vordering-cell">
-              <select class="periode-select" data-building="${escapeHtml(group.building)}">
-                ${buildPeriodeOptions(group.building)}
-              </select>
-              <input type="text" class="vorderingsnummer-input" placeholder="00000" maxlength="5" inputmode="numeric" pattern="\d{5}" data-building="${escapeHtml(group.building)}" />
-              <button type="button" class="btn btn-primary btn-process" data-building="${escapeHtml(group.building)}" disabled>Verwerk</button>
-            </td>
+          <tr class="building-header${block.processable ? '' : ' done'}" id="${blockId}" data-blockkey="${bk}">
+            <td colspan="3"><div class="building-head-cell">${headLabel}<button type="button" class="btn-jobid-toggle" data-blockkey="${bk}">🔍 Per JobID</button></div></td>
+            <td class="num-right"><span class="building-total" data-total-for="${bk}">${escapeHtml(calculateBlockTotal(block))}</span></td>
+            <td>${block.externalId ? copyPart(block.externalId, block.externalId) : ''}</td>
+            ${controlsCell}
           </tr>
-          <tr class="column-header-row">
+          <tr class="column-header-row" data-blockkey="${bk}">
             <th>ProjectNr</th><th>WO</th><th class="num-right">Aantal</th><th class="num-right">Totaal</th><th>Code</th><th>Beschrijving</th><th></th>
           </tr>
         `;
 
-        for (const [code, jobsInCode] of group.codeGroups.entries()) {
+        for (const [code, jobsInCode] of block.codeGroups.entries()) {
           const mergedRows = mergeJobsByWO(jobsInCode, code);
           mergedRows.forEach((job, idx) => {
             const jobId = String(job.JobId || '').trim();
             const isBl2La2 = String(code || '').trim() === 'BL 2 - LA 2';
             rowsHtml += `
-              <tr class="job-row" data-jobid="${escapeHtml(jobId)}">
+              <tr class="job-row" data-blockkey="${bk}" data-jobid="${escapeHtml(jobId)}">
                 <td class="${idx === 0 ? 'code-group-start' : ''}">${escapeHtml(job.ProjectNr)}</td>
                 <td>${escapeHtml(job.WO)}</td>
                 <td class="num-right">${copyPart(formatAantal(job.Aantal), aantalCopyValue(job.Aantal))}</td>
                 <td class="num-right">${isBl2La2 ? copyPart(formatTotaalDisplay(job.Totaal), totaalCopyValue(job.Totaal)) : escapeHtml(formatTotaalDisplay(job.Totaal))}</td>
                 <td>${renderCodeCell(code)}</td>
-                <td>${isBl2La2 ? `<span class="copy-part beschrijving-part" data-building="${escapeHtml(group.building)}" data-code="${escapeHtml(code)}" data-copy-value=""></span>` : ''}</td>
+                <td>${isBl2La2 ? `<span class="copy-part beschrijving-part" data-blockkey="${bk}" data-code="${escapeHtml(code)}" data-copy-value=""></span>` : ''}</td>
                 <td>
-                  <input type="checkbox" class="job-checkbox" data-building="${escapeHtml(group.building)}" data-jobid="${escapeHtml(jobId)}" checked />
+                  ${block.processable ? `<input type="checkbox" class="job-checkbox" data-blockkey="${bk}" data-jobid="${escapeHtml(jobId)}" checked />` : ''}
                 </td>
               </tr>
             `;
           });
         }
 
-        rowsHtml += renderJobIdBreakdown(group);
+        rowsHtml += renderJobIdBreakdown(block);
       }
 
       rowsHtml += `</tbody>`;
@@ -667,8 +729,7 @@
       container.appendChild(table);
 
       updateGrandTotal();
-      setupGlobalPeriode();
-      applyGlobalPeriode();
+      setupBuildingFilter();
       updateBeschrijvingen();
       attachBuildingHandlers();
     }
@@ -724,7 +785,7 @@
       });
 
       document.querySelectorAll('.btn-process').forEach((btn) => {
-        btn.addEventListener('click', () => processBuilding(btn.getAttribute('data-building')));
+        btn.addEventListener('click', () => processBlock(btn.getAttribute('data-blockkey')));
       });
 
       document.querySelectorAll('span.copy-part').forEach((part) => {
@@ -732,11 +793,7 @@
       });
 
       document.querySelectorAll('.btn-jobid-toggle').forEach((btn) => {
-        btn.addEventListener('click', () => toggleJobIdDetail(btn.getAttribute('data-building'), btn));
-      });
-
-      document.querySelectorAll('.periode-select[data-building]').forEach((s) => {
-        s.addEventListener('change', updateBeschrijvingen);
+        btn.addEventListener('click', () => toggleJobIdDetail(btn.getAttribute('data-blockkey'), btn));
       });
     }
 
@@ -754,36 +811,33 @@
       setTimeout(() => part.classList.remove('copied-flash'), 400);
     }
 
-    async function processBuilding(buildingKey) {
-      const group = buildingGroups.find(g => g.building === buildingKey);
-      if (!group) return;
+    async function processBlock(blockKey) {
+      const block = buildingGroups.find(b => b.blockKey === blockKey);
+      if (!block || !block.processable) return;
 
-      const input = document.querySelector(`.vorderingsnummer-input[data-building="${cssEscape(buildingKey)}"]`);
-      const button = document.querySelector(`.btn-process[data-building="${cssEscape(buildingKey)}"]`);
+      const input = document.querySelector(`.vorderingsnummer-input[data-blockkey="${cssEscape(blockKey)}"]`);
+      const button = document.querySelector(`.btn-process[data-blockkey="${cssEscape(blockKey)}"]`);
       const vorderingsnummer = String(input.value || '').trim();
 
-      // Alle jobs/lijnen van dit gebouw worden altijd samen verwerkt - de checkbox is enkel een
-      // visueel geheugensteuntje voor de gebruiker en heeft geen invloed hierop. Eén job kan
-      // meerdere lijnen/regels hebben; die mogen nooit los van elkaar verwerkt worden.
+      // Alle jobs/lijnen van dit blok worden altijd samen verwerkt. Eén job kan meerdere
+      // lijnen hebben; die mogen nooit los verwerkt worden.
       const allJobIds = [];
-      for (const jobsInCode of group.codeGroups.values()) {
+      for (const jobsInCode of block.codeGroups.values()) {
         for (const job of jobsInCode) {
           const jid = String(job.JobId || '').trim();
           if (jid && !allJobIds.includes(jid)) allJobIds.push(jid);
         }
       }
-
       if (!allJobIds.length) return;
 
-      // Clear any previous per-job error rows for this building
-      document.querySelectorAll(`tr.job-error-row[data-building="${cssEscape(buildingKey)}"]`).forEach(el => el.remove());
+      document.querySelectorAll(`tr.job-error-row[data-blockkey="${cssEscape(blockKey)}"]`).forEach(el => el.remove());
 
       if (!/^\d{5}$/.test(vorderingsnummer)) {
-        const headerRow = document.getElementById(tableIdFor(buildingKey));
+        const headerRow = document.getElementById(blockIdFor(blockKey));
         if (headerRow) {
           const errorRow = document.createElement('tr');
           errorRow.className = 'job-error-row';
-          errorRow.setAttribute('data-building', buildingKey);
+          errorRow.setAttribute('data-blockkey', blockKey);
           errorRow.innerHTML = `<td colspan="7" class="job-error">⚠️ Vorderingsnummer moet exact 5 cijfers zijn (bv. 00006).</td>`;
           headerRow.after(errorRow);
         }
@@ -791,7 +845,7 @@
       }
 
       const confirmed = window.confirm(
-        `Vorderingsnummer ${vorderingsnummer} toekennen aan ALLE ${allJobIds.length} job(s) van gebouw "${buildingKey}"?`
+        `Vorderingsnummer ${vorderingsnummer} toekennen aan ALLE ${allJobIds.length} job(s) van "${block.building} · ${block.loonweekLabel}"?`
       );
       if (!confirmed) return;
 
@@ -808,40 +862,37 @@
         const succeededIds = new Set(results.filter(r => r.Success).map(r => String(r.JobId)));
         const failedResults = results.filter(r => !r.Success);
 
-        // Succeeded jobs are done: remove ALL their rows (a job can have multiple lines/codes)
+        // Geslaagde jobs zijn klaar: verwijder al hun rijen binnen dit blok (een job kan meerdere lijnen hebben)
         succeededIds.forEach((jobId) => {
-          document.querySelectorAll(`tr.job-row[data-jobid="${cssEscape(jobId)}"]`).forEach((row) => row.remove());
-          for (const jobsInCode of group.codeGroups.values()) {
+          document.querySelectorAll(`tr.job-row[data-blockkey="${cssEscape(blockKey)}"][data-jobid="${cssEscape(jobId)}"]`).forEach((row) => row.remove());
+          for (const jobsInCode of block.codeGroups.values()) {
             for (let i = jobsInCode.length - 1; i >= 0; i--) {
               if (String(jobsInCode[i].JobId || '').trim() === jobId) jobsInCode.splice(i, 1);
             }
           }
         });
 
-        const totalSpan = document.querySelector(`span.building-total[data-total-for="${cssEscape(buildingKey)}"]`);
-        if (totalSpan) totalSpan.textContent = calculateBuildingTotal(group);
+        const totalSpan = document.querySelector(`span.building-total[data-total-for="${cssEscape(blockKey)}"]`);
+        if (totalSpan) totalSpan.textContent = calculateBlockTotal(block);
         updateGrandTotal();
 
-        // Show error message under each failed row, leave its checkbox as-is so it can be retried
+        // Toon een foutmelding onder elke mislukte rij, laat de checkbox staan zodat retry kan
         failedResults.forEach(({ JobId, Message }) => {
-          const row = document.querySelector(`tr.job-row[data-jobid="${cssEscape(String(JobId))}"]`);
+          const row = document.querySelector(`tr.job-row[data-blockkey="${cssEscape(blockKey)}"][data-jobid="${cssEscape(String(JobId))}"]`);
           if (row) {
             const errorRow = document.createElement('tr');
             errorRow.className = 'job-error-row';
-            errorRow.setAttribute('data-building', buildingKey);
+            errorRow.setAttribute('data-blockkey', blockKey);
             errorRow.innerHTML = `<td colspan="6" class="job-error">❌ ${escapeHtml(Message || 'Onbekende fout')}</td><td></td>`;
             row.after(errorRow);
           }
         });
 
-        const remainingRows = document.querySelectorAll(`.job-checkbox[data-building="${cssEscape(buildingKey)}"]`).length;
-        if (remainingRows === 0) {
-          // Nothing left for this building: remove the whole group (header + column-header rows)
-          const headerRow = document.getElementById(tableIdFor(buildingKey));
-          const columnHeaderRow = headerRow ? headerRow.nextElementSibling : null;
-          if (columnHeaderRow && columnHeaderRow.classList.contains('column-header-row')) columnHeaderRow.remove();
-          if (headerRow) headerRow.remove();
-          buildingGroups = buildingGroups.filter(g => g.building !== buildingKey);
+        const remaining = document.querySelectorAll(`.job-checkbox[data-blockkey="${cssEscape(blockKey)}"]`).length;
+        if (remaining === 0) {
+          // Niets meer in dit blok: verwijder alle rijen van het blok (balk, kolomkop, detailtabel)
+          document.querySelectorAll(`tr[data-blockkey="${cssEscape(blockKey)}"]`).forEach(el => el.remove());
+          buildingGroups = buildingGroups.filter(b => b.blockKey !== blockKey);
           if (!buildingGroups.length) renderBuildings();
           return;
         }
@@ -850,11 +901,11 @@
       } catch (err) {
         if (err.message === 'UNAUTHORIZED') return;
         button.textContent = 'Verwerk';
-        const headerRow = document.getElementById(tableIdFor(buildingKey));
+        const headerRow = document.getElementById(blockIdFor(blockKey));
         if (headerRow) {
           const errorRow = document.createElement('tr');
           errorRow.className = 'job-error-row';
-          errorRow.setAttribute('data-building', buildingKey);
+          errorRow.setAttribute('data-blockkey', blockKey);
           errorRow.innerHTML = `<td colspan="7" class="job-error">Netwerkfout: ${escapeHtml(err.message)}</td>`;
           headerRow.after(errorRow);
         }
@@ -863,19 +914,20 @@
       }
     }
 
-    function tableIdFor(buildingKey) {
-      return `grp-${buildingKey.replace(/[^a-zA-Z0-9]/g, '_')}`;
+    function sanitizeKey(s) {
+      return String(s).replace(/[^a-zA-Z0-9]/g, '_');
+    }
+    function blockIdFor(blockKey) {
+      return `blk-${sanitizeKey(blockKey)}`;
     }
 
     function updateProcessButtonState() {
-      for (const group of buildingGroups) {
-        const input = document.querySelector(`.vorderingsnummer-input[data-building="${cssEscape(group.building)}"]`);
-        const button = document.querySelector(`.btn-process[data-building="${cssEscape(group.building)}"]`);
+      for (const block of buildingGroups) {
+        if (!block.processable) continue;
+        const input = document.querySelector(`.vorderingsnummer-input[data-blockkey="${cssEscape(block.blockKey)}"]`);
+        const button = document.querySelector(`.btn-process[data-blockkey="${cssEscape(block.blockKey)}"]`);
         if (!input || !button) continue;
-
-        const hasNumber = String(input.value || '').trim().length > 0;
-
-        button.disabled = !hasNumber;
+        button.disabled = String(input.value || '').trim().length === 0;
       }
     }
 
@@ -883,8 +935,8 @@
       return String(s).replace(/["\\]/g, '\\$&');
     }
 
-    function toggleJobIdDetail(buildingKey, btn) {
-      const row = document.querySelector(`tr.jobid-detail-row[data-building="${cssEscape(buildingKey)}"]`);
+    function toggleJobIdDetail(blockKey, btn) {
+      const row = document.querySelector(`tr.jobid-detail-row[data-blockkey="${cssEscape(blockKey)}"]`);
       if (!row) return;
       const willOpen = row.style.display === 'none';
       if (willOpen) {
