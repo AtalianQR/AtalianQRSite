@@ -454,7 +454,8 @@
       document.getElementById('drukLvl').textContent = lvl;
       const parts = [];
       if (occ.people != null) parts.push(`<span title="${tr('personen nu in het gebouw','personnes présentes','people in the building')}">👥 <b>${Math.round(occ.people)}</b> ${tr('pers.','pers.','ppl')}</span>`);
-      if (occ.deskRate != null) parts.push(`<span title="${tr('werkplekken bezet','postes occupés','desks in use')}">🖥️ <b>${Math.round(occ.deskRate)}%</b> ${tr('desks','postes','desks')}</span>`);
+      if (occ.deskCount != null) parts.push(`<span title="${tr('werkplekken bezet','postes occupés','desks in use')}">🖥️ <b>${Math.round(occ.deskCount)}${occ.deskTotal != null ? '/' + Math.round(occ.deskTotal) : ''}</b> ${tr('desks','postes','desks')}</span>`);
+      else if (occ.deskRate != null) parts.push(`<span title="${tr('werkplekken bezet','postes occupés','desks in use')}">🖥️ <b>${Math.round(occ.deskRate)}%</b> ${tr('desks','postes','desks')}</span>`);
       if (occ.meetingCount != null) parts.push(`<span title="${tr('vergaderzalen in gebruik','salles de réunion utilisées','meeting rooms in use')}">🗓️ <b>${Math.round(occ.meetingCount)}${occ.meetingTotal != null ? '/' + Math.round(occ.meetingTotal) : ''}</b> ${tr('meetings','réunions','meetings')}</span>`);
       const sub = document.getElementById('drukSub');
       if (parts.length) sub.innerHTML = parts.join(' · ');

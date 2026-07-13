@@ -140,19 +140,18 @@ async function outdoorFromRealpulse(assetId, deskTotal = DESK_TOTAL, meetingTota
   const countFromRate = (rate, total) => (
     rate != null && total != null ? Math.round((Number(rate) / 100) * Number(total)) : null
   );
-  const peopleRow = latest(last.filter((y) => y && /people/i.test(y.deviceName || '') && /people/i.test(y.unit || '')));
   const deskRate = aggregateMetric('desk', 'rate');
   const deskCount = aggregateMetric('desk', 'count') ?? countFromRate(deskRate, deskTotal);
+  const meetingCount = aggregateMetric('meeting', 'count');
   const occupancy = {
-    people:       num(peopleRow),
+    // The top RealPulse "Admin unit" tile is not the same signal as the first asset-level
+    // people row in asset.last. Do not show a person count until we can read that exact tile.
+    people:       null,
     deskRate,
     deskCount,
     deskTotal:    deskTotal,
-    // Meeting rooms are intentionally not inferred from this weather asset:
-    // RealPulse's dashboard tile applies table-level filters/transformations that are not
-    // faithfully represented in asset.last, which caused wrong counts such as 4/6 vs 3/6.
     meetingRate:  null,
-    meetingCount: null,
+    meetingCount,
     meetingTotal: meetingTotal,
   };
   // rate = het niveau-bepalende signaal (desk-graad; fallback meeting-graad als desks ontbreken).
