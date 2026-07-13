@@ -73,15 +73,103 @@ async function outdoorFromRealpulse(assetId, deskTotal = DESK_TOTAL, meetingTota
   // RealPulse telt Occupied (desks/MR) correct; het totaal ("Availability" op het dashboard) zit
   // niet in de meetdata → dat is de vaste gebouwconstante. We tonen dus count/totaal (bv. 1/6).
   const last = Array.isArray(a?.last) ? a.last : [];
-  const numByDev = (re) => { const x = last.find((y) => y && re.test(y.deviceName || '')); return x != null ? Number(x.value) : null; };
-  const peopleRow = last.find((y) => y && /people/i.test(y.deviceName || '') && /people/i.test(y.unit || ''));
+  const norm = (v) => String(v ?? '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+  const num = (row) => {
+    const n = Number(row?.value);
+    return Number.isFinite(n) ? n : null;
+  };
+  const metricText = (row) => norm([
+    row?.type,
+    row?.unit,
+    row?.measurement?.type,
+    row?.measurement?.unit,
+  ].join(' '));
+  const deviceText = (row) => norm([
+    row?.deviceName,
+    row?.name,
+    row?.label,
+  ].join(' '));
+  const allText = (row) => norm(JSON.stringify(row ?? {}));
+  const ts = (row) => {
+    const t = new Date(row?.timestamp ?? row?.date ?? 0).getTime();
+    return Number.isFinite(t) ? t : 0;
+  };
+  const latest = (rows) => rows
+    .filter((row) => num(row) != null)
+    .sort((a, b) => ts(b) - ts(a))[0] || null;
+  const aggregateMetric = (kind, metric) => {
+    const isMeeting = kind === 'meeting';
+    const isDesk = kind === 'desk';
+    const candidates = last.map((row) => {
+      const d = deviceText(row);
+      const m = metricText(row);
+      const t = allText(row);
+
+      const deviceOk = isMeeting
+        ? d === 'mr' || d === 'meeting rooms' || d === 'meeting room' || /\bmeeting rooms?\b/.test(d) || (/\bmr\b/.test(d) && !/\bmr [a-z0-9]+/.test(d))
+        : isDesk
+          ? d === 'desks' || d === 'desk' || /\bdesks?\b/.test(d)
+          : false;
+
+      const looseDeviceOk = isMeeting ? /\bmeeting rooms?\b|\bmr\b/.test(t) : /\bdesks?\b/.test(t);
+      const metricOk = metric === 'rate'
+        ? /\boccupancy rate\b|\brate\b/.test(m) || /\boccupancy rate\b/.test(t)
+        : (/\boccupied\b/.test(m) && !/\brate\b/.test(m)) || (/\boccupied\b/.test(t) && !/\boccupancy rate\b/.test(t));
+
+      if (!metricOk || !(deviceOk || looseDeviceOk)) return null;
+
+      let score = 0;
+      if (isMeeting && (d === 'mr' || d === 'meeting rooms')) score += 80;
+      if (isDesk && (d === 'desk' || d === 'desks')) score += 80;
+      if (deviceOk) score += 30;
+      if (metric === 'rate' && /\boccupancy rate\b/.test(m)) score += 40;
+      if (metric === 'count' && m === 'occupied') score += 40;
+      return { row, score };
+    }).filter(Boolean);
+    candidates.sort((a, b) => (b.score - a.score) || (ts(b.row) - ts(a.row)));
+    return num(candidates[0]?.row);
+  };
+  const countFromRate = (rate, total) => (
+    rate != null && total != null ? Math.round((Number(rate) / 100) * Number(total)) : null
+  );
+  const activeCounter = (row) => {
+    const value = row?.value ?? row?.measurement?.value;
+    if (value == null || value === '') return false;
+    const n = Number(value);
+    if (Number.isFinite(n)) return n > 0;
+    return !/^(0|false|no|nee|non)$/i.test(String(value).trim());
+  };
+  const countPeopleCounters = (kind) => {
+    const isMeeting = kind === 'meeting';
+    const isDesk = kind === 'desk';
+    const seen = new Set();
+    for (const row of last) {
+      const d = deviceText(row);
+      const m = metricText(row);
+      const t = allText(row);
+      const isPeopleCounter = /\bpeople counter\b|\bcounter people\b/.test(m) || /\bpeople counter\b|\bcounter people\b/.test(t);
+      const inScope = isMeeting
+        ? /\bmr\b|\bmeeting rooms?\b/.test(d) || /\bmr\b|\bmeeting rooms?\b/.test(t)
+        : isDesk
+          ? /\bdesk\b|\bdesks\b/.test(d) || /\bdesk\b|\bdesks\b/.test(t)
+          : false;
+      if (!isPeopleCounter || !inScope || !activeCounter(row)) continue;
+      seen.add(String(row.deviceId ?? row.deviceName ?? row.id ?? row.name ?? row.label ?? row.value));
+    }
+    return seen.size || null;
+  };
+  const peopleRow = latest(last.filter((y) => y && /people/i.test(y.deviceName || '') && /people/i.test(y.unit || '')));
+  const deskRate = aggregateMetric('desk', 'rate');
+  const meetingRate = aggregateMetric('meeting', 'rate');
+  const deskCount = countPeopleCounters('desk') ?? aggregateMetric('desk', 'count') ?? countFromRate(deskRate, deskTotal);
+  const meetingCount = countPeopleCounters('meeting') ?? aggregateMetric('meeting', 'count') ?? countFromRate(meetingRate, meetingTotal);
   const occupancy = {
-    people:       peopleRow != null ? Number(peopleRow.value) : null,
-    deskRate:     numByDev(/desk\s*occupancy\s*rate/i),
-    deskCount:    numByDev(/desk\s*occupied/i),
+    people:       num(peopleRow),
+    deskRate,
+    deskCount,
     deskTotal:    deskTotal,
-    meetingRate:  numByDev(/meeting\s*room\s*occupancy\s*rate/i),
-    meetingCount: numByDev(/meeting\s*room\s*occupied/i),
+    meetingRate,
+    meetingCount,
     meetingTotal: meetingTotal,
   };
   // rate = het niveau-bepalende signaal (desk-graad; fallback meeting-graad als desks ontbreken).
