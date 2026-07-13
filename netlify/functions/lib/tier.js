@@ -52,8 +52,16 @@ function inList(ip, entries) {
   try { return bl.check(ip, fam === 6 ? 'ipv6' : 'ipv4'); } catch { return false; }
 }
 
+// Loopback = lokale ontwikkeling (`netlify dev`): daar ziet de server nooit het echte publieke IP,
+// dus behandelen we het als intern zodat je lokaal de volledige weergave krijgt. In productie stuurt
+// Netlify altijd het publieke bezoekers-IP door (nooit loopback), dus dit is geen lek.
+function isLoopback(ip) {
+  return ip === '::1' || ip === '127.0.0.1' || /^127\./.test(ip);
+}
+
 // Bepaal de tier uit het IP en de netwerklijsten. Intern wint van gast wint van publiek.
 export function resolveTier(ip, networks = {}) {
+  if (isLoopback(ip)) return 'internal';
   if (inList(ip, parseList(networks.intern))) return 'internal';
   if (inList(ip, parseList(networks.gast)))   return 'guest';
   return 'public';
@@ -94,11 +102,15 @@ function applyDowngrade(event, resolved) {
 // (bij fout of ontbrekende config ziet de bezoeker enkel de light-versie — nooit onbedoeld meer).
 export async function resolveSpaceTier(event, { base, spaceId, apiKey, appQuery }) {
   const ip = clientIp(event);
-  if (!spaceId || !base || !apiKey || !appQuery) return { tier: applyDowngrade(event, 'public'), ip, networks: { intern: [], gast: [] } };
+  // Lokale ontwikkeling (`netlify dev`): geen echt publiek IP beschikbaar → standaard intern,
+  // zodat je lokaal de volledige weergave ziet. ?tier=public|guest schaalt lokaal gewoon af.
+  const devDefault = process.env.NETLIFY_DEV === 'true' ? 'internal' : 'public';
+  if (!spaceId || !base || !apiKey || !appQuery) return { tier: applyDowngrade(event, devDefault), ip, networks: { intern: [], gast: [] } };
   try {
     const networks = await fetchNetworks(base, spaceId, { apiKey, appQuery });
-    return { tier: applyDowngrade(event, resolveTier(ip, networks)), ip, networks };
+    const resolved = resolveTier(ip, networks);
+    return { tier: applyDowngrade(event, resolved === 'public' ? devDefault : resolved), ip, networks };
   } catch {
-    return { tier: applyDowngrade(event, 'public'), ip, networks: { intern: [], gast: [] } };
+    return { tier: applyDowngrade(event, devDefault), ip, networks: { intern: [], gast: [] } };
   }
 }
