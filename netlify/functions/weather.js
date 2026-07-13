@@ -58,7 +58,7 @@ function collectWeather(obj) {
   return out;
 }
 
-async function outdoorFromRealpulse(assetId, deskTotal = DESK_TOTAL, meetingTotal = MEETING_TOTAL) {
+async function outdoorFromRealpulse(assetId, deskTotal = DESK_TOTAL, meetingTotal = MEETING_TOTAL, debug = false) {
   if (!REALPULSE_USER || !REALPULSE_PASS) return {};
   const auth = 'Basic ' + Buffer.from(`${REALPULSE_USER}:${REALPULSE_PASS}`).toString('base64');
   const res = await fetch(`${REALPULSE_BASE}/api/assets/${assetId}`, { headers: { Authorization: auth, accept: 'application/json' } });
@@ -80,13 +80,27 @@ async function outdoorFromRealpulse(assetId, deskTotal = DESK_TOTAL, meetingTota
       row?.measurement?.value,
       row?.lastValue,
       row?.currentValue,
+      row?.current,
+      row?.current?.value,
+      row?.count,
+      row?.latest?.value,
+      row?.last?.value,
+      row?.state?.value,
+      row?.input?.value,
       row?.data?.value,
+      row?.data?.measurement?.value,
       row?.result?.value,
     ];
     for (const value of values) {
       if (value == null || value === '') continue;
-      const n = Number(String(value).replace(',', '.').replace('%', '').trim());
+      const text = String(value).replace(',', '.').replace('%', '').trim();
+      const n = Number(text);
       if (Number.isFinite(n)) return n;
+      const m = text.match(/^-?\d+(\.\d+)?/);
+      if (m) {
+        const parsed = Number(m[0]);
+        if (Number.isFinite(parsed)) return parsed;
+      }
     }
     return null;
   };
@@ -98,12 +112,25 @@ async function outdoorFromRealpulse(assetId, deskTotal = DESK_TOTAL, meetingTota
     row?.metric,
     row?.type,
     row?.unit,
+    typeof row?.measurement === 'string' ? row.measurement : '',
     row?.measurement?.type,
+    row?.measurement?.name,
+    row?.measurement?.label,
+    row?.measurement?.description,
     row?.measurement?.unit,
+    row?.measurementType,
+    row?.measurementName,
+    row?.measure,
+    row?.measureName,
   ].join(' '));
   const deviceText = (row) => norm([
     row?.deviceName,
     row?.device?.name,
+    row?.assetName,
+    row?.asset?.name,
+    row?.object,
+    row?.kind,
+    row?.input?.name,
     row?.name,
     row?.group,
     row?.groupName,
@@ -117,6 +144,53 @@ async function outdoorFromRealpulse(assetId, deskTotal = DESK_TOTAL, meetingTota
   const latest = (rows) => rows
     .filter((row) => num(row) != null)
     .sort((a, b) => ts(b) - ts(a))[0] || null;
+  const ownText = (row) => norm([
+    row?.label,
+    row?.name,
+    row?.title,
+    row?.column,
+    row?.metric,
+    row?.type,
+    row?.unit,
+    row?.kind,
+    row?.object,
+    row?.assetName,
+    row?.deviceName,
+    row?.group,
+    row?.groupName,
+    row?.labelAggregation,
+    typeof row?.measurement === 'string' ? row.measurement : '',
+    row?.measurement?.type,
+    row?.measurement?.name,
+    row?.measurement?.label,
+    row?.measurement?.description,
+    row?.measurementType,
+    row?.measurementName,
+  ].join(' '));
+  const collectPeopleSources = () => {
+    const sources = [];
+    const seen = new Set();
+    const add = (row, path) => {
+      if (!row || typeof row !== 'object' || seen.has(row) || num(row) == null) return;
+      seen.add(row);
+      sources.push({ row, path });
+    };
+    last.forEach((row, index) => add(row, `last.${index}`));
+    (function walk(o, path = 'asset') {
+      if (Array.isArray(o)) {
+        o.forEach((item, index) => walk(item, `${path}.${index}`));
+        return;
+      }
+      if (!o || typeof o !== 'object') return;
+      const text = ownText(o);
+      if (
+        /\b(admin|private|admin unit|private unit)\b/.test(text) &&
+        /\bpeople counter\b|\bcounter people\b|\bpeople\b|\bpersons?\b|\bpersonen\b|\bpers\b/.test(text)
+      ) add(o, path);
+      for (const key in o) walk(o[key], `${path}.${key}`);
+    })(a);
+    return sources;
+  };
   const aggregateMetric = (kind, metric) => {
     const isMeeting = kind === 'meeting';
     const isDesk = kind === 'desk';
@@ -149,9 +223,32 @@ async function outdoorFromRealpulse(assetId, deskTotal = DESK_TOTAL, meetingTota
     candidates.sort((a, b) => (b.score - a.score) || (ts(b.row) - ts(a.row)));
     return num(candidates[0]?.row);
   };
+  const peopleSources = collectPeopleSources();
+  const peopleDebug = [];
+  const debugMeasurement = (row) => (
+    typeof row?.measurement === 'string'
+      ? row.measurement
+      : (row?.measurement?.type || row?.measurement?.name || row?.measurement?.label || '')
+  );
+  const rememberPeopleDebug = (hit) => {
+    if (!debug || peopleDebug.length >= 30) return;
+    const row = hit.row;
+    peopleDebug.push({
+      path: hit.path,
+      key: hit.key,
+      accepted: hit.accepted,
+      score: hit.score,
+      value: num(row),
+      name: row?.name ?? row?.deviceName ?? row?.assetName ?? row?.object ?? null,
+      type: row?.type ?? row?.kind ?? null,
+      measurement: debugMeasurement(row) || null,
+      label: row?.label ?? null,
+    });
+  };
   const peopleCount = () => {
     const unitRows = new Map();
-    for (const row of last) {
+    for (const source of peopleSources) {
+      const row = source.row;
       const value = num(row);
       if (value == null) continue;
 
@@ -178,13 +275,21 @@ async function outdoorFromRealpulse(assetId, deskTotal = DESK_TOTAL, meetingTota
       const priv =
         /\bprivate unit\b/.test(sourceText) ||
         (peopleSignal && /\bprivate\b/.test(nameText) && !/\bkitchen private\b/.test(nameText));
-      if (admin === priv) continue;
+      if (admin === priv) {
+        if (debug && /\badmin\b|\bprivate\b|\bpeople\b/.test(sourceText)) {
+          rememberPeopleDebug({ row, path: source.path, key: null, accepted: false, score: 0 });
+        }
+        continue;
+      }
       const key = admin ? 'admin' : priv ? 'private' : null;
       if (!key) continue;
 
       const unitLabel = new RegExp(`\\b${key} unit\\b`).test(sourceText);
       const wrongMetric = /\bavailability\b|\bavailable\b|\btotal\b|\brate\b|\bdesk\b|\bdesks\b|\bmeeting rooms?\b|\bmr\b/.test(m);
-      if (wrongMetric || (!unitLabel && !peopleSignal)) continue;
+      if (wrongMetric || (!unitLabel && !peopleSignal)) {
+        rememberPeopleDebug({ row, path: source.path, key, accepted: false, score: 0 });
+        continue;
+      }
 
       const prev = unitRows.get(key);
       let score = 0;
@@ -193,8 +298,9 @@ async function outdoorFromRealpulse(assetId, deskTotal = DESK_TOTAL, meetingTota
       if (new RegExp(`\\b${key}\\b`).test(nameText)) score += 40;
       if (unitLabel) score += 20;
       if (/\bpeople in\b/.test(sourceText)) score += 10;
+      rememberPeopleDebug({ row, path: source.path, key, accepted: true, score });
       if (!prev || score > prev.score || (score === prev.score && ts(row) > ts(prev.row))) {
-        unitRows.set(key, { row, score });
+        unitRows.set(key, { row, score, path: source.path });
       }
     }
     if (unitRows.size) {
@@ -230,7 +336,13 @@ async function outdoorFromRealpulse(assetId, deskTotal = DESK_TOTAL, meetingTota
     yearly: yearly ? Number(yearly.value) : null,
   };
 
-  return { temp: w.temperature ?? null, hum: w.humidity ?? null, occupancy, energy };
+  return {
+    temp: w.temperature ?? null,
+    hum: w.humidity ?? null,
+    occupancy,
+    energy,
+    ...(debug ? { occupancyDebug: { peopleSourceCount: peopleSources.length, peopleCandidates: peopleDebug } } : {}),
+  };
 }
 
 async function forecastFromOpenMeteo(lat, lon) {
@@ -270,7 +382,7 @@ export async function handler(event) {
     const lat = (networks && networks.lat != null ? networks.lat : (qs.lat || DEFAULT_LAT));
     const lon = (networks && networks.lon != null ? networks.lon : (qs.lon || DEFAULT_LON));
 
-    const [outdoor, fc] = await Promise.all([outdoorFromRealpulse(assetId, deskTotal, meetingTotal), forecastFromOpenMeteo(lat, lon)]);
+    const [outdoor, fc] = await Promise.all([outdoorFromRealpulse(assetId, deskTotal, meetingTotal, debug), forecastFromOpenMeteo(lat, lon)]);
     return json(200, {
       place,
       now: { temp: outdoor.temp, hum: outdoor.hum, code: fc.code }, // weer = altijd publiek
@@ -285,7 +397,14 @@ export async function handler(event) {
       } : {}),
       tier,
       // Debug-internals (ip, coördinaten) enkel voor tier 'internal' (kantoornet/lokaal), nooit publiek.
-      ...(debug && tier === 'internal' ? { spaceId, ip, lat, lon, coordSource: (networks && networks.lat != null) ? 'building' : 'default' } : {}),
+      ...(debug && tier === 'internal' ? {
+        spaceId,
+        ip,
+        lat,
+        lon,
+        coordSource: (networks && networks.lat != null) ? 'building' : 'default',
+        occupancyDebug: outdoor.occupancyDebug ?? null,
+      } : {}),
     });
   } catch (err) {
     console.error('[weather] fout:', err.message);
