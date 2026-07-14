@@ -19,11 +19,13 @@ export function collectWeather(obj) {
   return out;
 }
 
-// Uurforecast (+2u/+4u/+6u, zoals de mockup 14u/16u/18u) + huidige weather_code van Open-Meteo.
+// Uurforecast (+2u/+4u/+6u, zoals de mockup 14u/16u/18u) + huidige weer van Open-Meteo.
+// De actuele temp/vocht dienen als FALLBACK voor de buitentemp wanneer de IoT-sensor niets geeft
+// (asset onbereikbaar of geen temperature-meting) — zo toont de kaart nooit een leeg "–".
 export async function forecastFromOpenMeteo(lat, lon) {
-  const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=weather_code&hourly=temperature_2m,weather_code&timezone=Europe%2FBrussels&forecast_days=2`;
+  const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,relative_humidity_2m,weather_code&hourly=temperature_2m,weather_code&timezone=Europe%2FBrussels&forecast_days=2`;
   const res = await fetch(url);
-  if (!res.ok) return { code: null, forecast: [] };
+  if (!res.ok) return { code: null, temp: null, hum: null, forecast: [] };
   const d = await res.json().catch(() => ({}));
   const times = d?.hourly?.time || [];
   const temps = d?.hourly?.temperature_2m || [];
@@ -36,5 +38,10 @@ export async function forecastFromOpenMeteo(lat, lon) {
     const i = start + step;
     if (i < times.length) forecast.push({ hour: new Date(times[i]).getHours(), temp: Math.round(temps[i]), code: codes[i] });
   }
-  return { code: d?.current?.weather_code ?? null, forecast };
+  return {
+    code: d?.current?.weather_code ?? null,
+    temp: d?.current?.temperature_2m ?? null,
+    hum: d?.current?.relative_humidity_2m ?? null,
+    forecast,
+  };
 }

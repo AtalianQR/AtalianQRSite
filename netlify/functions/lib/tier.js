@@ -59,6 +59,11 @@ function isLoopback(ip) {
   return ip === '::1' || ip === '127.0.0.1' || /^127\./.test(ip);
 }
 
+function isLocalHost(event = {}) {
+  const host = String((event.headers || {}).host || '');
+  return /^(localhost|127\.0\.0\.1|\[::1\])(?::\d+)?$/i.test(host);
+}
+
 // Bepaal de tier uit het IP en de netwerklijsten. Intern wint van gast wint van publiek.
 export function resolveTier(ip, networks = {}) {
   if (isLoopback(ip)) return 'internal';
@@ -115,7 +120,7 @@ export async function resolveSpaceTier(event, { base, spaceId, apiKey, appQuery 
   const ip = clientIp(event);
   // Lokale ontwikkeling (`netlify dev`): geen echt publiek IP beschikbaar → standaard intern,
   // zodat je lokaal de volledige weergave ziet. ?tier=public|guest schaalt lokaal gewoon af.
-  const devDefault = process.env.NETLIFY_DEV === 'true' ? 'internal' : 'public';
+  const devDefault = (process.env.NETLIFY_DEV === 'true' || isLocalHost(event)) ? 'internal' : 'public';
   if (!spaceId || !base || !apiKey || !appQuery) return { tier: applyDowngrade(event, devDefault), ip, networks: { intern: [], gast: [], ssid: '', pass: '', lat: null, lon: null } };
   try {
     const networks = await fetchNetworks(base, spaceId, { apiKey, appQuery });

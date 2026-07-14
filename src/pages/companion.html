@@ -214,7 +214,7 @@
       </div>
       <div class="card-b">
         <div class="drukte">
-          <span class="druk-bars" id="drukBars"><b></b><b></b><b></b></span>
+          <span class="druk-bars" id="drukBars"><b></b><b></b><b></b><b></b><b></b></span>
           <span class="druk-txt"><b id="drukLvl"></b><span id="drukSub"></span></span>
         </div>
       </div>
@@ -338,7 +338,10 @@
         const r = await fetch(`/.netlify/functions/space?id=${encodeURIComponent(spaceId)}&lang=${lang}&env=${env}`);
         if (!r.ok) return;
         const d = await r.json();
-        if (d.description) document.getElementById('roomName').textContent = d.description;
+        if (d.description) {
+          _roomTitle = d.description;
+          document.getElementById('roomName').textContent = d.description;
+        }
         if (d.buildingName) document.getElementById('brandSite').textContent = d.buildingName;
         document.getElementById('heroNote').textContent = [d.clientName, d.buildingName].filter(Boolean).join(' · ');
       } catch {}
@@ -367,8 +370,12 @@
     const cssVar = { good:'var(--good)', warn:'var(--warn)', crit:'var(--crit)' };
 
     // ---- Verlucht-advies: CO2 bepaalt OF, buitentemp bepaalt HOE LANG; ramen/thermostaat = poortwachters ----
-    let _room = null, _weather = null;
-    function ventAdvice({ co2, indoor, outdoor, weatherCode, hour, windows, thermostat, comfort = 21 }){
+    let _room = null, _weather = null, _roomTitle = '';
+    function looksLikeMeetingRoom() {
+      const title = String(_roomTitle || document.getElementById('roomName')?.textContent || '');
+      return /\bMR[-\s]|meeting|vergader|réunion/i.test(title);
+    }
+    function ventAdvice({ co2, indoor, outdoor, weatherCode, hour, windows, thermostat, meetingFreeCount, isMeetingRoom, comfort = 21 }){
       const parts = [];
       const hasWin = windows == null ? true : windows > 0; // onbekend → aannemen dat er een raam is
       const dOut = (outdoor != null) ? (outdoor - comfort) : null;
@@ -395,6 +402,12 @@
             'Zet het raam open tot de luchtkwaliteit weer verbetert.',
             'Ouvrez la fenêtre jusqu’à ce que la qualité de l’air s’améliore.',
             'Open the window until the air quality improves.') });
+        }
+        if (isMeetingRoom && Number(meetingFreeCount) > 0) {
+          parts.push({ icon:'↪️', tone:'warn', txt: tr(
+            'Er lijken momenteel andere vergaderruimtes vrij. Controleer wel eerst de reservering en overweeg om de vergadering daar verder te zetten.',
+            'D’autres salles de réunion semblent libres pour le moment. Vérifiez toutefois la réservation avant d’envisager d’y poursuivre la réunion.',
+            'Other meeting rooms appear to be free right now. Check the booking first, then consider continuing the meeting there.') });
         }
       }
 
@@ -450,9 +463,12 @@
       rate = Math.max(0, Math.min(100, Math.round(Number(rate))));
 
       let lvl, cls, on;
-      if (rate < 30)      { lvl = tr('Rustig', 'Calme', 'Quiet');        cls = 'good'; on = 1; }
-      else if (rate < 70) { lvl = tr('Gemiddeld', 'Modéré', 'Moderate'); cls = 'warn'; on = 2; }
-      else                { lvl = tr('Druk', 'Occupé', 'Busy');          cls = 'crit'; on = 3; }
+      if (rate < 5)       { lvl = tr('Rustig', 'Calme', 'Quiet');        cls = 'good'; on = 0; }
+      else if (rate < 20) { lvl = tr('Rustig', 'Calme', 'Quiet');        cls = 'good'; on = 1; }
+      else if (rate < 40) { lvl = tr('Licht', 'Léger', 'Light');         cls = 'good'; on = 2; }
+      else if (rate < 60) { lvl = tr('Gemiddeld', 'Modéré', 'Moderate'); cls = 'warn'; on = 3; }
+      else if (rate < 80) { lvl = tr('Druk', 'Occupé', 'Busy');          cls = 'warn'; on = 4; }
+      else                { lvl = tr('Zeer druk', 'Très occupé', 'Very busy'); cls = 'crit'; on = 5; }
 
       const bars = document.getElementById('drukBars');
       bars.className = 'druk-bars ' + cls;
@@ -480,8 +496,20 @@
     function renderEco(){
       // Slimme eco-badge: verbruik afgezet tegen uur-van-de-dag + bezetting.
       const el = document.getElementById('eco');
+      if (!el) return;
       const en = _weather && _weather.energy;
-      if (!el || !en || en.daily == null) return;
+
+      // Geen energiemeter voor dit gebouw (geen eigen sensor) → toon toch de generieke eco-tip,
+      // zonder gebouw-specifiek verbruik of data-gedreven waarschuwingen.
+      if (!en || en.daily == null) {
+        el.classList.remove('warn', 'crit');
+        el.classList.add('good');
+        document.getElementById('ecoTitle').textContent = tr('Energievriendelijk', 'Écoénergétique', 'Energy-friendly');
+        document.getElementById('ecoBody').textContent  = tr('Kleine gewoontes maken het verschil.', 'Les petits gestes comptent.', 'Small habits make a difference.');
+        document.getElementById('ecoTip').textContent   = ecoTip();
+        el.classList.remove('hidden');
+        return;
+      }
 
       const hour = sim.hour != null ? sim.hour : new Date().getHours();
       const afterHours = hour < 7 || hour >= 19;                         // buiten kantooruren
@@ -525,7 +553,18 @@
       if (!el || !_room || !_room.coupled) return;
       const wxNow = (_weather && _weather.now) ? _weather.now : {};
       const hour = sim.hour != null ? sim.hour : new Date().getHours();
-      const parts = ventAdvice({ co2:_room.co2, indoor:_room.temp, outdoor: wxNow.temp ?? null, weatherCode: wxNow.code ?? null, hour, windows:_room.windows, thermostat:_room.thermostat });
+      const occ = _weather && _weather.occupancy;
+      const parts = ventAdvice({
+        co2:_room.co2,
+        indoor:_room.temp,
+        outdoor: wxNow.temp ?? null,
+        weatherCode: wxNow.code ?? null,
+        hour,
+        windows:_room.windows,
+        thermostat:_room.thermostat,
+        meetingFreeCount: occ ? occ.meetingFreeCount : null,
+        isMeetingRoom: looksLikeMeetingRoom(),
+      });
       el.innerHTML = parts.map(p => `<div class="adv adv-${p.tone}"><span>${p.icon}</span><span>${p.txt}</span></div>`).join('');
     }
     function fallbackCopy(text){
@@ -728,7 +767,12 @@
 
         document.getElementById('wxEmoji').textContent = wmoEmoji(d.now && d.now.code);
         document.getElementById('wxTemp').textContent  = (d.now && d.now.temp != null) ? Math.round(d.now.temp) : '–';
-        document.getElementById('wxPlace').textContent = [d.place, tr('eigen sensor', 'capteur propre', 'own sensor')].filter(Boolean).join(' · ');
+        // Geen plaatsnaam op de weerkaart — de locatie is al bekend via het lokaal zelf (bovenaan).
+        // Enkel "eigen buitensensor" als de temp van een IoT-sensor komt; bij de Open-Meteo-fallback
+        // (geen sensor in dit gebouw) helemaal geen onderschrift.
+        document.getElementById('wxPlace').textContent = (d.now && d.now.tempSource === 'sensor')
+          ? tr('eigen buitensensor', 'capteur extérieur propre', 'own outdoor sensor')
+          : '';
         document.getElementById('wxFc').innerHTML = fc.map(f => `<div>${hourLabel(f.hour)}<b>${f.temp}°</b></div>`).join('');
         document.getElementById('weatherCard').classList.remove('hidden');
         _weather = d;

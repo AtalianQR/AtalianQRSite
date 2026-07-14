@@ -11,6 +11,129 @@
 // ?deskTotal=&meetingTotal= (later ideaal een gebouwkenmerk in Ultimo).
 export const DESK_TOTAL = 30;
 export const MEETING_TOTAL = 6;
+export const AREA_TOTAL = 10;
+export const OCCUPANCY_TOTAL = DESK_TOTAL + MEETING_TOTAL + AREA_TOTAL;
+
+export const ANDERLECHT_OCCUPANCY_ASSETS = [
+  { id: '6508166c13019d00126308a0', name: 'DSM-01', group: 'desk' },
+  { id: '650821f913019d0012630e50', name: 'DSM-02', group: 'desk' },
+  { id: '6508223913019d0012630e86', name: 'DSM-03', group: 'desk' },
+  { id: '6508227413019d0012630e9b', name: 'DSM-04', group: 'desk' },
+  { id: '650822b213019d0012630ec8', name: 'DSM-05', group: 'desk' },
+  { id: '6508358613019d00126317e8', name: 'DSM-06', group: 'desk' },
+  { id: '650835c513019d00126317ff', name: 'DSM-07', group: 'desk' },
+  { id: '650835fe13019d0012631813', name: 'DSM-08', group: 'desk' },
+  { id: '6508374013019d0012631867', name: 'DSM-09', group: 'desk' },
+  { id: '6508379213019d0012631886', name: 'DSM-10', group: 'desk' },
+  { id: '650837b413019d0012631898', name: 'DSM-11', group: 'desk' },
+  { id: '650837ee13019d00126318b6', name: 'DSM-12', group: 'desk' },
+  { id: '6508380813019d00126318cd', name: 'DSM-13', group: 'desk' },
+  { id: '650864b213019d00126338f0', name: 'DSM-14', group: 'desk' },
+  { id: '650864ee13019d0012633935', name: 'DSM-15', group: 'desk' },
+  { id: '6508653013019d001263396a', name: 'DSM-16', group: 'desk' },
+  { id: '6508659e13019d00126339c3', name: 'DSM-17', group: 'desk' },
+  { id: '650865d613019d00126339ed', name: 'DSM-18', group: 'desk' },
+  { id: '6508673b13019d0012633b1c', name: 'DSM-19', group: 'desk' },
+  { id: '6508677013019d0012633b54', name: 'DSM-20', group: 'desk' },
+  { id: '650867a713019d0012633b79', name: 'DSM-21', group: 'desk' },
+  { id: '650867da13019d0012633bb3', name: 'DSM-22', group: 'desk' },
+  { id: '650868ae13019d0012633c62', name: 'DSM-23', group: 'desk' },
+  { id: '6508690613019d0012633caa', name: 'DSM-24', group: 'desk' },
+  { id: '6508693d13019d0012633ccf', name: 'DSM-25', group: 'desk' },
+  { id: '6508696413019d0012633cef', name: 'DSM-26', group: 'desk' },
+  { id: '65083cb013019d0012631b39', name: 'DSM-27', group: 'desk' },
+  { id: '65083d0213019d0012631bb2', name: 'DSM-28', group: 'desk' },
+  { id: '6508683313019d0012633bfe', name: 'DSM-29', group: 'desk' },
+  { id: '6508680c13019d0012633bdb', name: 'DSM-30', group: 'desk' },
+
+  { id: '650838e613019d0012631972', name: 'MR-RUBENS', group: 'meeting' },
+  { id: '65083e1213019d0012631c94', name: 'MR-MERCKX', group: 'meeting' },
+  { id: '65086bbe13019d0012633e6c', name: 'MR-HORTA', group: 'meeting' },
+  { id: '6508159013019d0012630847', name: 'MR-BREL', group: 'meeting' },
+  { id: '650873c613019d001263445c', name: 'MR-HERGE', group: 'meeting' },
+  { id: '65086f1713019d0012634194', name: 'MR-TOOTS', group: 'meeting' },
+
+  { id: '66bf614628a92100129dcf2b', name: 'Area Dart', group: 'area' },
+  { id: '6508351413019d00126317c0', name: 'Area-ADMIN', group: 'area' },
+  { id: '6508644e13019d0012633806', name: 'Area-FINANCE', group: 'area' },
+  { id: '6508232713019d0012630ef0', name: 'Area-HR', group: 'area' },
+  { id: '66bf61de28a92100129dcf72', name: 'Area-Kitchen (admin)', group: 'area' },
+  { id: '6508686913019d0012633c33', name: 'Area-QUIET', group: 'area' },
+  { id: '6508399513019d00126319b9', name: 'Area-RECEPTION', group: 'area' },
+  { id: '650866ec13019d0012633aeb', name: 'Area-SEMI-QUIET', group: 'area' },
+  { id: '6a51e780c27d3cb42a68339f', name: 'Area-C4', group: 'area' },
+  { id: '6508748613019d0012634512', name: 'Area-Kitchen (private)', group: 'area' },
+
+  { id: '65086e9413019d0012634139', name: 'Serverroom', group: 'serverroom' },
+];
+
+function firstOccValue(asset) {
+  const occ = Array.isArray(asset?.data?.Class?.OCC) ? asset.data.Class.OCC : [];
+  for (const row of occ) {
+    const name = String(row?.name || '');
+    const type = String(row?.measurement?.type || '');
+    if (name === 'People counter' || type === 'occupancy_iot' || type === 'Occupied' || type === 'people_count_all') {
+      const value = row?.measurement?.value;
+      if (value != null && value !== '') return Number(value);
+    }
+  }
+  const last = Array.isArray(asset?.last) ? asset.last : [];
+  for (const row of last) {
+    if (['occupancy_iot', 'occupancy', 'Occupied', 'people_count_all'].includes(row?.type)) {
+      if (row?.value != null && row.value !== '') return Number(row.value);
+    }
+  }
+  return null;
+}
+
+export function parseAnderlechtOccupancy(assets = [], { debug = false } = {}) {
+  const byId = new Map(assets.filter(Boolean).map((asset) => [asset._id, asset]));
+  const rows = ANDERLECHT_OCCUPANCY_ASSETS.map((meta) => {
+    const asset = byId.get(meta.id);
+    const raw = firstOccValue(asset);
+    return {
+      ...meta,
+      found: !!asset,
+      raw,
+      occupied: raw == null ? null : (Number(raw) > 0 ? 1 : 0),
+      currentName: asset?.name ?? null,
+    };
+  });
+
+  const sum = (group) => rows
+    .filter((row) => row.group === group)
+    .reduce((total, row) => total + (row.occupied ?? 0), 0);
+
+  const deskCount = sum('desk');
+  const meetingCount = sum('meeting');
+  const areaCount = sum('area');
+  const occupiedCount = deskCount + meetingCount + areaCount;
+
+  const occupancy = {
+    people: null,
+    deskCount,
+    deskTotal: DESK_TOTAL,
+    deskRate: (deskCount / DESK_TOTAL) * 100,
+    meetingCount,
+    meetingTotal: MEETING_TOTAL,
+    meetingFreeCount: Math.max(0, MEETING_TOTAL - meetingCount),
+    meetingRate: (meetingCount / MEETING_TOTAL) * 100,
+    areaCount,
+    areaTotal: AREA_TOTAL,
+    areaRate: (areaCount / AREA_TOTAL) * 100,
+    rate: (occupiedCount / OCCUPANCY_TOTAL) * 100,
+  };
+
+  return {
+    occupancy,
+    ...(debug ? {
+      occupancyDebug: {
+        method: 'anderlecht-assets-v1',
+        rows,
+      },
+    } : {}),
+  };
+}
 
 // Parse bezetting + energie uit de asset-JSON.
 //   a            : reeds-opgehaalde RealPulse asset-JSON
