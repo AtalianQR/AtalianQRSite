@@ -13,7 +13,7 @@ export const DESK_TOTAL = 30;
 export const MEETING_TOTAL = 6;
 export const AREA_TOTAL = 10;
 export const OCCUPANCY_TOTAL = DESK_TOTAL + MEETING_TOTAL + AREA_TOTAL;
-const FRESH_MEETING_CO2_MAX = 1000;
+const FRESH_MEETING_CO2_MAX = 900;
 
 export const ANDERLECHT_OCCUPANCY_ASSETS = [
   { id: '6508166c13019d00126308a0', name: 'DSM-01', group: 'desk' },
