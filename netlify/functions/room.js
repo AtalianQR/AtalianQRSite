@@ -9,8 +9,8 @@
 //        (installaties krijgen later analoog een "soundsensing"-route)
 //   3) haalt server-side de sensordata op en geeft gesaneerde JSON terug
 //
-// Geen asset-id en geen credentials in het antwoord (behalve met ?debug=1, enkel voor
-// ontwikkeling: dan echo't het ook welk kenmerk matchte en de resolved id).
+// Geen credentials in het antwoord. De IoT asset-id komt mee als technische sleutel voor
+// room-logica; debug echo't daarnaast welk Ultimo-kenmerk gematcht werd.
 //
 // Privacy-tiering (zie lib/tier.js): wie NIET op het kantoornetwerk zit (publiek IP buiten de
 // wifi-CIDR's uit Ultimo) krijgt enkel een LIGHT-versie zonder exacte meetwaarden. Op het
@@ -48,6 +48,21 @@ const ROUTES = [
 function routeForFeature(description) {
   const d = String(description || '');
   return ROUTES.find((r) => r.match.test(d))?.system || null;
+}
+
+function featureLabel(f) {
+  return `${f?.code || ''} ${f?.description || ''}`.trim();
+}
+
+function featureValue(f) {
+  return String(f?.value || f?.choice || f?.choiceDescription || f?.multiChoiceDescription || f?.numeric || f?.yesno || '').trim();
+}
+
+function roomKindFromFeatures(features) {
+  const typeFeature = features.find((f) => /ruimtesoort|room\s*type|space\s*type/i.test(featureLabel(f)));
+  const value = `${featureValue(typeFeature)} ${featureLabel(typeFeature)}`.trim();
+  if (/meeting|vergader|réunion|reunion/i.test(value)) return 'meeting';
+  return null;
 }
 
 // === ENV: RealPulse ==================================================
@@ -114,7 +129,10 @@ async function fetchSpaceFeatures(base, spaceId) {
   return list.map((f) => ({
     code: String(f.code ?? f.Code ?? '').trim(),
     description: String(f.description ?? f.Description ?? '').trim(),
-    value: String(f.value ?? f.Value ?? '').trim(),
+    value: String(f.value ?? f.Value ?? f.alphanumericValue ?? f.AlphanumericValue ?? f.alfanumeriekeWaarde ?? f.AlfanumeriekeWaarde ?? f['Alfanumerieke waarde'] ?? '').trim(),
+    choice: String(f.choice ?? f.Choice ?? '').trim(),
+    choiceDescription: String(f.choiceDescription ?? f.ChoiceDescription ?? f.optionDescription ?? f.OptionDescription ?? f.omschrijvingMeerkeuze ?? f.OmschrijvingMeerkeuze ?? f['Omschrijving meerkeuze'] ?? '').trim(),
+    multiChoiceDescription: String(f.multiChoiceDescription ?? f.MultiChoiceDescription ?? f.multipleChoiceDescription ?? f.MultipleChoiceDescription ?? '').trim(),
     numeric: String(f.numeric ?? f.Numeric ?? '').trim(),
     yesno: String(f.yesno ?? f.YesNo ?? '').trim(),
   }));
@@ -140,6 +158,7 @@ async function fetchRealpulseAsset(assetId) {
   const co2Ts = last.find((x) => x.type === 'co2')?.timestamp;
   const anyTs = last[0]?.timestamp;
   return {
+    assetName: a?.name ?? null,
     temp: m.temperature ?? null,
     co2: m.co2 ?? null,
     hum: m.humidity ?? null,
@@ -214,7 +233,16 @@ export async function handler(event) {
 
     // Stap 2 — sensordata bij RealPulse (waarde van het kenmerk = asset-id)
     const sensors = await fetchRealpulseAsset(iotFeature.value);
-    const full = { coupled: true, ...sensors, ...roomFacts };
+    const { assetName, ...publicSensors } = sensors;
+    const roomKind = roomKindFromFeatures(features);
+    const full = {
+      coupled: true,
+      ...publicSensors,
+      ...roomFacts,
+      roomKind,
+      realpulseAssetId: iotFeature.value,
+      meetingRoomName: roomKind === 'meeting' ? assetName : null,
+    };
 
     // Stap 3 — redactie volgens tier (server-side afscherming):
     //   internal → alles; guest → comfortcijfers zonder bezetting/aanwezigen;

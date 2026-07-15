@@ -370,8 +370,10 @@
     const cssVar = { good:'var(--good)', warn:'var(--warn)', crit:'var(--crit)' };
 
     // ---- Verlucht-advies: CO2 bepaalt OF, buitentemp bepaalt HOE LANG; ramen/thermostaat = poortwachters ----
+    const TOOTS_ASSET_ID = '65086f1713019d0012634194';
     let _room = null, _weather = null, _roomTitle = '';
     function looksLikeMeetingRoom() {
+      if (_room && _room.roomKind === 'meeting') return true;
       const title = String(_roomTitle || document.getElementById('roomName')?.textContent || '');
       return /\bMR[-\s]|meeting|vergader|réunion/i.test(title);
     }
@@ -379,12 +381,14 @@
       return String(value || '').toLowerCase().replace(/^mr[-\s]*/i, '').replace(/[^a-z0-9]+/g, '');
     }
     function currentMeetingRoomName() {
+      if (_room && _room.meetingRoomName) return _room.meetingRoomName;
       const title = String(_roomTitle || document.getElementById('roomName')?.textContent || '');
       const m = title.match(/\bMR[-\s]*([A-Za-z0-9]+)/i);
       return m ? m[1] : title;
     }
     function canMoveFromCurrentRoom() {
-      const isToots = spaceId === '000898' || /toots/i.test(_roomTitle || '');
+      const currentAssetId = String((_room && _room.realpulseAssetId) || '');
+      const isToots = spaceId === '000898' || currentAssetId === TOOTS_ASSET_ID;
       if (!isToots) return true;
       const people = Number(_room && _room.people);
       return Number.isFinite(people) && people < 5;
@@ -418,8 +422,12 @@
             'Open the window until the air quality improves.') });
         }
         const current = normalizedRoomName(currentMeetingRoomName());
+        const currentAssetId = String((_room && _room.realpulseAssetId) || '');
         const alternatives = (Array.isArray(meetingFreeFreshRooms) ? meetingFreeFreshRooms : [])
-          .filter((name) => normalizedRoomName(name) !== current)
+          .map((room) => typeof room === 'string' ? { id: null, name: room } : room)
+          .filter((room) => room && room.name)
+          .filter((room) => currentAssetId && room.id ? String(room.id) !== currentAssetId : normalizedRoomName(room.name) !== current)
+          .map((room) => room.name)
           .slice(0, 3);
         if (isMeetingRoom && alternatives.length && canMoveFromCurrentRoom()) {
           const list = alternatives.join(', ');

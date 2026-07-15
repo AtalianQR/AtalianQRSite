@@ -127,6 +127,7 @@ export function parseAnderlechtOccupancy(assets = [], { debug = false } = {}) {
       const asset = byId.get(row.id);
       const co2 = firstLastValue(asset, ['co2']);
       return {
+        id: row.id,
         name: publicMeetingName(row.currentName || row.name),
         occupied: row.occupied,
         co2,
@@ -135,7 +136,7 @@ export function parseAnderlechtOccupancy(assets = [], { debug = false } = {}) {
     });
   const meetingFreeFreshRooms = meetingRooms
     .filter((room) => room.occupied === 0 && room.fresh)
-    .map((room) => room.name);
+    .map((room) => ({ id: room.id, name: room.name }));
 
   const occupancy = {
     people: null,
