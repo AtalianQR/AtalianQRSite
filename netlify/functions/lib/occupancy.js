@@ -86,6 +86,19 @@ function firstOccValue(asset) {
   return null;
 }
 
+function firstLastValue(asset, types) {
+  const wanted = new Set(types);
+  const last = Array.isArray(asset?.last) ? asset.last : [];
+  for (const row of last) {
+    if (wanted.has(row?.type) && row?.value != null && row.value !== '') return Number(row.value);
+  }
+  return null;
+}
+
+function publicMeetingName(name) {
+  return String(name || '').replace(/^MR[-\s]*/i, '').trim();
+}
+
 export function parseAnderlechtOccupancy(assets = [], { debug = false } = {}) {
   const byId = new Map(assets.filter(Boolean).map((asset) => [asset._id, asset]));
   const rows = ANDERLECHT_OCCUPANCY_ASSETS.map((meta) => {
@@ -108,6 +121,21 @@ export function parseAnderlechtOccupancy(assets = [], { debug = false } = {}) {
   const meetingCount = sum('meeting');
   const areaCount = sum('area');
   const occupiedCount = deskCount + meetingCount + areaCount;
+  const meetingRooms = rows
+    .filter((row) => row.group === 'meeting')
+    .map((row) => {
+      const asset = byId.get(row.id);
+      const co2 = firstLastValue(asset, ['co2']);
+      return {
+        name: publicMeetingName(row.currentName || row.name),
+        occupied: row.occupied,
+        co2,
+        fresh: co2 != null ? co2 < 900 : false,
+      };
+    });
+  const meetingFreeFreshRooms = meetingRooms
+    .filter((room) => room.occupied === 0 && room.fresh)
+    .map((room) => room.name);
 
   const occupancy = {
     people: null,
@@ -117,6 +145,7 @@ export function parseAnderlechtOccupancy(assets = [], { debug = false } = {}) {
     meetingCount,
     meetingTotal: MEETING_TOTAL,
     meetingFreeCount: Math.max(0, MEETING_TOTAL - meetingCount),
+    meetingFreeFreshRooms,
     meetingRate: (meetingCount / MEETING_TOTAL) * 100,
     areaCount,
     areaTotal: AREA_TOTAL,

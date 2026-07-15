@@ -145,7 +145,7 @@ async function fetchRealpulseAsset(assetId) {
     hum: m.humidity ?? null,
     motion: m.motion ?? null,
     occupancyRate: m.occupancyRate ?? null,   // % bezetting
-    people: m.occupancyCounter ?? null,       // aantal aanwezigen
+    people: m.occupancyCounter ?? m.people_count_all ?? null, // aantal aanwezigen
     capacity: m.capacity ?? null,
     updatedAt: co2Ts ?? anyTs ?? null,
   };

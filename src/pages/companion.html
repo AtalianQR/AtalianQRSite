@@ -375,7 +375,21 @@
       const title = String(_roomTitle || document.getElementById('roomName')?.textContent || '');
       return /\bMR[-\s]|meeting|vergader|réunion/i.test(title);
     }
-    function ventAdvice({ co2, indoor, outdoor, weatherCode, hour, windows, thermostat, meetingFreeCount, isMeetingRoom, comfort = 21 }){
+    function normalizedRoomName(value) {
+      return String(value || '').toLowerCase().replace(/^mr[-\s]*/i, '').replace(/[^a-z0-9]+/g, '');
+    }
+    function currentMeetingRoomName() {
+      const title = String(_roomTitle || document.getElementById('roomName')?.textContent || '');
+      const m = title.match(/\bMR[-\s]*([A-Za-z0-9]+)/i);
+      return m ? m[1] : title;
+    }
+    function canMoveFromCurrentRoom() {
+      const isToots = spaceId === '000898' || /toots/i.test(_roomTitle || '');
+      if (!isToots) return true;
+      const people = Number(_room && _room.people);
+      return Number.isFinite(people) && people < 5;
+    }
+    function ventAdvice({ co2, indoor, outdoor, weatherCode, hour, windows, thermostat, meetingFreeFreshRooms, isMeetingRoom, comfort = 21 }){
       const parts = [];
       const hasWin = windows == null ? true : windows > 0; // onbekend → aannemen dat er een raam is
       const dOut = (outdoor != null) ? (outdoor - comfort) : null;
@@ -403,11 +417,16 @@
             'Ouvrez la fenêtre jusqu’à ce que la qualité de l’air s’améliore.',
             'Open the window until the air quality improves.') });
         }
-        if (isMeetingRoom && Number(meetingFreeCount) > 0) {
+        const current = normalizedRoomName(currentMeetingRoomName());
+        const alternatives = (Array.isArray(meetingFreeFreshRooms) ? meetingFreeFreshRooms : [])
+          .filter((name) => normalizedRoomName(name) !== current)
+          .slice(0, 3);
+        if (isMeetingRoom && alternatives.length && canMoveFromCurrentRoom()) {
+          const list = alternatives.join(', ');
           parts.push({ icon:'↪️', tone:'warn', txt: tr(
-            'Er lijken momenteel andere vergaderruimtes vrij. Controleer wel eerst de reservering en overweeg om de vergadering daar verder te zetten.',
-            'D’autres salles de réunion semblent libres pour le moment. Vérifiez toutefois la réservation avant d’envisager d’y poursuivre la réunion.',
-            'Other meeting rooms appear to be free right now. Check the booking first, then consider continuing the meeting there.') });
+            `Er lijken momenteel andere vergaderruimtes met frisse lucht vrij: ${list}. Controleer wel eerst de reservering.`,
+            `D’autres salles de réunion avec de l’air frais semblent libres pour le moment : ${list}. Vérifiez toutefois la réservation.`,
+            `Other meeting rooms with fresh air appear to be free right now: ${list}. Check the booking first.`) });
         }
       }
 
@@ -562,7 +581,7 @@
         hour,
         windows:_room.windows,
         thermostat:_room.thermostat,
-        meetingFreeCount: occ ? occ.meetingFreeCount : null,
+        meetingFreeFreshRooms: occ ? occ.meetingFreeFreshRooms : null,
         isMeetingRoom: looksLikeMeetingRoom(),
       });
       el.innerHTML = parts.map(p => `<div class="adv adv-${p.tone}"><span>${p.icon}</span><span>${p.txt}</span></div>`).join('');
