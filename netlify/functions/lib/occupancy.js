@@ -13,6 +13,7 @@ export const DESK_TOTAL = 30;
 export const MEETING_TOTAL = 6;
 export const AREA_TOTAL = 10;
 export const OCCUPANCY_TOTAL = DESK_TOTAL + MEETING_TOTAL + AREA_TOTAL;
+const FRESH_MEETING_CO2_MAX = 1000;
 
 export const ANDERLECHT_OCCUPANCY_ASSETS = [
   { id: '6508166c13019d00126308a0', name: 'DSM-01', group: 'desk' },
@@ -136,7 +137,7 @@ export function parseAnderlechtOccupancy(assets = [], { debug = false } = {}) {
         name: publicMeetingName(row.currentName || row.name),
         occupied: row.occupied,
         co2,
-        fresh: co2 != null ? co2 < 900 : false,
+        fresh: co2 != null ? co2 < FRESH_MEETING_CO2_MAX : false,
       };
     });
   const meetingFreeFreshRooms = meetingRooms
@@ -165,6 +166,7 @@ export function parseAnderlechtOccupancy(assets = [], { debug = false } = {}) {
       occupancyDebug: {
         method: 'anderlecht-assets-v1',
         rows,
+        meetingRooms,
       },
     } : {}),
   };
