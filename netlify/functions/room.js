@@ -18,6 +18,7 @@
 // ziet alles. De redactie gebeurt hier server-side, nooit in de browser.
 /* eslint-disable */
 import { resolveSpaceTier } from './lib/tier.js';
+import { anderlechtOccupancyAssetGroup } from './lib/occupancy.js';
 
 // CO2 → kwalitatief comfortlabel (voor de light-versie; frontend vertaalt de key).
 function comfortKey(co2) {
@@ -234,7 +235,8 @@ export async function handler(event) {
     // Stap 2 — sensordata bij RealPulse (waarde van het kenmerk = asset-id)
     const sensors = await fetchRealpulseAsset(iotFeature.value);
     const { assetName, ...publicSensors } = sensors;
-    const roomKind = roomKindFromFeatures(features);
+    const occupancyGroup = anderlechtOccupancyAssetGroup(iotFeature.value);
+    const roomKind = roomKindFromFeatures(features) || (occupancyGroup === 'meeting' ? 'meeting' : null);
     const full = {
       coupled: true,
       ...publicSensors,
@@ -267,7 +269,7 @@ export async function handler(event) {
       ...(guestWifi ? { guestWifi } : {}),
       tier,
       env,
-      ...(debug ? { spaceId, matched: iotFeature, features, ...tierDebug } : {}), // id/kenmerk enkel in debug
+      ...(debug ? { spaceId, matched: iotFeature, occupancyGroup, features, ...tierDebug } : {}), // extra kenmerkdetails enkel in debug
     });
   } catch (err) {
     console.error('[room] fout:', err.message);

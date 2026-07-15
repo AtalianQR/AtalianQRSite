@@ -67,6 +67,11 @@ export const ANDERLECHT_OCCUPANCY_ASSETS = [
   { id: '65086e9413019d0012634139', name: 'Serverroom', group: 'serverroom' },
 ];
 
+export function anderlechtOccupancyAssetGroup(assetId) {
+  const id = String(assetId || '').trim();
+  return ANDERLECHT_OCCUPANCY_ASSETS.find((asset) => asset.id === id)?.group || null;
+}
+
 function firstOccValue(asset) {
   const occ = Array.isArray(asset?.data?.Class?.OCC) ? asset.data.Class.OCC : [];
   for (const row of occ) {
