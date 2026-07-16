@@ -429,7 +429,7 @@
           .filter((room) => currentAssetId && room.id ? String(room.id) !== currentAssetId : normalizedRoomName(room.name) !== current)
           .map((room) => room.name)
           .slice(0, 3);
-        if (co2 >= 1200 && isMeetingRoom && alternatives.length && canMoveFromCurrentRoom()) {
+        if (!hasWin && co2 >= 1200 && isMeetingRoom && alternatives.length && canMoveFromCurrentRoom()) {
           const list = alternatives.join(', ');
           parts.push({ icon:'↪️', tone:'warn', txt: tr(
             `Er lijken momenteel andere vergaderruimtes met frisse lucht vrij: ${list}. Controleer wel eerst de reservering.`,
