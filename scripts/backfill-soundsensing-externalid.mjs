@@ -13,8 +13,9 @@
 // Env: SOUNDSENSING_API_KEY, ULTIMO_API_KEY, APP_ELEMENT_QueryAtalianJobs,
 //      ULTIMO_API_BASEURL (prod) en/of ULTIMO_API_BASEURL_TEST (test).
 
-const APPLY = process.argv.includes('--apply');
-const PROD = process.argv.includes('--prod');
+// PROD/APPLY via vlag OF env-var (env-var nodig omdat `netlify dev:exec` de --vlaggen zelf opslokt).
+const APPLY = process.argv.includes('--apply') || process.env.BACKFILL_APPLY === '1';
+const PROD = process.argv.includes('--prod') || process.env.BACKFILL_TARGET === 'prod';
 
 const SOUNDSENSING_API_KEY = process.env.SOUNDSENSING_API_KEY;
 const SOUNDSENSING_BASE_URL = 'https://api.soundsensing.no/v1';

@@ -2,7 +2,7 @@
 // Diagnose: werkt de ObjectFeature/Kenmerk-000162-query in deze omgeving?
 // Draai met:  npx netlify dev:exec node scripts/diag-ss-kenmerk.mjs        (TEST)
 //             npx netlify dev:exec node scripts/diag-ss-kenmerk.mjs --prod (PROD)
-const PROD = process.argv.includes('--prod');
+const PROD = process.argv.includes('--prod') || process.env.BACKFILL_TARGET === 'prod';
 const ULTIMO_API_KEY = process.env.ULTIMO_API_KEY;
 const APP_QUERY = process.env.APP_ELEMENT_QueryAtalianJobs;
 const ULTIMO_BASE = PROD
