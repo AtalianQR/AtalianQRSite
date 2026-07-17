@@ -73,17 +73,21 @@ function fmtAlarm(a) {
   return `${a.id}(type ${a.alarm_type}, ${when})`;
 }
 
-const alarmCache = new Map(); // device_id -> [alarms]
-async function alarmsForDevice(deviceId) {
-  if (alarmCache.has(deviceId)) return alarmCache.get(deviceId);
-  const res = await fetch(`${SOUNDSENSING_BASE_URL}/alarm?device=${deviceId}`, {
+// LET OP: de Soundsensing-filter GET /alarm?device= werkt NIET server-side (geeft alle alarmen
+// terug). Daarom halen we alle alarmen één keer op en filteren client-side op alarm.device_id.
+let allAlarmsCache = null;
+async function fetchAllAlarms() {
+  if (allAlarmsCache) return allAlarmsCache;
+  const res = await fetch(`${SOUNDSENSING_BASE_URL}/alarm`, {
     headers: { Authorization: `Bearer ${SOUNDSENSING_API_KEY}`, Accept: 'application/json' },
   });
   if (!res.ok) throw new Error(`Soundsensing /alarm fout (${res.status})`);
   const body = await res.json();
-  const list = Array.isArray(body?.data) ? body.data : (body?.data ? [body.data] : []);
-  alarmCache.set(deviceId, list);
-  return list;
+  allAlarmsCache = Array.isArray(body?.data) ? body.data : (body?.data ? [body.data] : []);
+  return allAlarmsCache;
+}
+async function alarmsForDevice(deviceId) {
+  return (await fetchAllAlarms()).filter((a) => a.device_id === deviceId);
 }
 
 async function main() {
@@ -111,7 +115,15 @@ async function main() {
     catch (e) { plan.push({ ...job, deviceId, status: `SOUNDSENSING FOUT: ${e.message}` }); continue; }
 
     const tMin = titleMinuteUtc(job.JobDescr);
-    if (tMin == null) { plan.push({ ...job, deviceId, status: 'GEEN TIJDSTIP in titel', cand: alarms }); continue; }
+    if (tMin == null) {
+      // Geen tijdstip in de titel: enkel eenduidig als het device precies één alarm heeft.
+      if (alarms.length === 1) {
+        plan.push({ ...job, deviceId, status: 'MATCH', newExt: `ss-alarm:${alarms[0].id}`, cand: alarms });
+      } else {
+        plan.push({ ...job, deviceId, status: 'GEEN TIJDSTIP in titel', cand: alarms });
+      }
+      continue;
+    }
 
     let matches = alarms.filter((a) => Math.floor(Number(a.timestamp ?? a.created_at) / 60) === tMin);
     // Disambigueer op alarmtype (titel bevat "Trilling-afwijking"=A of "Schema-afwijking"=B).
