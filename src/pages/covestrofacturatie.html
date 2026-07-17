@@ -286,7 +286,7 @@
 
     initSession();
 
-    let buildingGroups = []; // blokken per gebouw+loonweek: [{ blockKey, building, externalId, loonweekKey, loonweekLabel, beschrMonth, processable, codeGroups: Map<code, jobs[]>, jobsById }]
+    let buildingGroups = []; // blokken per gebouw+loonweek: [{ blockKey, building, externalId, loonweekKey, loonweekLabel, beschrLoonweek, processable, codeGroups: Map<code, jobs[]>, jobsById }]
     let pendingJobs = [];    // jobs met een 00633-lijn (nacalculatie): niet factureren, wel apart tonen
 
     function groupJobs(jobs) {
@@ -307,8 +307,8 @@
             loonweekLabel: lw.label,
             loonweekShort: lw.shortLabel,
             sortYear: lw.year,
-            sortMonth: lw.month,
-            beschrMonth: lw.beschrMonth,
+            sortWeek: lw.week,
+            beschrLoonweek: lw.beschrLoonweek,
             processable: lw.key !== UNKNOWN_LW_KEY,
             codeGroups: new Map(),
             jobsById: new Map(),
@@ -325,10 +325,10 @@
       blocks.sort((a, b) => {
         const byBuilding = String(a.building).localeCompare(String(b.building), undefined, { numeric: true });
         if (byBuilding !== 0) return byBuilding;
-        // Onbekende maand achteraan.
+        // Onbekende loonweek achteraan.
         if (a.loonweekKey === UNKNOWN_LW_KEY) return b.loonweekKey === UNKNOWN_LW_KEY ? 0 : 1;
         if (b.loonweekKey === UNKNOWN_LW_KEY) return -1;
-        return (a.sortYear - b.sortYear) || (a.sortMonth - b.sortMonth);
+        return (a.sortYear - b.sortYear) || (a.sortWeek - b.sortWeek);
       });
       return blocks;
     }
@@ -345,17 +345,23 @@
       return Number.isFinite(num) ? String(num).replace('.', ',') : String(value == null ? '' : value);
     }
 
-    // Loonweek = ISO 8601-weeknummer: weken beginnen op maandag, week 1 is de week met
-    // de eerste donderdag van het jaar. Rond de jaarwissel volgt hieruit vanzelf dat begin
-    // januari nog in week 52/53 van het vorige jaar valt (en eind december in week 1).
-    function getLoonweekNumber(date) {
+    // Loonweek = ISO 8601-week: weken beginnen op maandag, week 1 is de week met de eerste
+    // donderdag van het jaar. Geeft zowel het weeknummer als het ISO-weekjaar terug (het jaar
+    // van de donderdag van die week). Rond de jaarwissel volgt hieruit vanzelf dat begin januari
+    // nog in week 52/53 van het vorige weekjaar valt (en eind december in week 1 van het volgende).
+    function getLoonweek(date) {
       const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
       const dayNum = (d.getUTCDay() + 6) % 7; // maandag=0 ... zondag=6
       d.setUTCDate(d.getUTCDate() - dayNum + 3); // donderdag van deze ISO-week
-      const firstThursday = new Date(Date.UTC(d.getUTCFullYear(), 0, 4));
+      const isoYear = d.getUTCFullYear();
+      const firstThursday = new Date(Date.UTC(isoYear, 0, 4));
       const ftDayNum = (firstThursday.getUTCDay() + 6) % 7;
       firstThursday.setUTCDate(firstThursday.getUTCDate() - ftDayNum + 3);
-      return 1 + Math.round((d - firstThursday) / (7 * 86400000));
+      const week = 1 + Math.round((d - firstThursday) / (7 * 86400000));
+      // d is nu de donderdag van deze ISO-week; die bepaalt zowel het weekjaar als de
+      // maand-indicatie (deterministisch, ook als de week over een maandgrens loopt).
+      const thursday = new Date(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate());
+      return { isoYear, week, thursday };
     }
 
     const UNKNOWN_LW_KEY = 'GEEN';
@@ -378,53 +384,42 @@
       return null;
     }
 
-    function lastDayOfMonth(year, month) {
-      return new Date(year, month + 1, 0);
-    }
-
-    // Loonweek-bereik voor een maand, bv. "LW27-31": ISO-weeknummer van de eerste dag t/m
-    // dat van de laatste dag van de maand. Rond de jaarwissel geeft dit vanzelf het juiste
-    // resultaat, bv. januari 2027 = "LW53-4" (begin januari valt nog in ISO-week 53 van 2026).
-    function getLoonweekRange(year, month) {
-      const startWeek = getLoonweekNumber(new Date(year, month, 1));
-      const endWeek = getLoonweekNumber(lastDayOfMonth(year, month));
-      return startWeek === endWeek ? `LW${startWeek}` : `LW${startWeek}-${endWeek}`;
-    }
-
-    // Groep = gebouw × maand (o.b.v. ScheduledStartDate). Label = loonweek-bereik + maand.
+    // Groep = gebouw × loonweek (o.b.v. ScheduledStartDate).
+    // Label = "LW <weekjaar>/<week> (<maand jaar>)", bv. "LW 2026/29 (juli 2026)".
     function loonweekInfo(date) {
-      const year = date.getFullYear();
-      const month = date.getMonth();
-      const range = getLoonweekRange(year, month);
-      const maandNaam = date.toLocaleDateString('nl-BE', { month: 'long', year: 'numeric' });
+      const { isoYear, week, thursday } = getLoonweek(date);
+      const ww = String(week).padStart(2, '0');
+      const shortLabel = `LW ${isoYear}/${ww}`;
+      const maandNaam = thursday.toLocaleDateString('nl-BE', { month: 'long', year: 'numeric' });
       return {
-        year,
-        month,
-        key: `${year}-M${month}`,
-        label: `${range} (${maandNaam})`,
-        shortLabel: range,
-        beschrMonth: { year, month },
+        year: isoYear,
+        week,
+        key: `${isoYear}-W${ww}`,
+        label: `${shortLabel} (${maandNaam})`,
+        shortLabel,
+        beschrLoonweek: { isoYear, week, maandNaam },
       };
     }
 
     function unknownLoonweekInfo() {
       return {
         year: null,
-        month: null,
+        week: null,
         key: UNKNOWN_LW_KEY,
         label: 'Loonweek onbekend',
         shortLabel: '',
-        beschrMonth: null,
+        beschrLoonweek: null,
       };
     }
 
-    function getBeschrijving(code, year, month) {
+    function getBeschrijving(code, isoYear, week, maandNaam) {
       if (String(code || '').trim() !== 'BL 2 - LA 2') return '';
-      const now = new Date();
-      const y = Number.isFinite(year) ? year : now.getFullYear();
-      const m = Number.isFinite(month) ? month : now.getMonth();
-      const maand = String(m + 1).padStart(2, '0');
-      return `Materiaallevering incl handelingstoeslag Ultimo - Maand ${y}/${maand}`;
+      const nu = getLoonweek(new Date());
+      const y = Number.isFinite(isoYear) ? isoYear : nu.isoYear;
+      const w = Number.isFinite(week) ? week : nu.week;
+      const ww = String(w).padStart(2, '0');
+      const maand = maandNaam || nu.thursday.toLocaleDateString('nl-BE', { month: 'long', year: 'numeric' });
+      return `Materiaallevering incl handelingstoeslag Ultimo - LW ${y}/${ww} (${maand})`;
     }
 
     function updateBeschrijvingen() {
@@ -432,8 +427,8 @@
         const blockKey = span.getAttribute('data-blockkey');
         const code = span.getAttribute('data-code');
         const block = buildingGroups.find(b => b.blockKey === blockKey);
-        const bm = block && block.beschrMonth ? block.beschrMonth : null;
-        const text = bm ? getBeschrijving(code, bm.year, bm.month) : '';
+        const bl = block && block.beschrLoonweek ? block.beschrLoonweek : null;
+        const text = bl ? getBeschrijving(code, bl.isoYear, bl.week, bl.maandNaam) : '';
         span.textContent = text;
         span.setAttribute('data-copy-value', text);
       });
@@ -682,7 +677,7 @@
 
         const controlsCell = block.processable
           ? `<td colspan="2" class="vordering-cell">
-               <span class="copy-part loonweek-chip" data-copy-value="${escapeHtml(block.loonweekShort)}">${escapeHtml(block.loonweekLabel)}</span>
+               <span class="copy-part loonweek-chip" data-copy-value="${escapeHtml(block.loonweekShort)}">${escapeHtml(block.loonweekShort)}</span>
                <input type="text" class="vorderingsnummer-input" placeholder="00000" maxlength="5" inputmode="numeric" pattern="\d{5}" data-blockkey="${bk}" />
                <button type="button" class="btn btn-primary btn-process" data-blockkey="${bk}" disabled>Verwerk</button>
              </td>`
