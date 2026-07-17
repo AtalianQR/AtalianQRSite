@@ -83,33 +83,44 @@ async function main() {
   const deviceByEqm = new Map(devices.map((d) => [d.EquipmentId, d.DeviceUuid]));
   console.log(`Jobs met ss-% ExternalId: ${jobs.length} | installaties met SoundsensingID: ${devices.length}\n`);
 
-  const plan = []; // {JobId, oldExt, deviceId, titleMin, newExt, status}
+  const plan = []; // {JobId, oldExt, deviceId, newExt, status, cand}
   for (const job of jobs) {
     if (String(job.ExternalId || '').startsWith('ss-alarm:')) {
       plan.push({ ...job, status: 'AL GEBACKFILD', newExt: job.ExternalId });
       continue;
     }
     const deviceId = deviceByEqm.get(job.EquipmentId);
-    const tMin = titleMinuteUtc(job.JobDescr);
     if (!deviceId) { plan.push({ ...job, deviceId, status: 'GEEN DEVICE (Kenmerk 000162 leeg)' }); continue; }
-    if (tMin == null) { plan.push({ ...job, deviceId, status: 'GEEN TIJDSTIP in titel' }); continue; }
 
-    let matches;
-    try {
-      const alarms = await alarmsForDevice(deviceId);
-      matches = alarms.filter((a) => Math.floor(Number(a.timestamp ?? a.created_at) / 60) === tMin);
-    } catch (e) { plan.push({ ...job, deviceId, status: `SOUNDSENSING FOUT: ${e.message}` }); continue; }
+    let alarms;
+    try { alarms = await alarmsForDevice(deviceId); }
+    catch (e) { plan.push({ ...job, deviceId, status: `SOUNDSENSING FOUT: ${e.message}` }); continue; }
+
+    const tMin = titleMinuteUtc(job.JobDescr);
+    if (tMin == null) { plan.push({ ...job, deviceId, status: 'GEEN TIJDSTIP in titel', cand: alarms }); continue; }
+
+    let matches = alarms.filter((a) => Math.floor(Number(a.timestamp ?? a.created_at) / 60) === tMin);
+    // Disambigueer op alarmtype (titel bevat "Trilling-afwijking"=A of "Schema-afwijking"=B).
+    const wantType = alarmTypeFromTitle(job.JobDescr);
+    if (matches.length > 1 && wantType) {
+      const byType = matches.filter((a) => a.alarm_type === wantType);
+      if (byType.length) matches = byType;
+    }
 
     if (matches.length === 1) {
-      plan.push({ ...job, deviceId, status: 'MATCH', newExt: `ss-alarm:${matches[0].id}` });
+      plan.push({ ...job, deviceId, status: 'MATCH', newExt: `ss-alarm:${matches[0].id}`, cand: matches });
     } else {
-      plan.push({ ...job, deviceId, status: matches.length === 0 ? 'GEEN ALARM-MATCH' : `AMBIGU (${matches.length})` });
+      plan.push({ ...job, deviceId, status: matches.length === 0 ? 'GEEN ALARM-MATCH' : `AMBIGU (${matches.length})`, cand: matches });
     }
   }
 
-  // Overzicht
+  // Overzicht (met titel + kandidaat-alarmen voor de probleemgevallen)
   for (const p of plan) {
     console.log(`${p.JobId}  [${p.status}]  ${p.EquipmentId || '-'}  ${p.newExt ? '-> ' + p.newExt : ''}`);
+    if (p.status !== 'MATCH' && p.status !== 'AL GEBACKFILD') {
+      console.log(`        titel: ${String(p.JobDescr || '').slice(0, 100)}`);
+      if (p.cand && p.cand.length) console.log(`        kandidaten: ${p.cand.map(fmtAlarm).join('  |  ')}`);
+    }
   }
   const toApply = plan.filter((p) => p.status === 'MATCH');
   console.log(`\nSamenvatting: ${toApply.length} te backfillen, ${plan.filter(p=>p.status==='AL GEBACKFILD').length} al gedaan, ${plan.length - toApply.length - plan.filter(p=>p.status==='AL GEBACKFILD').length} zonder eenduidige match.`);
