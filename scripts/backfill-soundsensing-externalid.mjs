@@ -59,6 +59,20 @@ export function titleMinuteUtc(jobDescr) {
   return Math.floor(Date.UTC(+yyyy, +mm - 1, +dd, +hh, +mi, 0) / 60000);
 }
 
+// Alarmtype uit de jobtitel (prefix "Trilling-afwijking"=A, "Schema-afwijking"=B). null = onbekend.
+export function alarmTypeFromTitle(jobDescr) {
+  if (/trilling/i.test(jobDescr || '')) return 'A';
+  if (/schema/i.test(jobDescr || '')) return 'B';
+  return null;
+}
+
+// Compacte weergave van een alarm voor de diagnose-output.
+function fmtAlarm(a) {
+  const t = Number(a.timestamp ?? a.created_at);
+  const when = Number.isFinite(t) ? new Date(t * 1000).toISOString().slice(0, 16) + 'Z' : '?';
+  return `${a.id}(type ${a.alarm_type}, ${when})`;
+}
+
 const alarmCache = new Map(); // device_id -> [alarms]
 async function alarmsForDevice(deviceId) {
   if (alarmCache.has(deviceId)) return alarmCache.get(deviceId);
