@@ -16,6 +16,12 @@
 // PROD/APPLY via vlag OF env-var (env-var nodig omdat `netlify dev:exec` de --vlaggen zelf opslokt).
 const APPLY = process.argv.includes('--apply') || process.env.BACKFILL_APPLY === '1';
 const PROD = process.argv.includes('--prod') || process.env.BACKFILL_TARGET === 'prod';
+// RESOLVE-modus: zet de gematchte alarmen rechtstreeks op resolved in Soundsensing (i.p.v. ExternalId schrijven).
+const RESOLVE = process.env.BACKFILL_RESOLVE === '1';
+// FORCE: handmatige job->alarm-overrides voor jobs zonder eenduidige automatische match, bv.
+// BACKFILL_FORCE='{"093689":"49d5bd06-74ec-44c2-911b-a9dbd4d635fd"}'
+let FORCE = {};
+try { FORCE = JSON.parse(process.env.BACKFILL_FORCE || '{}'); } catch { console.error('BACKFILL_FORCE is geen geldige JSON'); process.exit(1); }
 
 const SOUNDSENSING_API_KEY = process.env.SOUNDSENSING_API_KEY;
 const SOUNDSENSING_BASE_URL = 'https://api.soundsensing.no/v1';
@@ -107,6 +113,10 @@ async function main() {
       plan.push({ ...job, status: 'AL GEBACKFILD', newExt: job.ExternalId });
       continue;
     }
+    if (FORCE[job.JobId]) {
+      plan.push({ ...job, deviceId: deviceByEqm.get(job.EquipmentId), status: 'MATCH', newExt: `ss-alarm:${FORCE[job.JobId]}` });
+      continue;
+    }
     const deviceId = deviceByEqm.get(job.EquipmentId);
     if (!deviceId) { plan.push({ ...job, deviceId, status: 'GEEN DEVICE (Kenmerk 000162 leeg)' }); continue; }
 
@@ -149,6 +159,34 @@ async function main() {
       if (p.cand && p.cand.length) console.log(`        kandidaten: ${p.cand.map(fmtAlarm).join('  |  ')}`);
     }
   }
+  // === RESOLVE-modus: gematchte alarmen rechtstreeks afzetten in Soundsensing ===
+  if (RESOLVE) {
+    // Alle jobs met een ss-alarm:-koppeling (vers gematcht OF al gebackfild) = de Ultimo-gekoppelde backlog.
+    const toResolve = plan.filter((p) => p.newExt && p.newExt.startsWith('ss-alarm:'));
+    const uniq = [...new Map(toResolve.map((p) => [p.newExt.slice(9), p])).values()]; // dedup op alarm-uuid
+    console.log(`\nRESOLVE-modus: ${uniq.length} Ultimo-gekoppelde alarm(en) af te zetten:`);
+    for (const p of uniq) console.log(`  ${p.newExt.slice(9)}  (job ${p.JobId})`);
+    if (!APPLY) { console.log('\nDRY-RUN: er is niets afgezet. Draai met BACKFILL_APPLY=1 om echt af te zetten.'); return; }
+
+    console.log('\n--apply: alarmen afzetten...');
+    let rok = 0, rfail = 0;
+    for (const p of uniq) {
+      const alarmId = p.newExt.slice(9);
+      try {
+        const res = await fetch(`${SOUNDSENSING_BASE_URL}/alarm/${alarmId}`, {
+          method: 'PUT',
+          headers: { Authorization: `Bearer ${SOUNDSENSING_API_KEY}`, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ resolved: true, resolution_description: `Opgelost via Ultimo-job ${p.JobId} (backlog-opkuis)` }),
+        });
+        if (!res.ok) throw new Error(`HTTP ${res.status}: ${(await res.text()).slice(0, 150)}`);
+        console.log(`  OK  ${alarmId} afgezet (job ${p.JobId})`);
+        rok++;
+      } catch (e) { console.error(`  FOUT ${alarmId}: ${e.message}`); rfail++; }
+    }
+    console.log(`\nKlaar: ${rok} alarm(en) afgezet, ${rfail} mislukt.`);
+    return;
+  }
+
   const toApply = plan.filter((p) => p.status === 'MATCH');
   console.log(`\nSamenvatting: ${toApply.length} te backfillen, ${plan.filter(p=>p.status==='AL GEBACKFILD').length} al gedaan, ${plan.length - toApply.length - plan.filter(p=>p.status==='AL GEBACKFILD').length} zonder eenduidige match.`);
 
