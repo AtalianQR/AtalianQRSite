@@ -145,6 +145,7 @@ async function main() {
     console.log(`${p.JobId}  [${p.status}]  ${p.EquipmentId || '-'}  ${p.newExt ? '-> ' + p.newExt : ''}`);
     if (p.status !== 'MATCH' && p.status !== 'AL GEBACKFILD') {
       console.log(`        titel: ${String(p.JobDescr || '').slice(0, 100)}`);
+      console.log(`        device(Kenmerk 000162): ${p.deviceId || '-'}`);
       if (p.cand && p.cand.length) console.log(`        kandidaten: ${p.cand.map(fmtAlarm).join('  |  ')}`);
     }
   }
@@ -157,8 +158,8 @@ async function main() {
   let ok = 0, fail = 0;
   for (const p of toApply) {
     try {
-      await ultimoAction('SET_JOB_EXTERNALID', { JobId: p.JobId, NewExternalId: p.newExt });
-      console.log(`  OK  ${p.JobId} -> ${p.newExt}`);
+      const r = await ultimoAction('SET_JOB_EXTERNALID', { JobId: p.JobId, NewExternalId: p.newExt });
+      console.log(`  OK  ${p.JobId} -> ${p.newExt}   (respons: ${JSON.stringify(r)})`);
       ok++;
     } catch (e) { console.error(`  FOUT ${p.JobId}: ${e.message}`); fail++; }
   }
