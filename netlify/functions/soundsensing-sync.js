@@ -169,9 +169,29 @@ function formatAlarmTimestamp(unixSeconds) {
   return `${get('day')}.${get('month')}.${get('year')} ${get('hour')}:${get('minute')}`;
 }
 
-async function createUltimoJob(ultimoBase, equipmentId, description, alarmType, alarmTimestamp) {
+// Compacte tijdstempel voor in bestandsnamen: JJJJMMDD-UUmm (bv. 20260625-1450).
+// Maakt elke grafiek-bestandsnaam uniek zodat ADD_JOB_DOC geen bestaand bestand
+// op de Ultimo file-server overschrijft (anders raken oudere documenten hun fysieke
+// bestand kwijt -> Ultimo-fout #0960 "document niet gevonden").
+function fileStampFromTimestamp(unixSeconds) {
+  const parts = new Intl.DateTimeFormat('nl-BE', {
+    timeZone: 'UTC',
+    day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit',
+  }).formatToParts(new Date(unixSeconds * 1000));
+  const get = (type) => parts.find((p) => p.type === type)?.value || '';
+  return `${get('year')}${get('month')}${get('day')}-${get('hour')}${get('minute')}`;
+}
+
+// ExternalId draagt het Soundsensing alarm-UUID zodat de omgekeerde flow (job Gereed ->
+// alarm afzetten) exact weet welk alarm bij deze job hoort. Prefix maakt de job herkenbaar
+// als Soundsensing-job. Zie soundsensing-resolve.js (parseAlarmIdFromExternalId).
+export function buildAlarmExternalId(alarmId) {
+  return `ss-alarm:${alarmId}`.slice(0, 48);
+}
+
+async function createUltimoJob(ultimoBase, equipmentId, description, alarmType, alarmTimestamp, alarmId) {
   const url = `${ultimoBase}/action/${ACTION_CREATE}`;
-  const externalId = `ss-${Date.now()}-${Math.random().toString(36).slice(2)}`.slice(0, 48);
+  const externalId = buildAlarmExternalId(alarmId);
   const titlePrefix = alarmTypeLabel(alarmType);
   const timeLabel = formatAlarmTimestamp(alarmTimestamp);
   const jobDescr = `${titlePrefix} - ${String(description || 'Soundsensing alarm').trim()} (${timeLabel})`;
@@ -485,7 +505,7 @@ export async function handler(event) {
       }
 
       const alarmTimestamp = Number(alarm.timestamp || alarm.created_at);
-      const { jobId } = await createUltimoJob(ULTIMO_BASE, equipment.EquipmentId, alarm.description, alarm.alarm_type, alarmTimestamp);
+      const { jobId } = await createUltimoJob(ULTIMO_BASE, equipment.EquipmentId, alarm.description, alarm.alarm_type, alarmTimestamp, alarm.id);
       console.log(`[soundsensing-sync] Job aangemaakt voor EquipmentId=${equipment.EquipmentId} (alarm ${alarm.id}, jobId=${jobId})`);
       created++;
       newlyProcessed.push({ id: alarm.id, date: new Date().toISOString() });
@@ -499,10 +519,12 @@ export async function handler(event) {
           const vibration = await fetchVibrationHistory(alarm.device_id, alarmTimestamp, lookbackHours);
 
           const windowLabel = lookbackHours <= 24 ? `laatste ${lookbackHours} uur` : `laatste ${Math.round(lookbackHours / 24)} dagen`;
+          const fileStamp = fileStampFromTimestamp(alarmTimestamp);
+          const alarmLabel = formatAlarmTimestamp(alarmTimestamp); // DD.MM.JJJJ UU:MM (UTC), zelfde als de jobtitel
 
-          const vibrationPng = await buildVibrationChartPng(vibration, alarmTimestamp, `${titleBase} - vibratiehistoriek (${alarmTypeLabel(alarm.alarm_type)})`);
+          const vibrationPng = await buildVibrationChartPng(vibration, alarmTimestamp, `${titleBase} - vibratiehistoriek (${alarmTypeLabel(alarm.alarm_type)}) - alarm ${alarmLabel}`);
           if (vibrationPng) {
-            await attachJobDocument(ULTIMO_BASE, jobId, vibrationPng, `vibratiehistoriek_${jobId}.png`, `${titleBase} - Vibratiehistoriek (${windowLabel}) rond het alarm - Soundsensing`);
+            await attachJobDocument(ULTIMO_BASE, jobId, vibrationPng, `vibratiehistoriek_${jobId}_${fileStamp}.png`, `${titleBase} - Vibratiehistoriek (${windowLabel}) rond het alarm van ${alarmLabel} - Soundsensing`);
             console.log(`[soundsensing-sync] Vibratiegrafiek bijgevoegd aan job ${jobId} (${vibration.length} datapunten, venster=${lookbackHours}u)`);
           } else {
             console.log(`[soundsensing-sync] Geen vibratiedata gevonden voor device_id=${alarm.device_id}`);
@@ -513,9 +535,9 @@ export async function handler(event) {
           // op de laatste 24u rond het alarm toont de eigenlijke vroege-waarschuwing veel duidelijker.
           const probabilityWindowPoints = vibration.filter((p) => p.t >= alarmTimestamp - CHART_LOOKBACK_HOURS_PROBABILITY * 3600);
           const probabilityWindowLabel = `laatste ${CHART_LOOKBACK_HOURS_PROBABILITY} uur`;
-          const probabilityPng = await buildProbabilityChartPng(probabilityWindowPoints, alarmTimestamp, `${titleBase} - anomaliekans (${alarmTypeLabel(alarm.alarm_type)})`);
+          const probabilityPng = await buildProbabilityChartPng(probabilityWindowPoints, alarmTimestamp, `${titleBase} - anomaliekans (${alarmTypeLabel(alarm.alarm_type)}) - alarm ${alarmLabel}`);
           if (probabilityPng) {
-            await attachJobDocument(ULTIMO_BASE, jobId, probabilityPng, `anomaliekans_${jobId}.png`, `${titleBase} - Anomaliekans (${probabilityWindowLabel}) rond het alarm - vroege-waarschuwingsindicator van het model - Soundsensing`);
+            await attachJobDocument(ULTIMO_BASE, jobId, probabilityPng, `anomaliekans_${jobId}_${fileStamp}.png`, `${titleBase} - Anomaliekans (${probabilityWindowLabel}) rond het alarm van ${alarmLabel} - vroege-waarschuwingsindicator van het model - Soundsensing`);
             console.log(`[soundsensing-sync] Kansgrafiek bijgevoegd aan job ${jobId}`);
           }
         } catch (chartErr) {

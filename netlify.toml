@@ -30,6 +30,10 @@
 [functions."soundsensing-sync"]
   schedule = "*/30 * * * *"
 
+# Omgekeerde flow: job Gereed (Status 16) -> Soundsensing-alarm afzetten.
+[functions."soundsensing-resolve"]
+  schedule = "*/30 * * * *"
+
 # =================================================================
 # 3. EDGE FUNCTIONS (specifieke routes)
 # =================================================================

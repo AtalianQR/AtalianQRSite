@@ -7,6 +7,7 @@
     "node": ">=20.0.0"
   },
   "scripts": {
+    "test": "node --test \"test/**/*.test.js\"",
     "dev": "netlify dev -p 4321",
     "start": "astro dev",
     "astro:dev": "astro dev",
