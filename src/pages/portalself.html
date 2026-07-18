@@ -237,7 +237,16 @@ function buildPortalLogLine({ channel = 'PortalSelf', email = '', geo = null } =
 	  }
 
 	  if (geo?.ok) {
-		parts.push(`GPS: lat=${geo.lat}; lon=${geo.lon}; acc=${Math.round(geo.acc)}m`);
+		// 5 decimalen ~ 1 meter. Bewust niet fijner: de meting zelf is maar
+		// nauwkeurig tot 'acc' meter, dus meer decimalen is schijnprecisie.
+		// 'fix' = tijdstip van de meting zelf (kan afwijken van het moment
+		// waarop de melding verstuurd wordt).
+		const r5 = (v) => Number(v).toFixed(5);
+		const fix = geo.ts ? new Date(geo.ts).toISOString() : '';
+		parts.push(
+		  `GPS: lat=${r5(geo.lat)}; lon=${r5(geo.lon)}; acc=${Math.round(geo.acc)}m` +
+		  (fix ? `; fix=${fix}` : '')
+		);
 	  } else {
 		parts.push(`GPS: unavailable`);
 	  }
@@ -246,6 +255,81 @@ function buildPortalLogLine({ channel = 'PortalSelf', email = '', geo = null } =
 	}
 	
 	
+  // Transparantie vóór de meting: de medewerker moet wéten waarom zijn locatie
+  // geregistreerd wordt voordat de browser om toestemming vraagt. Deze melding
+  // hoort dus telkens direct vóór getGeoFix() te staan.
+  async function showGpsNotice() {
+	return botui.message.add({
+	  type: 'html',
+	  content: isFr
+		? `📍 <b>Votre position est enregistrée</b><br>
+		   Pour votre sécurité, ce signalement enregistre votre position et l'heure.
+		   Vous travaillez seul sur ce site : si quelque chose tourne mal, nous savons où vous êtes.<br>
+		   <small>La position est conservée uniquement sur ce signalement et n'est pas utilisée
+		   pour évaluer vos prestations ni pour vous suivre en dehors de ce moment.</small>`
+		: `📍 <b>Je locatie wordt geregistreerd</b><br>
+		   Voor je veiligheid houdt deze melding je locatie en het tijdstip bij.
+		   Je werkt alleen op deze site: gaat er iets mis, dan weten we waar je bent.<br>
+		   <small>De locatie wordt enkel op deze melding bewaard en wordt niet gebruikt
+		   om je prestaties te beoordelen of je buiten dit moment te volgen.</small>`
+	});
+  }
+
+  // GPS is OVERAL VERPLICHT in dit portaal: de melding dient als
+  // aanwezigheidsregistratie van een alleenwerkende medewerker en is zonder
+  // positie waardeloos. Deze helper keert daarom pas terug wanneer er een fix
+  // is; elke aanroeper krijgt dus gegarandeerd een positie. Zet de vereiste op
+  // één plaats vast, zodat een nieuwe flow ze niet per ongeluk kan overslaan.
+  async function requireGeoFix() {
+	// 🧪 DEV-ONLY: op localhost mag de flow door zonder fix (zie bypass hieronder).
+	const devBypass =
+	  location.hostname === 'localhost' || location.hostname === '127.0.0.1';
+
+	while (true) {
+	  await showGpsNotice();
+
+	  const geo = await getGeoFix({ timeoutMs: 8000, enableHighAccuracy: true });
+	  if (geo.ok || devBypass) return geo;
+
+	  Telemetry.send('gps_required_block', {
+		reason: geo.reason,
+		message: geo.message || ''
+	  });
+
+	  await botui.message.add({
+		type: 'html',
+		content: isFr
+		  ? `❌ <b>Localisation GPS requise</b>.<br>
+			 Activez la localisation (GPS) et autorisez ce site.<br>
+			 Ensuite, réessayez.`
+		  : `❌ <b>GPS is verplicht</b>.<br>
+			 Zet je locatie (GPS) aan en geef toestemming voor deze site.<br>
+			 Probeer daarna opnieuw.`
+	  });
+
+	  const choice = await botui.action.button({
+		action: [
+		  { text: isFr ? '🔄 Réessayer' : '🔄 Opnieuw proberen', value: 'retry' },
+		  { text: isFr ? 'ℹ️ Aide' : 'ℹ️ Hulp', value: 'help' }
+		]
+	  });
+
+	  if (choice.value === 'help') {
+		await botui.message.add({
+		  type: 'html',
+		  content: isFr
+			? `👉 iPhone : Réglages → Confidentialité et sécurité → Services de localisation.<br>
+			   👉 Android : Paramètres → Localisation.<br>
+			   👉 Navigateur : autorisez “Localisation” pour ce site.`
+			: `👉 iPhone: Instellingen → Privacy en beveiliging → Locatievoorzieningen.<br>
+			   👉 Android: Instellingen → Locatie.<br>
+			   👉 Browser: geef “Locatie” toestemming voor deze site.`
+		});
+	  }
+	  // lus opnieuw: opnieuw uitleg + nieuwe poging
+	}
+  }
+
   async function getGeoFix({ timeoutMs = 8000, enableHighAccuracy = true } = {}) {
 	  if (!('geolocation' in navigator)) {
 		return { ok:false, reason:'geolocation_not_supported' };
@@ -965,54 +1049,11 @@ const sourceUrl = safeSameOriginUrl(srcRaw);
 		} catch {}
 	  
 
-	  // 2) Geolocatie ophalen (VERPLICHT, behalve localhost dev)
-	  await botui.message.add({
-		content: isFr ? '📍 Localisation…' : '📍 Locatie ophalen…'
-	  });
-
-	  const geo = await getGeoFix({ timeoutMs: 8000, enableHighAccuracy: true });
-
-	  // 🔒 GPS is verplicht: geen fix = STOP + uitleg + retry
-	  // 🧪 DEV uitzondering: localhost/127.0.0.1 mag door (FAKE geoLine)
-	  if (!geo.ok && !__DEV_LOCALHOST_GPS_BYPASS__) {
-		Telemetry.send('gps_required_block', {
-		  reason: geo.reason,
-		  message: geo.message || ''
-		});
-
-		await botui.message.add({
-		  type: 'html',
-		  content: isFr
-			? `❌ <b>Localisation GPS requise</b>.<br>
-			   Activez la localisation (GPS) et autorisez ce site.<br>
-			   Ensuite, réessayez.`
-			: `❌ <b>GPS is verplicht</b>.<br>
-			   Zet je locatie (GPS) aan en geef toestemming voor deze site.<br>
-			   Probeer daarna opnieuw.`
-		});
-
-		const choice = await botui.action.button({
-		  action: [
-			{ text: isFr ? '🔄 Réessayer' : '🔄 Opnieuw proberen', value: 'retry' },
-			{ text: isFr ? 'ℹ️ Aide' : 'ℹ️ Hulp', value: 'help' }
-		  ]
-		});
-
-		if (choice.value === 'help') {
-		  await botui.message.add({
-			type: 'html',
-			content: isFr
-			  ? `👉 iPhone : Réglages → Confidentialité et sécurité → Services de localisation.<br>
-				 👉 Android : Paramètres → Localisation.<br>
-				 👉 Navigateur : autorisez “Localisation” pour ce site.`
-			  : `👉 iPhone: Instellingen → Privacy en beveiliging → Locatievoorzieningen.<br>
-				 👉 Android: Instellingen → Locatie.<br>
-				 👉 Browser: geef “Locatie” toestemming voor deze site.`
-		  });
-		}
-
-		return await submitAutoJobFromServiceWO(chosenSvcWO, isCleaning);
-	  }
+	  // 2) Geolocatie ophalen — VERPLICHT. requireGeoFix() legt eerst uit waarom,
+	  //    vraagt dan toestemming, en keert pas terug wanneer er een fix is.
+	  //    Het e-mailadres hoeft daardoor niet opnieuw gevraagd te worden bij
+	  //    een mislukte poging.
+	  const geo = await requireGeoFix();
 
 	  // 3) Titel bouwen (knopnaam + datum/uur)
 	  const nowStr = formatDateTimeLocal(new Date());
@@ -1373,8 +1414,8 @@ const sourceUrl = safeSameOriginUrl(srcRaw);
       serviceWorkOrderId = selectedOtherServiceWO.Id;
     }
 
-    await botui.message.add({ content: isFr ? '📍 Localisation…' : '📍 Locatie ophalen…' });
-	const geo = await getGeoFix({ timeoutMs: 8000, enableHighAccuracy: true });
+	// GPS is ook hier verplicht: requireGeoFix() keert pas terug mét fix.
+	const geo = await requireGeoFix();
 
 	const reportBody = buildPortalLogLine({ channel: 'PortalSelf', email, geo });
 

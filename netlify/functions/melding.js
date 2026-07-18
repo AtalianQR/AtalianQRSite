@@ -110,11 +110,27 @@ function normalizePortalLog(reportTextIn = '', emailFromPayload = '') {
 	  const gpsLat = raw.match(/lat\s*=\s*([-\d.]+)/i)?.[1];
 	  const gpsLon = raw.match(/lon\s*=\s*([-\d.]+)/i)?.[1];
 	  const gpsAcc = raw.match(/acc\s*=\s*([-\d.]+)\s*m/i)?.[1];
+	  const gpsFix = raw.match(/fix\s*=\s*([0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9:.]+Z)/i)?.[1];
+
+	  // Laatste poort voor Ultimo: coordinaten hier nogmaals op 5 decimalen (~1 m)
+	  // zetten, zodat ook een oudere of afwijkende client geen schijnprecisie in
+	  // het ticket kan schrijven.
+	  const round5 = (v) => {
+		const n = Number(v);
+		return Number.isFinite(n) ? n.toFixed(5) : null;
+	  };
 
 	  let gpsPart = 'GPS: unavailable';
 	  if (gpsLat && gpsLon) {
-		const acc = gpsAcc ? `${Math.round(Number(gpsAcc))}m` : '';
-		gpsPart = `GPS: lat=${gpsLat}; lon=${gpsLon}${acc ? `; acc=${acc}` : ''}`;
+		const lat = round5(gpsLat);
+		const lon = round5(gpsLon);
+
+		if (lat && lon) {
+		  const acc = gpsAcc ? `${Math.round(Number(gpsAcc))}m` : '';
+		  gpsPart = `GPS: lat=${lat}; lon=${lon}`
+			+ (acc    ? `; acc=${acc}`    : '')
+			+ (gpsFix ? `; fix=${gpsFix}` : '');
+		}
 	  } else if (/GPS\s*:\s*unavailable/i.test(raw)) {
 		gpsPart = 'GPS: unavailable';
 	  }

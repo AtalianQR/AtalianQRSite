@@ -26,12 +26,18 @@ export default async (req) => {
   const code = String(data.code ?? 'unknown');
   const id   = String(data.id ?? code);
 
+  // Bewust GEEN IP-adres en GEEN user-agent: de telemetrie dient enkel voor
+  // flow-analyse (waar haken gebruikers af, welke taal, welke dienst) en heeft
+  // daarvoor geen herleidbaar kenmerk nodig. Het IP identificeert rechtstreeks;
+  // de user-agent is een fingerprint-vector in combinatie met tijdstip en code.
+  // Zonder beide is dit geen persoonsgegeven en vervalt de discussie over
+  // bewaartermijnen. Misbruikpreventie hoort in een tempolimiet, niet hier.
+  // Taal blijft wel bewaard: drie mogelijke waarden, niet identificerend, en
+  // nodig om NL/FR/EN-uitval tegen elkaar af te wegen.
   const payload = {
     ...data,
     code, id, ts,
-    ts_server: now.toISOString(),
-    ua: req.headers.get('user-agent') || '',
-    ip: req.headers.get('x-forwarded-for') || ''
+    ts_server: now.toISOString()
   };
 
   if (DUAL_WRITE_TO_BLOBS) {
