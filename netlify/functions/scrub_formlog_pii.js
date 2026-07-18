@@ -128,6 +128,53 @@ export default async (req) => {
 
   const iso = (t) => (t ? new Date(t).toISOString() : null);
 
+  // ── HTML-modus: ?html=1 ────────────────────────────────────────────────
+  // Geeft een pagina terug die zichzelf naar het volgende blok doorstuurt, tot
+  // alles behandeld is. Zo hoeft er niets in de browserconsole geplakt te
+  // worden (Chrome/Edge blokkeren dat standaard) en volstaat één URL openen.
+  if (url.searchParams.get('html') === '1') {
+    const done = nextOffset === null;
+    const pct = allKeys.length
+      ? Math.round(((offset + todo.length) / allKeys.length) * 100)
+      : 100;
+
+    const nextUrl = done
+      ? null
+      : `?html=1&limit=${perCallLimit}&offset=${nextOffset}${apply ? '&apply=1' : ''}`;
+
+    const page = `<!doctype html>
+<meta charset="utf-8">
+<title>Telemetrie opschonen</title>
+${nextUrl ? `<meta http-equiv="refresh" content="0; url=${nextUrl}">` : ''}
+<style>
+  body{font:16px/1.5 system-ui,sans-serif;max-width:40em;margin:3em auto;padding:0 1em}
+  .bar{background:#eee;border-radius:4px;height:1.5em;overflow:hidden;margin:1em 0}
+  .bar>div{background:${done ? '#2e7d32' : '#EE7E00'};height:100%;width:${pct}%}
+  table{border-collapse:collapse;margin-top:1em}td{padding:.2em .8em .2em 0}
+  .err{color:#c62828;font-weight:bold}
+</style>
+<h1>${done ? '✅ Klaar' : '⏳ Bezig met opschonen…'}</h1>
+<div class="bar"><div></div></div>
+<p>${offset + todo.length} van ${allKeys.length} records behandeld (${pct}%).</p>
+<table>
+  <tr><td>Modus</td><td><b>${apply ? 'APPLY — records worden aangepast' : 'DROOGLOOP — er wijzigt niets'}</b></td></tr>
+  <tr><td>Dit blok opgeschoond</td><td>${cleaned}</td></tr>
+  <tr><td>Was al schoon</td><td>${clean_already}</td></tr>
+  <tr><td>Fouten</td><td class="${errors ? 'err' : ''}">${errors}</td></tr>
+  <tr><td>Bereik historiek</td><td>${iso(allOldest) || '-'} → ${iso(allNewest) || '-'}</td></tr>
+</table>
+${done
+  ? `<p><b>Alle blokken zijn behandeld.</b>${apply ? ' Controleer nu met een droogloop (laat <code>apply</code> weg) of <i>with_pii</i> op 0 staat, en verwijder daarna dit script uit de repo.' : ' Dit was een droogloop: er is niets gewijzigd.'}</p>`
+  : `<p>De pagina springt vanzelf door naar blok ${nextOffset}. Laat dit venster open staan.</p>`}
+${errors ? `<p class="err">Er traden fouten op. Stop en onderzoek dit voor je verdergaat.</p>` : ''}
+`;
+
+    return new Response(page, {
+      status: 200,
+      headers: { ...cors, 'Content-Type': 'text/html; charset=utf-8' }
+    });
+  }
+
   return new Response(JSON.stringify({
     mode: apply ? 'APPLY (records aangepast)' : 'DROOGLOOP (niets gewijzigd - voeg ?apply=1 toe)',
     total_records: allKeys.length,
