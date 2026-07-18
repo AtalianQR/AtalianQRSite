@@ -1051,8 +1051,10 @@ const sourceUrl = safeSameOriginUrl(srcRaw);
 
 	  // 2) Geolocatie ophalen — VERPLICHT. requireGeoFix() legt eerst uit waarom,
 	  //    vraagt dan toestemming, en keert pas terug wanneer er een fix is.
-	  //    Het e-mailadres hoeft daardoor niet opnieuw gevraagd te worden bij
-	  //    een mislukte poging.
+	  //    Let op: het e-mailadres is hierboven al opgevraagd en blijft bewaard.
+	  //    De herhaallus bij een mislukte meting zit binnen requireGeoFix(), dus
+	  //    de medewerker moet zijn adres niet EEN TWEEDE KEER intikken. Het blijft
+	  //    dus wel degelijk verplicht - het is de identificatie op het ticket.
 	  const geo = await requireGeoFix();
 
 	  // 3) Titel bouwen (knopnaam + datum/uur)

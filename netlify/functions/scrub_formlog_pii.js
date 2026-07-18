@@ -7,10 +7,17 @@
 // Na gebruik weer verwijderen uit de repo.
 //
 // Gebruik:
-//   1) DROOGLOOP (standaard, wijzigt niets) — telt hoeveel records PII dragen:
+//   1) DROOGLOOP (standaard, wijzigt niets) — toont totalen en datumbereik:
 //        /.netlify/functions/scrub_formlog_pii
-//   2) ECHT OPSCHONEN — voeg ?apply=1 toe en herhaal tot "remaining": 0:
+//   2) ECHT OPSCHONEN — per blok van 400, met ?offset= uit "next_offset":
 //        /.netlify/functions/scrub_formlog_pii?apply=1
+//        /.netlify/functions/scrub_formlog_pii?apply=1&offset=400
+//        /.netlify/functions/scrub_formlog_pii?apply=1&offset=800
+//      ... herhalen tot "next_offset": null.
+//
+// LET OP: het script schuift NIET vanzelf op. Zonder ?offset= behandelt elke
+// aanroep dezelfde eerste 400 sleutels. Neem dus telkens de waarde van
+// "next_offset" over in de volgende aanroep.
 //
 // De droogloop is bewust de standaard: opschonen is onomkeerbaar.
 
@@ -27,15 +34,27 @@ function hasPii(data) {
   return PII_FIELDS.some((f) => data?.[f] !== undefined);
 }
 
+// Sleutelformaat: <code>/<dag>/<ts>-<type>-<rand>.json
+// Het tijdstip zit dus IN de naam: het globale datumbereik is te bepalen zonder
+// ook maar één record te downloaden.
+function tsFromKey(key) {
+  const fname = (key.split('/').pop() || '').replace(/\.json$/i, '');
+  const ts = Number(fname.split('-')[0]);
+  return Number.isFinite(ts) && ts > 0 ? ts : null;
+}
+
 export default async (req) => {
   const url = new URL(req.url);
 
   // Zonder ?apply=1 wordt er niets geschreven: enkel geteld.
   const apply = url.searchParams.get('apply') === '1';
 
-  // Aantal records per aanroep — ruim binnen de functietimeout. Roep de functie
-  // herhaaldelijk aan tot "remaining": 0.
+  // Aantal records per aanroep — ruim binnen de functietimeout.
   const perCallLimit = Math.min(2000, Math.max(50, parseInt(url.searchParams.get('limit') ?? '400', 10)));
+
+  // Startpositie in de (gesorteerde) sleutellijst. Het script houdt zelf GEEN
+  // voortgang bij: de aanroeper schuift op met de "next_offset" uit het antwoord.
+  const offset = Math.max(0, parseInt(url.searchParams.get('offset') ?? '0', 10) || 0);
 
   const store = getStore('formlog');
 
@@ -48,11 +67,27 @@ export default async (req) => {
     if (!cursor) break;
   }
 
+  // Sorteren zodat de volgorde tussen aanroepen stabiel is en ?offset= betrouwbaar
+  // dezelfde positie aanwijst. Nieuwe records komen er tussendoor bij, maar die
+  // zijn sowieso al schoon (formlog.js schrijft geen PII meer weg).
+  allKeys.sort();
+
+  // Globaal datumbereik van ALLE records, afgeleid uit de sleutelnamen — dus
+  // zonder downloads, en niet beperkt tot het blok dat deze aanroep bekijkt.
+  let allOldest = null, allNewest = null;
+  for (const k of allKeys) {
+    const t = tsFromKey(k);
+    if (!t) continue;
+    if (!allOldest || t < allOldest) allOldest = t;
+    if (!allNewest || t > allNewest) allNewest = t;
+  }
+
   let cleaned = 0, clean_already = 0, errors = 0;
   let oldest = null, newest = null;
 
-  const todo = allKeys.slice(0, perCallLimit);
-  const remaining = Math.max(0, allKeys.length - todo.length);
+  const todo = allKeys.slice(offset, offset + perCallLimit);
+  const nextOffset = offset + todo.length < allKeys.length ? offset + todo.length : null;
+  const remaining = Math.max(0, allKeys.length - (offset + todo.length));
 
   const BATCH = 30;
   for (let i = 0; i < todo.length; i += BATCH) {
@@ -96,12 +131,23 @@ export default async (req) => {
   return new Response(JSON.stringify({
     mode: apply ? 'APPLY (records aangepast)' : 'DROOGLOOP (niets gewijzigd - voeg ?apply=1 toe)',
     total_records: allKeys.length,
+
+    // Bereik van ALLE records, uit de sleutelnamen (geen downloads).
+    range_oldest: iso(allOldest),
+    range_newest: iso(allNewest),
+
+    // Dit blok:
+    offset,
     scanned: todo.length,
     with_pii: cleaned,
     already_clean: clean_already,
     errors,
-    pii_oldest: iso(oldest),
-    pii_newest: iso(newest),
+    block_pii_oldest: iso(oldest),
+    block_pii_newest: iso(newest),
+
+    // Volgende stap: neem next_offset over in de volgende aanroep.
+    // null = klaar, alle sleutels zijn behandeld.
+    next_offset: nextOffset,
     remaining
   }, null, 2), {
     status: 200,
