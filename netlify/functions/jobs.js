@@ -129,6 +129,20 @@ function buildDisplayDescriptionFr(job = {}, isComplaint = false) {
 //   - ReportText ("Report"): bevat het e-mailadres van de melder en, bij het
 //     zelfbedieningsportaal, diens GPS-positie.
 //   - Text ("Instructions"): interne werkinstructies; werd nergens gebruikt.
+// Job.ExternalId wordt door meerdere systemen gevuld, met verschillende betekenis:
+//   - portaalmelding : "<tijdstempel>-<toeval>"  -> betekenisloos, veilig te tonen
+//   - Soundsensing   : "ss-alarm:<alarm-uuid>"   -> interne herkomst + alarm-id
+// Enkel het portaalformaat gaat naar buiten; al de rest wordt leeggemaakt. Zo
+// blijft het terugzoeken van een zopas aangemaakte melding werken zonder dat deze
+// publieke functie herkomst van andere systemen prijsgeeft - en blijft ze veilig
+// wanneer er later een nieuw ExternalId-formaat bijkomt.
+const PORTAL_EXTERNALID = /^\d{10,}-[a-z0-9]+$/;
+
+function safeExternalId(v) {
+  const s = String(v ?? '').trim();
+  return PORTAL_EXTERNALID.test(s) ? s : '';
+}
+
 function enrichJobs(jobsRaw = []) {
   return jobsRaw.map((job) => {
     const kwisId = getJobKwisId(job);
@@ -137,9 +151,7 @@ function enrichJobs(jobsRaw = []) {
     return {
       Id: job?.Id,
       Description: job?.Description,
-      // Enkel om na het aanmaken de zopas gemaakte job terug te vinden.
-      // Een willekeurige waarde zonder betekenis: geeft niets prijs.
-      ExternalId: job?.ExternalId ?? '',
+      ExternalId: safeExternalId(job?.ExternalId),
       Date: job?.Date,
       ProgressStatusId: job?.ProgressStatusId,
       Status: job?.Status,
