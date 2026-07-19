@@ -123,7 +123,7 @@ De knop **Handleiding** in Ultimo opent niet voor iedereen dezelfde pagina. De w
 
 Het onderscheid tussen medewerker en klant gebeurt op het veld **Context** van de employee: `1` is een Atalian-medewerker, `4` een klantcontactpersoon. Het departement wordt daarvoor **niet** gebruikt — ook medewerkers kunnen aan een departement hangen, dus dat zou een deel van het personeel ten onrechte uitsluiten.
 
-Krijgt iemand de verkeerde handleiding, zoek dan in de Ultimo-log naar de regel `_OpenWebPage [Manual]`. Die toont de gebruiker, de taal, de klantcode en de context, en daaruit is meteen af te leiden welke tak gekozen werd.
+Krijgt iemand de verkeerde handleiding, kijk dan op zijn employee-record naar het veld **Context** en het gekoppelde departement. Die twee bepalen samen welke tak gekozen wordt.
 
 Een nieuwe klantspecifieke handleiding toevoegen komt neer op één extra tak in die workflow, met de klantcode als voorwaarde.
 
