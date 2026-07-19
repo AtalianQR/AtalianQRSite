@@ -1,5 +1,5 @@
 ---
-layout: ../../../layouts/ManualLayout.astro
+layout: ../../../layouts/ManualLayoutIntern.astro
 title: Interne handleiding – Ultimo configuratie
 ---
 
@@ -7,7 +7,7 @@ title: Interne handleiding – Ultimo configuratie
 
 Deze handleiding is bedoeld voor **Atalian-medewerkers** die Ultimo beheren, niet voor klanten. Ze beschrijft hoe de instellingen achter het QR-klantenportaal werken: welke kenmerken je waar invult, wat er gebeurt als je ze leeg laat, en waarom bepaalde mails wel of niet vertrekken.
 
-De pagina is afgeschermd met een wachtwoord en wordt niet door zoekmachines opgenomen.
+De pagina staat op een webadres dat niet te raden valt en wordt niet door zoekmachines opgenomen. Ze is verder **niet met een wachtwoord beveiligd**: wie het adres heeft, kan meelezen. Open ze daarom via Ultimo en stuur het adres niet door buiten Atalian.
 
 > **Let op bij het lezen.** Onderdelen die gemarkeerd zijn met *nog niet actief* zijn ontworpen maar nog niet in productie. Ze staan hier zodat de handleiding meegroeit met de bouw, maar je kan er vandaag nog niets mee.
 
@@ -47,7 +47,7 @@ Elke job hangt altijd aan een complex, maar niet altijd aan een gebouw. Het comp
 
 Vandaag krijgt de klant zijn mail in de taal waarin **de Atalian-medewerker is ingelogd**. Iemand die in het Frans werkt, stuurt Franse mail naar een Nederlandstalige klant. Dat is willekeurig en niet uit te leggen aan de klant.
 
-### Wat je invult
+### De taal instellen
 
 Zet op het gebouw of het complex het kenmerk **DefaultLanguage**, in de kolom *Alfanumerieke waarde*.
 
@@ -57,7 +57,7 @@ Zet op het gebouw of het complex het kenmerk **DefaultLanguage**, in de kolom *A
 | `FR` | de klant krijgt enkel Franse tekst |
 | leeg | de klant krijgt beide talen onder elkaar |
 
-### Wat je moet weten
+### Waarop letten bij de taal
 
 De taal geldt **per gebouw**, niet per persoon. Alle ontvangers van dezelfde melding krijgen dus dezelfde taal. Dat is bewust: een mail vertrekt in één keer naar alle geadresseerden en kan maar één taal dragen.
 
@@ -71,7 +71,7 @@ Voor sites waar beide talen door elkaar lopen, is leeg laten de juiste keuze en 
 
 *Nog niet actief.*
 
-### Wat je invult
+### Het adres instellen
 
 Zet op het gebouw of het complex het kenmerk **DefaultMail**, in de kolom *Alfanumerieke waarde*: het adres van de persoon die meldingen over dat gebouw altijd moet zien, meestal de facility manager van de klant.
 

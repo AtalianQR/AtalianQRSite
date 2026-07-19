@@ -1,0 +1,116 @@
+---
+// Layout voor de interne handleiding.
+//
+// Bewust apart van ManualLayout.astro: die is op Covestro toegesneden - klantlogo,
+// klantspecifieke begrippenuitleg en een vaste inhoudsopgave. Die elementen horen
+// niet in een handleiding voor eigen personeel.
+//
+// De inhoudsopgave wordt hier uit de koppen van de pagina zelf opgebouwd, niet
+// handmatig onderhouden. Zo kan ze niet uit de pas lopen met de inhoud - precies
+// wat er in de Covestro-layout wel gebeurde toen die voor een andere pagina werd
+// hergebruikt.
+import '../../src/styles/globals.css';
+import '@fontsource-variable/inter/wght.css';
+import interWoff2 from '@fontsource-variable/inter/files/inter-latin-wght-normal.woff2?url';
+
+interface Heading {
+    depth: number;
+    slug: string;
+    text: string;
+}
+
+interface Props {
+    frontmatter?: { title?: string };
+    title?: string;
+    headings?: Heading[];
+}
+
+const { frontmatter, title: directTitle, headings = [] } = Astro.props;
+const title = frontmatter?.title || directTitle || 'Interne handleiding';
+
+// Enkel niveau 2 en 3: dieper wordt de zijbalk onleesbaar.
+const nav = headings.filter((h) => h.depth === 2 || h.depth === 3);
+---
+
+<!doctype html>
+<html lang="nl">
+    <head>
+        <meta charset="UTF-8" />
+        <title>{title}</title>
+        <meta name="viewport" content="width=device-width" />
+        <meta name="robots" content="noindex, nofollow, noarchive" />
+        <link rel="icon" type="image/png" href="/AtalianFavicon.png" />
+        <link rel="preload" as="font" type="font/woff2" href={interWoff2} crossorigin />
+        <link href="/pagefind/pagefind-ui.css" rel="stylesheet" />
+        <script src="/pagefind/pagefind-ui.js" is:inline></script>
+        <style>
+            #search {
+                --pagefind-ui-text: rgba(255,255,255,0.85);
+                --pagefind-ui-background: rgba(255,255,255,0.08);
+                --pagefind-ui-border: rgba(255,255,255,0.2);
+                --pagefind-ui-tag: rgba(255,255,255,0.15);
+                --pagefind-ui-primary: rgba(255,255,255,0.9);
+            }
+        </style>
+    </head>
+    <body class="antialiased text-white bg-complementary">
+        <div class="flex flex-col min-h-screen bg-noise">
+
+            <header class="sticky top-0 z-20 bg-complementary/95 backdrop-blur border-b border-white/10 px-6 py-4">
+                <div class="flex items-center justify-between max-w-screen-2xl mx-auto gap-8">
+                    <div class="grow">
+                        <p class="font-bold text-2xl leading-tight">{title}</p>
+                        <p class="text-sm text-white/70 mt-1">
+                            Enkel voor Atalian-medewerkers &nbsp;·&nbsp; niet delen met klanten
+                        </p>
+                    </div>
+                    <div class="flex items-center gap-6 shrink-0">
+                        <a href="https://ultimo.com" target="_blank" rel="noopener">
+                            <img src="/images/ultimologo.png" alt="Ultimo" class="h-10" />
+                        </a>
+                    </div>
+                </div>
+            </header>
+
+            <div class="flex flex-col w-full max-w-screen-2xl mx-auto grow px-4">
+                <div class="flex gap-8 grow pt-8">
+
+                    <aside class="hidden lg:block w-56 shrink-0">
+                        <nav class="sticky top-28 text-sm space-y-1">
+                            <a href="https://atalian.be" target="_blank" rel="noopener">
+                                <img src="/AtalianLogo.png" alt="Atalian" class="w-36 mb-6" />
+                            </a>
+                            <div id="search" class="mb-4"></div>
+                            <p class="font-semibold mb-3 text-white uppercase tracking-wide text-xs">Inhoud</p>
+                            {nav.map((h) => (
+                                <a
+                                    href={`#${h.slug}`}
+                                    class={
+                                        h.depth === 2
+                                            ? 'block py-1 text-white no-underline hover:opacity-70'
+                                            : 'block py-1 pl-3 text-white/80 no-underline hover:text-white'
+                                    }
+                                >
+                                    {h.text}
+                                </a>
+                            ))}
+                        </nav>
+                    </aside>
+
+                    <main class="grow manual-content min-w-0">
+                        <slot />
+                    </main>
+
+                </div>
+                <footer class="py-8 mt-12 text-sm text-white/40">
+                    &copy; Atalian – interne handleiding
+                </footer>
+            </div>
+        </div>
+        <script is:inline>
+            window.addEventListener('DOMContentLoaded', () => {
+                new PagefindUI({ element: '#search', showSubResults: true, translations: { placeholder: 'Zoeken...' } });
+            });
+        </script>
+    </body>
+</html>
