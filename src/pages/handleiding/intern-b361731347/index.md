@@ -110,6 +110,25 @@ Loop deze punten na in deze volgorde.
 
 ---
 
+## Welke handleiding krijgt wie
+
+De knop **Handleiding** in Ultimo opent niet voor iedereen dezelfde pagina. De workflow `_OpenWebPage` kijkt naar de aangemelde gebruiker en beslist:
+
+| Wie | Krijgt |
+|---|---|
+| Atalian-medewerker | deze interne handleiding |
+| contactpersoon van Covestro | de Covestro-handleiding |
+| andere contactpersoon, Franstalig | de algemene handleiding in het Frans |
+| andere contactpersoon | de algemene handleiding in het Nederlands |
+
+Het onderscheid tussen medewerker en klant gebeurt op het veld **Context** van de employee: `1` is een Atalian-medewerker, `4` een klantcontactpersoon. Het departement wordt daarvoor **niet** gebruikt — ook medewerkers kunnen aan een departement hangen, dus dat zou een deel van het personeel ten onrechte uitsluiten.
+
+Krijgt iemand de verkeerde handleiding, zoek dan in de Ultimo-log naar de regel `_OpenWebPage [Manual]`. Die toont de gebruiker, de taal, de klantcode en de context, en daaruit is meteen af te leiden welke tak gekozen werd.
+
+Een nieuwe klantspecifieke handleiding toevoegen komt neer op één extra tak in die workflow, met de klantcode als voorwaarde.
+
+---
+
 ## Nog te documenteren
 
 Deze onderdelen horen in deze handleiding thuis maar zijn nog niet uitgewerkt:
