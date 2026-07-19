@@ -101,7 +101,11 @@ function normalizePortalLog(reportTextIn = '', emailFromPayload = '') {
 	  const raw = String(reportTextIn ?? '').replace(/\r/g, '\n');
 
 	  // zoek velden (tolerant: pipes of nieuwe lijnen)
-	  const kanaal = (raw.match(/Kanaal\s*:\s*([^|\n]+)/i)?.[1] || 'PortalSelf').trim();
+	  // Standaard 'Portal': het QR-portaal geeft (nog) geen kanaal mee. Vroeger
+	  // stond hier 'PortalSelf', waardoor ELKE melding - ook die van het gewone
+	  // QR-portaal - als zelfbediening gelabeld werd. Kanaal was daardoor
+	  // onbruikbaar om meldingen op herkomst te sorteren.
+	  const kanaal = (raw.match(/Kanaal\s*:\s*([^|\n]+)/i)?.[1] || 'Portal').trim();
 
 	  const email =
 		(raw.match(/Email\s*:\s*([^|\n]+)/i)?.[1] || emailFromPayload || '').trim();
@@ -120,7 +124,12 @@ function normalizePortalLog(reportTextIn = '', emailFromPayload = '') {
 		return Number.isFinite(n) ? n.toFixed(5) : null;
 	  };
 
-	  let gpsPart = 'GPS: unavailable';
+	  // GPS-deel BEWUST weglaten wanneer er geen positie in het bericht zat. Het
+	  // QR-portaal vraagt geen locatie, dus 'GPS: unavailable' op zo'n ticket
+	  // suggereert ten onrechte dat een meting mislukt is. Enkel het
+	  // zelfbedieningsportaal levert GPS aan; daar is een positie zelfs verplicht.
+	  let gpsPart = null;
+
 	  if (gpsLat && gpsLon) {
 		const lat = round5(gpsLat);
 		const lon = round5(gpsLon);
@@ -132,12 +141,13 @@ function normalizePortalLog(reportTextIn = '', emailFromPayload = '') {
 			+ (gpsFix ? `; fix=${gpsFix}` : '');
 		}
 	  } else if (/GPS\s*:\s*unavailable/i.test(raw)) {
+		// Wel om een positie gevraagd, maar niet gekregen: dat is wél het melden waard.
 		gpsPart = 'GPS: unavailable';
 	  }
 
 	  const parts = [`Kanaal: ${kanaal}`];
-	  if (email) parts.push(`Email: ${email}`);
-	  parts.push(gpsPart);
+	  if (email)   parts.push(`Email: ${email}`);
+	  if (gpsPart) parts.push(gpsPart);
 
 	  return parts.join(' | ');
 	}

@@ -1377,7 +1377,10 @@ async function preloadContextAndShow() {
       serviceWorkOrderId = selectedOtherServiceWO.Id;
     }
 
-    const reportBody = '';
+    // Kanaal expliciet meegeven: hierop is achteraf te zien dat de melding via het
+    // QR-portaal binnenkwam en niet via het zelfbedieningsportaal. Geen GPS -
+    // dit portaal vraagt geen locatie.
+    const reportBody = 'Kanaal: Portal';
 	const KwisId = isComplaint ? '002' : '005';
 
 	const payload = {
