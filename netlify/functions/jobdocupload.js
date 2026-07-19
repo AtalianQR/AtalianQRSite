@@ -97,8 +97,18 @@ export async function handler(event) {
     const email = String(body.email || "").trim(); // optioneel
     const env = String(body.env || "").trim();     // optioneel (frontend kan ?test=1 gebruiken)
 
+    // Eigenaarschapsbewijs. Deze functie is niet-geauthenticeerd bereikbaar en
+    // jobId is een oplopend, dus raadbaar nummer. Zonder bewijs kon iedereen een
+    // bijlage aan een willekeurige werkbon hangen. externalId is de sleutel die
+    // melding.js bij het aanmaken teruggaf: enkel de indiener van die melding
+    // kent ze. Ultimo weigert de actie wanneer ze niet op de job staat.
+    const externalId = String(body.externalId || body.ExternalId || "").trim();
+
     if (!jobId || !/^\d+$/.test(jobId)) {
       return respond(400, { error: "Ongeldig of ontbrekend 'jobId'." });
+    }
+    if (!externalId) {
+      return respond(400, { error: "Ontbrekende 'externalId' (vereist als eigenaarschapsbewijs)." });
     }
     if (!fileName) {
       return respond(400, { error: "Ontbrekende 'fileName'." });
@@ -117,6 +127,7 @@ export async function handler(event) {
     const ultimoPayload = {
       Action: "ADD_JOB_DOC",
       JobId: jobId,
+      AddDoc_ExternalId: externalId,
       AddDoc_FileName: fileName,
       AddDoc_Base64: base64,
       AddDoc_Description: description || fileName,

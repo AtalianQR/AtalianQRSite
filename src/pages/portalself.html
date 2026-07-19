@@ -828,7 +828,9 @@ const sourceUrl = safeSameOriginUrl(srcRaw);
     }
   }
 
-  async function uploadCustomerDoc({ jobId, email, file, description }) {
+  // externalId is verplicht: het bewijst dat wij deze job zelf zopas aanmaakten.
+  // Ultimo weigert de bijlage wanneer de waarde niet op de job staat.
+  async function uploadCustomerDoc({ jobId, externalId, email, file, description }) {
     const endpoint = '/.netlify/functions/jobdocupload' + (isTestEnv ? '?test=1' : '');
 
     const safeFile  = await compressImageIfNeeded(file);
@@ -845,6 +847,7 @@ const sourceUrl = safeSameOriginUrl(srcRaw);
     const payload = {
       action: 'ADD_JOB_DOC',
       jobId: String(jobId),
+      externalId: String(externalId || ''),
       fileName,
       description: (description || fileName).substring(0, 200),
       base64
@@ -1435,6 +1438,9 @@ const sourceUrl = safeSameOriginUrl(srcRaw);
     };
 
     let jobId = null;
+    // Sleutel die melding.js bij het aanmaken teruggeeft. Nodig als
+    // eigenaarschapsbewijs bij het toevoegen van bijlagen.
+    let createdExternalId = '';
 
     try {
       Telemetry.send('submit_attempt', {
@@ -1470,6 +1476,8 @@ const sourceUrl = safeSameOriginUrl(srcRaw);
       }
 
       if (!r.ok) throw new Error(resp?.error || `HTTP ${r.status}`);
+
+      createdExternalId = String(resp?.externalId || '').trim();
 
       jobId =
         resp?.JobId || resp?.jobId ||
@@ -1546,6 +1554,7 @@ const sourceUrl = safeSameOriginUrl(srcRaw);
 
             await uploadCustomerDoc({
               jobId,
+              externalId: createdExternalId,
               email,
               file: it.file,
               description: docDescr
