@@ -1,0 +1,13 @@
+# Handleidingen blijven uit zoekmachines.
+#
+# Ze zijn niet met een wachtwoord afgeschermd: de toegang loopt via Ultimo, dat
+# op basis van de aangemelde employee de juiste handleiding opent. Wie de URL
+# niet uit Ultimo krijgt, kent hem niet - de interne handleiding staat daarom op
+# een adres dat niet te raden valt.
+#
+# Die opzet werkt alleen zolang de pagina's niet vindbaar zijn langs een andere
+# weg. Vandaar noindex: zonder deze regel zou een gedeelde of gelekte link
+# volstaan om de handleiding in Google te laten belanden, en is het onraadbare
+# adres meteen waardeloos.
+/handleiding/*
+  X-Robots-Tag: noindex, nofollow, noarchive
