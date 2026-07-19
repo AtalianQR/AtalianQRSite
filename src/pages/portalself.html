@@ -1495,10 +1495,16 @@ const sourceUrl = safeSameOriginUrl(srcRaw);
           const jobs = Array.isArray(jdata?.Jobs) ? jdata.Jobs : [];
           const normalizedDesc = String(meldingTekst || '').trim();
 
+          // Terugzoeken op ExternalId (unieke sleutel van melding.js) i.p.v. op het
+          // e-mailadres in de ReportText: die tekst wordt bewust niet meer
+          // teruggegeven omdat /jobs publiek bereikbaar is en ze persoonsgegevens
+          // bevat. De omschrijving blijft als tweede kans staan.
+          const sentExternalId = String(resp?.externalId || '').trim();
+
           const cand = jobs
             .filter(j =>
-              String(j.Description || '').trim() === normalizedDesc ||
-              String(j.Report || '').includes(email)
+              (sentExternalId && String(j.ExternalId || '').trim() === sentExternalId) ||
+              String(j.Description || '').trim() === normalizedDesc
             )
             .sort((a, b) => (b.Date || '').localeCompare(a.Date || ''));
 

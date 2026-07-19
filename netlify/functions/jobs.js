@@ -119,13 +119,30 @@ function buildDisplayDescriptionFr(job = {}, isComplaint = false) {
   return firstNonEmpty(job?.Description, job?.JobDescr, 'Signalement en cours');
 }
 
+// Deze functie is niet-geauthenticeerd bereikbaar: wie een geldige QR-code kan
+// samenstellen, kan de openstaande meldingen van elk object opvragen. Daarom
+// wordt hier BEWUST een expliciete whitelist gebruikt in plaats van het volledige
+// job-object door te geven. Voeg hier niets aan toe zonder je af te vragen of een
+// willekeurige buitenstaander het mag zien.
+//
+// Uitdrukkelijk NIET doorgeven:
+//   - ReportText ("Report"): bevat het e-mailadres van de melder en, bij het
+//     zelfbedieningsportaal, diens GPS-positie.
+//   - Text ("Instructions"): interne werkinstructies; werd nergens gebruikt.
 function enrichJobs(jobsRaw = []) {
   return jobsRaw.map((job) => {
     const kwisId = getJobKwisId(job);
     const isComplaint = kwisId === '002';
 
     return {
-      ...job,
+      Id: job?.Id,
+      Description: job?.Description,
+      // Enkel om na het aanmaken de zopas gemaakte job terug te vinden.
+      // Een willekeurige waarde zonder betekenis: geeft niets prijs.
+      ExternalId: job?.ExternalId ?? '',
+      Date: job?.Date,
+      ProgressStatusId: job?.ProgressStatusId,
+      Status: job?.Status,
       KwisId: kwisId,
       IsComplaint: isComplaint,
       DisplayDescription: buildDisplayDescription(job, isComplaint),

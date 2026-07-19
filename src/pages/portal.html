@@ -1459,10 +1459,18 @@ async function preloadContextAndShow() {
           const jobs = Array.isArray(jdata?.Jobs) ? jdata.Jobs : [];
           const normalizedDesc = String(meldingTekst || '').trim();
 
+          // Terugzoeken op ExternalId: dat is de unieke sleutel die melding.js
+          // bij het aanmaken meegaf, dus een exacte treffer. Vroeger werd hier
+          // op het e-mailadres in de ReportText gematcht, maar die tekst wordt
+          // bewust niet meer teruggegeven (ze bevat persoonsgegevens en deze
+          // functie is publiek bereikbaar). De omschrijving blijft als tweede
+          // kans staan voor het geval ExternalId ontbreekt.
+          const sentExternalId = String(resp?.externalId || '').trim();
+
           const cand = jobs
             .filter(j =>
-              String(j.Description || '').trim() === normalizedDesc ||
-              String(j.Report || '').includes(email)
+              (sentExternalId && String(j.ExternalId || '').trim() === sentExternalId) ||
+              String(j.Description || '').trim() === normalizedDesc
             )
             .sort((a, b) => (b.Date || '').localeCompare(a.Date || ''));
 
