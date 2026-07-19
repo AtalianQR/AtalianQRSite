@@ -7,7 +7,7 @@ title: Interne handleiding – Ultimo configuratie
 
 Deze handleiding is bedoeld voor **Atalian-medewerkers** die Ultimo beheren, niet voor klanten. Ze beschrijft hoe de instellingen achter het QR-klantenportaal werken: welke kenmerken je waar invult, wat er gebeurt als je ze leeg laat, en waarom bepaalde mails wel of niet vertrekken.
 
-De pagina staat op een webadres dat niet te raden valt en wordt niet door zoekmachines opgenomen. Ze is verder **niet met een wachtwoord beveiligd**: wie het adres heeft, kan meelezen. Open ze daarom via Ultimo en stuur het adres niet door buiten Atalian.
+Open deze pagina altijd **vanuit Ultimo**. De link bevat een sleutel; zonder die sleutel krijg je de pagina niet te zien. Stuur de volledige link daarom niet door — wie hem heeft, kan meelezen, ook buiten Atalian. Zoekmachines nemen de pagina niet op.
 
 > **Let op bij het lezen.** Onderdelen die gemarkeerd zijn met *nog niet actief* zijn ontworpen maar nog niet in productie. Ze staan hier zodat de handleiding meegroeit met de bouw, maar je kan er vandaag nog niets mee.
 
