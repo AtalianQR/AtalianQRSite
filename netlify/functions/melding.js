@@ -190,6 +190,9 @@ export async function handler(event) {
 	const KwisId      = s(data.KwisId);
 	const PriorityId  = s(data.PriorityId);
 	const ReportTextIn = typeof data.ReportText === 'string' ? data.ReportText : '';
+	// Boolean, bewust niet via s(): we willen een echte true/false, en undefined
+	// wanneer de site niets meestuurt (portalself, of een oudere gecachte portal).
+	const NotifyCaller = typeof data.NotifyCaller === 'boolean' ? data.NotifyCaller : undefined;
 
   if (!id || !type || !JobDescr) {
     return json(400, { error: 'Vereist: id, type, JobDescr.' });
@@ -223,6 +226,7 @@ export async function handler(event) {
 	if (ServiceWOId) wfPayload.ServiceWOId = ServiceWOId;
 	if (KwisId) wfPayload.KwisId = KwisId;
 	if (PriorityId) wfPayload.PriorityId = PriorityId;
+	if (typeof NotifyCaller === 'boolean') wfPayload.NotifyCaller = NotifyCaller;
 
   if (type === 'sp') wfPayload.SpaceId = `QR:${id}`;
   if (type === 'eq') wfPayload.EquipmentId = id;

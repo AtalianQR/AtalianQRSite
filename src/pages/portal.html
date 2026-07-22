@@ -1340,6 +1340,80 @@ async function preloadContextAndShow() {
     return askEmail(false, isCleaning);
   }
 
+  // Onthoudt adres + opt-in-keuze van de melder, 90 dagen, in localStorage.
+  // Bewust persistent (anders dan de sessionStorage die portalself gebruikt),
+  // zodat een terugkerende melder niet telkens opnieuw hoeft te tikken.
+  const MELDER_TTL_MS = 90 * 24 * 60 * 60 * 1000;
+  function readMelderCookie(){
+    try {
+      const email = localStorage.getItem('qr_melder_email');
+      const ts = Number(localStorage.getItem('qr_melder_ts') || 0);
+      if (!email || !ts || (Date.now() - ts) > MELDER_TTL_MS) return null;
+      const notify = localStorage.getItem('qr_melder_notify') === 'true';
+      return { email, notify };
+    } catch { return null; }
+  }
+  function writeMelderCookie(email, notify){
+    try {
+      localStorage.setItem('qr_melder_email', email);
+      localStorage.setItem('qr_melder_notify', notify ? 'true' : 'false');
+      localStorage.setItem('qr_melder_ts', String(Date.now()));
+    } catch {}
+  }
+
+  // Vraagt — met het privacybeleid vooraf — het e-mailadres en of de melder
+  // bericht wil. Eigen herhaallus bij een ongeldig adres, zodat de aanroeper
+  // (askEmail) niet opnieuw hoeft te starten. Geeft { email, notifyCaller } terug.
+  async function promptEmailAndOptin(){
+    const privacyUrl = tr(
+      'https://atalian.be/beleid-inzake-de-bescherming-van-persoonsgegevens/',
+      'https://atalian.be/politique-de-protection-des-donnees-personnelles/?lang=fr',
+      'https://atalian.com/policy-for-the-protection-of-personal-data/?lang=en'
+    );
+
+    await botui.message.add({
+      type: 'html',
+      content: tr(
+        `We hebben je e-mailadres nodig om je op de hoogte te houden van je melding. Zo gaan we met je gegevens om: <a href="${privacyUrl}" target="_blank" rel="noopener">privacybeleid</a>.`,
+        `Nous avons besoin de votre adresse e-mail pour vous tenir informé de votre signalement. Voici comment nous traitons vos données : <a href="${privacyUrl}" target="_blank" rel="noopener">politique de confidentialité</a>.`,
+        `We need your email address to keep you informed about your report. Here's how we handle your data: <a href="${privacyUrl}" target="_blank" rel="noopener">privacy policy</a>.`
+      )
+    });
+
+    let email = '';
+    for (;;) {
+      await botui.message.add({
+        content: tr('Wat is je e-mailadres?', 'Quelle est votre adresse e-mail ?', 'What is your email address?')
+      });
+      const res = await botui.action.text({ action: { placeholder: 'jouw@email.com' } });
+      email = (res.value || '').trim();
+      if (isValidEmail(email)) break;
+      await botui.message.add({
+        content: tr('Ongeldig e-mailadres.', 'Adresse e-mail invalide.', 'Invalid email address.')
+      });
+      Telemetry.send('email_invalid');
+    }
+    Telemetry.send('email_entered');
+
+    await botui.message.add({
+      content: tr(
+        'Wil je bericht krijgen over deze melding?',
+        'Souhaitez-vous être informé du suivi de ce signalement ?',
+        'Would you like to receive updates about this report?'
+      )
+    });
+    const notifyRes = await botui.action.button({
+      action: [
+        { text: tr('Ja', 'Oui', 'Yes'), value: 'yes' },
+        { text: tr('Nee', 'Non', 'No'), value: 'no' }
+      ]
+    });
+    const notifyCaller = notifyRes.value === 'yes';
+    Telemetry.send('optin_choice', { notifyCaller });
+
+    return { email, notifyCaller };
+  }
+
   async function askEmail(isUrgent, isCleaning){
   
   
@@ -1348,21 +1422,33 @@ async function preloadContextAndShow() {
     const stepIndex = isCleaning ? 5 : 4;
     Telemetry.send('step', { step:'ask_email', stepIndex, isCleaning });
 
-    await botui.message.add({
-      content: tr('Wat is je e-mailadres?', 'Quelle est votre adresse e-mail ?', 'What is your email address?')
-    });
-    const res = await botui.action.text({
-      action: { placeholder: 'jouw@email.com' }
-    });
-    const email = (res.value || '').trim();
-    if (!isValidEmail(email)) {
+    let email, notifyCaller;
+    const remembered = readMelderCookie();
+    if (remembered) {
       await botui.message.add({
-        content: tr('Ongeldig e-mailadres.', 'Adresse e-mail invalide.', 'Invalid email address.')
+        content: tr(
+          `Welkom terug. Melden als ${esc(remembered.email)}?`,
+          `Bon retour. Signaler avec l'adresse ${esc(remembered.email)} ?`,
+          `Welcome back. Report as ${esc(remembered.email)}?`
+        )
       });
-      Telemetry.send('email_invalid');
-      return askEmail(isUrgent, isCleaning);
+      const backRes = await botui.action.button({
+        action: [
+          { text: tr('Ja, dat ben ik', "Oui, c'est moi", "Yes, that's me"), value: 'same' },
+          { text: tr('Ander adres', 'Autre adresse', 'Different address'), value: 'other' }
+        ]
+      });
+      if (backRes.value === 'same') {
+        email = remembered.email;
+        notifyCaller = remembered.notify;
+        Telemetry.send('melder_cookie_reused', { notifyCaller });
+      } else {
+        ({ email, notifyCaller } = await promptEmailAndOptin());
+      }
+    } else {
+      ({ email, notifyCaller } = await promptEmailAndOptin());
     }
-    Telemetry.send('email_entered');
+    writeMelderCookie(email, notifyCaller);
 
     const meldingTekst = omschrijving;
 
@@ -1392,6 +1478,7 @@ async function preloadContextAndShow() {
 	  JobDescr: meldingTekst,
 	  ReportText: reportBody,
 	  Email: email,
+	  NotifyCaller: notifyCaller,
 	  lang,
 	  env: prefix,
 	  Activity: activityCode,

@@ -67,30 +67,58 @@ Voor sites waar beide talen door elkaar lopen, is leeg laten de juiste keuze en 
 
 ---
 
-## Vast e-mailadres per gebouw
+## Wie bericht krijgt bij een nieuwe melding
 
 *Nog niet actief.*
 
-### Het adres instellen
+> **Elk complex heeft minstens een aangevinkte contactpersoon nodig.** Is er niemand aangevinkt, dan kan het gebeuren dat er over een melding **helemaal geen bericht** naar de klant vertrekt — zonder foutmelding, zonder dat iemand het merkt. Zie *Waarom dit belangrijk is* hieronder.
 
-Zet op het gebouw of het complex het kenmerk **DefaultMail**, in de kolom *Alfanumerieke waarde*: het adres van de persoon die meldingen over dat gebouw altijd moet zien, meestal de facility manager van de klant.
+### Iemand aanvinken
+
+Contactpersonen worden aan een gebouw of complex gekoppeld. Op die koppeling staat een vinkje: **krijgt bericht bij een nieuwe melding**.
+
+Vink het aan bij iedereen die op de hoogte moet zijn van nieuwe tickets voor dat gebouw. Meestal is dat de facility manager bij de klant, soms ook zijn plaatsvervanger of een tweede verantwoordelijke.
+
+Je hoeft geen e-mailadres in te vullen: dat haalt het systeem uit de fiche van die persoon. Wijzigt het adres later, dan pas je het één keer aan op de fiche en volgen alle gebouwen mee.
+
+Staat iemand er niet bij in de lijst, dan is hij nog niet aan dit gebouw gekoppeld. Leg die koppeling eerst.
+
+### Meerdere mensen aanvinken mag
+
+Anders dan bij een enkel veld kun je hier **zoveel personen aanvinken als nodig**. Iedereen die aangevinkt staat, krijgt bericht.
+
+Staat dezelfde persoon zowel op het gebouw als op het complex aangevinkt, dan krijgt hij toch maar één mail — het systeem ontdubbelt.
 
 ### Wat er gebeurt
 
-Dit adres wordt bij elke melding toegevoegd aan de ontvangers.
+De adressen van alle aangevinkte contactpersonen worden bij elke melding de ontvangers.
 
 | Situatie | Resultaat |
 |---|---|
-| de melder gaf geen adres op | het vaste adres is de enige ontvanger |
-| de melder gaf wel een adres op | beide adressen ontvangen de mail |
-| het vaste adres is ook dat van de melder | één mail, geen dubbele |
-| er is geen kenmerk ingevuld | enkel wat de melder opgaf |
+| de melder gaf geen adres op | alleen de aangevinkte contactpersonen |
+| de melder gaf een adres op en wil bericht | de aangevinkte contactpersonen plus de melder |
+| de melder wil géén bericht | alleen de aangevinkte contactpersonen |
+| de melder staat zelf aangevinkt | zijn adres een keer, niet dubbel |
+| **er is niemand aangevinkt** | **mogelijk vertrekt er geen enkele mail** |
+| een aangevinkte persoon heeft geen e-mailadres | die wordt overgeslagen — vul zijn fiche aan |
 
-Eén invulling dekt dus twee behoeften: ze vangt op wanneer niemand een adres achterliet, én ze zorgt dat de gebouwbeheerder meeleest wanneer er wél een adres is.
+### Waarom dit belangrijk is
 
-### Meerdere adressen
+De vijfde regel in de tabel is de reden om dit overal in orde te brengen. Wie via een QR-code meldt, is niet verplicht een e-mailadres achter te laten, en mag ook aangeven geen bericht te willen. Gebeurt dat en staat er niemand aangevinkt, dan is er **niemand** om de klantmail naartoe te sturen. De melding komt wel binnen en wordt gewoon behandeld — maar aan klantzijde blijft het stil, en niemand volgt op.
 
-Je kan in het veld `_ContactMail` van een melding zelf meerdere adressen zetten, gescheiden door een komma of een puntkomma. Ultimo controleert bij het opslaan of elk adres een `@` bevat en blokkeert de melding met een waarschuwing als dat niet klopt.
+Er verschijnt geen waarschuwing wanneer dat gebeurt. Het valt alleen op wanneer een klant belt met de vraag waarom hij nooit iets hoort.
+
+### Op gebouw of op complex
+
+Beide kan. Geldt iemand voor een hele site, vink hem dan aan op het complex. Heeft een afzonderlijk gebouw een eigen beheerder, vink die dan aan op dat gebouw.
+
+De twee sluiten elkaar niet uit: bij een melding krijgen **zowel** de mensen van het gebouw **als** die van het complex bericht. Iemand die op complexniveau staat, wordt dus niet overgeslagen omdat er toevallig ook iemand op gebouwniveau aangevinkt is.
+
+### Een adres per melding toevoegen
+
+In een melding zelf kun je het veld `_ContactMail` aanvullen met extra adressen, of er een weghalen. Wat je daar wijzigt, blijft zo — het systeem zet niets terug.
+
+Ultimo controleert bij het opslaan wel of elk adres een `@` bevat, en blokkeert met een waarschuwing als dat niet klopt.
 
 ---
 
@@ -98,7 +126,7 @@ Je kan in het veld `_ContactMail` van een melding zelf meerdere adressen zetten,
 
 Loop deze punten na in deze volgorde.
 
-**Staat er een adres in `_ContactMail`?** Is dat veld leeg en is er geen `DefaultMail` op het gebouw of complex, dan vertrekt er geen klantmail. Dit is veruit de meest voorkomende oorzaak.
+**Staat er een adres in `_ContactMail`?** Is dat veld leeg, dan vertrekt er geen klantmail. Kijk dan of er wel iemand aangevinkt staat om bericht te krijgen op dat gebouw of complex. Dit is veruit de meest voorkomende oorzaak.
 
 **Is de melding via de juiste statusovergang gegaan?** Sommige notificaties hangen aan één specifieke progressstatus. Wordt een job langs een andere weg afgewerkt, dan wordt die stap overgeslagen en vertrekt de mail niet — zonder foutmelding.
 
