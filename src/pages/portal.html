@@ -1349,23 +1349,28 @@ async function preloadContextAndShow() {
   // Onthoudt enkel het adres van de melder, 90 dagen, in localStorage.
   // Bewust persistent (anders dan de sessionStorage die portalself gebruikt),
   // zodat een terugkerende melder niet telkens opnieuw hoeft te tikken.
-  // De opvolg-keuze (notify) wordt NIET bewaard: die vragen we bij elke melding
-  // opnieuw, want per melding kan de melder anders kiezen.
+  // De opvolg-keuze (notify) wordt mee bewaard, zodat een terugkerende melder
+  // ziet hoe het nu staat en met één klik ("Zo laten") kan hergebruiken.
   const MELDER_TTL_MS = 90 * 24 * 60 * 60 * 1000;
   function readMelderCookie(){
     try {
       const email = localStorage.getItem('qr_melder_email');
       const ts = Number(localStorage.getItem('qr_melder_ts') || 0);
       if (!email || !ts || (Date.now() - ts) > MELDER_TTL_MS) return null;
-      return { email };
+      // Opvolg-keuze: ontbreekt hij (oud cookie van vóór deze wijziging),
+      // dan default opvolging aan. Corrigeert zichzelf zodra de melder kiest.
+      const notifyRaw = localStorage.getItem('qr_melder_notify');
+      const notify = notifyRaw === null ? true : notifyRaw === '1';
+      return { email, notify };
     } catch { return null; }
   }
-  function writeMelderCookie(email){
+  function writeMelderCookie(email, notify){
     try {
       localStorage.setItem('qr_melder_email', email);
       localStorage.setItem('qr_melder_ts', String(Date.now()));
-      // Opruimen van een eventueel eerder bewaarde opvolg-keuze.
-      localStorage.removeItem('qr_melder_notify');
+      // Opvolg-keuze mee bewaren, zodat we bij terugkomst kunnen tonen
+      // hoe het nu staat en "Zo laten" die stand kan hergebruiken.
+      localStorage.setItem('qr_melder_notify', notify ? '1' : '0');
     } catch {}
   }
 
@@ -1440,31 +1445,47 @@ async function preloadContextAndShow() {
     let email, notifyCaller;
     const remembered = readMelderCookie();
     if (remembered) {
+      const notifyLine = remembered.notify
+        ? tr('Je krijgt bericht over je melding.',
+             'Vous serez informé du suivi.',
+             "You'll receive updates about your report.")
+        : tr('Je krijgt geen bericht over je melding.',
+             'Vous ne serez pas informé du suivi.',
+             "You won't receive updates about your report.");
       await botui.message.add({
         content: tr(
-          `Welkom terug. Melden als ${esc(remembered.email)}?`,
-          `Bon retour. Signaler avec l'adresse ${esc(remembered.email)} ?`,
-          `Welcome back. Report as ${esc(remembered.email)}?`
+          `Welkom terug. Melden als ${esc(remembered.email)}? ${notifyLine}`,
+          `Bon retour. Signaler avec l'adresse ${esc(remembered.email)} ? ${notifyLine}`,
+          `Welcome back. Report as ${esc(remembered.email)}? ${notifyLine}`
         )
       });
+      // Derde knop toont de omgekeerde opvolg-stand (1 klik om te wisselen).
+      const toggleBtn = remembered.notify
+        ? { text: tr('Geen bericht', 'Sans suivi', 'No updates'), value: 'toggle' }
+        : { text: tr('Wel bericht', 'Avec suivi', 'Get updates'), value: 'toggle' };
       const backRes = await botui.action.button({
         action: [
-          { text: tr('Ja, dat ben ik', "Oui, c'est moi", "Yes, that's me"), value: 'same' },
-          { text: tr('Ander adres', 'Autre adresse', 'Different address'), value: 'other' }
+          { text: tr('Zo laten', 'Laisser ainsi', 'Keep as is'), value: 'same' },
+          { text: tr('Ander adres', 'Autre adresse', 'Different address'), value: 'other' },
+          toggleBtn
         ]
       });
       if (backRes.value === 'same') {
         email = remembered.email;
+        notifyCaller = remembered.notify;
         Telemetry.send('melder_cookie_reused');
-        // Adres hergebruikt, maar de opvolg-keuze vragen we altijd opnieuw.
-        notifyCaller = await promptOptin();
+      } else if (backRes.value === 'toggle') {
+        // Adres behouden, opvolging omdraaien, meteen door (geen bevestiging).
+        email = remembered.email;
+        notifyCaller = !remembered.notify;
+        Telemetry.send('melder_notify_toggled', { notifyCaller });
       } else {
         ({ email, notifyCaller } = await promptEmailAndOptin());
       }
     } else {
       ({ email, notifyCaller } = await promptEmailAndOptin());
     }
-    writeMelderCookie(email);
+    writeMelderCookie(email, notifyCaller);
 
     const meldingTekst = omschrijving;
 
