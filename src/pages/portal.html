@@ -1446,13 +1446,14 @@ async function preloadContextAndShow() {
     const remembered = readMelderCookie();
     if (remembered) {
       const notifyLine = remembered.notify
-        ? tr('Je krijgt bericht over je melding.',
-             'Vous serez informé du suivi.',
-             "You'll receive updates about your report.")
-        : tr('Je krijgt geen bericht over je melding.',
-             'Vous ne serez pas informé du suivi.',
-             "You won't receive updates about your report.");
+        ? tr('Je krijgt <strong>bericht</strong> over je melding.',
+             'Vous serez <strong>informé du suivi</strong>.',
+             "You'll <strong>receive updates</strong> about your report.")
+        : tr('Je krijgt <strong>geen bericht</strong> over je melding.',
+             'Vous <strong>ne serez pas informé</strong> du suivi.',
+             "You <strong>won't receive updates</strong> about your report.");
       await botui.message.add({
+        type: 'html',
         content: tr(
           `Welkom terug. Melden als ${esc(remembered.email)}? ${notifyLine}`,
           `Bon retour. Signaler avec l'adresse ${esc(remembered.email)} ? ${notifyLine}`,
