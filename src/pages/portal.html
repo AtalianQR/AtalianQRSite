@@ -1277,6 +1277,12 @@ async function preloadContextAndShow() {
   async function askPriority(isCleaning) {
     if (isComplaint) return askEmail(false, isCleaning);
 
+    // Installatie/equipment: de SLA/prioriteit is inherent aan de installatie
+    // (bepaald door de WorkOrder op het equipment) -> geen prioriteitsvoorstel tonen.
+    if (isEquipment) {
+      return askEmail(false, isCleaning);
+    }
+
     Telemetry.send('step', { step: 'ask_priority', isCleaning });
 
     let priorities = [];

@@ -42,9 +42,8 @@ export async function handler(event) {
     }
 
     const rawSpaceId = String(qs.spaceId ?? qs.spaceid ?? '').trim();
-    // QR-codes dragen een prefix: S = ruimte, E = installatie
-    const prefix  = /^[A-Za-z](?=\d)/.test(rawSpaceId) ? rawSpaceId[0].toUpperCase() : '';
-    const spaceId = prefix ? rawSpaceId.slice(1) : rawSpaceId;
+    // Strip single-letter prefix (S/E) die de portal toevoegt aan QR-codes
+    const spaceId = /^[A-Za-z](?=\d)/.test(rawSpaceId) ? rawSpaceId.slice(1) : rawSpaceId;
     const deptId  = String(qs.deptId  ?? qs.deptid  ?? '').trim();
     const svcId   = String(qs.svcId   ?? qs.svcid   ?? '').trim();
     // Diagnose: ?debug=1 laat Ultimo een diagnose-object teruggeven i.p.v. de prioriteitenlijst
@@ -59,14 +58,6 @@ export async function handler(event) {
     }
 
     const { base, env } = detectEnvironment(event);
-
-    // Installatie-scan (E-prefix): de SLA/prioriteit is inherent aan de installatie
-    // (bepaald door de WorkOrder op het equipment), dus geen prioriteitsvoorstel.
-    // De equipment-id niet als SpaceId doorsturen — dat zou in GET_PRIORITIES 'Via
-    // SpaceId' een lege Space laden en de workflow doen crashen (0x10004005).
-    if (prefix === 'E') {
-      return json(200, { priorities: [], kind: 'equipment', env });
-    }
 
     const payload = {
       Action: 'GET_PRIORITIES',
