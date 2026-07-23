@@ -1466,9 +1466,9 @@ async function preloadContextAndShow() {
         : { text: tr('Wel bericht', 'Avec suivi', 'Get updates'), value: 'toggle' };
       const backRes = await botui.action.button({
         action: [
-          { text: tr('Zo laten', 'Laisser ainsi', 'Keep as is'), value: 'same' },
           { text: tr('Ander adres', 'Autre adresse', 'Different address'), value: 'other' },
-          toggleBtn
+          toggleBtn,
+          { text: tr('Zo laten', 'Laisser ainsi', 'Keep as is'), value: 'same' }
         ]
       });
       if (backRes.value === 'same') {
