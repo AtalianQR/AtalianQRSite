@@ -89,6 +89,19 @@ Anders dan bij een enkel veld kun je hier **zoveel personen aanvinken als nodig*
 
 Staat dezelfde persoon zowel op het gebouw als op het complex aangevinkt, dan krijgt hij toch maar één mail — het systeem ontdubbelt.
 
+### Iemand voor alle complexen in één keer aanvinken
+
+Sommige contactpersonen moeten op de hoogte blijven van **élk** complex — denk aan een centrale facility manager met honderden sites. Die stuk voor stuk aanvinken is geen doen.
+
+Op de fiche van de contactpersoon, tabblad **Autorisatie**, staat de knop **Actualiseer complexen**. Nadat die de complexen heeft bijgewerkt, verschijnt de vraag *"Deze contactpersoon op de hoogte houden van meldingen in ALLE complexen?"* Antwoord je **Ja**, dan wordt het vinkje *krijgt bericht bij een nieuwe melding* in één keer gezet op alle complexen waar die persoon toegang toe heeft.
+
+Enkele punten om te weten:
+
+- Het zet het vinkje enkel op **complexniveau**. Dat volstaat: wie op een complex aangevinkt staat, krijgt bericht over elke melding in dat complex, ook die uit de onderliggende gebouwen. De losse gebouwen hoef je dus niet apart aan te vinken.
+- Alleen complexen waar de persoon **toegang** toe heeft, worden aangeduid. Een complex waar hij niet aan gekoppeld is, blijft ongemoeid.
+- Antwoord je **Nee**, dan wijzigt er niets. Je mag de knop ook later opnieuw gebruiken: complexen die al aangevinkt zijn, blijven gewoon staan.
+- De vraag verschijnt alleen wanneer je zelf op de knop klikt, niet bij automatische verwerkingen op de achtergrond.
+
 ### Wat er gebeurt
 
 De adressen van alle aangevinkte contactpersonen worden bij elke melding de ontvangers.
@@ -126,7 +139,7 @@ Ultimo controleert bij het opslaan wel of elk adres een `@` bevat, en blokkeert 
 
 Loop deze punten na in deze volgorde.
 
-**Staat er een adres in `_ContactMail`?** Is dat veld leeg, dan vertrekt er geen klantmail. Kijk dan of er wel iemand aangevinkt staat om bericht te krijgen op dat gebouw of complex. Dit is veruit de meest voorkomende oorzaak.
+**Staat er een adres in `_ContactMail`?** Is dat veld leeg, dan vertrekt er geen klantmail. Kijk dan of er wel iemand aangevinkt staat om bericht te krijgen op dat gebouw of complex. Dit is veruit de meest voorkomende oorzaak. Moet een contactpersoon eigenlijk elk complex volgen maar staat hij nergens aangevinkt, gebruik dan op zijn fiche de knop **Actualiseer complexen** om dat in één keer recht te zetten (zie *Iemand voor alle complexen in één keer aanvinken*).
 
 **Is de melding via de juiste statusovergang gegaan?** Sommige notificaties hangen aan één specifieke progressstatus. Wordt een job langs een andere weg afgewerkt, dan wordt die stap overgeslagen en vertrekt de mail niet — zonder foutmelding.
 

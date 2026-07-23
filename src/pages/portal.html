@@ -1340,24 +1340,26 @@ async function preloadContextAndShow() {
     return askEmail(false, isCleaning);
   }
 
-  // Onthoudt adres + opt-in-keuze van de melder, 90 dagen, in localStorage.
+  // Onthoudt enkel het adres van de melder, 90 dagen, in localStorage.
   // Bewust persistent (anders dan de sessionStorage die portalself gebruikt),
   // zodat een terugkerende melder niet telkens opnieuw hoeft te tikken.
+  // De opvolg-keuze (notify) wordt NIET bewaard: die vragen we bij elke melding
+  // opnieuw, want per melding kan de melder anders kiezen.
   const MELDER_TTL_MS = 90 * 24 * 60 * 60 * 1000;
   function readMelderCookie(){
     try {
       const email = localStorage.getItem('qr_melder_email');
       const ts = Number(localStorage.getItem('qr_melder_ts') || 0);
       if (!email || !ts || (Date.now() - ts) > MELDER_TTL_MS) return null;
-      const notify = localStorage.getItem('qr_melder_notify') === 'true';
-      return { email, notify };
+      return { email };
     } catch { return null; }
   }
-  function writeMelderCookie(email, notify){
+  function writeMelderCookie(email){
     try {
       localStorage.setItem('qr_melder_email', email);
-      localStorage.setItem('qr_melder_notify', notify ? 'true' : 'false');
       localStorage.setItem('qr_melder_ts', String(Date.now()));
+      // Opruimen van een eventueel eerder bewaarde opvolg-keuze.
+      localStorage.removeItem('qr_melder_notify');
     } catch {}
   }
 
@@ -1395,6 +1397,14 @@ async function preloadContextAndShow() {
     }
     Telemetry.send('email_entered');
 
+    const notifyCaller = await promptOptin();
+    return { email, notifyCaller };
+  }
+
+  // Vraagt of de melder bericht wil over deze melding. Bewust apart van het
+  // e-mailadres, zodat de vraag telkens opnieuw gesteld kan worden — ook bij
+  // een terugkerende melder die zijn adres hergebruikt.
+  async function promptOptin(){
     await botui.message.add({
       content: tr(
         'Wil je bericht krijgen over deze melding?',
@@ -1410,8 +1420,7 @@ async function preloadContextAndShow() {
     });
     const notifyCaller = notifyRes.value === 'yes';
     Telemetry.send('optin_choice', { notifyCaller });
-
-    return { email, notifyCaller };
+    return notifyCaller;
   }
 
   async function askEmail(isUrgent, isCleaning){
@@ -1440,15 +1449,16 @@ async function preloadContextAndShow() {
       });
       if (backRes.value === 'same') {
         email = remembered.email;
-        notifyCaller = remembered.notify;
-        Telemetry.send('melder_cookie_reused', { notifyCaller });
+        Telemetry.send('melder_cookie_reused');
+        // Adres hergebruikt, maar de opvolg-keuze vragen we altijd opnieuw.
+        notifyCaller = await promptOptin();
       } else {
         ({ email, notifyCaller } = await promptEmailAndOptin());
       }
     } else {
       ({ email, notifyCaller } = await promptEmailAndOptin());
     }
-    writeMelderCookie(email, notifyCaller);
+    writeMelderCookie(email);
 
     const meldingTekst = omschrijving;
 
